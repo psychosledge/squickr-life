@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    // Node.js specific
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "node",
+    
+    // Path mapping
+    "baseUrl": ".",
+    "paths": {
+      "@squickr/shared": ["../shared/src/index.ts"]
+    },
+    
+    // Output
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"],
+  "references": [
+    { "path": "../shared" }
+  ]
+}
