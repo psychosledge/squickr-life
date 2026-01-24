@@ -1,23 +1,37 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
 describe('App', () => {
-  it('should render the Squickr Life title', () => {
+  it('should render the Squickr Life title', async () => {
     render(<App />);
     
-    expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    });
   });
 
-  it('should display the tagline', () => {
+  it('should display the tagline', async () => {
     render(<App />);
     
-    expect(screen.getByText(/Get shit done quicker with Squickr!/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Get shit done quicker with Squickr!/i)).toBeInTheDocument();
+    });
   });
 
-  it('should render the counter button', () => {
+  it('should render the task input', async () => {
     render(<App />);
     
-    expect(screen.getByRole('button', { name: /Test Counter: 0/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText(/add a task/i)).toBeInTheDocument();
+    });
+  });
+
+  it('should show empty state initially', async () => {
+    render(<App />);
+    
+    await waitFor(() => {
+      expect(screen.getByText(/no tasks yet/i)).toBeInTheDocument();
+    });
   });
 });
