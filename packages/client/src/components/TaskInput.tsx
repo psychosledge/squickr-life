@@ -53,6 +53,7 @@ export function TaskInput({ onSubmit }: TaskInputProps) {
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      e.preventDefault(); // Prevent form submission
       handleSubmit();
     }
   };

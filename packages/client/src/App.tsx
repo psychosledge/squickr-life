@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { IndexedDBEventStore, CreateTaskHandler, TaskListProjection } from '@squickr/shared';
 import type { Task } from '@squickr/shared';
 import { TaskInput } from './components/TaskInput';
@@ -22,9 +22,18 @@ function App() {
   // UI state (derived from projections)
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Track if app is initialized (prevents double-init in React StrictMode)
+  const isInitialized = useRef(false);
 
   // Initialize IndexedDB and load tasks on mount
   useEffect(() => {
+    // Prevent double initialization in React StrictMode (dev mode)
+    if (isInitialized.current) {
+      return;
+    }
+    isInitialized.current = true;
+    
     initializeApp();
   }, []);
 
