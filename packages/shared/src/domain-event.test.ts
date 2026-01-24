@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import type { DomainEvent } from './index';
+import type { DomainEvent } from './domain-event';
 
 describe('DomainEvent', () => {
   it('should have the correct structure', () => {
-    // Test-First Terry: This is an example test showing the DomainEvent interface
     const event: DomainEvent = {
       id: 'test-id-123',
       type: 'TestEvent',

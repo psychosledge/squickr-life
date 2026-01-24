@@ -1,0 +1,113 @@
+import type { IEventStore } from './event-store';
+import type { Task, TaskCreated, TaskEvent } from './task.types';
+
+/**
+ * TaskListProjection - Read Model for Task List
+ * 
+ * This is the "read side" of CQRS.
+ * Projections rebuild state by replaying events from the EventStore.
+ * 
+ * Key principles:
+ * - State is derived from events (not stored separately in this simple version)
+ * - Can be rebuilt at any time by replaying all events
+ * - Optimized for queries (getTasks, getTaskById)
+ * - Separate from write side (command handlers)
+ * 
+ * Future optimization: Cache the projection state instead of rebuilding on every query
+ */
+export class TaskListProjection {
+  constructor(private readonly eventStore: IEventStore) {}
+
+  /**
+   * Get all tasks
+   * Rebuilds state by replaying all events
+   * 
+   * @returns Array of tasks in chronological order
+   */
+  async getTasks(): Promise<Task[]> {
+    const events = await this.eventStore.getAll();
+    return this.applyEvents(events);
+  }
+
+  /**
+   * Get a specific task by ID
+   * 
+   * @param taskId - The task ID to find
+   * @returns The task, or undefined if not found
+   */
+  async getTaskById(taskId: string): Promise<Task | undefined> {
+    const events = await this.eventStore.getById(taskId);
+    const tasks = this.applyEvents(events);
+    return tasks[0]; // Should only be one task per aggregate
+  }
+
+  /**
+   * Rebuild the projection from scratch
+   * This is useful for:
+   * - Initial load
+   * - Recovering from errors
+   * - Time travel / debugging
+   * 
+   * In this simple version, we rebuild on every query.
+   * Future optimization: maintain in-memory cache and rebuild only when needed
+   */
+  async rebuild(): Promise<void> {
+    // In this simple version, rebuild happens on every query
+    // This method exists for future caching implementations
+    await this.getTasks();
+  }
+
+  /**
+   * Apply events to build task state
+   * This is the core projection logic
+   * 
+   * @param events - Domain events to apply
+   * @returns Current task state
+   */
+  private applyEvents(events: readonly import('./domain-event').DomainEvent[]): Task[] {
+    const tasks: Map<string, Task> = new Map();
+
+    for (const event of events) {
+      // Type guard - only process TaskEvents
+      if (this.isTaskEvent(event)) {
+        switch (event.type) {
+          case 'TaskCreated':
+            this.applyTaskCreated(tasks, event);
+            break;
+          // Future events will be handled here:
+          // case 'TaskCompleted': ...
+          // case 'TaskUpdated': ...
+        }
+      }
+    }
+
+    // Return tasks in chronological order (by createdAt)
+    return Array.from(tasks.values()).sort(
+      (a, b) => a.createdAt.localeCompare(b.createdAt)
+    );
+  }
+
+  /**
+   * Apply TaskCreated event
+   * Creates a new task in the projection
+   */
+  private applyTaskCreated(tasks: Map<string, Task>, event: TaskCreated): void {
+    const task: Task = {
+      id: event.payload.id,
+      title: event.payload.title,
+      createdAt: event.payload.createdAt,
+      status: event.payload.status,
+      userId: event.payload.userId,
+    };
+
+    tasks.set(task.id, task);
+  }
+
+  /**
+   * Type guard for TaskEvent
+   */
+  private isTaskEvent(event: import('./domain-event').DomainEvent): event is TaskEvent {
+    return event.type === 'TaskCreated';
+    // Future: || event.type === 'TaskCompleted' || event.type === 'TaskUpdated'
+  }
+}

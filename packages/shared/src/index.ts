@@ -1,30 +1,28 @@
-// Shared types and interfaces for Squickr Life
-// This file will export all event types, commands, and domain models
-
 /**
- * Base interface for all domain events in the system
- * Following event sourcing principles - events are immutable facts
+ * Barrel file for @squickr/shared package
+ * Re-exports all types for clean imports in other packages
  */
-export interface DomainEvent {
-  /** Unique identifier for this event */
-  readonly id: string;
-  
-  /** Type discriminator for event types */
-  readonly type: string;
-  
-  /** ISO 8601 timestamp when event occurred */
-  readonly timestamp: string;
-  
-  /** Version of the event schema (for future migrations) */
-  readonly version: number;
-  
-  /** ID of the aggregate this event belongs to */
-  readonly aggregateId: string;
-}
 
-/**
- * Placeholder - actual event types will be defined by Morgan during event modeling
- */
-export type SquickrEvent = DomainEvent;
+// Base domain event
+export type { DomainEvent } from './domain-event';
 
-// More types will be added as we model events
+// Task domain types
+export type {
+  TaskStatus,
+  Task,
+  TaskCreated,
+  CreateTaskCommand,
+  TaskEvent,
+} from './task.types';
+
+// Union type of all domain events in Squickr Life
+export type { TaskEvent as SquickrEvent } from './task.types';
+
+// Event Store
+export { EventStore, type IEventStore } from './event-store';
+
+// Command Handlers
+export { CreateTaskHandler } from './task.handlers';
+
+// Projections (Read Models)
+export { TaskListProjection } from './task.projections';
