@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { EventStore, CreateTaskHandler, TaskListProjection } from '@squickr/shared';
+import { IndexedDBEventStore, CreateTaskHandler, TaskListProjection } from '@squickr/shared';
 import type { Task } from '@squickr/shared';
 import { TaskInput } from './components/TaskInput';
 import { TaskList } from './components/TaskList';
@@ -8,22 +8,39 @@ import { TaskList } from './components/TaskList';
  * Main App Component
  * 
  * This demonstrates the complete CQRS + Event Sourcing flow:
- * - Write Side: TaskInput → CreateTaskHandler → TaskCreated event → EventStore
- * - Read Side: EventStore → TaskListProjection → Task[] → TaskList display
+ * - Write Side: TaskInput → CreateTaskHandler → TaskCreated event → IndexedDBEventStore
+ * - Read Side: IndexedDBEventStore → TaskListProjection → Task[] → TaskList display
+ * 
+ * Data persists across page refreshes via IndexedDB!
  */
 function App() {
-  // Initialize event sourcing infrastructure
-  const [eventStore] = useState(() => new EventStore());
+  // Initialize event sourcing infrastructure with IndexedDB persistence
+  const [eventStore] = useState(() => new IndexedDBEventStore());
   const [commandHandler] = useState(() => new CreateTaskHandler(eventStore));
   const [projection] = useState(() => new TaskListProjection(eventStore));
   
   // UI state (derived from projections)
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load tasks on mount and rebuild projection
+  // Initialize IndexedDB and load tasks on mount
   useEffect(() => {
-    loadTasks();
+    initializeApp();
   }, []);
+
+  const initializeApp = async () => {
+    try {
+      // Initialize IndexedDB connection
+      await eventStore.initialize();
+      
+      // Load existing tasks from persisted events
+      await loadTasks();
+    } catch (error) {
+      console.error('Failed to initialize app:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadTasks = async () => {
     const allTasks = await projection.getTasks();
@@ -37,6 +54,14 @@ function App() {
     // Refresh view from projection (read side)
     await loadTasks();
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-gray-600 dark:text-gray-400">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
@@ -60,6 +85,7 @@ function App() {
         {/* Footer */}
         <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
           <p>Event-Sourced • CQRS • TDD • Offline-First PWA</p>
+          <p className="mt-1">✓ Data persists with IndexedDB</p>
           <p className="mt-1">Built by the AI Agent Team</p>
         </div>
       </div>

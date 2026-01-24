@@ -1,6 +1,32 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
+import type { IndexedDBEventStore } from '@squickr/shared';
+
+// Mock IndexedDBEventStore since we're in jsdom environment
+vi.mock('@squickr/shared', async () => {
+  const actual = await vi.importActual('@squickr/shared');
+  
+  class MockIndexedDBEventStore {
+    async initialize() {
+      return Promise.resolve();
+    }
+    async append() {
+      return Promise.resolve();
+    }
+    async getAll() {
+      return Promise.resolve([]);
+    }
+    async getById() {
+      return Promise.resolve([]);
+    }
+  }
+  
+  return {
+    ...actual,
+    IndexedDBEventStore: MockIndexedDBEventStore,
+  };
+});
 
 describe('App', () => {
   it('should render the Squickr Life title', async () => {
@@ -19,7 +45,7 @@ describe('App', () => {
     });
   });
 
-  it('should render the task input', async () => {
+  it('should render the task input after loading', async () => {
     render(<App />);
     
     await waitFor(() => {
@@ -32,6 +58,14 @@ describe('App', () => {
     
     await waitFor(() => {
       expect(screen.getByText(/no tasks yet/i)).toBeInTheDocument();
+    });
+  });
+
+  it('should show persistence message in footer', async () => {
+    render(<App />);
+    
+    await waitFor(() => {
+      expect(screen.getByText(/data persists with indexeddb/i)).toBeInTheDocument();
     });
   });
 });

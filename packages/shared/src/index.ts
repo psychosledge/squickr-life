@@ -20,6 +20,7 @@ export type { TaskEvent as SquickrEvent } from './task.types';
 
 // Event Store
 export { EventStore, type IEventStore } from './event-store';
+export { IndexedDBEventStore } from './indexeddb-event-store';
 
 // Command Handlers
 export { CreateTaskHandler } from './task.handlers';
