@@ -10,6 +10,8 @@ import type {
   DeleteTaskCommand,
   TaskDeleted
 } from './task.types';
+import { createDomainEvent, generateEventMetadata } from './event-helpers';
+import { validateTaskExists, validateTaskStatus } from './task-validation';
 
 /**
  * Command Handler for CreateTask
@@ -48,22 +50,19 @@ export class CreateTaskHandler {
       throw new Error('Title must be between 1 and 500 characters');
     }
 
-    // Generate unique IDs
+    // Generate unique task ID and event metadata
     const taskId = crypto.randomUUID();
-    const eventId = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
+    const metadata = generateEventMetadata();
 
     // Create TaskCreated event (EM-001)
     const event: TaskCreated = {
-      id: eventId,
+      ...metadata,
       type: 'TaskCreated',
-      timestamp,
-      version: 1,
       aggregateId: taskId,
       payload: {
         id: taskId,
         title,
-        createdAt: timestamp,
+        createdAt: metadata.timestamp,
         status: 'open',
         userId: command.userId,
       },
@@ -102,31 +101,20 @@ export class CompleteTaskHandler {
    * @throws Error if validation fails
    */
   async handle(command: CompleteTaskCommand): Promise<void> {
-    // Get current task state
-    const task = await this.projection.getTaskById(command.taskId);
-
-    if (!task) {
-      throw new Error(`Task ${command.taskId} not found`);
-    }
-
-    if (task.status !== 'open') {
-      throw new Error(`Task ${command.taskId} is not open (status: ${task.status})`);
-    }
+    // Validate task exists and is open
+    await validateTaskStatus(this.projection, command.taskId, 'open');
 
     // Generate event metadata
-    const eventId = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
+    const metadata = generateEventMetadata();
 
     // Create TaskCompleted event
     const event: TaskCompleted = {
-      id: eventId,
+      ...metadata,
       type: 'TaskCompleted',
-      timestamp,
-      version: 1,
       aggregateId: command.taskId,
       payload: {
         taskId: command.taskId,
-        completedAt: timestamp,
+        completedAt: metadata.timestamp,
       },
     };
 
@@ -160,31 +148,20 @@ export class ReopenTaskHandler {
    * @throws Error if validation fails
    */
   async handle(command: ReopenTaskCommand): Promise<void> {
-    // Get current task state
-    const task = await this.projection.getTaskById(command.taskId);
-
-    if (!task) {
-      throw new Error(`Task ${command.taskId} not found`);
-    }
-
-    if (task.status !== 'completed') {
-      throw new Error(`Task ${command.taskId} is not completed (status: ${task.status})`);
-    }
+    // Validate task exists and is completed
+    await validateTaskStatus(this.projection, command.taskId, 'completed');
 
     // Generate event metadata
-    const eventId = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
+    const metadata = generateEventMetadata();
 
     // Create TaskReopened event
     const event: TaskReopened = {
-      id: eventId,
+      ...metadata,
       type: 'TaskReopened',
-      timestamp,
-      version: 1,
       aggregateId: command.taskId,
       payload: {
         taskId: command.taskId,
-        reopenedAt: timestamp,
+        reopenedAt: metadata.timestamp,
       },
     };
 
@@ -218,27 +195,20 @@ export class DeleteTaskHandler {
    * @throws Error if validation fails
    */
   async handle(command: DeleteTaskCommand): Promise<void> {
-    // Get current task state
-    const task = await this.projection.getTaskById(command.taskId);
-
-    if (!task) {
-      throw new Error(`Task ${command.taskId} not found`);
-    }
+    // Validate task exists
+    await validateTaskExists(this.projection, command.taskId);
 
     // Generate event metadata
-    const eventId = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
+    const metadata = generateEventMetadata();
 
     // Create TaskDeleted event
     const event: TaskDeleted = {
-      id: eventId,
+      ...metadata,
       type: 'TaskDeleted',
-      timestamp,
-      version: 1,
       aggregateId: command.taskId,
       payload: {
         taskId: command.taskId,
-        deletedAt: timestamp,
+        deletedAt: metadata.timestamp,
       },
     };
 

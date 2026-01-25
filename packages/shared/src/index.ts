@@ -32,5 +32,10 @@ export { IndexedDBEventStore } from './indexeddb-event-store';
 // Command Handlers
 export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler } from './task.handlers';
 
+// Helpers
+export { generateEventMetadata, createDomainEvent } from './event-helpers';
+export type { EventMetadata } from './event-helpers';
+export { validateTaskExists, validateTaskStatus } from './task-validation';
+
 // Projections (Read Models)
 export { TaskListProjection } from './task.projections';
