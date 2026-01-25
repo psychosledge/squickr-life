@@ -3,6 +3,8 @@ import { TaskItem } from './TaskItem';
 
 interface TaskListProps {
   tasks: Task[];
+  onComplete: (taskId: string) => void;
+  onReopen: (taskId: string) => void;
 }
 
 /**
@@ -11,7 +13,7 @@ interface TaskListProps {
  * Displays a list of tasks from the projection.
  * Shows empty state when no tasks exist.
  */
-export function TaskList({ tasks }: TaskListProps) {
+export function TaskList({ tasks, onComplete, onReopen }: TaskListProps) {
   if (tasks.length === 0) {
     return (
       <div className="w-full max-w-2xl mx-auto text-center py-12">
@@ -30,7 +32,12 @@ export function TaskList({ tasks }: TaskListProps) {
       
       <div className="space-y-2">
         {tasks.map((task) => (
-          <TaskItem key={task.id} task={task} />
+          <TaskItem 
+            key={task.id} 
+            task={task} 
+            onComplete={onComplete}
+            onReopen={onReopen}
+          />
         ))}
       </div>
     </div>

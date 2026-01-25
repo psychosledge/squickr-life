@@ -1,11 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TaskList } from './TaskList';
 import type { Task } from '@squickr/shared';
 
 describe('TaskList', () => {
+  const mockOnComplete = vi.fn();
+  const mockOnReopen = vi.fn();
+
   it('should render empty state when no tasks', () => {
-    render(<TaskList tasks={[]} />);
+    render(<TaskList tasks={[]} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
     
     expect(screen.getByText(/no tasks yet/i)).toBeInTheDocument();
   });
@@ -26,7 +29,7 @@ describe('TaskList', () => {
       },
     ];
 
-    render(<TaskList tasks={tasks} />);
+    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
     
     expect(screen.getByText('Buy milk')).toBeInTheDocument();
     expect(screen.getByText('Walk the dog')).toBeInTheDocument();
@@ -48,7 +51,7 @@ describe('TaskList', () => {
       },
     ];
 
-    render(<TaskList tasks={tasks} />);
+    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
     
     expect(screen.getByText(/2 tasks/i)).toBeInTheDocument();
   });
@@ -63,9 +66,25 @@ describe('TaskList', () => {
       },
     ];
 
-    render(<TaskList tasks={tasks} />);
+    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
     
     expect(screen.getByText(/1 task/i)).toBeInTheDocument();
     expect(screen.queryByText(/1 tasks/i)).not.toBeInTheDocument();
+  });
+
+  it('should pass handlers to TaskItem components', () => {
+    const tasks: Task[] = [
+      {
+        id: 'task-1',
+        title: 'Task 1',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        status: 'open',
+      },
+    ];
+
+    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    
+    // Verify Complete button is rendered (which means handlers were passed)
+    expect(screen.getByRole('button', { name: /complete task/i })).toBeInTheDocument();
   });
 });

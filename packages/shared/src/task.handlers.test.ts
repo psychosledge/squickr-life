@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CreateTaskHandler } from './task.handlers';
+import { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler } from './task.handlers';
 import { EventStore } from './event-store';
-import type { CreateTaskCommand, TaskCreated } from './task.types';
+import { TaskListProjection } from './task.projections';
+import type { CreateTaskCommand, TaskCreated, TaskCompleted, TaskReopened, CompleteTaskCommand, ReopenTaskCommand } from './task.types';
 
 describe('CreateTaskHandler', () => {
   let eventStore: EventStore;
@@ -136,6 +137,169 @@ describe('CreateTaskHandler', () => {
       expect(events).toHaveLength(1);
       const event = events[0] as TaskCreated;
       expect(event.payload.title).toHaveLength(500);
+    });
+  });
+});
+
+describe('CompleteTaskHandler', () => {
+  let eventStore: EventStore;
+  let projection: TaskListProjection;
+  let createHandler: CreateTaskHandler;
+  let completeHandler: CompleteTaskHandler;
+
+  beforeEach(() => {
+    eventStore = new EventStore();
+    projection = new TaskListProjection(eventStore);
+    createHandler = new CreateTaskHandler(eventStore);
+    completeHandler = new CompleteTaskHandler(eventStore, projection);
+  });
+
+  describe('handle', () => {
+    it('should create a TaskCompleted event for valid command', async () => {
+      // Create a task first
+      const taskId = await createHandler.handle({ title: 'Buy milk' });
+
+      // Complete the task
+      const command: CompleteTaskCommand = { taskId };
+      await completeHandler.handle(command);
+
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(2);
+
+      const completedEvent = events[1] as TaskCompleted;
+      expect(completedEvent.type).toBe('TaskCompleted');
+      expect(completedEvent.payload.taskId).toBe(taskId);
+      expect(completedEvent.aggregateId).toBe(taskId);
+      expect(completedEvent.payload.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it('should set completedAt timestamp', async () => {
+      const taskId = await createHandler.handle({ title: 'Test task' });
+      
+      const beforeTime = new Date().toISOString();
+      await completeHandler.handle({ taskId });
+      const afterTime = new Date().toISOString();
+
+      const events = await eventStore.getAll();
+      const completedEvent = events[1] as TaskCompleted;
+
+      expect(completedEvent.payload.completedAt >= beforeTime).toBe(true);
+      expect(completedEvent.payload.completedAt <= afterTime).toBe(true);
+    });
+
+    it('should set event metadata correctly', async () => {
+      const taskId = await createHandler.handle({ title: 'Test task' });
+      await completeHandler.handle({ taskId });
+
+      const events = await eventStore.getAll();
+      const completedEvent = events[1] as TaskCompleted;
+
+      expect(completedEvent.id).toMatch(/^[0-9a-f-]+$/i);
+      expect(completedEvent.version).toBe(1);
+      expect(completedEvent.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it('should throw error if task does not exist', async () => {
+      const command: CompleteTaskCommand = { taskId: 'non-existent-id' };
+
+      await expect(completeHandler.handle(command)).rejects.toThrow('Task non-existent-id not found');
+    });
+
+    it('should throw error if task is already completed', async () => {
+      const taskId = await createHandler.handle({ title: 'Test task' });
+      await completeHandler.handle({ taskId });
+
+      await expect(completeHandler.handle({ taskId })).rejects.toThrow('Task ' + taskId + ' is not open');
+    });
+  });
+});
+
+describe('ReopenTaskHandler', () => {
+  let eventStore: EventStore;
+  let projection: TaskListProjection;
+  let createHandler: CreateTaskHandler;
+  let completeHandler: CompleteTaskHandler;
+  let reopenHandler: ReopenTaskHandler;
+
+  beforeEach(() => {
+    eventStore = new EventStore();
+    projection = new TaskListProjection(eventStore);
+    createHandler = new CreateTaskHandler(eventStore);
+    completeHandler = new CompleteTaskHandler(eventStore, projection);
+    reopenHandler = new ReopenTaskHandler(eventStore, projection);
+  });
+
+  describe('handle', () => {
+    it('should create a TaskReopened event for valid command', async () => {
+      // Create and complete a task
+      const taskId = await createHandler.handle({ title: 'Buy milk' });
+      await completeHandler.handle({ taskId });
+
+      // Reopen the task
+      const command: ReopenTaskCommand = { taskId };
+      await reopenHandler.handle(command);
+
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(3);
+
+      const reopenedEvent = events[2] as TaskReopened;
+      expect(reopenedEvent.type).toBe('TaskReopened');
+      expect(reopenedEvent.payload.taskId).toBe(taskId);
+      expect(reopenedEvent.aggregateId).toBe(taskId);
+      expect(reopenedEvent.payload.reopenedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it('should set reopenedAt timestamp', async () => {
+      const taskId = await createHandler.handle({ title: 'Test task' });
+      await completeHandler.handle({ taskId });
+      
+      const beforeTime = new Date().toISOString();
+      await reopenHandler.handle({ taskId });
+      const afterTime = new Date().toISOString();
+
+      const events = await eventStore.getAll();
+      const reopenedEvent = events[2] as TaskReopened;
+
+      expect(reopenedEvent.payload.reopenedAt >= beforeTime).toBe(true);
+      expect(reopenedEvent.payload.reopenedAt <= afterTime).toBe(true);
+    });
+
+    it('should set event metadata correctly', async () => {
+      const taskId = await createHandler.handle({ title: 'Test task' });
+      await completeHandler.handle({ taskId });
+      await reopenHandler.handle({ taskId });
+
+      const events = await eventStore.getAll();
+      const reopenedEvent = events[2] as TaskReopened;
+
+      expect(reopenedEvent.id).toMatch(/^[0-9a-f-]+$/i);
+      expect(reopenedEvent.version).toBe(1);
+      expect(reopenedEvent.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it('should throw error if task does not exist', async () => {
+      const command: ReopenTaskCommand = { taskId: 'non-existent-id' };
+
+      await expect(reopenHandler.handle(command)).rejects.toThrow('Task non-existent-id not found');
+    });
+
+    it('should throw error if task is not completed', async () => {
+      const taskId = await createHandler.handle({ title: 'Test task' });
+
+      await expect(reopenHandler.handle({ taskId })).rejects.toThrow('Task ' + taskId + ' is not completed');
+    });
+
+    it('should allow reopening and completing multiple times', async () => {
+      const taskId = await createHandler.handle({ title: 'Test task' });
+      
+      // Complete -> Reopen -> Complete -> Reopen
+      await completeHandler.handle({ taskId });
+      await reopenHandler.handle({ taskId });
+      await completeHandler.handle({ taskId });
+      await reopenHandler.handle({ taskId });
+
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(5); // Created, Completed, Reopened, Completed, Reopened
     });
   });
 });

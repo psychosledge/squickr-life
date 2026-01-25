@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { IndexedDBEventStore, CreateTaskHandler, TaskListProjection } from '@squickr/shared';
+import { 
+  IndexedDBEventStore, 
+  CreateTaskHandler, 
+  CompleteTaskHandler,
+  ReopenTaskHandler,
+  TaskListProjection 
+} from '@squickr/shared';
 import type { Task } from '@squickr/shared';
 import { TaskInput } from './components/TaskInput';
 import { TaskList } from './components/TaskList';
@@ -16,8 +22,10 @@ import { TaskList } from './components/TaskList';
 function App() {
   // Initialize event sourcing infrastructure with IndexedDB persistence
   const [eventStore] = useState(() => new IndexedDBEventStore());
-  const [commandHandler] = useState(() => new CreateTaskHandler(eventStore));
   const [projection] = useState(() => new TaskListProjection(eventStore));
+  const [createTaskHandler] = useState(() => new CreateTaskHandler(eventStore));
+  const [completeTaskHandler] = useState(() => new CompleteTaskHandler(eventStore, projection));
+  const [reopenTaskHandler] = useState(() => new ReopenTaskHandler(eventStore, projection));
   
   // UI state (derived from projections)
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -58,7 +66,23 @@ function App() {
 
   const handleCreateTask = async (title: string) => {
     // Send command (write side)
-    await commandHandler.handle({ title });
+    await createTaskHandler.handle({ title });
+    
+    // Refresh view from projection (read side)
+    await loadTasks();
+  };
+
+  const handleCompleteTask = async (taskId: string) => {
+    // Send command (write side)
+    await completeTaskHandler.handle({ taskId });
+    
+    // Refresh view from projection (read side)
+    await loadTasks();
+  };
+
+  const handleReopenTask = async (taskId: string) => {
+    // Send command (write side)
+    await reopenTaskHandler.handle({ taskId });
     
     // Refresh view from projection (read side)
     await loadTasks();
@@ -89,7 +113,11 @@ function App() {
         <TaskInput onSubmit={handleCreateTask} />
 
         {/* Task List (Read Side) */}
-        <TaskList tasks={tasks} />
+        <TaskList 
+          tasks={tasks} 
+          onComplete={handleCompleteTask}
+          onReopen={handleReopenTask}
+        />
 
         {/* Footer */}
         <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">

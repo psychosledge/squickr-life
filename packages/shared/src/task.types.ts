@@ -6,9 +6,8 @@ import type { DomainEvent } from './domain-event';
 
 /**
  * Possible status values for a task
- * Currently only 'open' - will expand as we model more events
  */
-export type TaskStatus = 'open';
+export type TaskStatus = 'open' | 'completed';
 
 /**
  * Task entity - represents the current state of a task
@@ -26,6 +25,9 @@ export interface Task {
   
   /** Current status of the task */
   readonly status: TaskStatus;
+  
+  /** When the task was completed (ISO 8601), if applicable */
+  readonly completedAt?: string;
   
   /** Optional: User who created the task (for future multi-user support) */
   readonly userId?: string;
@@ -66,7 +68,57 @@ export interface CreateTaskCommand {
 }
 
 /**
+ * TaskCompleted Event
+ * Emitted when a task is marked as completed
+ * 
+ * Invariants:
+ * - aggregateId must match an existing task
+ * - Task must be in 'open' status
+ */
+export interface TaskCompleted extends DomainEvent {
+  readonly type: 'TaskCompleted';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly taskId: string;
+    readonly completedAt: string;
+  };
+}
+
+/**
+ * CompleteTask Command
+ * Represents the user's intent to complete a task
+ */
+export interface CompleteTaskCommand {
+  readonly taskId: string;
+}
+
+/**
+ * TaskReopened Event
+ * Emitted when a completed task is reopened
+ * 
+ * Invariants:
+ * - aggregateId must match an existing task
+ * - Task must be in 'completed' status
+ */
+export interface TaskReopened extends DomainEvent {
+  readonly type: 'TaskReopened';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly taskId: string;
+    readonly reopenedAt: string;
+  };
+}
+
+/**
+ * ReopenTask Command
+ * Represents the user's intent to reopen a completed task
+ */
+export interface ReopenTaskCommand {
+  readonly taskId: string;
+}
+
+/**
  * Union type of all task-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type TaskEvent = TaskCreated;
+export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened;

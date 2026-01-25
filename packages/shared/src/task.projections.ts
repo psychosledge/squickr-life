@@ -1,5 +1,5 @@
 import type { IEventStore } from './event-store';
-import type { Task, TaskCreated, TaskEvent } from './task.types';
+import type { Task, TaskCreated, TaskCompleted, TaskReopened, TaskEvent } from './task.types';
 
 /**
  * TaskListProjection - Read Model for Task List
@@ -74,9 +74,12 @@ export class TaskListProjection {
           case 'TaskCreated':
             this.applyTaskCreated(tasks, event);
             break;
-          // Future events will be handled here:
-          // case 'TaskCompleted': ...
-          // case 'TaskUpdated': ...
+          case 'TaskCompleted':
+            this.applyTaskCompleted(tasks, event);
+            break;
+          case 'TaskReopened':
+            this.applyTaskReopened(tasks, event);
+            break;
         }
       }
     }
@@ -104,10 +107,47 @@ export class TaskListProjection {
   }
 
   /**
+   * Apply TaskCompleted event
+   * Marks a task as completed
+   */
+  private applyTaskCompleted(tasks: Map<string, Task>, event: TaskCompleted): void {
+    const task = tasks.get(event.payload.taskId);
+    if (!task) {
+      // This shouldn't happen if events are valid, but handle gracefully
+      console.warn(`TaskCompleted event for non-existent task: ${event.payload.taskId}`);
+      return;
+    }
+
+    tasks.set(task.id, {
+      ...task,
+      status: 'completed',
+      completedAt: event.payload.completedAt,
+    });
+  }
+
+  /**
+   * Apply TaskReopened event
+   * Reopens a completed task
+   */
+  private applyTaskReopened(tasks: Map<string, Task>, event: TaskReopened): void {
+    const task = tasks.get(event.payload.taskId);
+    if (!task) {
+      // This shouldn't happen if events are valid, but handle gracefully
+      console.warn(`TaskReopened event for non-existent task: ${event.payload.taskId}`);
+      return;
+    }
+
+    tasks.set(task.id, {
+      ...task,
+      status: 'open',
+      completedAt: undefined,
+    });
+  }
+
+  /**
    * Type guard for TaskEvent
    */
   private isTaskEvent(event: import('./domain-event').DomainEvent): event is TaskEvent {
-    return event.type === 'TaskCreated';
-    // Future: || event.type === 'TaskCompleted' || event.type === 'TaskUpdated'
+    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened';
   }
 }
