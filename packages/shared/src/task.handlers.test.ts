@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler } from './task.handlers';
+import { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler } from './task.handlers';
 import { EventStore } from './event-store';
 import { TaskListProjection } from './task.projections';
-import type { CreateTaskCommand, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, CompleteTaskCommand, ReopenTaskCommand, DeleteTaskCommand, ReorderTaskCommand, TaskReordered } from './task.types';
+import type { CreateTaskCommand, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, CompleteTaskCommand, ReopenTaskCommand, DeleteTaskCommand, ReorderTaskCommand, TaskReordered, UpdateTaskTitleCommand, TaskTitleChanged } from './task.types';
 
 describe('CreateTaskHandler', () => {
   let eventStore: EventStore;
@@ -551,6 +551,162 @@ describe('ReorderTaskHandler', () => {
       };
 
       await expect(reorderHandler.handle(command)).rejects.toThrow('Next task non-existent-next not found');
+    });
+  });
+});
+
+describe('UpdateTaskTitleHandler', () => {
+  let eventStore: EventStore;
+  let projection: TaskListProjection;
+  let createHandler: CreateTaskHandler;
+  let updateTitleHandler: UpdateTaskTitleHandler;
+
+  beforeEach(() => {
+    eventStore = new EventStore();
+    projection = new TaskListProjection(eventStore);
+    createHandler = new CreateTaskHandler(eventStore, projection);
+    updateTitleHandler = new UpdateTaskTitleHandler(eventStore, projection);
+  });
+
+  describe('handle', () => {
+    it('should create a TaskTitleChanged event for valid command', async () => {
+      // Create a task first
+      const taskId = await createHandler.handle({
+        title: 'Original Title',
+      });
+
+      // Update the title
+      const command: UpdateTaskTitleCommand = {
+        taskId,
+        title: 'New Title',
+      };
+
+      await updateTitleHandler.handle(command);
+
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(2); // TaskCreated + TaskTitleChanged
+
+      const event = events[1] as TaskTitleChanged;
+      expect(event.type).toBe('TaskTitleChanged');
+      expect(event.payload.taskId).toBe(taskId);
+      expect(event.payload.newTitle).toBe('New Title');
+      expect(event.aggregateId).toBe(taskId);
+    });
+
+    it('should trim whitespace from new title', async () => {
+      const taskId = await createHandler.handle({
+        title: 'Original Title',
+      });
+
+      const command: UpdateTaskTitleCommand = {
+        taskId,
+        title: '  New Title  ',
+      };
+
+      await updateTitleHandler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[1] as TaskTitleChanged;
+      expect(event.payload.newTitle).toBe('New Title');
+    });
+
+    it('should reject empty title after trimming', async () => {
+      const taskId = await createHandler.handle({
+        title: 'Original Title',
+      });
+
+      const command: UpdateTaskTitleCommand = {
+        taskId,
+        title: '   ',
+      };
+
+      await expect(updateTitleHandler.handle(command)).rejects.toThrow('Title cannot be empty');
+    });
+
+    it('should reject title longer than 500 characters', async () => {
+      const taskId = await createHandler.handle({
+        title: 'Original Title',
+      });
+
+      const command: UpdateTaskTitleCommand = {
+        taskId,
+        title: 'a'.repeat(501),
+      };
+
+      await expect(updateTitleHandler.handle(command)).rejects.toThrow('Title must be between 1 and 500 characters');
+    });
+
+    it('should accept title with exactly 500 characters', async () => {
+      const taskId = await createHandler.handle({
+        title: 'Original Title',
+      });
+
+      const longTitle = 'a'.repeat(500);
+      const command: UpdateTaskTitleCommand = {
+        taskId,
+        title: longTitle,
+      };
+
+      await updateTitleHandler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[1] as TaskTitleChanged;
+      expect(event.payload.newTitle).toBe(longTitle);
+    });
+
+    it('should reject updating non-existent task', async () => {
+      const command: UpdateTaskTitleCommand = {
+        taskId: 'non-existent-task',
+        title: 'New Title',
+      };
+
+      await expect(updateTitleHandler.handle(command)).rejects.toThrow('Task non-existent-task not found');
+    });
+
+    it('should set event metadata correctly', async () => {
+      const taskId = await createHandler.handle({
+        title: 'Original Title',
+      });
+
+      const command: UpdateTaskTitleCommand = {
+        taskId,
+        title: 'New Title',
+      };
+
+      await updateTitleHandler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[1] as TaskTitleChanged;
+
+      expect(event.id).toBeDefined();
+      expect(event.timestamp).toBeDefined();
+      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+      expect(event.payload.changedAt).toBe(event.timestamp);
+    });
+
+    it('should allow updating completed task title', async () => {
+      // Create and complete a task
+      const taskId = await createHandler.handle({
+        title: 'Original Title',
+      });
+
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      await completeHandler.handle({ taskId });
+
+      // Update title of completed task
+      const command: UpdateTaskTitleCommand = {
+        taskId,
+        title: 'Updated Title',
+      };
+
+      await updateTitleHandler.handle(command);
+
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(3); // TaskCreated + TaskCompleted + TaskTitleChanged
+
+      const event = events[2] as TaskTitleChanged;
+      expect(event.type).toBe('TaskTitleChanged');
+      expect(event.payload.newTitle).toBe('Updated Title');
     });
   });
 });

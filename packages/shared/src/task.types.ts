@@ -188,7 +188,38 @@ export interface ReorderTaskCommand {
 }
 
 /**
+ * TaskTitleChanged Event
+ * Emitted when a task's title is updated
+ * 
+ * Invariants:
+ * - aggregateId must match an existing task
+ * - Task can be in any status (open or completed)
+ * - newTitle must be 1-500 characters (after trim)
+ */
+export interface TaskTitleChanged extends DomainEvent {
+  readonly type: 'TaskTitleChanged';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly taskId: string;
+    readonly newTitle: string;
+    readonly changedAt: string;
+  };
+}
+
+/**
+ * UpdateTaskTitle Command
+ * Represents the user's intent to update a task's title
+ * 
+ * Validation rules:
+ * - title: Required, will be trimmed, 1-500 characters
+ */
+export interface UpdateTaskTitleCommand {
+  readonly taskId: string;
+  readonly title: string;
+}
+
+/**
  * Union type of all task-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered;
+export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged;

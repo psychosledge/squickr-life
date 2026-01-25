@@ -16,11 +16,13 @@ export type {
   TaskReopened,
   TaskDeleted,
   TaskReordered,
+  TaskTitleChanged,
   CreateTaskCommand,
   CompleteTaskCommand,
   ReopenTaskCommand,
   DeleteTaskCommand,
   ReorderTaskCommand,
+  UpdateTaskTitleCommand,
   TaskEvent,
 } from './task.types';
 
@@ -32,7 +34,7 @@ export { EventStore, type IEventStore } from './event-store';
 export { IndexedDBEventStore } from './indexeddb-event-store';
 
 // Command Handlers
-export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler } from './task.handlers';
+export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler } from './task.handlers';
 
 // Helpers
 export { generateEventMetadata } from './event-helpers';

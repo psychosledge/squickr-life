@@ -6,6 +6,7 @@ import {
   ReopenTaskHandler,
   DeleteTaskHandler,
   ReorderTaskHandler,
+  UpdateTaskTitleHandler,
   TaskListProjection 
 } from '@squickr/shared';
 import type { Task, TaskFilter } from '@squickr/shared';
@@ -31,6 +32,7 @@ function App() {
   const [reopenTaskHandler] = useState(() => new ReopenTaskHandler(eventStore, projection));
   const [deleteTaskHandler] = useState(() => new DeleteTaskHandler(eventStore, projection));
   const [reorderTaskHandler] = useState(() => new ReorderTaskHandler(eventStore, projection));
+  const [updateTaskTitleHandler] = useState(() => new UpdateTaskTitleHandler(eventStore, projection));
   
   // UI state (derived from projections)
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -121,6 +123,14 @@ function App() {
     await loadTasks();
   };
 
+  const handleUpdateTaskTitle = async (taskId: string, newTitle: string) => {
+    // Send command (write side)
+    await updateTaskTitleHandler.handle({ taskId, title: newTitle });
+    
+    // Refresh view from projection (read side)
+    await loadTasks();
+  };
+
   const handleFilterChange = (filter: TaskFilter) => {
     setCurrentFilter(filter);
   };
@@ -159,6 +169,7 @@ function App() {
           onReopen={handleReopenTask}
           onDelete={handleDeleteTask}
           onReorder={handleReorderTask}
+          onUpdateTitle={handleUpdateTaskTitle}
         />
 
         {/* Footer */}

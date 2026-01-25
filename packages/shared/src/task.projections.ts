@@ -1,5 +1,5 @@
 import type { IEventStore } from './event-store';
-import type { Task, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskReordered, TaskEvent, TaskFilter } from './task.types';
+import type { Task, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskReordered, TaskTitleChanged, TaskEvent, TaskFilter } from './task.types';
 
 /**
  * TaskListProjection - Read Model for Task List
@@ -93,6 +93,9 @@ export class TaskListProjection {
             break;
           case 'TaskReordered':
             this.applyTaskReordered(tasks, event);
+            break;
+          case 'TaskTitleChanged':
+            this.applyTaskTitleChanged(tasks, event);
             break;
         }
       }
@@ -211,9 +214,28 @@ export class TaskListProjection {
   }
 
   /**
+   * Apply TaskTitleChanged event
+   * Updates a task's title in the projection
+   */
+  private applyTaskTitleChanged(tasks: Map<string, Task>, event: TaskTitleChanged): void {
+    const task = tasks.get(event.payload.taskId);
+    if (!task) {
+      // This shouldn't happen if events are valid, but handle gracefully
+      console.warn(`TaskTitleChanged event for non-existent task: ${event.payload.taskId}`);
+      return;
+    }
+
+    // Update the task's title
+    tasks.set(task.id, {
+      ...task,
+      title: event.payload.newTitle,
+    });
+  }
+
+  /**
    * Type guard for TaskEvent
    */
   private isTaskEvent(event: import('./domain-event').DomainEvent): event is TaskEvent {
-    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened' || event.type === 'TaskDeleted' || event.type === 'TaskReordered';
+    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened' || event.type === 'TaskDeleted' || event.type === 'TaskReordered' || event.type === 'TaskTitleChanged';
   }
 }

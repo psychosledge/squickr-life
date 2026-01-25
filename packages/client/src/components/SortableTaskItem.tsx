@@ -8,6 +8,7 @@ interface SortableTaskItemProps {
   onComplete: (taskId: string) => void;
   onReopen: (taskId: string) => void;
   onDelete: (taskId: string) => void;
+  onUpdateTitle?: (taskId: string, newTitle: string) => void;
 }
 
 /**
@@ -16,7 +17,7 @@ interface SortableTaskItemProps {
  * Wrapper around TaskItem that adds drag-and-drop functionality.
  * Provides a drag handle and visual feedback during dragging.
  */
-export function SortableTaskItem({ task, onComplete, onReopen, onDelete }: SortableTaskItemProps) {
+export function SortableTaskItem({ task, onComplete, onReopen, onDelete, onUpdateTitle }: SortableTaskItemProps) {
   const {
     attributes,
     listeners,
@@ -61,6 +62,7 @@ export function SortableTaskItem({ task, onComplete, onReopen, onDelete }: Sorta
         onComplete={onComplete}
         onReopen={onReopen}
         onDelete={onDelete}
+        onUpdateTitle={onUpdateTitle}
       />
     </div>
   );

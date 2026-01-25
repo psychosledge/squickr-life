@@ -9,6 +9,7 @@ interface TaskListProps {
   onReopen: (taskId: string) => void;
   onDelete: (taskId: string) => void;
   onReorder: (taskId: string, previousTaskId: string | null, nextTaskId: string | null) => void;
+  onUpdateTitle?: (taskId: string, newTitle: string) => void;
 }
 
 /**
@@ -17,7 +18,7 @@ interface TaskListProps {
  * Displays a list of tasks from the projection with drag-and-drop reordering.
  * Shows empty state when no tasks exist.
  */
-export function TaskList({ tasks, onComplete, onReopen, onDelete, onReorder }: TaskListProps) {
+export function TaskList({ tasks, onComplete, onReopen, onDelete, onReorder, onUpdateTitle }: TaskListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -83,6 +84,7 @@ export function TaskList({ tasks, onComplete, onReopen, onDelete, onReorder }: T
                 onComplete={onComplete}
                 onReopen={onReopen}
                 onDelete={onDelete}
+                onUpdateTitle={onUpdateTitle}
               />
             ))}
           </div>

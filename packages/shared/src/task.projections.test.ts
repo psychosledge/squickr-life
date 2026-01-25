@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TaskListProjection } from './task.projections';
 import { EventStore } from './event-store';
-import type { TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskReordered, Task } from './task.types';
+import type { TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskReordered, TaskTitleChanged, Task } from './task.types';
 
 describe('TaskListProjection', () => {
   let eventStore: EventStore;
@@ -1156,6 +1156,199 @@ describe('TaskListProjection', () => {
       expect(tasks[0].id).toBe('task-1');
       expect(tasks[1].id).toBe('task-3'); // Task 3 is between task 1 and 2
       expect(tasks[2].id).toBe('task-2');
+    });
+  });
+
+  describe('TaskTitleChanged', () => {
+    it('should update task title', async () => {
+      const createdEvent: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        aggregateId: 'task-1',
+        timestamp: '2024-01-01T12:00:00.000Z',
+        payload: {
+          id: 'task-1',
+          title: 'Original Title',
+          createdAt: '2024-01-01T12:00:00.000Z',
+          status: 'open',
+          order: 'a0',
+        },
+      };
+
+      const titleChangedEvent: TaskTitleChanged = {
+        id: 'event-2',
+        type: 'TaskTitleChanged',
+        aggregateId: 'task-1',
+        timestamp: '2024-01-01T12:05:00.000Z',
+        payload: {
+          taskId: 'task-1',
+          newTitle: 'Updated Title',
+          changedAt: '2024-01-01T12:05:00.000Z',
+        },
+      };
+
+      await eventStore.append(createdEvent);
+      await eventStore.append(titleChangedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].title).toBe('Updated Title');
+      expect(tasks[0].id).toBe('task-1');
+    });
+
+    it('should apply multiple title changes in order', async () => {
+      const createdEvent: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        aggregateId: 'task-1',
+        timestamp: '2024-01-01T12:00:00.000Z',
+        payload: {
+          id: 'task-1',
+          title: 'Original Title',
+          createdAt: '2024-01-01T12:00:00.000Z',
+          status: 'open',
+          order: 'a0',
+        },
+      };
+
+      const titleChanged1: TaskTitleChanged = {
+        id: 'event-2',
+        type: 'TaskTitleChanged',
+        aggregateId: 'task-1',
+        timestamp: '2024-01-01T12:05:00.000Z',
+        payload: {
+          taskId: 'task-1',
+          newTitle: 'First Update',
+          changedAt: '2024-01-01T12:05:00.000Z',
+        },
+      };
+
+      const titleChanged2: TaskTitleChanged = {
+        id: 'event-3',
+        type: 'TaskTitleChanged',
+        aggregateId: 'task-1',
+        timestamp: '2024-01-01T12:10:00.000Z',
+        payload: {
+          taskId: 'task-1',
+          newTitle: 'Second Update',
+          changedAt: '2024-01-01T12:10:00.000Z',
+        },
+      };
+
+      await eventStore.append(createdEvent);
+      await eventStore.append(titleChanged1);
+      await eventStore.append(titleChanged2);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].title).toBe('Second Update');
+    });
+
+    it('should handle title change on completed task', async () => {
+      const createdEvent: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        aggregateId: 'task-1',
+        timestamp: '2024-01-01T12:00:00.000Z',
+        payload: {
+          id: 'task-1',
+          title: 'Original Title',
+          createdAt: '2024-01-01T12:00:00.000Z',
+          status: 'open',
+          order: 'a0',
+        },
+      };
+
+      const completedEvent: TaskCompleted = {
+        id: 'event-2',
+        type: 'TaskCompleted',
+        aggregateId: 'task-1',
+        timestamp: '2024-01-01T12:05:00.000Z',
+        payload: {
+          taskId: 'task-1',
+          completedAt: '2024-01-01T12:05:00.000Z',
+        },
+      };
+
+      const titleChangedEvent: TaskTitleChanged = {
+        id: 'event-3',
+        type: 'TaskTitleChanged',
+        aggregateId: 'task-1',
+        timestamp: '2024-01-01T12:10:00.000Z',
+        payload: {
+          taskId: 'task-1',
+          newTitle: 'Updated Title',
+          changedAt: '2024-01-01T12:10:00.000Z',
+        },
+      };
+
+      await eventStore.append(createdEvent);
+      await eventStore.append(completedEvent);
+      await eventStore.append(titleChangedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].title).toBe('Updated Title');
+      expect(tasks[0].status).toBe('completed');
+    });
+
+    it('should preserve other task properties when changing title', async () => {
+      const createdEvent: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        aggregateId: 'task-1',
+        timestamp: '2024-01-01T12:00:00.000Z',
+        payload: {
+          id: 'task-1',
+          title: 'Original Title',
+          createdAt: '2024-01-01T12:00:00.000Z',
+          status: 'open',
+          order: 'a0',
+        },
+      };
+
+      const titleChangedEvent: TaskTitleChanged = {
+        id: 'event-2',
+        type: 'TaskTitleChanged',
+        aggregateId: 'task-1',
+        timestamp: '2024-01-01T12:05:00.000Z',
+        payload: {
+          taskId: 'task-1',
+          newTitle: 'Updated Title',
+          changedAt: '2024-01-01T12:05:00.000Z',
+        },
+      };
+
+      await eventStore.append(createdEvent);
+      await eventStore.append(titleChangedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks[0]).toEqual({
+        id: 'task-1',
+        title: 'Updated Title',
+        createdAt: '2024-01-01T12:00:00.000Z',
+        status: 'open',
+        order: 'a0',
+      });
+    });
+
+    it('should handle title change for non-existent task gracefully', async () => {
+      const titleChangedEvent: TaskTitleChanged = {
+        id: 'event-1',
+        type: 'TaskTitleChanged',
+        aggregateId: 'non-existent-task',
+        timestamp: '2024-01-01T12:00:00.000Z',
+        payload: {
+          taskId: 'non-existent-task',
+          newTitle: 'New Title',
+          changedAt: '2024-01-01T12:00:00.000Z',
+        },
+      };
+
+      await eventStore.append(titleChangedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(0); // Event is ignored, no crash
     });
   });
 });

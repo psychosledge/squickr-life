@@ -10,7 +10,9 @@ import type {
   DeleteTaskCommand,
   TaskDeleted,
   ReorderTaskCommand,
-  TaskReordered
+  TaskReordered,
+  UpdateTaskTitleCommand,
+  TaskTitleChanged
 } from './task.types';
 import { generateEventMetadata } from './event-helpers';
 import { validateTaskExists, validateTaskStatus } from './task-validation';
@@ -295,6 +297,68 @@ export class ReorderTaskHandler {
         taskId: command.taskId,
         order,
         reorderedAt: metadata.timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for UpdateTaskTitle
+ * 
+ * Responsibilities:
+ * - Validate task exists
+ * - Validate new title meets requirements
+ * - Create TaskTitleChanged event
+ * - Persist event to EventStore
+ */
+export class UpdateTaskTitleHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly projection: TaskListProjection
+  ) {}
+
+  /**
+   * Handle UpdateTaskTitle command
+   * 
+   * Validation rules:
+   * - Task must exist
+   * - Task can be in any status (open or completed)
+   * - Title must not be empty after trimming
+   * - Title must be 1-500 characters
+   * 
+   * @param command - The UpdateTaskTitle command
+   * @throws Error if validation fails
+   */
+  async handle(command: UpdateTaskTitleCommand): Promise<void> {
+    // Validate task exists
+    await validateTaskExists(this.projection, command.taskId);
+
+    // Validate title (same rules as CreateTask)
+    const title = command.title.trim();
+
+    if (title.length === 0) {
+      throw new Error('Title cannot be empty');
+    }
+
+    if (title.length > 500) {
+      throw new Error('Title must be between 1 and 500 characters');
+    }
+
+    // Generate event metadata
+    const metadata = generateEventMetadata();
+
+    // Create TaskTitleChanged event
+    const event: TaskTitleChanged = {
+      ...metadata,
+      type: 'TaskTitleChanged',
+      aggregateId: command.taskId,
+      payload: {
+        taskId: command.taskId,
+        newTitle: title,
+        changedAt: metadata.timestamp,
       },
     };
 
