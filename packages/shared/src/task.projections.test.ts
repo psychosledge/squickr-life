@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TaskListProjection } from './task.projections';
 import { EventStore } from './event-store';
-import type { TaskCreated, TaskCompleted, TaskReopened, Task } from './task.types';
+import type { TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, Task } from './task.types';
 
 describe('TaskListProjection', () => {
   let eventStore: EventStore;
@@ -436,6 +436,174 @@ describe('TaskListProjection', () => {
       expect(tasks[0].status).toBe('completed');
       expect(tasks[0].completedAt).toBe('2026-01-24T10:15:00.000Z'); // Latest completion time
       expect(tasks[0].createdAt).toBe('2026-01-24T10:00:00.000Z'); // Original creation time
+    });
+  });
+
+  describe('TaskDeleted events', () => {
+    it('should remove deleted task from projection', async () => {
+      const createdEvent: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Buy milk',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const deletedEvent: TaskDeleted = {
+        id: 'event-2',
+        type: 'TaskDeleted',
+        timestamp: '2026-01-24T10:05:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          taskId: 'task-1',
+          deletedAt: '2026-01-24T10:05:00.000Z',
+        },
+      };
+
+      await eventStore.append(createdEvent);
+      await eventStore.append(deletedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(0); // Task should be filtered out
+    });
+
+    it('should allow deleting open tasks', async () => {
+      const createdEvent: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Open task',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const deletedEvent: TaskDeleted = {
+        id: 'event-2',
+        type: 'TaskDeleted',
+        timestamp: '2026-01-24T10:05:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          taskId: 'task-1',
+          deletedAt: '2026-01-24T10:05:00.000Z',
+        },
+      };
+
+      await eventStore.append(createdEvent);
+      await eventStore.append(deletedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(0);
+    });
+
+    it('should allow deleting completed tasks', async () => {
+      const createdEvent: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Completed task',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const completedEvent: TaskCompleted = {
+        id: 'event-2',
+        type: 'TaskCompleted',
+        timestamp: '2026-01-24T10:05:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          taskId: 'task-1',
+          completedAt: '2026-01-24T10:05:00.000Z',
+        },
+      };
+
+      const deletedEvent: TaskDeleted = {
+        id: 'event-3',
+        type: 'TaskDeleted',
+        timestamp: '2026-01-24T10:10:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          taskId: 'task-1',
+          deletedAt: '2026-01-24T10:10:00.000Z',
+        },
+      };
+
+      await eventStore.append(createdEvent);
+      await eventStore.append(completedEvent);
+      await eventStore.append(deletedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(0);
+    });
+
+    it('should only remove the deleted task from multi-task list', async () => {
+      const task1Created: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Task 1',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const task2Created: TaskCreated = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          id: 'task-2',
+          title: 'Task 2',
+          createdAt: '2026-01-24T10:01:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const task1Deleted: TaskDeleted = {
+        id: 'event-3',
+        type: 'TaskDeleted',
+        timestamp: '2026-01-24T10:05:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          taskId: 'task-1',
+          deletedAt: '2026-01-24T10:05:00.000Z',
+        },
+      };
+
+      await eventStore.append(task1Created);
+      await eventStore.append(task2Created);
+      await eventStore.append(task1Deleted);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].id).toBe('task-2');
+      expect(tasks[0].title).toBe('Task 2');
     });
   });
 });

@@ -6,9 +6,10 @@ import type { Task } from '@squickr/shared';
 describe('TaskList', () => {
   const mockOnComplete = vi.fn();
   const mockOnReopen = vi.fn();
+  const mockOnDelete = vi.fn();
 
   it('should render empty state when no tasks', () => {
-    render(<TaskList tasks={[]} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskList tasks={[]} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     expect(screen.getByText(/no tasks yet/i)).toBeInTheDocument();
   });
@@ -29,7 +30,7 @@ describe('TaskList', () => {
       },
     ];
 
-    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     expect(screen.getByText('Buy milk')).toBeInTheDocument();
     expect(screen.getByText('Walk the dog')).toBeInTheDocument();
@@ -51,7 +52,7 @@ describe('TaskList', () => {
       },
     ];
 
-    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     expect(screen.getByText(/2 tasks/i)).toBeInTheDocument();
   });
@@ -66,7 +67,7 @@ describe('TaskList', () => {
       },
     ];
 
-    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     expect(screen.getByText(/1 task/i)).toBeInTheDocument();
     expect(screen.queryByText(/1 tasks/i)).not.toBeInTheDocument();
@@ -82,7 +83,7 @@ describe('TaskList', () => {
       },
     ];
 
-    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskList tasks={tasks} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     // Verify Complete button is rendered (which means handlers were passed)
     expect(screen.getByRole('button', { name: /complete task/i })).toBeInTheDocument();

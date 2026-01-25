@@ -4,6 +4,7 @@ interface TaskItemProps {
   task: Task;
   onComplete: (taskId: string) => void;
   onReopen: (taskId: string) => void;
+  onDelete: (taskId: string) => void;
 }
 
 /**
@@ -11,7 +12,7 @@ interface TaskItemProps {
  * 
  * Displays a single task with its title, status, timestamp, and action buttons.
  */
-export function TaskItem({ task, onComplete, onReopen }: TaskItemProps) {
+export function TaskItem({ task, onComplete, onReopen, onDelete }: TaskItemProps) {
   const isCompleted = task.status === 'completed';
 
   return (
@@ -66,6 +67,16 @@ export function TaskItem({ task, onComplete, onReopen }: TaskItemProps) {
               Complete
             </button>
           )}
+          
+          <button
+            onClick={() => onDelete(task.id)}
+            className="px-3 py-1 text-sm font-medium text-white 
+                       bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 
+                       rounded-md transition-colors"
+            aria-label="Delete task"
+          >
+            Delete
+          </button>
         </div>
       </div>
     </div>

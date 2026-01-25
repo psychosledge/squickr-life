@@ -4,6 +4,7 @@ import {
   CreateTaskHandler, 
   CompleteTaskHandler,
   ReopenTaskHandler,
+  DeleteTaskHandler,
   TaskListProjection 
 } from '@squickr/shared';
 import type { Task } from '@squickr/shared';
@@ -26,6 +27,7 @@ function App() {
   const [createTaskHandler] = useState(() => new CreateTaskHandler(eventStore));
   const [completeTaskHandler] = useState(() => new CompleteTaskHandler(eventStore, projection));
   const [reopenTaskHandler] = useState(() => new ReopenTaskHandler(eventStore, projection));
+  const [deleteTaskHandler] = useState(() => new DeleteTaskHandler(eventStore, projection));
   
   // UI state (derived from projections)
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -88,6 +90,14 @@ function App() {
     await loadTasks();
   };
 
+  const handleDeleteTask = async (taskId: string) => {
+    // Send command (write side)
+    await deleteTaskHandler.handle({ taskId });
+    
+    // Refresh view from projection (read side)
+    await loadTasks();
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -117,6 +127,7 @@ function App() {
           tasks={tasks} 
           onComplete={handleCompleteTask}
           onReopen={handleReopenTask}
+          onDelete={handleDeleteTask}
         />
 
         {/* Footer */}

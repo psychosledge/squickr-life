@@ -6,6 +6,7 @@ import type { Task } from '@squickr/shared';
 describe('TaskItem', () => {
   const mockOnComplete = vi.fn();
   const mockOnReopen = vi.fn();
+  const mockOnDelete = vi.fn();
 
   const mockOpenTask: Task = {
     id: 'task-1',
@@ -23,13 +24,13 @@ describe('TaskItem', () => {
   };
 
   it('should render task title', () => {
-    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     expect(screen.getByText('Buy milk')).toBeInTheDocument();
   });
 
   it('should render task status', () => {
-    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     expect(screen.getByText(/open/i)).toBeInTheDocument();
   });
@@ -42,14 +43,14 @@ describe('TaskItem', () => {
       status: 'open',
     };
 
-    render(<TaskItem task={task} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={task} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     // Should show "just now" or similar
     expect(screen.getByText(/just now|seconds ago/i)).toBeInTheDocument();
   });
 
   it('should show Complete button for open tasks', () => {
-    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     const button = screen.getByRole('button', { name: /complete task/i });
     expect(button).toBeInTheDocument();
@@ -57,7 +58,7 @@ describe('TaskItem', () => {
   });
 
   it('should show Reopen button for completed tasks', () => {
-    render(<TaskItem task={mockCompletedTask} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={mockCompletedTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     const button = screen.getByRole('button', { name: /reopen task/i });
     expect(button).toBeInTheDocument();
@@ -65,7 +66,7 @@ describe('TaskItem', () => {
   });
 
   it('should call onComplete when Complete button is clicked', () => {
-    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     const button = screen.getByRole('button', { name: /complete task/i });
     fireEvent.click(button);
@@ -75,7 +76,7 @@ describe('TaskItem', () => {
   });
 
   it('should call onReopen when Reopen button is clicked', () => {
-    render(<TaskItem task={mockCompletedTask} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={mockCompletedTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     const button = screen.getByRole('button', { name: /reopen task/i });
     fireEvent.click(button);
@@ -85,30 +86,58 @@ describe('TaskItem', () => {
   });
 
   it('should apply strikethrough to completed task title', () => {
-    render(<TaskItem task={mockCompletedTask} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={mockCompletedTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     const title = screen.getByText('Write tests');
     expect(title).toHaveClass('line-through');
   });
 
   it('should not apply strikethrough to open task title', () => {
-    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     const title = screen.getByText('Buy milk');
     expect(title).not.toHaveClass('line-through');
   });
 
   it('should display completion timestamp for completed tasks', () => {
-    render(<TaskItem task={mockCompletedTask} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={mockCompletedTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     // Look for the specific completion timestamp text
     expect(screen.getByText(/• Completed/i)).toBeInTheDocument();
   });
 
   it('should not display completion timestamp for open tasks', () => {
-    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} />);
+    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
     
     // Look for the specific completion timestamp text
     expect(screen.queryByText(/• Completed/i)).not.toBeInTheDocument();
+  });
+
+  it('should show Delete button for all tasks', () => {
+    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
+    
+    const button = screen.getByRole('button', { name: /delete task/i });
+    expect(button).toBeInTheDocument();
+    expect(button).toHaveTextContent('Delete');
+  });
+
+  it('should call onDelete when Delete button is clicked', () => {
+    render(<TaskItem task={mockOpenTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
+    
+    const button = screen.getByRole('button', { name: /delete task/i });
+    fireEvent.click(button);
+
+    expect(mockOnDelete).toHaveBeenCalledWith('task-1');
+    expect(mockOnDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it('should allow deleting completed tasks', () => {
+    render(<TaskItem task={mockCompletedTask} onComplete={mockOnComplete} onReopen={mockOnReopen} onDelete={mockOnDelete} />);
+    
+    const button = screen.getByRole('button', { name: /delete task/i });
+    expect(button).toBeInTheDocument();
+    
+    fireEvent.click(button);
+    expect(mockOnDelete).toHaveBeenCalledWith('task-2');
   });
 });

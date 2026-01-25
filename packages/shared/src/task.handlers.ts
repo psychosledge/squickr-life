@@ -6,7 +6,9 @@ import type {
   CompleteTaskCommand, 
   TaskCompleted,
   ReopenTaskCommand,
-  TaskReopened
+  TaskReopened,
+  DeleteTaskCommand,
+  TaskDeleted
 } from './task.types';
 
 /**
@@ -183,6 +185,60 @@ export class ReopenTaskHandler {
       payload: {
         taskId: command.taskId,
         reopenedAt: timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for DeleteTask
+ * 
+ * Responsibilities:
+ * - Validate task exists
+ * - Create TaskDeleted event
+ * - Persist event to EventStore
+ */
+export class DeleteTaskHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly projection: TaskListProjection
+  ) {}
+
+  /**
+   * Handle DeleteTask command
+   * 
+   * Validation rules:
+   * - Task must exist
+   * - Task can be in any status (open or completed)
+   * 
+   * @param command - The DeleteTask command
+   * @throws Error if validation fails
+   */
+  async handle(command: DeleteTaskCommand): Promise<void> {
+    // Get current task state
+    const task = await this.projection.getTaskById(command.taskId);
+
+    if (!task) {
+      throw new Error(`Task ${command.taskId} not found`);
+    }
+
+    // Generate event metadata
+    const eventId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+
+    // Create TaskDeleted event
+    const event: TaskDeleted = {
+      id: eventId,
+      type: 'TaskDeleted',
+      timestamp,
+      version: 1,
+      aggregateId: command.taskId,
+      payload: {
+        taskId: command.taskId,
+        deletedAt: timestamp,
       },
     };
 

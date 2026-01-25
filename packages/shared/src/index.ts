@@ -13,9 +13,11 @@ export type {
   TaskCreated,
   TaskCompleted,
   TaskReopened,
+  TaskDeleted,
   CreateTaskCommand,
   CompleteTaskCommand,
   ReopenTaskCommand,
+  DeleteTaskCommand,
   TaskEvent,
 } from './task.types';
 
@@ -27,7 +29,7 @@ export { EventStore, type IEventStore } from './event-store';
 export { IndexedDBEventStore } from './indexeddb-event-store';
 
 // Command Handlers
-export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler } from './task.handlers';
+export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler } from './task.handlers';
 
 // Projections (Read Models)
 export { TaskListProjection } from './task.projections';

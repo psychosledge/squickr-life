@@ -1,5 +1,5 @@
 import type { IEventStore } from './event-store';
-import type { Task, TaskCreated, TaskCompleted, TaskReopened, TaskEvent } from './task.types';
+import type { Task, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskEvent } from './task.types';
 
 /**
  * TaskListProjection - Read Model for Task List
@@ -80,6 +80,9 @@ export class TaskListProjection {
           case 'TaskReopened':
             this.applyTaskReopened(tasks, event);
             break;
+          case 'TaskDeleted':
+            this.applyTaskDeleted(tasks, event);
+            break;
         }
       }
     }
@@ -145,9 +148,25 @@ export class TaskListProjection {
   }
 
   /**
+   * Apply TaskDeleted event
+   * Removes a task from the projection
+   */
+  private applyTaskDeleted(tasks: Map<string, Task>, event: TaskDeleted): void {
+    const task = tasks.get(event.payload.taskId);
+    if (!task) {
+      // This shouldn't happen if events are valid, but handle gracefully
+      console.warn(`TaskDeleted event for non-existent task: ${event.payload.taskId}`);
+      return;
+    }
+
+    // Remove the task from the map (hard delete from view)
+    tasks.delete(event.payload.taskId);
+  }
+
+  /**
    * Type guard for TaskEvent
    */
   private isTaskEvent(event: import('./domain-event').DomainEvent): event is TaskEvent {
-    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened';
+    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened' || event.type === 'TaskDeleted';
   }
 }

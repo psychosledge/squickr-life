@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler } from './task.handlers';
+import { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler } from './task.handlers';
 import { EventStore } from './event-store';
 import { TaskListProjection } from './task.projections';
-import type { CreateTaskCommand, TaskCreated, TaskCompleted, TaskReopened, CompleteTaskCommand, ReopenTaskCommand } from './task.types';
+import type { CreateTaskCommand, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, CompleteTaskCommand, ReopenTaskCommand, DeleteTaskCommand } from './task.types';
 
 describe('CreateTaskHandler', () => {
   let eventStore: EventStore;
@@ -300,6 +300,102 @@ describe('ReopenTaskHandler', () => {
 
       const events = await eventStore.getAll();
       expect(events).toHaveLength(5); // Created, Completed, Reopened, Completed, Reopened
+    });
+  });
+});
+
+describe('DeleteTaskHandler', () => {
+  let eventStore: EventStore;
+  let projection: TaskListProjection;
+  let createHandler: CreateTaskHandler;
+  let deleteHandler: DeleteTaskHandler;
+
+  beforeEach(() => {
+    eventStore = new EventStore();
+    projection = new TaskListProjection(eventStore);
+    createHandler = new CreateTaskHandler(eventStore);
+    deleteHandler = new DeleteTaskHandler(eventStore, projection);
+  });
+
+  describe('handle', () => {
+    it('should create a TaskDeleted event for valid command', async () => {
+      // Create a task first
+      const taskId = await createHandler.handle({ title: 'Buy milk' });
+
+      // Delete the task
+      const command: DeleteTaskCommand = { taskId };
+      await deleteHandler.handle(command);
+
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(2);
+
+      const deletedEvent = events[1] as TaskDeleted;
+      expect(deletedEvent.type).toBe('TaskDeleted');
+      expect(deletedEvent.payload.taskId).toBe(taskId);
+      expect(deletedEvent.aggregateId).toBe(taskId);
+      expect(deletedEvent.payload.deletedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it('should set deletedAt timestamp', async () => {
+      const taskId = await createHandler.handle({ title: 'Test task' });
+      
+      const beforeTime = new Date().toISOString();
+      await deleteHandler.handle({ taskId });
+      const afterTime = new Date().toISOString();
+
+      const events = await eventStore.getAll();
+      const deletedEvent = events[1] as TaskDeleted;
+
+      expect(deletedEvent.payload.deletedAt >= beforeTime).toBe(true);
+      expect(deletedEvent.payload.deletedAt <= afterTime).toBe(true);
+    });
+
+    it('should set event metadata correctly', async () => {
+      const taskId = await createHandler.handle({ title: 'Test task' });
+      await deleteHandler.handle({ taskId });
+
+      const events = await eventStore.getAll();
+      const deletedEvent = events[1] as TaskDeleted;
+
+      expect(deletedEvent.id).toMatch(/^[0-9a-f-]+$/i);
+      expect(deletedEvent.version).toBe(1);
+      expect(deletedEvent.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it('should throw error if task does not exist', async () => {
+      const command: DeleteTaskCommand = { taskId: 'non-existent-id' };
+
+      await expect(deleteHandler.handle(command)).rejects.toThrow('Task non-existent-id not found');
+    });
+
+    it('should allow deleting open tasks', async () => {
+      const taskId = await createHandler.handle({ title: 'Open task' });
+
+      await deleteHandler.handle({ taskId });
+
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(2);
+      expect(events[1].type).toBe('TaskDeleted');
+    });
+
+    it('should allow deleting completed tasks', async () => {
+      const taskId = await createHandler.handle({ title: 'Completed task' });
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      await completeHandler.handle({ taskId });
+
+      await deleteHandler.handle({ taskId });
+
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(3); // Created, Completed, Deleted
+      expect(events[2].type).toBe('TaskDeleted');
+    });
+
+    it('should not allow deleting already deleted tasks', async () => {
+      const taskId = await createHandler.handle({ title: 'Test task' });
+      await deleteHandler.handle({ taskId });
+
+      // Try to delete again
+      await expect(deleteHandler.handle({ taskId })).rejects.toThrow('Task ' + taskId + ' not found');
     });
   });
 });

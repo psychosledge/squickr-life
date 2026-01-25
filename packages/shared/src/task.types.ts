@@ -118,7 +118,32 @@ export interface ReopenTaskCommand {
 }
 
 /**
+ * TaskDeleted Event
+ * Emitted when a task is deleted
+ * 
+ * Invariants:
+ * - aggregateId must match an existing task
+ * - Task can be in any status (open or completed)
+ */
+export interface TaskDeleted extends DomainEvent {
+  readonly type: 'TaskDeleted';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly taskId: string;
+    readonly deletedAt: string;
+  };
+}
+
+/**
+ * DeleteTask Command
+ * Represents the user's intent to delete a task
+ */
+export interface DeleteTaskCommand {
+  readonly taskId: string;
+}
+
+/**
  * Union type of all task-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened;
+export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted;
