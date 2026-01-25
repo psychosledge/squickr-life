@@ -150,13 +150,15 @@ export class EntryListProjection {
     }
 
     // Combine all entries with type discriminators
+    // NOTE: Order matters! We combine all types together, then sort by order field
     const allEntries: Entry[] = [
       ...Array.from(tasks.values()).map(task => ({ ...task, type: 'task' as const })),
       ...Array.from(notes.values()).map(note => ({ ...note, type: 'note' as const })),
       ...Array.from(eventEntries.values()).map(evt => ({ ...evt, type: 'event' as const })),
     ];
 
-    // Sort by order (with fallback to createdAt for legacy entries)
+    // CRITICAL: Sort ONLY by order field (lexicographic comparison for fractional indexing)
+    // DO NOT sort by type - this allows mixed types to be interleaved based on user's drag-drop order
     return allEntries.sort((a, b) => {
       if (a.order && b.order) {
         return a.order < b.order ? -1 : a.order > b.order ? 1 : 0;

@@ -1,20 +1,23 @@
-import type { TaskFilter } from '@squickr/shared';
+import type { EntryFilter } from '@squickr/shared';
 
 interface FilterButtonsProps {
-  currentFilter: TaskFilter;
-  onFilterChange: (filter: TaskFilter) => void;
+  currentFilter: EntryFilter;
+  onFilterChange: (filter: EntryFilter) => void;
 }
 
 /**
  * FilterButtons Component
  * 
- * Displays filter buttons for All, Open, and Completed tasks.
+ * Displays filter buttons for All entries, Tasks, Notes, Events, and task statuses.
  */
 export function FilterButtons({ currentFilter, onFilterChange }: FilterButtonsProps) {
-  const filters: { value: TaskFilter; label: string }[] = [
+  const filters: { value: EntryFilter; label: string }[] = [
     { value: 'all', label: 'All' },
-    { value: 'open', label: 'Open' },
-    { value: 'completed', label: 'Completed' },
+    { value: 'tasks', label: 'Tasks' },
+    { value: 'notes', label: 'Notes' },
+    { value: 'events', label: 'Events' },
+    { value: 'open-tasks', label: 'Open Tasks' },
+    { value: 'completed-tasks', label: 'Completed' },
   ];
 
   return (

@@ -1,43 +1,74 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   IndexedDBEventStore, 
+  // Task handlers
   CreateTaskHandler, 
   CompleteTaskHandler,
   ReopenTaskHandler,
   DeleteTaskHandler,
   ReorderTaskHandler,
   UpdateTaskTitleHandler,
-  TaskListProjection 
+  // Note handlers
+  CreateNoteHandler,
+  UpdateNoteContentHandler,
+  DeleteNoteHandler,
+  ReorderNoteHandler,
+  // Event handlers
+  CreateEventHandler,
+  UpdateEventContentHandler,
+  UpdateEventDateHandler,
+  DeleteEventHandler,
+  ReorderEventHandler,
+  // Projection
+  EntryListProjection,
+  TaskListProjection
 } from '@squickr/shared';
-import type { Task, TaskFilter } from '@squickr/shared';
-import { TaskInput } from './components/TaskInput';
-import { TaskList } from './components/TaskList';
+import type { Entry, EntryFilter } from '@squickr/shared';
+import { EntryInput } from './components/EntryInput';
+import { EntryList } from './components/EntryList';
 import { FilterButtons } from './components/FilterButtons';
 
 /**
  * Main App Component
  * 
  * This demonstrates the complete CQRS + Event Sourcing flow:
- * - Write Side: TaskInput → CreateTaskHandler → TaskCreated event → IndexedDBEventStore
- * - Read Side: IndexedDBEventStore → TaskListProjection → Task[] → TaskList display
+ * - Write Side: EntryInput → Handler → Event → IndexedDBEventStore
+ * - Read Side: IndexedDBEventStore → EntryListProjection → Entry[] → EntryList display
  * 
+ * Supports three entry types: Tasks, Notes, Events
  * Data persists across page refreshes via IndexedDB!
  */
 function App() {
   // Initialize event sourcing infrastructure with IndexedDB persistence
   const [eventStore] = useState(() => new IndexedDBEventStore());
-  const [projection] = useState(() => new TaskListProjection(eventStore));
-  const [createTaskHandler] = useState(() => new CreateTaskHandler(eventStore, projection));
-  const [completeTaskHandler] = useState(() => new CompleteTaskHandler(eventStore, projection));
-  const [reopenTaskHandler] = useState(() => new ReopenTaskHandler(eventStore, projection));
-  const [deleteTaskHandler] = useState(() => new DeleteTaskHandler(eventStore, projection));
-  const [reorderTaskHandler] = useState(() => new ReorderTaskHandler(eventStore, projection));
-  const [updateTaskTitleHandler] = useState(() => new UpdateTaskTitleHandler(eventStore, projection));
+  const [entryProjection] = useState(() => new EntryListProjection(eventStore));
+  const [taskProjection] = useState(() => new TaskListProjection(eventStore));
+  
+  // Task handlers
+  const [createTaskHandler] = useState(() => new CreateTaskHandler(eventStore, taskProjection, entryProjection));
+  const [completeTaskHandler] = useState(() => new CompleteTaskHandler(eventStore, taskProjection));
+  const [reopenTaskHandler] = useState(() => new ReopenTaskHandler(eventStore, taskProjection));
+  const [deleteTaskHandler] = useState(() => new DeleteTaskHandler(eventStore, taskProjection));
+  const [reorderTaskHandler] = useState(() => new ReorderTaskHandler(eventStore, taskProjection, entryProjection));
+  const [updateTaskTitleHandler] = useState(() => new UpdateTaskTitleHandler(eventStore, taskProjection));
+  
+  // Note handlers
+  const [createNoteHandler] = useState(() => new CreateNoteHandler(eventStore, entryProjection));
+  const [updateNoteContentHandler] = useState(() => new UpdateNoteContentHandler(eventStore, entryProjection));
+  const [deleteNoteHandler] = useState(() => new DeleteNoteHandler(eventStore, entryProjection));
+  const [reorderNoteHandler] = useState(() => new ReorderNoteHandler(eventStore, entryProjection, entryProjection));
+  
+  // Event handlers
+  const [createEventHandler] = useState(() => new CreateEventHandler(eventStore, entryProjection));
+  const [updateEventContentHandler] = useState(() => new UpdateEventContentHandler(eventStore, entryProjection));
+  const [updateEventDateHandler] = useState(() => new UpdateEventDateHandler(eventStore, entryProjection));
+  const [deleteEventHandler] = useState(() => new DeleteEventHandler(eventStore, entryProjection));
+  const [reorderEventHandler] = useState(() => new ReorderEventHandler(eventStore, entryProjection, entryProjection));
   
   // UI state (derived from projections)
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentFilter, setCurrentFilter] = useState<TaskFilter>('all');
+  const [currentFilter, setCurrentFilter] = useState<EntryFilter>('all');
   
   // Track if app is initialized (prevents double-init in React StrictMode)
   const isInitialized = useRef(false);
@@ -53,10 +84,10 @@ function App() {
     initializeApp();
   }, []);
 
-  // Reload tasks when filter changes
+  // Reload entries when filter changes
   useEffect(() => {
     if (!isLoading) {
-      loadTasks();
+      loadEntries();
     }
   }, [currentFilter]);
 
@@ -65,8 +96,8 @@ function App() {
       // Initialize IndexedDB connection
       await eventStore.initialize();
       
-      // Load existing tasks from persisted events
-      await loadTasks();
+      // Load existing entries from persisted events
+      await loadEntries();
     } catch (error) {
       console.error('Failed to initialize app:', error);
     } finally {
@@ -74,64 +105,97 @@ function App() {
     }
   };
 
-  const loadTasks = async () => {
-    const allTasks = await projection.getTasks(currentFilter);
-    setTasks(allTasks);
+  const loadEntries = async () => {
+    const allEntries = await entryProjection.getEntries(currentFilter);
+    setEntries(allEntries);
   };
 
+  // Task handlers
   const handleCreateTask = async (title: string) => {
-    // Send command (write side)
     await createTaskHandler.handle({ title });
-    
-    // Refresh view from projection (read side)
-    await loadTasks();
+    await loadEntries();
   };
 
   const handleCompleteTask = async (taskId: string) => {
-    // Send command (write side)
     await completeTaskHandler.handle({ taskId });
-    
-    // Refresh view from projection (read side)
-    await loadTasks();
+    await loadEntries();
   };
 
   const handleReopenTask = async (taskId: string) => {
-    // Send command (write side)
     await reopenTaskHandler.handle({ taskId });
-    
-    // Refresh view from projection (read side)
-    await loadTasks();
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    // Send command (write side)
-    await deleteTaskHandler.handle({ taskId });
-    
-    // Refresh view from projection (read side)
-    await loadTasks();
-  };
-
-  const handleReorderTask = async (
-    taskId: string,
-    previousTaskId: string | null,
-    nextTaskId: string | null
-  ) => {
-    // Send command (write side)
-    await reorderTaskHandler.handle({ taskId, previousTaskId, nextTaskId });
-    
-    // Refresh view from projection (read side)
-    await loadTasks();
+    await loadEntries();
   };
 
   const handleUpdateTaskTitle = async (taskId: string, newTitle: string) => {
-    // Send command (write side)
     await updateTaskTitleHandler.handle({ taskId, title: newTitle });
-    
-    // Refresh view from projection (read side)
-    await loadTasks();
+    await loadEntries();
   };
 
-  const handleFilterChange = (filter: TaskFilter) => {
+  // Note handlers
+  const handleCreateNote = async (content: string) => {
+    await createNoteHandler.handle({ content });
+    await loadEntries();
+  };
+
+  const handleUpdateNoteContent = async (noteId: string, newContent: string) => {
+    await updateNoteContentHandler.handle({ noteId, content: newContent });
+    await loadEntries();
+  };
+
+  // Event handlers
+  const handleCreateEvent = async (content: string, eventDate?: string) => {
+    await createEventHandler.handle({ content, eventDate });
+    await loadEntries();
+  };
+
+  const handleUpdateEventContent = async (eventId: string, newContent: string) => {
+    await updateEventContentHandler.handle({ eventId, content: newContent });
+    await loadEntries();
+  };
+
+  const handleUpdateEventDate = async (eventId: string, newDate: string | null) => {
+    await updateEventDateHandler.handle({ eventId, eventDate: newDate });
+    await loadEntries();
+  };
+
+  // Common handlers
+  const handleDelete = async (entryId: string) => {
+    // Find the entry to determine its type
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    if (entry.type === 'task') {
+      await deleteTaskHandler.handle({ taskId: entryId });
+    } else if (entry.type === 'note') {
+      await deleteNoteHandler.handle({ noteId: entryId });
+    } else if (entry.type === 'event') {
+      await deleteEventHandler.handle({ eventId: entryId });
+    }
+    
+    await loadEntries();
+  };
+
+  const handleReorder = async (
+    entryId: string,
+    previousEntryId: string | null,
+    nextEntryId: string | null
+  ) => {
+    // Find the entry to determine its type
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    if (entry.type === 'task') {
+      await reorderTaskHandler.handle({ taskId: entryId, previousTaskId: previousEntryId, nextTaskId: nextEntryId });
+    } else if (entry.type === 'note') {
+      await reorderNoteHandler.handle({ noteId: entryId, previousNoteId: previousEntryId, nextNoteId: nextEntryId });
+    } else if (entry.type === 'event') {
+      await reorderEventHandler.handle({ eventId: entryId, previousEventId: previousEntryId, nextEventId: nextEntryId });
+    }
+    
+    await loadEntries();
+  };
+
+  const handleFilterChange = (filter: EntryFilter) => {
     setCurrentFilter(filter);
   };
 
@@ -156,20 +220,27 @@ function App() {
           </p>
         </div>
 
-        {/* Task Input (Write Side) */}
-        <TaskInput onSubmit={handleCreateTask} />
+        {/* Entry Input (Write Side) */}
+        <EntryInput 
+          onSubmitTask={handleCreateTask}
+          onSubmitNote={handleCreateNote}
+          onSubmitEvent={handleCreateEvent}
+        />
 
         {/* Filter Controls */}
         <FilterButtons currentFilter={currentFilter} onFilterChange={handleFilterChange} />
 
-        {/* Task List (Read Side) */}
-        <TaskList 
-          tasks={tasks} 
-          onComplete={handleCompleteTask}
-          onReopen={handleReopenTask}
-          onDelete={handleDeleteTask}
-          onReorder={handleReorderTask}
-          onUpdateTitle={handleUpdateTaskTitle}
+        {/* Entry List (Read Side) */}
+        <EntryList 
+          entries={entries} 
+          onCompleteTask={handleCompleteTask}
+          onReopenTask={handleReopenTask}
+          onUpdateTaskTitle={handleUpdateTaskTitle}
+          onUpdateNoteContent={handleUpdateNoteContent}
+          onUpdateEventContent={handleUpdateEventContent}
+          onUpdateEventDate={handleUpdateEventDate}
+          onDelete={handleDelete}
+          onReorder={handleReorder}
         />
 
         {/* Footer */}

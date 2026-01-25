@@ -57,7 +57,7 @@ describe('App', () => {
     render(<App />);
     
     await waitFor(() => {
-      expect(screen.getByText(/no tasks yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/no entries yet/i)).toBeInTheDocument();
     });
   });
 

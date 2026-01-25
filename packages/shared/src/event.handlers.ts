@@ -1,4 +1,6 @@
 import type { IEventStore } from './event-store';
+import type { EntryListProjection } from './entry.projections';
+import type { Entry } from './task.types';
 import type { 
   CreateEventCommand,
   EventCreated,
@@ -15,11 +17,11 @@ import { generateEventMetadata } from './event-helpers';
 import { generateKeyBetween } from 'fractional-indexing';
 import { validateContent, validateOptionalISODate } from './content-validation';
 
-// We'll need an EventListProjection for validation
-// For now, we'll create a simple interface
+// Interface for event projection (backward compatibility)
 interface IEventProjection {
   getEventById(eventId: string): Promise<{ id: string; content: string; eventDate?: string; order?: string } | undefined>;
   getEvents(): Promise<Array<{ id: string; content: string; order?: string }>>;
+  getEntries(): Promise<Entry[]>; // Added for unified ordering
 }
 
 /**
@@ -57,10 +59,10 @@ export class CreateEventHandler {
     // Validate eventDate if provided
     validateOptionalISODate(command.eventDate);
 
-    // Get last event to generate order after it
-    const events = await this.projection.getEvents();
-    const lastEvent = events[events.length - 1];
-    const order = generateKeyBetween(lastEvent?.order ?? null, null);
+    // Get last entry (of any type) to generate order after it
+    const entries = await this.projection.getEntries();
+    const lastEntry = entries[entries.length - 1];
+    const order = generateKeyBetween(lastEntry?.order ?? null, null);
 
     // Generate unique event ID and event metadata
     const eventId = crypto.randomUUID();
@@ -254,7 +256,7 @@ export class DeleteEventHandler {
  * 
  * Responsibilities:
  * - Validate event exists
- * - Validate neighboring events exist (if provided)
+ * - Validate neighboring entries exist (if provided) - can be ANY entry type
  * - Calculate new fractional index order
  * - Create EventReordered event
  * - Persist event to EventStore
@@ -262,7 +264,8 @@ export class DeleteEventHandler {
 export class ReorderEventHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly projection: IEventProjection
+    private readonly eventProjection: IEventProjection,
+    private readonly entryProjection: EntryListProjection
   ) {}
 
   /**
@@ -270,39 +273,40 @@ export class ReorderEventHandler {
    * 
    * Validation rules:
    * - Event must exist
-   * - previousEventId and nextEventId must exist if provided
+   * - previousEventId and nextEventId can be ANY entry type (task, note, or event)
    * 
    * @param command - The ReorderEvent command
    * @throws Error if validation fails
    */
   async handle(command: ReorderEventCommand): Promise<void> {
     // Validate event exists
-    const evt = await this.projection.getEventById(command.eventId);
+    const evt = await this.eventProjection.getEventById(command.eventId);
     if (!evt) {
       throw new Error(`Event ${command.eventId} not found`);
     }
 
-    // Get the neighboring events to calculate new order
+    // Get the neighboring ENTRIES (not just events) to calculate new order
+    // This allows events to be reordered relative to tasks and notes
     let previousOrder: string | null = null;
     let nextOrder: string | null = null;
 
     if (command.previousEventId) {
-      const previousEvent = await this.projection.getEventById(command.previousEventId);
-      if (!previousEvent) {
-        throw new Error(`Previous event ${command.previousEventId} not found`);
+      const previousEntry = await this.entryProjection.getEntryById(command.previousEventId);
+      if (!previousEntry) {
+        throw new Error(`Previous entry ${command.previousEventId} not found`);
       }
-      previousOrder = previousEvent.order || null;
+      previousOrder = previousEntry.order || null;
     }
 
     if (command.nextEventId) {
-      const nextEvent = await this.projection.getEventById(command.nextEventId);
-      if (!nextEvent) {
-        throw new Error(`Next event ${command.nextEventId} not found`);
+      const nextEntry = await this.entryProjection.getEntryById(command.nextEventId);
+      if (!nextEntry) {
+        throw new Error(`Next entry ${command.nextEventId} not found`);
       }
-      nextOrder = nextEvent.order || null;
+      nextOrder = nextEntry.order || null;
     }
 
-    // Generate new fractional index between the neighboring events
+    // Generate new fractional index between the neighboring entries
     const order = generateKeyBetween(previousOrder, nextOrder);
 
     // Generate event metadata

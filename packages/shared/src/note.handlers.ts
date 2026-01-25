@@ -1,4 +1,6 @@
 import type { IEventStore } from './event-store';
+import type { EntryListProjection } from './entry.projections';
+import type { Entry } from './task.types';
 import type { 
   CreateNoteCommand,
   NoteCreated,
@@ -13,11 +15,11 @@ import { generateEventMetadata } from './event-helpers';
 import { generateKeyBetween } from 'fractional-indexing';
 import { validateContent } from './content-validation';
 
-// We'll need a NoteListProjection for validation
-// For now, we'll create a simple interface
+// Interface for note projection (backward compatibility)
 interface INoteProjection {
   getNoteById(noteId: string): Promise<{ id: string; content: string; order?: string } | undefined>;
   getNotes(): Promise<Array<{ id: string; content: string; order?: string }>>;
+  getEntries(): Promise<Entry[]>; // Added for unified ordering
 }
 
 /**
@@ -51,10 +53,10 @@ export class CreateNoteHandler {
     // Validate and trim content
     const content = validateContent(command.content, 5000);
 
-    // Get last note to generate order after it
-    const notes = await this.projection.getNotes();
-    const lastNote = notes[notes.length - 1];
-    const order = generateKeyBetween(lastNote?.order ?? null, null);
+    // Get last entry (of any type) to generate order after it
+    const entries = await this.projection.getEntries();
+    const lastEntry = entries[entries.length - 1];
+    const order = generateKeyBetween(lastEntry?.order ?? null, null);
 
     // Generate unique note ID and event metadata
     const noteId = crypto.randomUUID();
@@ -192,7 +194,7 @@ export class DeleteNoteHandler {
  * 
  * Responsibilities:
  * - Validate note exists
- * - Validate neighboring notes exist (if provided)
+ * - Validate neighboring entries exist (if provided) - can be ANY entry type
  * - Calculate new fractional index order
  * - Create NoteReordered event
  * - Persist event to EventStore
@@ -200,7 +202,8 @@ export class DeleteNoteHandler {
 export class ReorderNoteHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly projection: INoteProjection
+    private readonly noteProjection: INoteProjection,
+    private readonly entryProjection: EntryListProjection
   ) {}
 
   /**
@@ -208,39 +211,40 @@ export class ReorderNoteHandler {
    * 
    * Validation rules:
    * - Note must exist
-   * - previousNoteId and nextNoteId must exist if provided
+   * - previousNoteId and nextNoteId can be ANY entry type (task, note, or event)
    * 
    * @param command - The ReorderNote command
    * @throws Error if validation fails
    */
   async handle(command: ReorderNoteCommand): Promise<void> {
     // Validate note exists
-    const note = await this.projection.getNoteById(command.noteId);
+    const note = await this.noteProjection.getNoteById(command.noteId);
     if (!note) {
       throw new Error(`Note ${command.noteId} not found`);
     }
 
-    // Get the neighboring notes to calculate new order
+    // Get the neighboring ENTRIES (not just notes) to calculate new order
+    // This allows notes to be reordered relative to tasks and events
     let previousOrder: string | null = null;
     let nextOrder: string | null = null;
 
     if (command.previousNoteId) {
-      const previousNote = await this.projection.getNoteById(command.previousNoteId);
-      if (!previousNote) {
-        throw new Error(`Previous note ${command.previousNoteId} not found`);
+      const previousEntry = await this.entryProjection.getEntryById(command.previousNoteId);
+      if (!previousEntry) {
+        throw new Error(`Previous entry ${command.previousNoteId} not found`);
       }
-      previousOrder = previousNote.order || null;
+      previousOrder = previousEntry.order || null;
     }
 
     if (command.nextNoteId) {
-      const nextNote = await this.projection.getNoteById(command.nextNoteId);
-      if (!nextNote) {
-        throw new Error(`Next note ${command.nextNoteId} not found`);
+      const nextEntry = await this.entryProjection.getEntryById(command.nextNoteId);
+      if (!nextEntry) {
+        throw new Error(`Next entry ${command.nextNoteId} not found`);
       }
-      nextOrder = nextNote.order || null;
+      nextOrder = nextEntry.order || null;
     }
 
-    // Generate new fractional index between the neighboring notes
+    // Generate new fractional index between the neighboring entries
     const order = generateKeyBetween(previousOrder, nextOrder);
 
     // Generate event metadata

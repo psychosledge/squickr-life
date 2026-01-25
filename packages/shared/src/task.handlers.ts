@@ -1,5 +1,6 @@
 import type { IEventStore } from './event-store';
 import type { TaskListProjection } from './task.projections';
+import type { EntryListProjection } from './entry.projections';
 import type { 
   CreateTaskCommand, 
   TaskCreated, 
@@ -33,7 +34,8 @@ import { generateKeyBetween } from 'fractional-indexing';
 export class CreateTaskHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly projection: TaskListProjection
+    _taskProjection: TaskListProjection, // Not used in CreateTaskHandler (kept for signature compatibility)
+    private readonly entryProjection: EntryListProjection
   ) {}
 
   /**
@@ -59,10 +61,10 @@ export class CreateTaskHandler {
       throw new Error('Title must be between 1 and 500 characters');
     }
 
-    // Get last task to generate order after it
-    const tasks = await this.projection.getTasks();
-    const lastTask = tasks[tasks.length - 1];
-    const order = generateKeyBetween(lastTask?.order ?? null, null);
+    // Get last entry (of any type) to generate order after it
+    const entries = await this.entryProjection.getEntries();
+    const lastEntry = entries[entries.length - 1];
+    const order = generateKeyBetween(lastEntry?.order ?? null, null);
 
     // Generate unique task ID and event metadata
     const taskId = crypto.randomUUID();
@@ -237,14 +239,15 @@ export class DeleteTaskHandler {
  * 
  * Responsibilities:
  * - Validate task exists
- * - Calculate new fractional index based on neighboring tasks
+ * - Calculate new fractional index based on neighboring entries (of ANY type)
  * - Create TaskReordered event
  * - Persist event to EventStore
  */
 export class ReorderTaskHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly projection: TaskListProjection
+    private readonly taskProjection: TaskListProjection,
+    private readonly entryProjection: EntryListProjection
   ) {}
 
   /**
@@ -253,36 +256,37 @@ export class ReorderTaskHandler {
    * Validation rules:
    * - Task must exist
    * - Task can be in any status (open or completed)
-   * - previousTaskId and nextTaskId must exist if provided
+   * - previousTaskId and nextTaskId can be ANY entry type (task, note, or event)
    * 
    * @param command - The ReorderTask command
    * @throws Error if validation fails
    */
   async handle(command: ReorderTaskCommand): Promise<void> {
     // Validate task exists
-    await validateTaskExists(this.projection, command.taskId);
+    await validateTaskExists(this.taskProjection, command.taskId);
 
-    // Get the neighboring tasks to calculate new order
+    // Get the neighboring ENTRIES (not just tasks) to calculate new order
+    // This allows tasks to be reordered relative to notes and events
     let previousOrder: string | null = null;
     let nextOrder: string | null = null;
 
     if (command.previousTaskId) {
-      const previousTask = await this.projection.getTaskById(command.previousTaskId);
-      if (!previousTask) {
-        throw new Error(`Previous task ${command.previousTaskId} not found`);
+      const previousEntry = await this.entryProjection.getEntryById(command.previousTaskId);
+      if (!previousEntry) {
+        throw new Error(`Previous entry ${command.previousTaskId} not found`);
       }
-      previousOrder = previousTask.order || null;
+      previousOrder = previousEntry.order || null;
     }
 
     if (command.nextTaskId) {
-      const nextTask = await this.projection.getTaskById(command.nextTaskId);
-      if (!nextTask) {
-        throw new Error(`Next task ${command.nextTaskId} not found`);
+      const nextEntry = await this.entryProjection.getEntryById(command.nextTaskId);
+      if (!nextEntry) {
+        throw new Error(`Next entry ${command.nextTaskId} not found`);
       }
-      nextOrder = nextTask.order || null;
+      nextOrder = nextEntry.order || null;
     }
 
-    // Generate new fractional index between the neighboring tasks
+    // Generate new fractional index between the neighboring entries
     const order = generateKeyBetween(previousOrder, nextOrder);
 
     // Generate event metadata

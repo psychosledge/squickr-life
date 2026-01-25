@@ -2,17 +2,20 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler } from './task.handlers';
 import { EventStore } from './event-store';
 import { TaskListProjection } from './task.projections';
+import { EntryListProjection } from './entry.projections';
 import type { CreateTaskCommand, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, CompleteTaskCommand, ReopenTaskCommand, DeleteTaskCommand, ReorderTaskCommand, TaskReordered, UpdateTaskTitleCommand, TaskTitleChanged } from './task.types';
 
 describe('CreateTaskHandler', () => {
   let eventStore: EventStore;
   let projection: TaskListProjection;
+  let entryProjection: EntryListProjection;
   let handler: CreateTaskHandler;
 
   beforeEach(() => {
     eventStore = new EventStore();
     projection = new TaskListProjection(eventStore);
-    handler = new CreateTaskHandler(eventStore, projection);
+    entryProjection = new EntryListProjection(eventStore);
+    handler = new CreateTaskHandler(eventStore, projection, entryProjection);
   });
 
   describe('handle', () => {
@@ -146,13 +149,15 @@ describe('CreateTaskHandler', () => {
 describe('CompleteTaskHandler', () => {
   let eventStore: EventStore;
   let projection: TaskListProjection;
+  let entryProjection: EntryListProjection;
   let createHandler: CreateTaskHandler;
   let completeHandler: CompleteTaskHandler;
 
   beforeEach(() => {
     eventStore = new EventStore();
     projection = new TaskListProjection(eventStore);
-    createHandler = new CreateTaskHandler(eventStore, projection);
+    entryProjection = new EntryListProjection(eventStore);
+    createHandler = new CreateTaskHandler(eventStore, projection, entryProjection);
     completeHandler = new CompleteTaskHandler(eventStore, projection);
   });
 
@@ -219,6 +224,7 @@ describe('CompleteTaskHandler', () => {
 describe('ReopenTaskHandler', () => {
   let eventStore: EventStore;
   let projection: TaskListProjection;
+  let entryProjection: EntryListProjection;
   let createHandler: CreateTaskHandler;
   let completeHandler: CompleteTaskHandler;
   let reopenHandler: ReopenTaskHandler;
@@ -226,7 +232,8 @@ describe('ReopenTaskHandler', () => {
   beforeEach(() => {
     eventStore = new EventStore();
     projection = new TaskListProjection(eventStore);
-    createHandler = new CreateTaskHandler(eventStore, projection);
+    entryProjection = new EntryListProjection(eventStore);
+    createHandler = new CreateTaskHandler(eventStore, projection, entryProjection);
     completeHandler = new CompleteTaskHandler(eventStore, projection);
     reopenHandler = new ReopenTaskHandler(eventStore, projection);
   });
@@ -309,13 +316,15 @@ describe('ReopenTaskHandler', () => {
 describe('DeleteTaskHandler', () => {
   let eventStore: EventStore;
   let projection: TaskListProjection;
+  let entryProjection: EntryListProjection;
   let createHandler: CreateTaskHandler;
   let deleteHandler: DeleteTaskHandler;
 
   beforeEach(() => {
     eventStore = new EventStore();
     projection = new TaskListProjection(eventStore);
-    createHandler = new CreateTaskHandler(eventStore, projection);
+    entryProjection = new EntryListProjection(eventStore);
+    createHandler = new CreateTaskHandler(eventStore, projection, entryProjection);
     deleteHandler = new DeleteTaskHandler(eventStore, projection);
   });
 
@@ -405,14 +414,16 @@ describe('DeleteTaskHandler', () => {
 describe('ReorderTaskHandler', () => {
   let eventStore: EventStore;
   let projection: TaskListProjection;
+  let entryProjection: EntryListProjection;
   let createHandler: CreateTaskHandler;
   let reorderHandler: ReorderTaskHandler;
 
   beforeEach(() => {
     eventStore = new EventStore();
     projection = new TaskListProjection(eventStore);
-    createHandler = new CreateTaskHandler(eventStore, projection);
-    reorderHandler = new ReorderTaskHandler(eventStore, projection);
+    entryProjection = new EntryListProjection(eventStore);
+    createHandler = new CreateTaskHandler(eventStore, projection, entryProjection);
+    reorderHandler = new ReorderTaskHandler(eventStore, projection, entryProjection);
   });
 
   describe('handle', () => {
@@ -538,7 +549,7 @@ describe('ReorderTaskHandler', () => {
         nextTaskId: null,
       };
 
-      await expect(reorderHandler.handle(command)).rejects.toThrow('Previous task non-existent-previous not found');
+      await expect(reorderHandler.handle(command)).rejects.toThrow('Previous entry non-existent-previous not found');
     });
 
     it('should throw error if nextTaskId does not exist', async () => {
@@ -550,7 +561,82 @@ describe('ReorderTaskHandler', () => {
         nextTaskId: 'non-existent-next',
       };
 
-      await expect(reorderHandler.handle(command)).rejects.toThrow('Next task non-existent-next not found');
+      await expect(reorderHandler.handle(command)).rejects.toThrow('Next entry non-existent-next not found');
+    });
+
+    // Cross-type reordering tests - ensures tasks can be reordered relative to notes and events
+    it('should allow reordering task after a note (cross-type)', async () => {
+      const { CreateNoteHandler } = await import('./note.handlers');
+      const noteHandler = new CreateNoteHandler(eventStore, entryProjection);
+      
+      // Create a note and a task
+      const noteId = await noteHandler.handle({ content: 'My note' });
+      const taskId = await createHandler.handle({ title: 'My task' });
+      
+      // Get current orders
+      const noteBefore = await entryProjection.getEntryById(noteId);
+      const taskBefore = await entryProjection.getEntryById(taskId);
+      
+      // Reorder task to come after note
+      await reorderHandler.handle({
+        taskId,
+        previousTaskId: noteId, // This is a NOTE, not a task!
+        nextTaskId: null,
+      });
+      
+      // Verify new order
+      const taskAfter = await entryProjection.getEntryById(taskId);
+      expect(taskAfter!.order).toBeDefined();
+      expect(taskAfter!.order > noteBefore!.order!).toBe(true);
+    });
+
+    it('should allow reordering task between note and event (cross-type)', async () => {
+      const { CreateNoteHandler } = await import('./note.handlers');
+      const { CreateEventHandler } = await import('./event.handlers');
+      const noteHandler = new CreateNoteHandler(eventStore, entryProjection);
+      const eventHandler = new CreateEventHandler(eventStore, entryProjection);
+      
+      // Create note, event, task in that order
+      const noteId = await noteHandler.handle({ content: 'Note first' });
+      const eventId = await eventHandler.handle({ content: 'Event second' });
+      const taskId = await createHandler.handle({ title: 'Task third' });
+      
+      // Reorder task to be between note and event
+      await reorderHandler.handle({
+        taskId,
+        previousTaskId: noteId,  // NOTE
+        nextTaskId: eventId,     // EVENT
+      });
+      
+      // Verify order
+      const note = await entryProjection.getEntryById(noteId);
+      const event = await entryProjection.getEntryById(eventId);
+      const task = await entryProjection.getEntryById(taskId);
+      
+      expect(task!.order).toBeDefined();
+      expect(task!.order! > note!.order!).toBe(true);
+      expect(task!.order! < event!.order!).toBe(true);
+    });
+
+    it('should allow reordering task to the start of a mixed-type list', async () => {
+      const { CreateNoteHandler } = await import('./note.handlers');
+      const noteHandler = new CreateNoteHandler(eventStore, entryProjection);
+      
+      // Create note first, then task
+      const noteId = await noteHandler.handle({ content: 'Note' });
+      const taskId = await createHandler.handle({ title: 'Task' });
+      
+      // Move task before note
+      await reorderHandler.handle({
+        taskId,
+        previousTaskId: null,
+        nextTaskId: noteId, // NOTE is the next entry
+      });
+      
+      const note = await entryProjection.getEntryById(noteId);
+      const task = await entryProjection.getEntryById(taskId);
+      
+      expect(task!.order! < note!.order!).toBe(true);
     });
   });
 });
@@ -558,13 +644,15 @@ describe('ReorderTaskHandler', () => {
 describe('UpdateTaskTitleHandler', () => {
   let eventStore: EventStore;
   let projection: TaskListProjection;
+  let entryProjection: EntryListProjection;
   let createHandler: CreateTaskHandler;
   let updateTitleHandler: UpdateTaskTitleHandler;
 
   beforeEach(() => {
     eventStore = new EventStore();
     projection = new TaskListProjection(eventStore);
-    createHandler = new CreateTaskHandler(eventStore, projection);
+    entryProjection = new EntryListProjection(eventStore);
+    createHandler = new CreateTaskHandler(eventStore, projection, entryProjection);
     updateTitleHandler = new UpdateTaskTitleHandler(eventStore, projection);
   });
 

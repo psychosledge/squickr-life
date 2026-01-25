@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EventStore } from './event-store';
 import { EntryListProjection } from './entry.projections';
+import { TaskListProjection } from './task.projections';
 import { CreateTaskHandler, CompleteTaskHandler } from './task.handlers';
 import { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler } from './note.handlers';
 import { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler } from './event.handlers';
@@ -9,6 +10,7 @@ import type { CreateTaskCommand, CreateNoteCommand, CreateEventCommand } from '.
 describe('EntryListProjection', () => {
   let eventStore: EventStore;
   let projection: EntryListProjection;
+  let taskProjection: TaskListProjection;
   let taskHandler: CreateTaskHandler;
   let noteHandler: CreateNoteHandler;
   let eventHandler: CreateEventHandler;
@@ -16,7 +18,8 @@ describe('EntryListProjection', () => {
   beforeEach(() => {
     eventStore = new EventStore();
     projection = new EntryListProjection(eventStore);
-    taskHandler = new CreateTaskHandler(eventStore, projection);
+    taskProjection = new TaskListProjection(eventStore);
+    taskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
     noteHandler = new CreateNoteHandler(eventStore, projection);
     eventHandler = new CreateEventHandler(eventStore, projection);
   });
@@ -110,7 +113,7 @@ describe('EntryListProjection', () => {
 
     it('should handle completed task status', async () => {
       const taskId = await taskHandler.handle({ title: 'Task to complete' });
-      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection);
       await completeHandler.handle({ taskId });
 
       const entries = await projection.getEntries();
@@ -210,7 +213,7 @@ describe('EntryListProjection', () => {
 
     it('should filter to show only open tasks', async () => {
       const taskId = await taskHandler.handle({ title: 'Task 3' });
-      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection);
       await completeHandler.handle({ taskId });
 
       const entries = await projection.getEntries('open-tasks');
@@ -221,7 +224,7 @@ describe('EntryListProjection', () => {
 
     it('should filter to show only completed tasks', async () => {
       const taskId = await taskHandler.handle({ title: 'Task to complete' });
-      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection);
       await completeHandler.handle({ taskId });
 
       const entries = await projection.getEntries('completed-tasks');
@@ -437,7 +440,7 @@ describe('EntryListProjection', () => {
       const task2 = await taskHandler.handle({ title: 'Task 2' });
 
       // Modify entries
-      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection);
       await completeHandler.handle({ taskId: task1 });
 
       const updateNoteHandler = new UpdateNoteContentHandler(eventStore, projection);
@@ -494,7 +497,7 @@ describe('EntryListProjection', () => {
       const task3 = await taskHandler.handle({ title: 'Task 3' });
       await noteHandler.handle({ content: 'Note 1' });
 
-      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection);
       await completeHandler.handle({ taskId: task1 });
       await completeHandler.handle({ taskId: task2 });
 
@@ -507,6 +510,169 @@ describe('EntryListProjection', () => {
       expect(completedTasks).toHaveLength(2);
       expect(completedTasks.map(t => t.id)).toContain(task1);
       expect(completedTasks.map(t => t.id)).toContain(task2);
+    });
+  });
+
+  describe('cross-type reordering', () => {
+    it('should allow a note to be reordered before a task', async () => {
+      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      const noteId = await noteHandler.handle({ content: 'Note 1' });
+      
+      // Initial order should be: Task 1, Note 1
+      let entries = await projection.getEntries();
+      expect(entries[0].id).toBe(taskId);
+      expect(entries[1].id).toBe(noteId);
+      
+      // Reorder note to be before task (previousEntryId = null, nextEntryId = taskId)
+      const { ReorderNoteHandler } = await import('./note.handlers');
+      const { TaskListProjection } = await import('./task.projections');
+      const taskProjection = new TaskListProjection(eventStore);
+      const reorderHandler = new ReorderNoteHandler(eventStore, projection, projection);
+      
+      await reorderHandler.handle({
+        noteId,
+        previousNoteId: null,
+        nextNoteId: taskId,
+      });
+      
+      // New order should be: Note 1, Task 1
+      entries = await projection.getEntries();
+      expect(entries[0].id).toBe(noteId);
+      expect(entries[0].type).toBe('note');
+      expect(entries[1].id).toBe(taskId);
+      expect(entries[1].type).toBe('task');
+    });
+
+    it('should allow a task to be reordered between two notes', async () => {
+      const note1Id = await noteHandler.handle({ content: 'Note 1' });
+      const note2Id = await noteHandler.handle({ content: 'Note 2' });
+      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      
+      // Initial order: Note 1, Note 2, Task 1
+      let entries = await projection.getEntries();
+      expect(entries[0].id).toBe(note1Id);
+      expect(entries[1].id).toBe(note2Id);
+      expect(entries[2].id).toBe(taskId);
+      
+      // Reorder task to be between the two notes
+      const { ReorderTaskHandler } = await import('./task.handlers');
+      const { TaskListProjection } = await import('./task.projections');
+      const taskProjection = new TaskListProjection(eventStore);
+      const reorderHandler = new ReorderTaskHandler(eventStore, taskProjection, projection);
+      
+      await reorderHandler.handle({
+        taskId,
+        previousTaskId: note1Id,
+        nextTaskId: note2Id,
+      });
+      
+      // New order should be: Note 1, Task 1, Note 2
+      entries = await projection.getEntries();
+      expect(entries[0].id).toBe(note1Id);
+      expect(entries[0].type).toBe('note');
+      expect(entries[1].id).toBe(taskId);
+      expect(entries[1].type).toBe('task');
+      expect(entries[2].id).toBe(note2Id);
+      expect(entries[2].type).toBe('note');
+    });
+
+    it('should allow an event to be reordered after a task', async () => {
+      const eventId = await eventHandler.handle({ content: 'Event 1' });
+      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      
+      // Initial order: Event 1, Task 1
+      let entries = await projection.getEntries();
+      expect(entries[0].id).toBe(eventId);
+      expect(entries[1].id).toBe(taskId);
+      
+      // Reorder event to be after task
+      const { ReorderEventHandler } = await import('./event.handlers');
+      const reorderHandler = new ReorderEventHandler(eventStore, projection, projection);
+      
+      await reorderHandler.handle({
+        eventId,
+        previousEventId: taskId,
+        nextEventId: null,
+      });
+      
+      // New order should be: Task 1, Event 1
+      entries = await projection.getEntries();
+      expect(entries[0].id).toBe(taskId);
+      expect(entries[0].type).toBe('task');
+      expect(entries[1].id).toBe(eventId);
+      expect(entries[1].type).toBe('event');
+    });
+
+    it('should maintain mixed type order with multiple reorderings', async () => {
+      const task1Id = await taskHandler.handle({ title: 'Task 1' });
+      const note1Id = await noteHandler.handle({ content: 'Note 1' });
+      const event1Id = await eventHandler.handle({ content: 'Event 1' });
+      const task2Id = await taskHandler.handle({ title: 'Task 2' });
+      
+      // Initial order: Task 1, Note 1, Event 1, Task 2
+      let entries = await projection.getEntries();
+      expect(entries.map(e => e.id)).toEqual([task1Id, note1Id, event1Id, task2Id]);
+      
+      // Move Event 1 to the beginning
+      const { ReorderEventHandler } = await import('./event.handlers');
+      const eventReorderHandler = new ReorderEventHandler(eventStore, projection, projection);
+      
+      await eventReorderHandler.handle({
+        eventId: event1Id,
+        previousEventId: null,
+        nextEventId: task1Id,
+      });
+      
+      // Order should now be: Event 1, Task 1, Note 1, Task 2
+      entries = await projection.getEntries();
+      expect(entries.map(e => e.id)).toEqual([event1Id, task1Id, note1Id, task2Id]);
+      
+      // Move Task 2 between Event 1 and Task 1
+      const { ReorderTaskHandler } = await import('./task.handlers');
+      const { TaskListProjection } = await import('./task.projections');
+      const taskProjection = new TaskListProjection(eventStore);
+      const taskReorderHandler = new ReorderTaskHandler(eventStore, taskProjection, projection);
+      
+      await taskReorderHandler.handle({
+        taskId: task2Id,
+        previousTaskId: event1Id,
+        nextTaskId: task1Id,
+      });
+      
+      // Final order should be: Event 1, Task 2, Task 1, Note 1
+      entries = await projection.getEntries();
+      expect(entries.map(e => e.id)).toEqual([event1Id, task2Id, task1Id, note1Id]);
+      expect(entries.map(e => e.type)).toEqual(['event', 'task', 'task', 'note']);
+    });
+
+    it('should preserve cross-type order when filtering', async () => {
+      const note1Id = await noteHandler.handle({ content: 'Note 1' });
+      const task1Id = await taskHandler.handle({ title: 'Task 1' });
+      const note2Id = await noteHandler.handle({ content: 'Note 2' });
+      
+      // Move task1 to the beginning
+      const { ReorderTaskHandler } = await import('./task.handlers');
+      const { TaskListProjection } = await import('./task.projections');
+      const taskProjection = new TaskListProjection(eventStore);
+      const taskReorderHandler = new ReorderTaskHandler(eventStore, taskProjection, projection);
+      
+      await taskReorderHandler.handle({
+        taskId: task1Id,
+        previousTaskId: null,
+        nextTaskId: note1Id,
+      });
+      
+      // All entries should be: Task 1, Note 1, Note 2
+      const allEntries = await projection.getEntries('all');
+      expect(allEntries.map(e => e.id)).toEqual([task1Id, note1Id, note2Id]);
+      
+      // Filtering to only notes should maintain their relative order
+      const notes = await projection.getEntries('notes');
+      expect(notes.map(e => e.id)).toEqual([note1Id, note2Id]);
+      
+      // Filtering to only tasks should return just the task
+      const tasks = await projection.getEntries('tasks');
+      expect(tasks.map(e => e.id)).toEqual([task1Id]);
     });
   });
 });
