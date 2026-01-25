@@ -93,9 +93,9 @@ export function EventEntryItem({
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
                     rounded-lg p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3">
         {/* Bullet and Content */}
-        <div className="flex-1 flex gap-3">
+        <div className="flex-1 flex gap-3 min-w-0">
           <div className="text-2xl text-gray-600 dark:text-gray-400 leading-none pt-1">
             ○
           </div>
@@ -150,7 +150,7 @@ export function EventEntryItem({
                     📅 {formatDate(entry.eventDate)}
                   </div>
                 )}
-                <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   {formatTimestamp(entry.createdAt)}
                 </div>
               </>
@@ -158,18 +158,14 @@ export function EventEntryItem({
           </div>
         </div>
         
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onDelete(entry.id)}
-            className="px-3 py-1 text-sm font-medium text-white 
-                       bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 
-                       rounded-md transition-colors"
-            aria-label="Delete event"
-          >
-            Delete
-          </button>
-        </div>
+        {/* Compact Trash Icon */}
+        <button
+          onClick={() => onDelete(entry.id)}
+          className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+          aria-label="Delete entry"
+        >
+          🗑️
+        </button>
       </div>
     </div>
   );

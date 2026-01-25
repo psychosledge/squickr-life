@@ -53,7 +53,7 @@ describe('TaskEntryItem', () => {
     expect(screen.getByText('☑')).toBeInTheDocument();
   });
 
-  it('should show Complete button for open tasks', () => {
+  it('should show unchecked checkbox for open tasks', () => {
     render(
       <TaskEntryItem 
         entry={mockOpenTask} 
@@ -62,11 +62,12 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    const button = screen.getByRole('button', { name: /complete task/i });
-    expect(button).toBeInTheDocument();
+    const checkbox = screen.getByRole('button', { name: /complete task/i });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toHaveTextContent('☐');
   });
 
-  it('should show Reopen button for completed tasks', () => {
+  it('should show checked checkbox for completed tasks', () => {
     render(
       <TaskEntryItem 
         entry={mockCompletedTask} 
@@ -75,11 +76,12 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    const button = screen.getByRole('button', { name: /reopen task/i });
-    expect(button).toBeInTheDocument();
+    const checkbox = screen.getByRole('button', { name: /reopen task/i });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toHaveTextContent('☑');
   });
 
-  it('should call onCompleteTask when Complete button is clicked', () => {
+  it('should call onCompleteTask when checkbox is clicked for open task', () => {
     render(
       <TaskEntryItem 
         entry={mockOpenTask} 
@@ -88,13 +90,13 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    const button = screen.getByRole('button', { name: /complete task/i });
-    fireEvent.click(button);
+    const checkbox = screen.getByRole('button', { name: /complete task/i });
+    fireEvent.click(checkbox);
 
     expect(mockOnCompleteTask).toHaveBeenCalledWith('task-1');
   });
 
-  it('should call onReopenTask when Reopen button is clicked', () => {
+  it('should call onReopenTask when checkbox is clicked for completed task', () => {
     render(
       <TaskEntryItem 
         entry={mockCompletedTask} 
@@ -103,8 +105,8 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    const button = screen.getByRole('button', { name: /reopen task/i });
-    fireEvent.click(button);
+    const checkbox = screen.getByRole('button', { name: /reopen task/i });
+    fireEvent.click(checkbox);
 
     expect(mockOnReopenTask).toHaveBeenCalledWith('task-2');
   });
@@ -132,7 +134,7 @@ describe('TaskEntryItem', () => {
     expect(screen.getByText(/• Completed/i)).toBeInTheDocument();
   });
 
-  it('should call onDelete when Delete button is clicked', () => {
+  it('should call onDelete when trash icon is clicked', () => {
     render(
       <TaskEntryItem 
         entry={mockOpenTask} 
@@ -140,8 +142,8 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    const button = screen.getByRole('button', { name: /delete/i });
-    fireEvent.click(button);
+    const deleteButton = screen.getByRole('button', { name: /delete entry/i });
+    fireEvent.click(deleteButton);
 
     expect(mockOnDelete).toHaveBeenCalledWith('task-1');
   });
@@ -195,7 +197,7 @@ describe('TaskEntryItem', () => {
     expect(screen.getByText(/just now|seconds ago/i)).toBeInTheDocument();
   });
 
-  it('should display status badge', () => {
+  it('should not display status badge', () => {
     render(
       <TaskEntryItem 
         entry={mockOpenTask} 
@@ -203,6 +205,10 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    expect(screen.getByText('open')).toBeInTheDocument();
+    // Status badge should not be present
+    expect(screen.queryByText('open')).not.toBeInTheDocument();
+    
+    // But checkbox should still be visible
+    expect(screen.getByText('☐')).toBeInTheDocument();
   });
 });

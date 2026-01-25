@@ -70,7 +70,7 @@ describe('EventEntryItem', () => {
       />
     );
     
-    const button = screen.getByRole('button', { name: /delete/i });
+    const button = screen.getByLabelText('Delete entry');
     fireEvent.click(button);
 
     expect(mockOnDelete).toHaveBeenCalledWith('event-1');

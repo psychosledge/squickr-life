@@ -50,7 +50,7 @@ describe('NoteEntryItem', () => {
       />
     );
     
-    const button = screen.getByRole('button', { name: /delete/i });
+    const button = screen.getByLabelText('Delete entry');
     fireEvent.click(button);
 
     expect(mockOnDelete).toHaveBeenCalledWith('note-1');
