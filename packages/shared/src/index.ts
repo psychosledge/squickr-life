@@ -9,6 +9,7 @@ export type { DomainEvent } from './domain-event';
 // Task domain types
 export type {
   TaskStatus,
+  TaskFilter,
   Task,
   TaskCreated,
   TaskCompleted,

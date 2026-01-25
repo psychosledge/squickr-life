@@ -1,5 +1,5 @@
 import type { IEventStore } from './event-store';
-import type { Task, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskEvent } from './task.types';
+import type { Task, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskEvent, TaskFilter } from './task.types';
 
 /**
  * TaskListProjection - Read Model for Task List
@@ -22,11 +22,19 @@ export class TaskListProjection {
    * Get all tasks
    * Rebuilds state by replaying all events
    * 
+   * @param filter - Optional filter for task status ('all', 'open', 'completed')
    * @returns Array of tasks in chronological order
    */
-  async getTasks(): Promise<Task[]> {
+  async getTasks(filter: TaskFilter = 'all'): Promise<Task[]> {
     const events = await this.eventStore.getAll();
-    return this.applyEvents(events);
+    const tasks = this.applyEvents(events);
+    
+    // Apply filter
+    if (filter === 'all') {
+      return tasks;
+    }
+    
+    return tasks.filter(task => task.status === filter);
   }
 
   /**

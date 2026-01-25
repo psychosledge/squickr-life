@@ -606,4 +606,206 @@ describe('TaskListProjection', () => {
       expect(tasks[0].title).toBe('Task 2');
     });
   });
+
+  describe('getTasks with filter', () => {
+    it('should return all tasks when filter is "all"', async () => {
+      const openTask: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Open task',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const completedTaskCreated: TaskCreated = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          id: 'task-2',
+          title: 'Completed task',
+          createdAt: '2026-01-24T10:01:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const completedEvent: TaskCompleted = {
+        id: 'event-3',
+        type: 'TaskCompleted',
+        timestamp: '2026-01-24T10:02:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          taskId: 'task-2',
+          completedAt: '2026-01-24T10:02:00.000Z',
+        },
+      };
+
+      await eventStore.append(openTask);
+      await eventStore.append(completedTaskCreated);
+      await eventStore.append(completedEvent);
+
+      const tasks = await projection.getTasks('all');
+      expect(tasks).toHaveLength(2);
+    });
+
+    it('should return only open tasks when filter is "open"', async () => {
+      const openTask: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Open task',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const completedTaskCreated: TaskCreated = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          id: 'task-2',
+          title: 'Completed task',
+          createdAt: '2026-01-24T10:01:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const completedEvent: TaskCompleted = {
+        id: 'event-3',
+        type: 'TaskCompleted',
+        timestamp: '2026-01-24T10:02:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          taskId: 'task-2',
+          completedAt: '2026-01-24T10:02:00.000Z',
+        },
+      };
+
+      await eventStore.append(openTask);
+      await eventStore.append(completedTaskCreated);
+      await eventStore.append(completedEvent);
+
+      const tasks = await projection.getTasks('open');
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].id).toBe('task-1');
+      expect(tasks[0].status).toBe('open');
+    });
+
+    it('should return only completed tasks when filter is "completed"', async () => {
+      const openTask: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Open task',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const completedTaskCreated: TaskCreated = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          id: 'task-2',
+          title: 'Completed task',
+          createdAt: '2026-01-24T10:01:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const completedEvent: TaskCompleted = {
+        id: 'event-3',
+        type: 'TaskCompleted',
+        timestamp: '2026-01-24T10:02:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          taskId: 'task-2',
+          completedAt: '2026-01-24T10:02:00.000Z',
+        },
+      };
+
+      await eventStore.append(openTask);
+      await eventStore.append(completedTaskCreated);
+      await eventStore.append(completedEvent);
+
+      const tasks = await projection.getTasks('completed');
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].id).toBe('task-2');
+      expect(tasks[0].status).toBe('completed');
+    });
+
+    it('should default to "all" when no filter is provided', async () => {
+      const openTask: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Open task',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const completedTaskCreated: TaskCreated = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          id: 'task-2',
+          title: 'Completed task',
+          createdAt: '2026-01-24T10:01:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const completedEvent: TaskCompleted = {
+        id: 'event-3',
+        type: 'TaskCompleted',
+        timestamp: '2026-01-24T10:02:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          taskId: 'task-2',
+          completedAt: '2026-01-24T10:02:00.000Z',
+        },
+      };
+
+      await eventStore.append(openTask);
+      await eventStore.append(completedTaskCreated);
+      await eventStore.append(completedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(2);
+    });
+  });
 });

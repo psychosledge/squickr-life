@@ -7,9 +7,10 @@ import {
   DeleteTaskHandler,
   TaskListProjection 
 } from '@squickr/shared';
-import type { Task } from '@squickr/shared';
+import type { Task, TaskFilter } from '@squickr/shared';
 import { TaskInput } from './components/TaskInput';
 import { TaskList } from './components/TaskList';
+import { FilterButtons } from './components/FilterButtons';
 
 /**
  * Main App Component
@@ -32,6 +33,7 @@ function App() {
   // UI state (derived from projections)
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentFilter, setCurrentFilter] = useState<TaskFilter>('all');
   
   // Track if app is initialized (prevents double-init in React StrictMode)
   const isInitialized = useRef(false);
@@ -46,6 +48,13 @@ function App() {
     
     initializeApp();
   }, []);
+
+  // Reload tasks when filter changes
+  useEffect(() => {
+    if (!isLoading) {
+      loadTasks();
+    }
+  }, [currentFilter]);
 
   const initializeApp = async () => {
     try {
@@ -62,7 +71,7 @@ function App() {
   };
 
   const loadTasks = async () => {
-    const allTasks = await projection.getTasks();
+    const allTasks = await projection.getTasks(currentFilter);
     setTasks(allTasks);
   };
 
@@ -98,6 +107,10 @@ function App() {
     await loadTasks();
   };
 
+  const handleFilterChange = (filter: TaskFilter) => {
+    setCurrentFilter(filter);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -121,6 +134,9 @@ function App() {
 
         {/* Task Input (Write Side) */}
         <TaskInput onSubmit={handleCreateTask} />
+
+        {/* Filter Controls */}
+        <FilterButtons currentFilter={currentFilter} onFilterChange={handleFilterChange} />
 
         {/* Task List (Read Side) */}
         <TaskList 

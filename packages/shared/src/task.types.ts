@@ -10,6 +10,12 @@ import type { DomainEvent } from './domain-event';
 export type TaskStatus = 'open' | 'completed';
 
 /**
+ * Task filter options
+ * Used for filtering the task list in the UI
+ */
+export type TaskFilter = 'all' | 'open' | 'completed';
+
+/**
  * Task entity - represents the current state of a task
  * This is derived from events, not stored directly
  */
