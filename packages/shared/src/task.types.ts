@@ -35,6 +35,10 @@ export interface Task {
   /** When the task was completed (ISO 8601), if applicable */
   readonly completedAt?: string;
   
+  /** Fractional index for ordering tasks (e.g., "a0", "a1", "a0V") 
+   * Optional for backward compatibility with tasks created before this field was added */
+  readonly order?: string;
+  
   /** Optional: User who created the task (for future multi-user support) */
   readonly userId?: string;
 }
@@ -48,6 +52,7 @@ export interface Task {
  * - title must be 1-500 characters (after trim)
  * - status is always 'open' for new tasks
  * - createdAt must not be in the future
+ * - order is a fractional index for positioning
  */
 export interface TaskCreated extends DomainEvent {
   readonly type: 'TaskCreated';
@@ -57,6 +62,7 @@ export interface TaskCreated extends DomainEvent {
     readonly title: string;
     readonly createdAt: string;
     readonly status: 'open';
+    readonly order?: string; // Optional for backward compatibility
     readonly userId?: string;
   };
 }
@@ -149,7 +155,40 @@ export interface DeleteTaskCommand {
 }
 
 /**
+ * TaskReordered Event
+ * Emitted when a task's position in the list is changed
+ * 
+ * Invariants:
+ * - aggregateId must match an existing task
+ * - Task can be in any status (open or completed)
+ * - order must be a valid fractional index string
+ */
+export interface TaskReordered extends DomainEvent {
+  readonly type: 'TaskReordered';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly taskId: string;
+    readonly order: string;
+    readonly reorderedAt: string;
+  };
+}
+
+/**
+ * ReorderTask Command
+ * Represents the user's intent to reorder a task
+ * 
+ * @param taskId - The task to reorder
+ * @param previousTaskId - The task that should come before this one (null if moving to start)
+ * @param nextTaskId - The task that should come after this one (null if moving to end)
+ */
+export interface ReorderTaskCommand {
+  readonly taskId: string;
+  readonly previousTaskId: string | null;
+  readonly nextTaskId: string | null;
+}
+
+/**
  * Union type of all task-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted;
+export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered;

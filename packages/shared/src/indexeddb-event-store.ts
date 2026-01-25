@@ -78,7 +78,9 @@ export class IndexedDBEventStore implements IEventStore {
       const objectStore = transaction.objectStore(this.storeName);
       const request = objectStore.add(event);
 
-      request.onsuccess = () => resolve();
+      // Wait for transaction to complete, not just the request
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(new Error(`Failed to append event: ${transaction.error}`));
       request.onerror = () => reject(new Error(`Failed to append event: ${request.error}`));
     });
   }

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TaskListProjection } from './task.projections';
 import { EventStore } from './event-store';
-import type { TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, Task } from './task.types';
+import type { TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskReordered, Task } from './task.types';
 
 describe('TaskListProjection', () => {
   let eventStore: EventStore;
@@ -30,6 +30,9 @@ describe('TaskListProjection', () => {
           title: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -42,6 +45,8 @@ describe('TaskListProjection', () => {
         title: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
+        order: 'a0',
+        order: 'a0',
       });
     });
 
@@ -57,6 +62,9 @@ describe('TaskListProjection', () => {
           title: 'First task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -71,6 +79,9 @@ describe('TaskListProjection', () => {
           title: 'Second task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
+          order: 'a1',
         },
       };
 
@@ -95,6 +106,9 @@ describe('TaskListProjection', () => {
           title: 'Test task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
+          order: 'a0',
           userId: 'user-123',
         },
       };
@@ -124,6 +138,8 @@ describe('TaskListProjection', () => {
           title: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -135,6 +151,7 @@ describe('TaskListProjection', () => {
         title: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
+        order: 'a0',
       });
     });
   });
@@ -152,6 +169,8 @@ describe('TaskListProjection', () => {
           title: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -177,6 +196,8 @@ describe('TaskListProjection', () => {
           title: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -195,6 +216,8 @@ describe('TaskListProjection', () => {
           title: 'Task 2',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -219,6 +242,8 @@ describe('TaskListProjection', () => {
           title: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -255,6 +280,8 @@ describe('TaskListProjection', () => {
           title: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -291,6 +318,8 @@ describe('TaskListProjection', () => {
           title: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -340,6 +369,8 @@ describe('TaskListProjection', () => {
           title: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -387,6 +418,8 @@ describe('TaskListProjection', () => {
           title: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -452,6 +485,8 @@ describe('TaskListProjection', () => {
           title: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -486,6 +521,8 @@ describe('TaskListProjection', () => {
           title: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -520,6 +557,8 @@ describe('TaskListProjection', () => {
           title: 'Completed task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -567,6 +606,8 @@ describe('TaskListProjection', () => {
           title: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -581,6 +622,8 @@ describe('TaskListProjection', () => {
           title: 'Task 2',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -620,6 +663,8 @@ describe('TaskListProjection', () => {
           title: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -634,6 +679,8 @@ describe('TaskListProjection', () => {
           title: 'Completed task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -669,6 +716,8 @@ describe('TaskListProjection', () => {
           title: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -683,6 +732,8 @@ describe('TaskListProjection', () => {
           title: 'Completed task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -720,6 +771,8 @@ describe('TaskListProjection', () => {
           title: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -734,6 +787,8 @@ describe('TaskListProjection', () => {
           title: 'Completed task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -771,6 +826,8 @@ describe('TaskListProjection', () => {
           title: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -785,6 +842,8 @@ describe('TaskListProjection', () => {
           title: 'Completed task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
+        order: 'a0',
+          order: 'a0',
         },
       };
 
@@ -806,6 +865,297 @@ describe('TaskListProjection', () => {
 
       const tasks = await projection.getTasks();
       expect(tasks).toHaveLength(2);
+    });
+  });
+
+  describe('TaskReordered events', () => {
+    it('should update task order in projection', async () => {
+      const createdEvent: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Task 1',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+          order: 'a0',
+        },
+      };
+
+      const reorderedEvent: TaskReordered = {
+        id: 'event-2',
+        type: 'TaskReordered',
+        timestamp: '2026-01-24T10:05:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          taskId: 'task-1',
+          order: 'a1',
+          reorderedAt: '2026-01-24T10:05:00.000Z',
+        },
+      };
+
+      await eventStore.append(createdEvent);
+      await eventStore.append(reorderedEvent);
+
+      const task = await projection.getTaskById('task-1');
+      expect(task).toBeDefined();
+      expect(task!.order).toBe('a1');
+    });
+
+    it('should sort tasks by order after reordering', async () => {
+      const task1: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Task 1',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+          order: 'a0',
+        },
+      };
+
+      const task2: TaskCreated = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          id: 'task-2',
+          title: 'Task 2',
+          createdAt: '2026-01-24T10:01:00.000Z',
+          status: 'open',
+          order: 'a1',
+        },
+      };
+
+      const task3: TaskCreated = {
+        id: 'event-3',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:02:00.000Z',
+        version: 1,
+        aggregateId: 'task-3',
+        payload: {
+          id: 'task-3',
+          title: 'Task 3',
+          createdAt: '2026-01-24T10:02:00.000Z',
+          status: 'open',
+          order: 'a2',
+        },
+      };
+
+      // Reorder task3 to be first (order comes before 'a0')
+      const reorderedEvent: TaskReordered = {
+        id: 'event-4',
+        type: 'TaskReordered',
+        timestamp: '2026-01-24T10:05:00.000Z',
+        version: 1,
+        aggregateId: 'task-3',
+        payload: {
+          taskId: 'task-3',
+          order: 'Zz', // Comes before 'a0'
+          reorderedAt: '2026-01-24T10:05:00.000Z',
+        },
+      };
+
+      await eventStore.append(task1);
+      await eventStore.append(task2);
+      await eventStore.append(task3);
+      await eventStore.append(reorderedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(3);
+      expect(tasks[0].id).toBe('task-3'); // Task 3 is now first
+      expect(tasks[1].id).toBe('task-1');
+      expect(tasks[2].id).toBe('task-2');
+    });
+
+    it('should handle reordering to start', async () => {
+      const task1: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Task 1',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+          order: 'a0',
+        },
+      };
+
+      const task2: TaskCreated = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          id: 'task-2',
+          title: 'Task 2',
+          createdAt: '2026-01-24T10:01:00.000Z',
+          status: 'open',
+          order: 'a1',
+        },
+      };
+
+      // Move task2 to start
+      const reorderedEvent: TaskReordered = {
+        id: 'event-3',
+        type: 'TaskReordered',
+        timestamp: '2026-01-24T10:05:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          taskId: 'task-2',
+          order: 'Zz',
+          reorderedAt: '2026-01-24T10:05:00.000Z',
+        },
+      };
+
+      await eventStore.append(task1);
+      await eventStore.append(task2);
+      await eventStore.append(reorderedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks[0].id).toBe('task-2');
+      expect(tasks[1].id).toBe('task-1');
+    });
+
+    it('should handle reordering to end', async () => {
+      const task1: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Task 1',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+          order: 'a0',
+        },
+      };
+
+      const task2: TaskCreated = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          id: 'task-2',
+          title: 'Task 2',
+          createdAt: '2026-01-24T10:01:00.000Z',
+          status: 'open',
+          order: 'a1',
+        },
+      };
+
+      // Move task1 to end
+      const reorderedEvent: TaskReordered = {
+        id: 'event-3',
+        type: 'TaskReordered',
+        timestamp: '2026-01-24T10:05:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          taskId: 'task-1',
+          order: 'a2',
+          reorderedAt: '2026-01-24T10:05:00.000Z',
+        },
+      };
+
+      await eventStore.append(task1);
+      await eventStore.append(task2);
+      await eventStore.append(reorderedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks[0].id).toBe('task-2');
+      expect(tasks[1].id).toBe('task-1');
+    });
+
+    it('should handle reordering between tasks', async () => {
+      const task1: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'Task 1',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+          order: 'a0',
+        },
+      };
+
+      const task2: TaskCreated = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          id: 'task-2',
+          title: 'Task 2',
+          createdAt: '2026-01-24T10:01:00.000Z',
+          status: 'open',
+          order: 'a1',
+        },
+      };
+
+      const task3: TaskCreated = {
+        id: 'event-3',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:02:00.000Z',
+        version: 1,
+        aggregateId: 'task-3',
+        payload: {
+          id: 'task-3',
+          title: 'Task 3',
+          createdAt: '2026-01-24T10:02:00.000Z',
+          status: 'open',
+          order: 'a2',
+        },
+      };
+
+      // Move task3 between task1 and task2
+      const reorderedEvent: TaskReordered = {
+        id: 'event-4',
+        type: 'TaskReordered',
+        timestamp: '2026-01-24T10:05:00.000Z',
+        version: 1,
+        aggregateId: 'task-3',
+        payload: {
+          taskId: 'task-3',
+          order: 'a0V', // Between 'a0' and 'a1'
+          reorderedAt: '2026-01-24T10:05:00.000Z',
+        },
+      };
+
+      await eventStore.append(task1);
+      await eventStore.append(task2);
+      await eventStore.append(task3);
+      await eventStore.append(reorderedEvent);
+
+      const tasks = await projection.getTasks();
+      expect(tasks).toHaveLength(3);
+      expect(tasks[0].id).toBe('task-1');
+      expect(tasks[1].id).toBe('task-3'); // Task 3 is between task 1 and 2
+      expect(tasks[2].id).toBe('task-2');
     });
   });
 });

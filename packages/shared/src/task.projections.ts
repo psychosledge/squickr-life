@@ -1,5 +1,5 @@
 import type { IEventStore } from './event-store';
-import type { Task, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskEvent, TaskFilter } from './task.types';
+import type { Task, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskReordered, TaskEvent, TaskFilter } from './task.types';
 
 /**
  * TaskListProjection - Read Model for Task List
@@ -91,14 +91,33 @@ export class TaskListProjection {
           case 'TaskDeleted':
             this.applyTaskDeleted(tasks, event);
             break;
+          case 'TaskReordered':
+            this.applyTaskReordered(tasks, event);
+            break;
         }
       }
     }
 
-    // Return tasks in chronological order (by createdAt)
-    return Array.from(tasks.values()).sort(
-      (a, b) => a.createdAt.localeCompare(b.createdAt)
-    );
+    // Return tasks sorted by order (fractional index)
+    // Use simple string comparison (not localeCompare) as fractional-indexing
+    // uses character code ordering
+    // Handle legacy tasks without order field by falling back to createdAt
+    return Array.from(tasks.values()).sort((a, b) => {
+      // If both have order, use order
+      if (a.order && b.order) {
+        return a.order < b.order ? -1 : a.order > b.order ? 1 : 0;
+      }
+      // If only a has order, a comes first
+      if (a.order && !b.order) {
+        return -1;
+      }
+      // If only b has order, b comes first
+      if (!a.order && b.order) {
+        return 1;
+      }
+      // If neither has order, fall back to createdAt (legacy behavior)
+      return a.createdAt.localeCompare(b.createdAt);
+    });
   }
 
   /**
@@ -111,6 +130,7 @@ export class TaskListProjection {
       title: event.payload.title,
       createdAt: event.payload.createdAt,
       status: event.payload.status,
+      order: event.payload.order, // May be undefined for legacy events
       userId: event.payload.userId,
     };
 
@@ -172,9 +192,28 @@ export class TaskListProjection {
   }
 
   /**
+   * Apply TaskReordered event
+   * Updates a task's order in the projection
+   */
+  private applyTaskReordered(tasks: Map<string, Task>, event: TaskReordered): void {
+    const task = tasks.get(event.payload.taskId);
+    if (!task) {
+      // This shouldn't happen if events are valid, but handle gracefully
+      console.warn(`TaskReordered event for non-existent task: ${event.payload.taskId}`);
+      return;
+    }
+
+    // Update the task's order
+    tasks.set(task.id, {
+      ...task,
+      order: event.payload.order,
+    });
+  }
+
+  /**
    * Type guard for TaskEvent
    */
   private isTaskEvent(event: import('./domain-event').DomainEvent): event is TaskEvent {
-    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened' || event.type === 'TaskDeleted';
+    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened' || event.type === 'TaskDeleted' || event.type === 'TaskReordered';
   }
 }

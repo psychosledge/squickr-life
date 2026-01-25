@@ -14,5 +14,8 @@
     "fake-indexeddb": "^6.2.5",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
+  },
+  "dependencies": {
+    "fractional-indexing": "^3.2.0"
   }
 }

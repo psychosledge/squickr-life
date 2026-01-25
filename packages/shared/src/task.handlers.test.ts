@@ -1,16 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler } from './task.handlers';
+import { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler } from './task.handlers';
 import { EventStore } from './event-store';
 import { TaskListProjection } from './task.projections';
-import type { CreateTaskCommand, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, CompleteTaskCommand, ReopenTaskCommand, DeleteTaskCommand } from './task.types';
+import type { CreateTaskCommand, TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, CompleteTaskCommand, ReopenTaskCommand, DeleteTaskCommand, ReorderTaskCommand, TaskReordered } from './task.types';
 
 describe('CreateTaskHandler', () => {
   let eventStore: EventStore;
+  let projection: TaskListProjection;
   let handler: CreateTaskHandler;
 
   beforeEach(() => {
     eventStore = new EventStore();
-    handler = new CreateTaskHandler(eventStore);
+    projection = new TaskListProjection(eventStore);
+    handler = new CreateTaskHandler(eventStore, projection);
   });
 
   describe('handle', () => {
@@ -150,7 +152,7 @@ describe('CompleteTaskHandler', () => {
   beforeEach(() => {
     eventStore = new EventStore();
     projection = new TaskListProjection(eventStore);
-    createHandler = new CreateTaskHandler(eventStore);
+    createHandler = new CreateTaskHandler(eventStore, projection);
     completeHandler = new CompleteTaskHandler(eventStore, projection);
   });
 
@@ -224,7 +226,7 @@ describe('ReopenTaskHandler', () => {
   beforeEach(() => {
     eventStore = new EventStore();
     projection = new TaskListProjection(eventStore);
-    createHandler = new CreateTaskHandler(eventStore);
+    createHandler = new CreateTaskHandler(eventStore, projection);
     completeHandler = new CompleteTaskHandler(eventStore, projection);
     reopenHandler = new ReopenTaskHandler(eventStore, projection);
   });
@@ -313,7 +315,7 @@ describe('DeleteTaskHandler', () => {
   beforeEach(() => {
     eventStore = new EventStore();
     projection = new TaskListProjection(eventStore);
-    createHandler = new CreateTaskHandler(eventStore);
+    createHandler = new CreateTaskHandler(eventStore, projection);
     deleteHandler = new DeleteTaskHandler(eventStore, projection);
   });
 
@@ -396,6 +398,159 @@ describe('DeleteTaskHandler', () => {
 
       // Try to delete again
       await expect(deleteHandler.handle({ taskId })).rejects.toThrow('Task ' + taskId + ' not found');
+    });
+  });
+});
+
+describe('ReorderTaskHandler', () => {
+  let eventStore: EventStore;
+  let projection: TaskListProjection;
+  let createHandler: CreateTaskHandler;
+  let reorderHandler: ReorderTaskHandler;
+
+  beforeEach(() => {
+    eventStore = new EventStore();
+    projection = new TaskListProjection(eventStore);
+    createHandler = new CreateTaskHandler(eventStore, projection);
+    reorderHandler = new ReorderTaskHandler(eventStore, projection);
+  });
+
+  describe('handle', () => {
+    it('should create a TaskReordered event for valid command', async () => {
+      // Create three tasks
+      const taskId1 = await createHandler.handle({ title: 'Task 1' });
+      const taskId2 = await createHandler.handle({ title: 'Task 2' });
+      const taskId3 = await createHandler.handle({ title: 'Task 3' });
+
+      // Reorder task2 between task1 and task3
+      const command: ReorderTaskCommand = {
+        taskId: taskId2,
+        previousTaskId: taskId1,
+        nextTaskId: taskId3,
+      };
+
+      await reorderHandler.handle(command);
+
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(4); // 3 created + 1 reordered
+
+      const reorderedEvent = events[3] as TaskReordered;
+      expect(reorderedEvent.type).toBe('TaskReordered');
+      expect(reorderedEvent.payload.taskId).toBe(taskId2);
+      expect(reorderedEvent.aggregateId).toBe(taskId2);
+      expect(reorderedEvent.payload.order).toBeDefined();
+      expect(reorderedEvent.payload.reorderedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it('should generate order between two tasks', async () => {
+      const taskId1 = await createHandler.handle({ title: 'Task 1' });
+      const taskId2 = await createHandler.handle({ title: 'Task 2' });
+      const taskId3 = await createHandler.handle({ title: 'Task 3' });
+
+      // Reorder task3 to be between task1 and task2
+      await reorderHandler.handle({
+        taskId: taskId3,
+        previousTaskId: taskId1,
+        nextTaskId: taskId2,
+      });
+
+      const task1 = await projection.getTaskById(taskId1);
+      const task2 = await projection.getTaskById(taskId2);
+      const task3 = await projection.getTaskById(taskId3);
+
+      // task3's order should be between task1 and task2
+      expect(task3!.order > task1!.order).toBe(true);
+      expect(task3!.order < task2!.order).toBe(true);
+    });
+
+    it('should move task to start when previousTaskId is null', async () => {
+      const taskId1 = await createHandler.handle({ title: 'Task 1' });
+      const taskId2 = await createHandler.handle({ title: 'Task 2' });
+      const taskId3 = await createHandler.handle({ title: 'Task 3' });
+
+      // Move task3 to the start
+      await reorderHandler.handle({
+        taskId: taskId3,
+        previousTaskId: null,
+        nextTaskId: taskId1,
+      });
+
+      const task1 = await projection.getTaskById(taskId1);
+      const task3 = await projection.getTaskById(taskId3);
+
+      // task3 should now be before task1
+      expect(task3!.order < task1!.order).toBe(true);
+    });
+
+    it('should move task to end when nextTaskId is null', async () => {
+      const taskId1 = await createHandler.handle({ title: 'Task 1' });
+      const taskId2 = await createHandler.handle({ title: 'Task 2' });
+      const taskId3 = await createHandler.handle({ title: 'Task 3' });
+
+      // Move task1 to the end
+      await reorderHandler.handle({
+        taskId: taskId1,
+        previousTaskId: taskId3,
+        nextTaskId: null,
+      });
+
+      const task1 = await projection.getTaskById(taskId1);
+      const task3 = await projection.getTaskById(taskId3);
+
+      // task1 should now be after task3
+      expect(task1!.order > task3!.order).toBe(true);
+    });
+
+    it('should set event metadata correctly', async () => {
+      const taskId1 = await createHandler.handle({ title: 'Task 1' });
+      const taskId2 = await createHandler.handle({ title: 'Task 2' });
+
+      await reorderHandler.handle({
+        taskId: taskId2,
+        previousTaskId: taskId1,
+        nextTaskId: null,
+      });
+
+      const events = await eventStore.getAll();
+      const reorderedEvent = events[2] as TaskReordered;
+
+      expect(reorderedEvent.id).toMatch(/^[0-9a-f-]+$/i); // UUID format
+      expect(reorderedEvent.version).toBe(1);
+      expect(reorderedEvent.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it('should throw error if task does not exist', async () => {
+      const command: ReorderTaskCommand = {
+        taskId: 'non-existent-id',
+        previousTaskId: null,
+        nextTaskId: null,
+      };
+
+      await expect(reorderHandler.handle(command)).rejects.toThrow('Task non-existent-id not found');
+    });
+
+    it('should throw error if previousTaskId does not exist', async () => {
+      const taskId = await createHandler.handle({ title: 'Task 1' });
+
+      const command: ReorderTaskCommand = {
+        taskId,
+        previousTaskId: 'non-existent-previous',
+        nextTaskId: null,
+      };
+
+      await expect(reorderHandler.handle(command)).rejects.toThrow('Previous task non-existent-previous not found');
+    });
+
+    it('should throw error if nextTaskId does not exist', async () => {
+      const taskId = await createHandler.handle({ title: 'Task 1' });
+
+      const command: ReorderTaskCommand = {
+        taskId,
+        previousTaskId: null,
+        nextTaskId: 'non-existent-next',
+      };
+
+      await expect(reorderHandler.handle(command)).rejects.toThrow('Next task non-existent-next not found');
     });
   });
 });

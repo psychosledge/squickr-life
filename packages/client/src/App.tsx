@@ -5,6 +5,7 @@ import {
   CompleteTaskHandler,
   ReopenTaskHandler,
   DeleteTaskHandler,
+  ReorderTaskHandler,
   TaskListProjection 
 } from '@squickr/shared';
 import type { Task, TaskFilter } from '@squickr/shared';
@@ -25,10 +26,11 @@ function App() {
   // Initialize event sourcing infrastructure with IndexedDB persistence
   const [eventStore] = useState(() => new IndexedDBEventStore());
   const [projection] = useState(() => new TaskListProjection(eventStore));
-  const [createTaskHandler] = useState(() => new CreateTaskHandler(eventStore));
+  const [createTaskHandler] = useState(() => new CreateTaskHandler(eventStore, projection));
   const [completeTaskHandler] = useState(() => new CompleteTaskHandler(eventStore, projection));
   const [reopenTaskHandler] = useState(() => new ReopenTaskHandler(eventStore, projection));
   const [deleteTaskHandler] = useState(() => new DeleteTaskHandler(eventStore, projection));
+  const [reorderTaskHandler] = useState(() => new ReorderTaskHandler(eventStore, projection));
   
   // UI state (derived from projections)
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -107,6 +109,18 @@ function App() {
     await loadTasks();
   };
 
+  const handleReorderTask = async (
+    taskId: string,
+    previousTaskId: string | null,
+    nextTaskId: string | null
+  ) => {
+    // Send command (write side)
+    await reorderTaskHandler.handle({ taskId, previousTaskId, nextTaskId });
+    
+    // Refresh view from projection (read side)
+    await loadTasks();
+  };
+
   const handleFilterChange = (filter: TaskFilter) => {
     setCurrentFilter(filter);
   };
@@ -144,6 +158,7 @@ function App() {
           onComplete={handleCompleteTask}
           onReopen={handleReopenTask}
           onDelete={handleDeleteTask}
+          onReorder={handleReorderTask}
         />
 
         {/* Footer */}

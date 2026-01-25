@@ -1,5 +1,3 @@
-import type { DomainEvent } from './domain-event';
-
 /**
  * Event Metadata
  * Common fields for all domain events
@@ -24,30 +22,4 @@ export function generateEventMetadata(): EventMetadata {
     timestamp: new Date().toISOString(),
     version: 1,
   };
-}
-
-/**
- * Create a domain event with standard metadata
- * 
- * Helper to reduce boilerplate when creating events.
- * Combines event metadata generation with event construction.
- * 
- * @param type - The event type (e.g., 'TaskCreated')
- * @param aggregateId - The ID of the aggregate this event belongs to
- * @param payload - The event payload (type-specific data)
- * @returns Complete domain event with metadata
- */
-export function createDomainEvent<T extends DomainEvent>(
-  type: T['type'],
-  aggregateId: string,
-  payload: T['payload']
-): T {
-  const metadata = generateEventMetadata();
-  
-  return {
-    ...metadata,
-    type,
-    aggregateId,
-    payload,
-  } as T;
 }

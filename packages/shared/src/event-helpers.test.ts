@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateEventMetadata, createDomainEvent } from './event-helpers';
-import type { TaskCreated } from './task.types';
+import { generateEventMetadata } from './event-helpers';
 
 describe('event-helpers', () => {
   describe('generateEventMetadata', () => {
@@ -42,70 +41,6 @@ describe('event-helpers', () => {
       
       expect(metadata.timestamp >= beforeTime).toBe(true);
       expect(metadata.timestamp <= afterTime).toBe(true);
-    });
-  });
-
-  describe('createDomainEvent', () => {
-    it('should create event with correct structure', () => {
-      const event = createDomainEvent<TaskCreated>(
-        'TaskCreated',
-        'task-123',
-        {
-          id: 'task-123',
-          title: 'Test task',
-          createdAt: '2026-01-24T10:00:00.000Z',
-          status: 'open',
-        }
-      );
-
-      expect(event.type).toBe('TaskCreated');
-      expect(event.aggregateId).toBe('task-123');
-      expect(event.payload.id).toBe('task-123');
-      expect(event.payload.title).toBe('Test task');
-      expect(event.payload.status).toBe('open');
-    });
-
-    it('should include event metadata', () => {
-      const event = createDomainEvent<TaskCreated>(
-        'TaskCreated',
-        'task-123',
-        {
-          id: 'task-123',
-          title: 'Test task',
-          createdAt: '2026-01-24T10:00:00.000Z',
-          status: 'open',
-        }
-      );
-
-      expect(event.id).toMatch(/^[0-9a-f-]+$/i);
-      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-      expect(event.version).toBe(1);
-    });
-
-    it('should generate unique event IDs for multiple events', () => {
-      const event1 = createDomainEvent<TaskCreated>(
-        'TaskCreated',
-        'task-1',
-        {
-          id: 'task-1',
-          title: 'Task 1',
-          createdAt: '2026-01-24T10:00:00.000Z',
-          status: 'open',
-        }
-      );
-
-      const event2 = createDomainEvent<TaskCreated>(
-        'TaskCreated',
-        'task-2',
-        {
-          id: 'task-2',
-          title: 'Task 2',
-          createdAt: '2026-01-24T10:00:00.000Z',
-          status: 'open',
-        }
-      );
-
-      expect(event1.id).not.toBe(event2.id);
     });
   });
 });
