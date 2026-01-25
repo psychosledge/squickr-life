@@ -2,135 +2,177 @@
 
 > **Get shit done quicker with Squickr!**
 
-A personal task tracker built with event sourcing, offline-first PWA architecture, and strict TDD principles.
+A personal bullet journal app built with event sourcing, offline-first PWA architecture, and strict TDD principles.
 
-## 🚀 Vision
+## What Is This?
 
-Squickr Life is a replacement for traditional bullet journaling, designed to work seamlessly across your Android phone, iPad, and computer - all while being completely offline-capable with Google account backup.
+Squickr Life is a digital bullet journal designed to work seamlessly across your Android phone, iPad, and computer - all while being completely offline-capable with optional cloud backup.
 
-## 🏗️ Architecture
+Built with event sourcing from the ground up, every action is an event, and the entire application state can be reconstructed from the event log.
 
-- **Event Sourcing + CQRS**: Every action is an event, state is derived from event history
-- **Offline-First**: Works without internet, syncs when available
-- **Test-Driven**: Strict TDD approach with comprehensive test coverage
-- **SOLID Principles**: Clean, maintainable, extensible architecture
+## Tech Stack
 
-## 🛠️ Tech Stack
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
+- **State Management**: Event Sourcing + CQRS
+- **Storage**: localStorage (MVP), IndexedDB (planned)
+- **Testing**: Vitest, React Testing Library
+- **Backend** (planned): Supabase, Google OAuth
 
-### Frontend
-- **React 18** + **TypeScript** - Type-safe UI components
-- **Vite** - Lightning-fast build tool
-- **Tailwind CSS** - Utility-first styling
-- **Shadcn/ui** - Beautiful, accessible components
-- **IndexedDB** - Local event store persistence
-- **PWA** - Installable, offline-capable
-
-### Backend (Phase 2)
-- **Supabase** - PostgreSQL event store, auth, real-time sync
-- **Google OAuth** - Seamless authentication
-
-### Testing
-- **Vitest** - Fast unit and integration tests
-- **Testing Library** - Component testing
-- **Playwright** - End-to-end testing (future)
-
-## 📁 Project Structure
+## Project Structure
 
 ```
-squickr-life/
-├── packages/
-│   ├── client/          # React PWA application
-│   ├── shared/          # Shared event types and interfaces
-│   └── backend/         # Supabase functions (future)
-├── docs/
-│   ├── event-models.md           # Event modeling diagrams
-│   ├── architecture-decisions.md # ADRs and design choices
-│   └── learning-log.md           # Development learning notes
-├── package.json         # Monorepo workspace config
-└── pnpm-workspace.yaml  # pnpm workspace definition
+packages/
+├── client/      # React PWA (UI components)
+├── shared/      # Event sourcing domain logic
+└── backend/     # Supabase functions (future)
+
+docs/            # Documentation (see docs/README.md)
 ```
 
-## 🎯 Getting Started
+## Quick Start
 
 ### Prerequisites
-
-- **Node.js** >= 18.0.0 ([Download](https://nodejs.org/))
-- **pnpm** >= 8.0.0
-
-### Install pnpm
-
-```bash
-npm install -g pnpm
-```
+- Node.js >= 18.0.0
+- pnpm >= 8.0.0 (install: `npm install -g pnpm`)
 
 ### Installation
 
 ```bash
-# Install all dependencies
+# Install dependencies
 pnpm install
 
-# Start development server
-pnpm dev
-
 # Run tests
-pnpm test
+cd packages/shared
+pnpm test run
 
-# Build for production
-pnpm build
+# Start dev server
+cd packages/client
+pnpm dev
+# Opens browser to http://localhost:5173
 ```
 
-## 🤖 AI Agent Team
+## Current Status
 
-This project is being built with an agentic coding approach, featuring:
+**Domain Layer (Event Sourcing):** ✅ 100% Complete
+- Task, Note, and Event command handlers
+- EntryListProjection (unified read model)
+- 188 tests passing
 
-- **🎨 Model-First Morgan** - Event modeling & user experience design
-- **⚙️ Architecture Alex** - System design & SOLID principles
-- **✅ Test-First Terry** - TDD enforcement & test quality
-- **🔍 Code-Review Casey** - Quality assurance & refactoring
-- **🚀 Speedy Sam** - Lead developer & orchestration
+**Client UI:** ⚠️ ~40% Complete
+- Task UI implemented
+- Note and Event UI pending
 
-## 🗺️ Roadmap
+**For detailed status, see:** [docs/current-status.md](docs/current-status.md)
 
-### Phase 1: Local-Only MVP ✨ *In Progress*
-- [x] Project setup and monorepo structure
-- [ ] Event store implementation
-- [ ] Task creation and completion
-- [ ] Offline-first PWA
+## Returning After a Break?
+
+New to the project or resuming after some time away?
+
+1. **Read:** [docs/current-status.md](docs/current-status.md) - See what's implemented and what's next
+2. **Check:** [docs/README.md](docs/README.md) - Documentation index
+3. **Review:** [docs/development-guide.md](docs/development-guide.md) - How to work with the codebase
+
+## Documentation
+
+All documentation lives in [docs/](docs/):
+
+- **[docs/README.md](docs/README.md)** - Documentation index
+- **[docs/current-status.md](docs/current-status.md)** - Implementation status and next steps
+- **[docs/development-guide.md](docs/development-guide.md)** - How to work with the codebase
+- **[docs/opencode-workflow.md](docs/opencode-workflow.md)** - Working with OpenCode agents
+- **[docs/architecture-decisions.md](docs/architecture-decisions.md)** - Design decisions and rationale
+- **[docs/event-models.md](docs/event-models.md)** - Event sourcing patterns
+
+## AI Agent Team
+
+This project uses an **orchestrator pattern** with specialized agents:
+
+### OpenCode (Orchestrator)
+**Role:** Coordinates the team, delegates tasks, manages workflow
+- Reads user requests and breaks them into tasks
+- Delegates implementation to Speedy Sam
+- Delegates reviews to Code-Review Casey
+- Only writes code for trivial changes (typos, 1-2 line fixes)
+- Reports progress and coordinates between agents
+
+### 🎨 Model-First Morgan
+**Role:** Event modeling & user experience design
+- Designs event schemas and aggregates
+- Creates user stories and workflows
+- Ensures domain model matches real-world behavior
+
+### ⚙️ Architecture Alex
+**Role:** System design & SOLID principles
+- Makes architectural decisions (documented as ADRs)
+- Ensures SOLID principles are followed
+- Designs system structure and patterns
+
+### ✅ Test-First Terry
+**Role:** TDD enforcement & test quality
+- Ensures tests are written before implementation
+- Reviews test coverage and quality
+- Validates test patterns follow best practices
+
+### 🔍 Code-Review Casey
+**Role:** Quality assurance & refactoring
+- Reviews all code before commits
+- Identifies code smells and improvement opportunities
+- Suggests refactoring when needed
+
+### 🚀 Speedy Sam
+**Role:** Implementation & bug fixes
+- Writes production code following TDD
+- Implements features designed by Morgan and Alex
+- Fixes bugs and runs tests
+- Reports completion back to orchestrator
+
+## Working with OpenCode
+
+**Key workflow:**
+1. User requests feature
+2. **OpenCode** delegates to **Speedy Sam** for implementation
+3. **Sam** completes work → **OpenCode** says **"Ready for code review"**
+4. User says **"review"** → **OpenCode** delegates to **Casey**
+5. **Casey** provides feedback
+6. User does manual testing
+7. User says **"commit"** → **OpenCode** commits changes
+
+**For details, see:** [docs/opencode-workflow.md](docs/opencode-workflow.md)
+
+## Roadmap
+
+### Phase 1: Entry Types MVP (In Progress)
+- [x] Event store with localStorage
+- [x] Task, Note, Event domain handlers
+- [x] Unified EntryListProjection
+- [ ] Entry type UI (Task, Note, Event)
+- [ ] Drag-and-drop reordering
 
 ### Phase 2: Feature Expansion
-- [ ] Task editing and deletion
 - [ ] Daily logs and rapid logging
-- [ ] Task migrations
-- [ ] Collections
+- [ ] Collections and indexes
+- [ ] Task migrations (future log)
 
 ### Phase 3: Backend & Sync
 - [ ] Supabase integration
 - [ ] Google OAuth
-- [ ] Real-time event synchronization
+- [ ] Real-time sync
 - [ ] Conflict resolution
 
-## 📚 Learning Goals
+**For detailed status, see:** [docs/current-status.md](docs/current-status.md)
 
-This project serves as a comprehensive learning journey:
+## Learning Goals
 
-- Event Sourcing patterns and best practices
-- CQRS architecture
-- Test-Driven Development discipline
-- Progressive Web Apps
-- Offline-first application design
-- Agentic coding workflows
-- Docker containerization (future)
+This project is a hands-on exploration of:
+- Event sourcing and CQRS patterns
+- Test-driven development
+- Offline-first PWA architecture
+- Monorepo structure with pnpm workspaces
 
-## 📝 License
+## License
 
 MIT
 
-## 🎨 Tagline Ideas
-
-- "Get shit done quicker with Squickr!"
-- "Shop quicker with Squickr" *(original for Squickr Shop)*
-- "Track life quicker with Squickr Life"
-
 ---
 
-**Built with ❤️ and event sourcing**
+**Built with event sourcing and TDD**

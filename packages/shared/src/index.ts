@@ -26,20 +26,66 @@ export type {
   TaskEvent,
 } from './task.types';
 
-// Union type of all domain events in Squickr Life
+// Note domain types
+export type {
+  Note,
+  NoteCreated,
+  NoteContentChanged,
+  NoteDeleted,
+  NoteReordered,
+  CreateNoteCommand,
+  UpdateNoteContentCommand,
+  DeleteNoteCommand,
+  ReorderNoteCommand,
+  NoteEvent,
+} from './task.types';
+
+// Event domain types
+export type {
+  Event,
+  EventCreated,
+  EventContentChanged,
+  EventDateChanged,
+  EventDeleted,
+  EventReordered,
+  CreateEventCommand,
+  UpdateEventContentCommand,
+  UpdateEventDateCommand,
+  DeleteEventCommand,
+  ReorderEventCommand,
+  EventEvent,
+} from './task.types';
+
+// Unified entry types
+export type {
+  EntryType,
+  Entry,
+  EntryFilter,
+  SquickrDomainEvent,
+} from './task.types';
+
+// Union type of all domain events in Squickr Life (deprecated, use SquickrDomainEvent)
 export type { TaskEvent as SquickrEvent } from './task.types';
 
 // Event Store
 export { EventStore, type IEventStore } from './event-store';
 export { IndexedDBEventStore } from './indexeddb-event-store';
 
-// Command Handlers
+// Task Command Handlers
 export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler } from './task.handlers';
+
+// Note Command Handlers
+export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, ReorderNoteHandler } from './note.handlers';
+
+// Event Command Handlers
+export { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler, ReorderEventHandler } from './event.handlers';
 
 // Helpers
 export { generateEventMetadata } from './event-helpers';
 export type { EventMetadata } from './event-helpers';
 export { validateTaskExists, validateTaskStatus } from './task-validation';
+export { validateContent, isValidISODate, validateOptionalISODate } from './content-validation';
 
 // Projections (Read Models)
 export { TaskListProjection } from './task.projections';
+export { EntryListProjection } from './entry.projections';

@@ -223,3 +223,322 @@ export interface UpdateTaskTitleCommand {
  * This enables type-safe event handling with discriminated unions
  */
 export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged;
+
+// ============================================================================
+// Note Domain Types (Bullet Journal Notes)
+// ============================================================================
+
+/**
+ * Note entity - represents a note entry in the bullet journal
+ * Notes are informational entries without completion status
+ */
+export interface Note {
+  /** Unique identifier (UUID v4) */
+  readonly id: string;
+  
+  /** Note content (1-5000 characters) */
+  readonly content: string;
+  
+  /** When the note was created (ISO 8601) */
+  readonly createdAt: string;
+  
+  /** Fractional index for ordering entries */
+  readonly order?: string;
+  
+  /** Optional: User who created the note */
+  readonly userId?: string;
+}
+
+/**
+ * NoteCreated Event
+ * Emitted when a new note is created
+ * 
+ * Invariants:
+ * - aggregateId must equal payload.id
+ * - content must be 1-5000 characters (after trim)
+ * - createdAt must not be in the future
+ */
+export interface NoteCreated extends DomainEvent {
+  readonly type: 'NoteCreated';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly id: string;
+    readonly content: string;
+    readonly createdAt: string;
+    readonly order?: string;
+    readonly userId?: string;
+  };
+}
+
+/**
+ * CreateNote Command
+ * Represents the user's intent to create a new note
+ * 
+ * Validation rules:
+ * - content: Required, will be trimmed, 1-5000 characters
+ */
+export interface CreateNoteCommand {
+  readonly content: string;
+  readonly userId?: string;
+}
+
+/**
+ * NoteContentChanged Event
+ * Emitted when a note's content is updated
+ */
+export interface NoteContentChanged extends DomainEvent {
+  readonly type: 'NoteContentChanged';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly noteId: string;
+    readonly newContent: string;
+    readonly changedAt: string;
+  };
+}
+
+/**
+ * UpdateNoteContent Command
+ * Represents the user's intent to update a note's content
+ */
+export interface UpdateNoteContentCommand {
+  readonly noteId: string;
+  readonly content: string;
+}
+
+/**
+ * NoteDeleted Event
+ * Emitted when a note is deleted
+ */
+export interface NoteDeleted extends DomainEvent {
+  readonly type: 'NoteDeleted';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly noteId: string;
+    readonly deletedAt: string;
+  };
+}
+
+/**
+ * DeleteNote Command
+ * Represents the user's intent to delete a note
+ */
+export interface DeleteNoteCommand {
+  readonly noteId: string;
+}
+
+/**
+ * ReorderNote Command
+ * Represents the user's intent to reorder a note
+ */
+export interface ReorderNoteCommand {
+  readonly noteId: string;
+  readonly previousNoteId: string | null;
+  readonly nextNoteId: string | null;
+}
+
+/**
+ * NoteReordered Event
+ * Emitted when a note's position is changed
+ */
+export interface NoteReordered extends DomainEvent {
+  readonly type: 'NoteReordered';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly noteId: string;
+    readonly order: string;
+    readonly reorderedAt: string;
+  };
+}
+
+/**
+ * Union type of all note-related events
+ */
+export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered;
+
+// ============================================================================
+// Event Domain Types (Bullet Journal Events)
+// ============================================================================
+
+/**
+ * Event entity - represents an event entry in the bullet journal
+ * Events are things that happen/happened on specific dates
+ */
+export interface Event {
+  /** Unique identifier (UUID v4) */
+  readonly id: string;
+  
+  /** Event content/description (1-5000 characters) */
+  readonly content: string;
+  
+  /** When the event entry was created (ISO 8601) */
+  readonly createdAt: string;
+  
+  /** Optional: When the event actually occurs/occurred (ISO 8601 date) */
+  readonly eventDate?: string;
+  
+  /** Fractional index for ordering entries */
+  readonly order?: string;
+  
+  /** Optional: User who created the event */
+  readonly userId?: string;
+}
+
+/**
+ * EventCreated Event
+ * Emitted when a new event entry is created
+ * 
+ * Invariants:
+ * - aggregateId must equal payload.id
+ * - content must be 1-5000 characters (after trim)
+ * - createdAt must not be in the future
+ */
+export interface EventCreated extends DomainEvent {
+  readonly type: 'EventCreated';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly id: string;
+    readonly content: string;
+    readonly createdAt: string;
+    readonly eventDate?: string;
+    readonly order?: string;
+    readonly userId?: string;
+  };
+}
+
+/**
+ * CreateEvent Command
+ * Represents the user's intent to create a new event entry
+ * 
+ * Validation rules:
+ * - content: Required, will be trimmed, 1-5000 characters
+ * - eventDate: Optional, must be valid ISO date if provided
+ */
+export interface CreateEventCommand {
+  readonly content: string;
+  readonly eventDate?: string;
+  readonly userId?: string;
+}
+
+/**
+ * EventContentChanged Event
+ * Emitted when an event's content is updated
+ */
+export interface EventContentChanged extends DomainEvent {
+  readonly type: 'EventContentChanged';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly eventId: string;
+    readonly newContent: string;
+    readonly changedAt: string;
+  };
+}
+
+/**
+ * UpdateEventContent Command
+ * Represents the user's intent to update an event's content
+ */
+export interface UpdateEventContentCommand {
+  readonly eventId: string;
+  readonly content: string;
+}
+
+/**
+ * EventDateChanged Event
+ * Emitted when an event's date is updated
+ */
+export interface EventDateChanged extends DomainEvent {
+  readonly type: 'EventDateChanged';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly eventId: string;
+    readonly newEventDate: string | null;
+    readonly changedAt: string;
+  };
+}
+
+/**
+ * UpdateEventDate Command
+ * Represents the user's intent to update an event's date
+ */
+export interface UpdateEventDateCommand {
+  readonly eventId: string;
+  readonly eventDate: string | null;
+}
+
+/**
+ * EventDeleted Event
+ * Emitted when an event is deleted
+ */
+export interface EventDeleted extends DomainEvent {
+  readonly type: 'EventDeleted';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly eventId: string;
+    readonly deletedAt: string;
+  };
+}
+
+/**
+ * DeleteEvent Command
+ * Represents the user's intent to delete an event
+ */
+export interface DeleteEventCommand {
+  readonly eventId: string;
+}
+
+/**
+ * ReorderEvent Command
+ * Represents the user's intent to reorder an event
+ */
+export interface ReorderEventCommand {
+  readonly eventId: string;
+  readonly previousEventId: string | null;
+  readonly nextEventId: string | null;
+}
+
+/**
+ * EventReordered Event
+ * Emitted when an event's position is changed
+ */
+export interface EventReordered extends DomainEvent {
+  readonly type: 'EventReordered';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly eventId: string;
+    readonly order: string;
+    readonly reorderedAt: string;
+  };
+}
+
+/**
+ * Union type of all event-related events
+ */
+export type EventEvent = EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered;
+
+// ============================================================================
+// Unified Entry Types (for UI)
+// ============================================================================
+
+/**
+ * Entry type discriminator
+ */
+export type EntryType = 'task' | 'note' | 'event';
+
+/**
+ * Unified entry - discriminated union of Task, Note, and Event
+ * Used by projections to create a unified view for the UI
+ */
+export type Entry = 
+  | (Task & { readonly type: 'task' })
+  | (Note & { readonly type: 'note' })
+  | (Event & { readonly type: 'event' });
+
+/**
+ * Entry filter options
+ */
+export type EntryFilter = 'all' | 'tasks' | 'notes' | 'events' | 'open-tasks' | 'completed-tasks';
+
+/**
+ * Union of all domain events in the system
+ */
+export type SquickrDomainEvent = TaskEvent | NoteEvent | EventEvent;
