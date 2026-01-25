@@ -23,10 +23,9 @@ import {
   EntryListProjection,
   TaskListProjection
 } from '@squickr/shared';
-import type { Entry, EntryFilter } from '@squickr/shared';
+import type { Entry } from '@squickr/shared';
 import { EntryInput } from './components/EntryInput';
 import { EntryList } from './components/EntryList';
-import { FilterButtons } from './components/FilterButtons';
 
 /**
  * Main App Component
@@ -68,7 +67,6 @@ function App() {
   // UI state (derived from projections)
   const [entries, setEntries] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentFilter, setCurrentFilter] = useState<EntryFilter>('all');
   
   // Track if app is initialized (prevents double-init in React StrictMode)
   const isInitialized = useRef(false);
@@ -83,13 +81,6 @@ function App() {
     
     initializeApp();
   }, []);
-
-  // Reload entries when filter changes
-  useEffect(() => {
-    if (!isLoading) {
-      loadEntries();
-    }
-  }, [currentFilter]);
 
   const initializeApp = async () => {
     try {
@@ -106,7 +97,7 @@ function App() {
   };
 
   const loadEntries = async () => {
-    const allEntries = await entryProjection.getEntries(currentFilter);
+    const allEntries = await entryProjection.getEntries('all');
     setEntries(allEntries);
   };
 
@@ -195,10 +186,6 @@ function App() {
     await loadEntries();
   };
 
-  const handleFilterChange = (filter: EntryFilter) => {
-    setCurrentFilter(filter);
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -226,9 +213,6 @@ function App() {
           onSubmitNote={handleCreateNote}
           onSubmitEvent={handleCreateEvent}
         />
-
-        {/* Filter Controls */}
-        <FilterButtons currentFilter={currentFilter} onFilterChange={handleFilterChange} />
 
         {/* Entry List (Read Side) */}
         <EntryList 

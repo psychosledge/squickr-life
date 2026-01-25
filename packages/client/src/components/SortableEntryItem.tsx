@@ -50,17 +50,18 @@ export function SortableEntryItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative group">
+    <div ref={setNodeRef} style={style} className="relative group pl-10 md:pl-0">
       {/* Drag Handle - visible on hover and focus */}
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-8 
+        className="absolute left-2 md:left-0 top-1/2 -translate-y-1/2 md:-translate-x-8 
                    w-6 h-8 flex items-center justify-center
                    text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
                    cursor-grab active:cursor-grabbing
                    opacity-30 group-hover:opacity-100 group-focus-within:opacity-100 
-                   transition-opacity duration-200"
+                   transition-opacity duration-200
+                   touch-manipulation"
         aria-label="Drag to reorder"
         title="Drag to reorder"
       >

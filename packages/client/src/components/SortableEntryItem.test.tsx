@@ -181,6 +181,9 @@ describe('SortableEntryItem', () => {
 
     const wrapper = container.querySelector('.relative.group');
     expect(wrapper).toBeInTheDocument();
+    // Should have responsive padding for mobile drag handle
+    expect(wrapper).toHaveClass('pl-10');
+    expect(wrapper).toHaveClass('md:pl-0');
   });
 
   it('should render SVG icon in drag handle', () => {
@@ -198,7 +201,7 @@ describe('SortableEntryItem', () => {
     expect(svg).toHaveAttribute('viewBox', '0 0 20 20');
   });
 
-  it('should position drag handle absolutely to the left', () => {
+  it('should position drag handle responsively', () => {
     render(
       <SortableEntryItem
         entry={mockTask}
@@ -209,7 +212,12 @@ describe('SortableEntryItem', () => {
     const dragHandle = screen.getByLabelText('Drag to reorder');
     
     expect(dragHandle).toHaveClass('absolute');
-    expect(dragHandle).toHaveClass('left-0');
-    expect(dragHandle).toHaveClass('-translate-x-8');
+    // Mobile: inside container at left-2
+    expect(dragHandle).toHaveClass('left-2');
+    // Desktop: outside container at left-0 with offset
+    expect(dragHandle).toHaveClass('md:left-0');
+    expect(dragHandle).toHaveClass('md:-translate-x-8');
+    // Touch-friendly
+    expect(dragHandle).toHaveClass('touch-manipulation');
   });
 });
