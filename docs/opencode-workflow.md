@@ -41,8 +41,7 @@ Evaluates task complexity
      ↓
      ├─→ Trivial (1-2 lines)? → OpenCode handles directly
      ├─→ Architecture/Design? → /design (Alex)
-     ├─→ Implementation? → /implement (Sam)
-     ├─→ Bug investigation? → /debug (Diane)
+     ├─→ Implementation/Bug fixes? → /implement (Sam)
      └─→ Code review? → /review (Casey)
 ```
 
@@ -66,7 +65,7 @@ Evaluates task complexity
 
 ## Agent Team
 
-We have **4 specialized agents** (consolidated from 5):
+We have **3 specialized agents**:
 
 ### ⚙️ Architecture Alex
 **Slash command:** `/design [what to design]`
@@ -151,7 +150,7 @@ We have **4 specialized agents** (consolidated from 5):
 
 **Capabilities:**
 - Feature implementation
-- Bug fixes (after Diane identifies root cause)
+- Bug fixes
 - Test writing (unit, integration)
 - Code execution and verification
 - Following existing patterns
@@ -163,44 +162,6 @@ We have **4 specialized agents** (consolidated from 5):
 ```
 
 **Agent file:** `.opencode/agents/sam.md`
-
----
-
-### 🐛 Debug Diane
-**Slash command:** `/debug [issue description]`
-
-**Role:** Bug investigation & root cause analysis (NEW)
-
-**When to use:**
-- User reports unexpected behavior
-- Tests are failing mysteriously
-- Need to isolate root cause of bug
-- Understanding why something doesn't work
-
-**Process:**
-1. Gather information (symptoms, reproduction steps)
-2. Reproduce the issue
-3. Add diagnostic logging
-4. Isolate the problem (binary search approach)
-5. Analyze data flow (trace execution)
-6. Test hypothesis
-7. Document findings with evidence
-8. Recommend fix (hands off to Sam for implementation)
-
-**Capabilities:**
-- Console logging strategy
-- Git bisect for regressions
-- Browser DevTools investigation
-- Common bug pattern recognition
-- Evidence-based diagnosis
-
-**Example:**
-```
-/debug Tasks are being created twice when I press Enter
-/debug Daily logs showing wrong date for entries
-```
-
-**Agent file:** `.opencode/agents/diane.md`
 
 ---
 
@@ -243,9 +204,8 @@ This is our **primary workflow** for all development:
 ┌─────────────────────────────────────────────────────────┐
 │  IF issues found:                                       │
 │  User: "There's a bug with X"                          │
-│  OpenCode: `/debug [issue description]`                │
-│  Diane: *Investigates, finds root cause*               │
-│  OpenCode: `/implement [fix based on Diane findings]`  │
+│  OpenCode: `/implement [fix the bug]`                  │
+│  Sam: *Investigates and fixes*                         │
 │  → Back to review step                                 │
 │                                                         │
 │  IF everything looks good:                             │
@@ -257,7 +217,7 @@ This is our **primary workflow** for all development:
 ### Key Points:
 
 1. **OpenCode orchestrates** - Never does implementation itself
-2. **Always use slash commands** - `/design`, `/implement`, `/debug`, `/review`
+2. **Always use slash commands** - `/design`, `/implement`, `/review`
 3. **One agent at a time** - Clear handoffs between agents
 4. **Casey reviews everything** - No commits without code review
 5. **User tests manually** - Agents can't test UI in browser
@@ -273,7 +233,6 @@ This is our **primary workflow** for all development:
 |---------|-------|---------|
 | `/design [what]` | Alex | Architecture decisions, event modeling |
 | `/implement [what]` | Sam | Feature implementation, bug fixes (TDD) |
-| `/debug [issue]` | Diane | Bug investigation, root cause analysis |
 | `/review` | Casey | Code review + test coverage analysis |
 
 ### Usage Examples
@@ -286,10 +245,7 @@ This is our **primary workflow** for all development:
 # Implementation phase  
 /implement Add drag-and-drop for daily log entries
 /implement Create DeleteNoteHandler following TDD
-
-# Debugging phase
-/debug Entry form is submitting twice
-/debug Projection not updating after reorder
+/implement Fix double-submit bug in entry form
 
 # Review phase (always before commit)
 /review
@@ -310,7 +266,6 @@ This is our **primary workflow** for all development:
 |-----------|---------------|
 | "design X" or `/design X` | Calls `/design` command → Alex |
 | "implement X" or `/implement X` | Calls `/implement` command → Sam |
-| "debug X" or `/debug X` | Calls `/debug` command → Diane |
 | "review" or `/review` | Calls `/review` command → Casey |
 | "commit" | Creates git commit (after Casey approval) |
 | "continue" | Proceeds to next task in todo list |
@@ -322,7 +277,6 @@ This is our **primary workflow** for all development:
 | "Calling `/implement`..." | Delegating to Sam for implementation |
 | "Calling `/review`..." | Delegating to Casey for code review |
 | "Calling `/design`..." | Delegating to Alex for architecture |
-| "Calling `/debug`..." | Delegating to Diane for investigation |
 | "All tests passing (X/X)" | Tests successful |
 | "Committed: [message]" | Git commit created |
 
@@ -333,7 +287,6 @@ This is our **primary workflow** for all development:
 | "Feature complete, tests passing (X/X)" (Sam) | Implementation done |
 | "Review complete. Rating: X/10" (Casey) | Code review finished |
 | "ADR created: [title]" (Alex) | Architecture decision documented |
-| "Root cause: [description]" (Diane) | Bug diagnosis complete |
 
 ---
 
@@ -360,9 +313,9 @@ Would you like me to continue with [next task]?
 OpenCode should read these files to get context:
 
 1. **docs/opencode-workflow.md** - Agent workflow (this file)
-2. **docs/current-status.md** - Implementation status
-3. **docs/development-guide.md** - How to do common tasks  
-4. **docs/architecture-decisions.md** - ADRs
+2. **docs/development-guide.md** - How to do common tasks  
+3. **docs/architecture-decisions.md** - ADRs
+4. **docs/event-models.md** - Event sourcing reference
 5. **Git log** - `git log --oneline -10` to see recent work
 6. **Todo list** - Use `todoread` tool to see task status
 
@@ -406,17 +359,13 @@ Casey: Review complete. Rating: 9/10
 User: [Tests in browser - finds bug]
       The tag dropdown doesn't close after selection
 
-OpenCode: Let me investigate that.
-          [Calls `/debug tag dropdown doesn't close`]
+OpenCode: [Calls `/implement fix tag dropdown not closing`]
 
-Diane: Root cause found:
-       TagDropdown.tsx:45 - missing onClick handler for backdrop
-       Recommend adding backdrop click handler
-
-OpenCode: [Calls `/implement fix tag dropdown based on Diane's findings`]
-
-Sam: Bug fixed. Added test to prevent regression.
-     All tests passing (356/356).
+Sam: Investigated and fixed:
+     Root cause: TagDropdown.tsx:45 - missing onClick handler for backdrop
+     Added backdrop click handler
+     Added test to prevent regression
+     All tests passing (356/356)
 
 OpenCode: [Calls `/review`]
 
@@ -434,27 +383,16 @@ OpenCode: ✓ Committed: "Add tag system for entries"
 ```
 User: There's a bug - notes aren't saving
 
-OpenCode: Let me investigate.
-          [Calls `/debug notes aren't saving`]
+OpenCode: [Calls `/implement fix notes not saving`]
 
-Diane: Investigation complete:
-       
-       Root cause: NoteHandler.ts:42
-       The event store append() is called but not awaited.
-       
-       Evidence:
-       - Console shows event created
-       - IndexedDB shows no events
-       - Missing `await` keyword
-       
-       Fix: Add `await` before eventStore.append()
-
-OpenCode: [Calls `/implement fix based on Diane's diagnosis`]
-
-Sam: Bug fixed:
-     - Added `await` in NoteHandler
-     - Added regression test
-     - All tests passing
+Sam: Investigated and fixed:
+     
+     Root cause: NoteHandler.ts:42
+     The event store append() is called but not awaited.
+     
+     Fix: Added `await` before eventStore.append()
+     Added regression test
+     All tests passing
 
 OpenCode: [Calls `/review`]
 
@@ -508,7 +446,7 @@ OpenCode: [Breaks down into subtasks, delegates to Sam]
 
 ### For Users
 
-1. **Use slash commands** - `/design`, `/implement`, `/debug`, `/review`
+1. **Use slash commands** - `/design`, `/implement`, `/review`
 2. **Be explicit** - Say "commit" clearly, not vague confirmations
 3. **Do manual testing** - Always test UI before committing
 4. **Trust the loop** - Let agents do their specialized work
@@ -539,19 +477,17 @@ Located in: `.opencode/agents/`
 - `alex.md` - Architecture + Event Modeling
 - `casey.md` - Code Review + Test Coverage
 - `sam.md` - Implementation (TDD)
-- `diane.md` - Debugging + Investigation
 
 ### Command Files
 Located in: `.opencode/commands/`
 - `design.md` - `/design [what]` → Alex
-- `review.md` - `/review` → Casey
 - `implement.md` - `/implement [what]` → Sam
-- `debug.md` - `/debug [issue]` → Diane
+- `review.md` - `/review` → Casey
 
 ### Documentation Files
-- **Current status:** `docs/current-status.md`
 - **Development guide:** `docs/development-guide.md`
 - **Architecture decisions:** `docs/architecture-decisions.md`
+- **Event models:** `docs/event-models.md`
 - **Workflow (this file):** `docs/opencode-workflow.md`
 - **Todo list:** Use `todoread` tool
 
@@ -573,5 +509,5 @@ Never skip the loop:
 ---
 
 For development practices, see `development-guide.md`.  
-For implementation status, see `current-status.md`.  
-For architecture decisions, see `architecture-decisions.md`.
+For architecture decisions, see `architecture-decisions.md`.  
+For event sourcing reference, see `event-models.md`.

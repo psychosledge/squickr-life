@@ -47,8 +47,8 @@ Quick navigation to find what you need.
 - Project goals
 
 ### opencode-workflow.md
-- **The agent team:** Alex (design), Sam (implementation), Casey (review), Diane (debug)
-- **Slash commands:** `/design`, `/implement`, `/debug`, `/review`
+- **The agent team:** Alex (design), Sam (implementation), Casey (review)
+- **Slash commands:** `/design`, `/implement`, `/review`
 - **The development loop:** Design → Implement → Review → User test → Commit
 - **Communication patterns:** How to work with agents
 - **Essential reading for every session**
