@@ -158,6 +158,7 @@ export function EntryInput({
           <button
             type="button"
             onClick={() => handleTypeChange('task')}
+            onMouseDown={(e) => e.preventDefault()}
             className={`flex-1 min-h-[44px] px-4 py-3 rounded-lg font-medium transition-colors
               ${entryType === 'task' 
                 ? 'bg-blue-600 text-white' 
@@ -171,6 +172,7 @@ export function EntryInput({
           <button
             type="button"
             onClick={() => handleTypeChange('note')}
+            onMouseDown={(e) => e.preventDefault()}
             className={`flex-1 min-h-[44px] px-4 py-3 rounded-lg font-medium transition-colors
               ${entryType === 'note' 
                 ? 'bg-blue-600 text-white' 
@@ -184,6 +186,7 @@ export function EntryInput({
           <button
             type="button"
             onClick={() => handleTypeChange('event')}
+            onMouseDown={(e) => e.preventDefault()}
             className={`flex-1 min-h-[44px] px-4 py-3 rounded-lg font-medium transition-colors
               ${entryType === 'event' 
                 ? 'bg-blue-600 text-white' 
