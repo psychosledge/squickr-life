@@ -1,178 +1,146 @@
 # Squickr Life Documentation
 
-Welcome to the Squickr Life documentation. This index helps you find the right document for your needs.
+Quick navigation to find what you need.
 
-## Quick Navigation
+## 📚 Core Documentation
 
-### Getting Started
-- **[Main README](../README.md)** - Project overview, quick start, and basic concepts
-- **[Current Status](current-status.md)** - What's implemented, what's next, session notes
-
-### For Developers
-- **[Development Guide](development-guide.md)** - How to work with the codebase
-  - Project structure
-  - Testing patterns
-  - Common tasks
-  - Troubleshooting
-
-### For OpenCode Sessions
-- **[OpenCode Workflow Guide](opencode-workflow.md)** - How to work with OpenCode agents
-  - Code review cycle
-  - Agent types and usage
-  - Communication patterns
-  - Session recovery
-
-### Architecture
-- **[Architecture Decisions (ADRs)](architecture-decisions.md)** - Design decisions and their rationale
-  - Event sourcing architecture
-  - Monorepo structure
-  - Entry type design
-- **[Event Models](event-models.md)** - Event sourcing patterns and examples
-
-### Other
-- **[Learning Log](learning-log.md)** - Lessons learned during development
+| Doc | Purpose | When to Read |
+|-----|---------|--------------|
+| **[Main README](../README.md)** | Project overview, setup, quick start | First time or showing others |
+| **[OpenCode Workflow](opencode-workflow.md)** | Agent team, slash commands, development loop | Every session (orchestrator guide) |
+| **[Development Guide](development-guide.md)** | TDD workflow, testing patterns, common tasks | When implementing features |
+| **[Architecture Decisions](architecture-decisions.md)** | Design decisions and rationale (ADRs) | When making design choices |
+| **[Event Models Reference](event-models.md)** | Quick event sourcing reference | When designing new events |
 
 ---
 
-## Document Index by Purpose
+## 🎯 Quick Navigation
 
-### "I'm starting a new coding session"
-1. Read: **[Current Status](current-status.md)** - See what's done and what's next
-2. Check: **[Development Guide](development-guide.md)** - Remind yourself of common tasks
-3. Review: **[OpenCode Workflow](opencode-workflow.md)** - Understand the development cycle
+### Starting a New Session
+1. Check git log: `git log --oneline -10`
+2. Read: **[OpenCode Workflow](opencode-workflow.md)** - Remember the agent team
+3. Say to OpenCode: *"What did we do so far?"*
 
-### "I want to understand the architecture"
-1. Read: **[Architecture Decisions](architecture-decisions.md)** - Understand design choices
-2. Read: **[Event Models](event-models.md)** - Learn event sourcing patterns
-3. Read: **[Development Guide](development-guide.md)** - See how it's implemented
+### Implementing a Feature
+1. Read: **[Development Guide > Common Tasks](development-guide.md#common-tasks)**
+2. Use: `/design` or `/implement` slash commands
+3. Follow: The development loop (Design → Implement → Review → Commit)
 
-### "I need to implement a feature"
-1. Read: **[Development Guide](development-guide.md)** - Find the "Common Tasks" section
-2. Check: **[Architecture Decisions](architecture-decisions.md)** - Ensure you follow established patterns
-3. Follow: **[OpenCode Workflow](opencode-workflow.md)** - Use the code review cycle
+### Making Architecture Decisions
+1. Read: **[Architecture Decisions](architecture-decisions.md)** - See existing patterns
+2. Use: `/design [question]` slash command
+3. Alex will create ADR
 
-### "Something is broken"
-1. Check: **[Development Guide > Troubleshooting](development-guide.md#troubleshooting)** - Common issues and fixes
-2. Check: **[Current Status](current-status.md)** - See if there are known issues
-
-### "I'm resuming after a break"
-1. Read: **[Current Status](current-status.md)** - Get up to speed quickly
-2. Check: **[Development Guide](development-guide.md)** - Refresh on project structure
-3. Use: **[OpenCode Workflow > Session Recovery](opencode-workflow.md#session-recovery)** - How to start fresh
+### Understanding Event Sourcing
+1. Read: **[Event Models Reference](event-models.md)** - Quick patterns
+2. Check: `packages/shared/src/task.types.ts` - Full TypeScript definitions
+3. Read: **[Architecture ADR-002](architecture-decisions.md#adr-002-event-sourcing-with-cqrs)** - Why we chose this
 
 ---
 
-## Document Descriptions
+## 🗂️ What's in Each Doc?
 
-### current-status.md
-**Living document** that tracks:
-- Implementation progress (what's done, what's in progress, what's next)
-- Session notes from important development milestones
-- Known issues and blockers
-- Next steps
-
-**Update frequency:** After major features or when resuming sessions
-
-### development-guide.md
-**Practical reference** covering:
-- Project structure and key files
-- Development workflow (TDD, code review, running the app)
-- Testing patterns with examples
-- Common tasks (adding handlers, aggregates, running tests)
-- Troubleshooting common issues
-- Windows-specific development notes
-
-**Update frequency:** When adding new patterns or solving new problems
+### README.md (Main)
+- What is Squickr Life?
+- Tech stack
+- Quick start commands
+- Project goals
 
 ### opencode-workflow.md
-**Process guide** for working with OpenCode:
-- The code review cycle (review → commit workflow)
-- When and how to use agents
-- Communication patterns and trigger words
-- Session recovery process
-- Common workflows with examples
+- **The agent team:** Alex (design), Sam (implementation), Casey (review), Diane (debug)
+- **Slash commands:** `/design`, `/implement`, `/debug`, `/review`
+- **The development loop:** Design → Implement → Review → User test → Commit
+- **Communication patterns:** How to work with agents
+- **Essential reading for every session**
 
-**Update frequency:** When workflows evolve or new patterns emerge
+### development-guide.md
+- Project structure
+- TDD Red-Green-Refactor workflow
+- Testing patterns (handlers, projections, React)
+- Common tasks (adding handlers, aggregates)
+- Event sourcing best practices
 
 ### architecture-decisions.md
-**Decision log** documenting:
-- Major architectural choices
-- Context and rationale for each decision
-- Trade-offs and consequences
-- Implementation status
-- SOLID principles applied
-
-**Update frequency:** When making significant architectural decisions
+- ADR-001: Monorepo with pnpm
+- ADR-002: Event sourcing with CQRS
+- ADR-003: IndexedDB persistence
+- ADR-004: Separate events per aggregate
+- ADR-005: Discriminated unions
+- ADR-006: Reactive projections
+- ADR-007: Daily logs view
 
 ### event-models.md
-**Reference documentation** for:
-- Event sourcing concepts
-- Event schemas and examples
+- Quick event sourcing reference
+- Event naming conventions
+- Aggregate types (Task, Note, Event)
 - Projection patterns
-- Command/query separation
-
-**Update frequency:** When adding new event types or patterns
-
-### learning-log.md
-**Personal notes** capturing:
-- Lessons learned
-- Mistakes and how they were fixed
-- Insights and discoveries
-
-**Update frequency:** Whenever you learn something worth remembering
+- Points to TypeScript source for full schemas
 
 ---
 
-## Documentation Maintenance
+## 📊 Documentation Philosophy
 
-### Keeping Docs Fresh
+**Lean and current:**
+- No duplicate information
+- Code is the primary documentation
+- Docs explain "why", code shows "how"
+- Update docs when patterns change
 
-**High Priority (Update Often):**
-- `current-status.md` - After every major feature or session
-- `learning-log.md` - Whenever you learn something new
+**Removed (to reduce noise):**
+- `current-status.md` - Replaced by git log
+- `learning-log.md` - Unused template
 
-**Medium Priority (Update When Relevant):**
-- `development-guide.md` - When solving new problems or adding new patterns
-- `architecture-decisions.md` - When making architectural decisions
-
-**Low Priority (Rarely Changes):**
-- `opencode-workflow.md` - Only if workflow significantly changes
-- `event-models.md` - Only when adding fundamental new patterns
-- `docs/README.md` (this file) - Only when adding/removing docs
-
-### Documentation Quality
-
-Good documentation should be:
-- **Accurate** - Reflects current state of the project
-- **Practical** - Helps you accomplish tasks
-- **Searchable** - Easy to find what you need
-- **Concise** - No unnecessary fluff
+**What we DON'T document:**
+- Implementation status (see git commits)
+- Detailed how-to for every scenario (code is self-documenting)
+- Session notes (use git log)
 
 ---
 
-## Contributing to Documentation
+## 🔍 Finding Things
 
-When updating documentation:
+**"How do I implement X?"**
+→ [Development Guide > Common Tasks](development-guide.md#common-tasks)
 
-1. **Check for outdated info** - Remove or update anything that's changed
-2. **Add examples** - Show, don't just tell
-3. **Use clear headings** - Make it scannable
-4. **Link between docs** - Help readers navigate
-5. **Update this index** - If you add/remove docs
+**"Why did we choose Y?"**
+→ [Architecture Decisions](architecture-decisions.md)
+
+**"What events exist?"**
+→ `packages/shared/src/task.types.ts` (source of truth)  
+→ [Event Models Reference](event-models.md) (quick summary)
+
+**"What's the agent workflow?"**
+→ [OpenCode Workflow](opencode-workflow.md)
+
+**"What did we work on recently?"**
+→ `git log --oneline -10`
 
 ---
 
-## Quick Links
+## 🛠️ Maintaining Docs
 
-**External Resources:**
-- [Event Sourcing Pattern (Martin Fowler)](https://martinfowler.com/eaaDev/EventSourcing.html)
+**Update when:**
+- Architecture decisions change → Update ADRs
+- New patterns emerge → Update development guide
+- Agent workflow changes → Update opencode-workflow.md
+- New aggregate types added → Update event-models.md
+
+**Don't update for:**
+- Feature implementation progress (that's in git)
+- Bug fixes (that's in commit messages)
+- Test counts (run `pnpm test run` to see current)
+
+---
+
+## External Resources
+
+- [Event Sourcing (Martin Fowler)](https://martinfowler.com/eaaDev/EventSourcing.html)
 - [CQRS Pattern](https://martinfowler.com/bliki/CQRS.html)
 - [Bullet Journal Method](https://bulletjournal.com/pages/learn)
 - [pnpm Workspaces](https://pnpm.io/workspaces)
-- [Vitest Documentation](https://vitest.dev/)
-- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
+- [Vitest](https://vitest.dev/)
 
 ---
 
 **Last Updated:** 2026-01-25  
-**Maintained By:** OpenCode + User
+**Maintainer:** OpenCode + User

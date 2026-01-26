@@ -1,277 +1,192 @@
 # Architecture Decision Records (ADRs)
 
-This document tracks architectural decisions made by **Architecture Alex** throughout the Squickr Life project.
+This document tracks architectural decisions made for Squickr Life.
 
 ## Format
 
 Each decision follows this structure:
-- **Date**: When the decision was made
+- **Date**: When decided
 - **Status**: Proposed | Accepted | Deprecated | Superseded
-- **Implementation**: ✅ Complete | ⚠️ Partial | 📋 Planned | ⏸️ Deferred | ❌ Abandoned
 - **Context**: What problem are we solving?
 - **Decision**: What did we decide?
+- **Rationale**: Why this approach?
 - **Consequences**: Trade-offs and implications
-- **SOLID Principle**: Which principle(s) does this support?
+- **SOLID Principles**: Which principle(s) does this support?
 
 ---
 
 ## ADR-001: Monorepo with pnpm Workspaces
 
 **Date**: 2026-01-22  
-**Status**: Accepted  
-**Implementation**: ✅ Complete  
-**Decision By**: Architecture Alex
+**Status**: Accepted
 
 ### Context
-We need to organize code for a multi-package project (client, shared types, backend). Options include:
-- Separate repositories for each package
-- Monorepo with npm/yarn/pnpm workspaces
-- Single package with manual linking
+Organize code for multi-package project (client, shared domain logic, future backend).
 
 ### Decision
-Use a monorepo structure with pnpm workspaces containing three packages:
+Use monorepo with pnpm workspaces:
 - `packages/client` - React PWA
-- `packages/shared` - TypeScript types and interfaces
+- `packages/shared` - Domain logic, event sourcing, types
 - `packages/backend` - Supabase functions (future)
 
 ### Rationale
-- **Type Safety**: Shared types ensure client and backend use identical event schemas
-- **Atomic Changes**: Event schema changes can update client and backend in single commit
+- **Type Safety**: Shared types ensure client/backend use identical event schemas
+- **Atomic Changes**: Event schema changes update all packages in single commit
 - **pnpm Benefits**: Strict dependency management prevents phantom dependencies
-- **Development Speed**: No need to publish/install shared package during development
+- **Development Speed**: No need to publish/install shared package during dev
 
 ### Consequences
 **Positive:**
-- Type-safe contract between client and backend
+- Type-safe contract between packages
 - Single `pnpm install` for entire project
 - Easier refactoring across packages
-- Simplified CI/CD pipeline
 
 **Negative:**
-- Slightly more complex initial setup
+- Slightly more complex setup
 - All packages version together (acceptable for this project)
-- Need to learn pnpm workspace commands
 
 ### SOLID Principles
 - **Single Responsibility**: Each package has one clear purpose
-- **Dependency Inversion**: Packages depend on abstractions in `shared`, not concrete implementations
-
-### Implementation Notes
-**Completed:**
-- Monorepo set up with pnpm workspaces
-- `packages/client` - React PWA with Vite
-- `packages/shared` - Event sourcing domain logic and types
-- Workspace dependencies configured correctly
-
-**Files:**
-- `pnpm-workspace.yaml` - Workspace configuration
-- `packages/shared/package.json` - Shared package config
-- `packages/client/package.json` - Client package config
+- **Dependency Inversion**: Packages depend on abstractions in `shared`
 
 ---
 
 ## ADR-002: Event Sourcing with CQRS
 
 **Date**: 2026-01-22  
-**Status**: Accepted  
-**Implementation**: ✅ Complete (Domain Layer) | ⚠️ Partial (UI Layer)  
-**Decision By**: Architecture Alex
+**Status**: Accepted
 
 ### Context
-Need to choose state management and persistence architecture for task tracking.
+Choose state management and persistence architecture.
 
 ### Decision
-Implement full event sourcing with CQRS pattern:
+Full event sourcing with CQRS:
 - **Write side**: Commands → Events → Event Store
 - **Read side**: Events → Projections (read models)
 - All state changes captured as immutable events
 - Projections rebuild from event replay
 
 ### Rationale
-- **Learning Goal**: Primary objective is to master event sourcing
+- **Learning Goal**: Master event sourcing
 - **Offline-First**: Event log naturally supports offline queueing
-- **Audit Trail**: Complete history of all task changes
+- **Audit Trail**: Complete history of all changes
 - **Time Travel**: Can replay events to any point in time
 - **Sync-Friendly**: Events are easy to merge across devices
 
 ### Consequences
 **Positive:**
-- Complete audit trail of all actions
-- Natural support for undo/redo
+- Complete audit trail
+- Natural undo/redo support
 - Offline changes become queued events
 - State can be reconstructed at any point
-- Testing is easier (test events, not state mutations)
+- Easier testing (test events, not state mutations)
 
 **Negative:**
 - More complex than simple CRUD
 - Storage grows with events (mitigated: events are small)
-- Need to design events carefully (they're immutable)
-- Learning curve for event-sourced thinking
+- Events are immutable (design carefully)
+- Learning curve
 
 ### SOLID Principles
-- **Single Responsibility**: Commands, events, and projections have separate concerns
+- **Single Responsibility**: Commands, events, projections have separate concerns
 - **Open/Closed**: Add new projections without modifying event store
 - **Liskov Substitution**: All events share base Event interface
-- **Interface Segregation**: Commands, queries, and events are separate contracts
+- **Interface Segregation**: Commands, queries, events are separate contracts
 - **Dependency Inversion**: Projections depend on event abstractions
-
-### Implementation Notes
-**Completed (Domain Layer):**
-- Event store with append-only log: `packages/shared/src/event-store.ts`
-- Command handlers for Task, Note, Event: `packages/shared/src/*.handlers.ts`
-- Unified projection for all entry types: `packages/shared/src/entry-list.projection.ts`
-- Comprehensive test coverage: 188 tests passing
-
-**Partial (UI Layer):**
-- Task UI implemented with event sourcing
-- Note and Event UI not yet implemented
-- UI currently only handles task-related commands
-
-**Files:**
-- `packages/shared/src/event-store.ts` - Core event store
-- `packages/shared/src/task.handlers.ts` - Task command handlers
-- `packages/shared/src/note.handlers.ts` - Note command handlers
-- `packages/shared/src/event.handlers.ts` - Event command handlers
-- `packages/shared/src/entry-list.projection.ts` - Unified read model
-- `packages/shared/tests/*.test.ts` - Comprehensive test suite
 
 ---
 
 ## ADR-003: IndexedDB for Local Event Store
 
 **Date**: 2026-01-22  
-**Status**: Accepted  
-**Implementation**: ⏸️ Deferred (Using localStorage temporarily)  
-**Decision By**: Architecture Alex
+**Status**: Accepted
 
 ### Context
-Need to persist events locally in the browser for offline-first PWA.
+Persist events locally in browser for offline-first PWA.
 
 ### Decision
-Use IndexedDB as the local event store persistence layer.
+Use IndexedDB as local event store persistence layer.
 
 ### Rationale
 - **Browser Native**: No additional dependencies
-- **Large Storage**: Typically 50MB+ available (far more than localStorage)
+- **Large Storage**: 50MB+ (far more than localStorage's 5-10MB)
 - **Structured Data**: Can index by aggregate ID, timestamp, event type
 - **Async API**: Non-blocking reads/writes
-- **PWA Standard**: Recommended for offline-first applications
+- **PWA Standard**: Recommended for offline-first apps
 
-**Alternatives Considered:**
-- **localStorage**: Too small (5-10MB), synchronous, no indexing
-- **WebSQL**: Deprecated
-- **File System Access API**: Not widely supported, requires permissions
+**Alternatives Rejected:**
+- localStorage: Too small, synchronous, no indexing
+- WebSQL: Deprecated
+- File System Access API: Not widely supported
 
 ### Consequences
 **Positive:**
 - No external dependencies
 - Works in all modern browsers
-- Can efficiently query events by various criteria
-- Supports transactions for consistency
+- Efficient queries by various criteria
+- Supports transactions
 
 **Negative:**
-- Slightly more complex API than localStorage
+- More complex API than localStorage
 - Need to handle browser storage quota
-- Incognito/private mode has limited storage
+- Incognito mode has limited storage
 
 ### SOLID Principles
-- **Dependency Inversion**: EventStore depends on IStorageAdapter interface, IndexedDB is one implementation
-
-### Implementation Notes
-**Deferred:**
-- Currently using localStorage for faster initial development
-- localStorage implementation in `packages/shared/src/event-store.ts`
-- Plan to migrate to IndexedDB when storage needs grow
-- Event store is abstracted - migration will be straightforward
-
-**Current Implementation:**
-- EventStore class uses localStorage with key `'squickr-life-events'`
-- Events serialized to JSON
-- Load on initialization, save after each append
-- Works for MVP, sufficient for ~1000 events
-
-**Future Migration:**
-- Create IndexedDBStorageAdapter implementing same interface
-- Swap in EventStore constructor
-- Add migration script to move localStorage data to IndexedDB
+- **Dependency Inversion**: EventStore depends on IStorageAdapter interface
 
 ---
 
 ## ADR-004: Separate Events per Aggregate Type
 
 **Date**: 2026-01-25  
-**Status**: Accepted  
-**Implementation**: ✅ Complete  
-**Decision By**: Architecture Alex (via OpenCode session review)
+**Status**: Accepted
 
 ### Context
-Need to decide event schema for entry types (Task, Note, Event). Two approaches:
-1. **Generic events**: Single `EntryCreated` event with discriminated type field
-2. **Specific events**: Separate `TaskCreated`, `NoteCreated`, `EventCreated` events
+Event schema for entry types (Task, Note, Event). Options:
+1. Generic `EntryCreated` with discriminated type field
+2. Separate `TaskCreated`, `NoteCreated`, `EventCreated`
 
 ### Decision
 Use separate event types per aggregate:
-- `TaskCreated`, `TaskUpdated`, `TaskCompleted`, `TaskReopened`, `TaskReordered`
-- `NoteCreated`, `NoteUpdated`, `NoteReordered`
-- `EventCreated`, `EventUpdated`, `EventReordered`
+- Task events: `TaskCreated`, `TaskCompleted`, `TaskTitleChanged`, etc.
+- Note events: `NoteCreated`, `NoteContentChanged`, etc.
+- Event events: `EventCreated`, `EventDateChanged`, etc.
 
 ### Rationale
 - **Type Safety**: Each event has exact fields for its aggregate
-- **Clear Audit Trail**: Event log shows precise action ("task completed" vs "entry updated")
-- **No Migration Needed**: Adding new entry types doesn't require changing existing events
-- **Easier Projections**: Projection handlers can pattern match on specific event types
-- **Better Tooling**: TypeScript narrows event types automatically
-
-**Alternatives Considered:**
-- **Generic EntryCreated**: Would lose type information, harder to query audit trail
-- **Hybrid Approach**: Some generic, some specific - inconsistent and confusing
+- **Clear Audit Trail**: Precise action in log ("task completed" vs "entry updated")
+- **No Migration**: Adding new entry types doesn't change existing events
+- **Easier Projections**: Pattern match on specific event types
+- **Better Tooling**: TypeScript narrows types automatically
 
 ### Consequences
 **Positive:**
 - Explicit, type-safe event schemas
 - Clear intent in event log
-- No breaking changes when adding new entry types
-- TypeScript provides excellent autocomplete and error checking
+- No breaking changes when adding new types
+- Excellent TypeScript autocomplete
 
 **Negative:**
-- More event type definitions (acceptable tradeoff)
-- Some code duplication in event handling (mitigated with shared validation helpers)
+- More event type definitions (acceptable)
+- Some code duplication (mitigated with shared helpers)
 
 ### SOLID Principles
-- **Single Responsibility**: Each event represents one specific action on one aggregate type
-- **Open/Closed**: Can add new entry types without modifying existing event types
+- **Single Responsibility**: Each event represents one specific action
+- **Open/Closed**: Add new entry types without modifying existing events
 - **Liskov Substitution**: All events conform to base Event interface
-
-### Implementation Notes
-**Completed:**
-- Event types defined in `packages/shared/src/task.types.ts`
-- Handlers for all three entry types: Task, Note, Event
-- Shared validation helpers in `packages/shared/src/content-validation.ts`
-- 188 tests covering all event types
-
-**Files:**
-- `packages/shared/src/task.types.ts` - All event and command type definitions
-- `packages/shared/src/task.handlers.ts` - Task-specific handlers
-- `packages/shared/src/note.handlers.ts` - Note-specific handlers
-- `packages/shared/src/event.handlers.ts` - Event-specific handlers
-- `packages/shared/src/content-validation.ts` - Shared validation helpers
 
 ---
 
-## ADR-005: Discriminated Union for Entry Types in UI
+## ADR-005: Discriminated Union for Entry Types
 
 **Date**: 2026-01-25  
-**Status**: Accepted  
-**Implementation**: 📋 Planned  
-**Decision By**: Architecture Alex (via OpenCode session review)
+**Status**: Accepted
 
 ### Context
-UI needs to render three entry types (Task, Note, Event) with different:
+UI needs to render three entry types with different:
 - Bullet symbols: ☐ (task), - (note), ○ (event)
-- Fields: Tasks have status/title, Notes have content, Events have content/date
-- Behaviors: Only tasks can be completed, only events have optional dates
-
-Need type-safe way to handle polymorphism in React components.
+- Fields: Tasks have status, Notes have content, Events have dates
+- Behaviors: Only tasks complete, only events have optional dates
 
 ### Decision
 Use discriminated unions with type narrowing:
@@ -283,8 +198,7 @@ type Entry =
   | (Event & { type: 'event' })
 ```
 
-Then use TypeScript's type narrowing in components:
-
+TypeScript narrows types automatically:
 ```typescript
 if (entry.type === 'task') {
   // TypeScript knows: entry.status and entry.title exist
@@ -293,54 +207,144 @@ if (entry.type === 'task') {
 
 ### Rationale
 - **Type Safety**: TypeScript narrows types based on discriminant
-- **Single List**: Can render all entry types in one unified list
-- **Compile-Time Checks**: Impossible to access wrong fields (e.g., `note.status`)
-- **Pattern Matching**: Clean switch/if statements for rendering
+- **Single List**: Render all entry types in unified timeline
+- **Compile-Time Checks**: Impossible to access wrong fields
+- **Pattern Matching**: Clean switch/if statements
 
-**Alternatives Considered:**
-- **Separate Lists**: Three separate Task/Note/Event lists - loses unified timeline
-- **Type Casting**: Manual `as` casts - unsafe, defeats TypeScript benefits
-- **Dynamic Property Access**: `entry['status']` - no type checking
+**Alternatives Rejected:**
+- Separate lists: Loses unified timeline
+- Type casting: Unsafe, defeats TypeScript
+- Dynamic property access: No type checking
 
 ### Consequences
 **Positive:**
-- Type-safe polymorphism with zero runtime overhead
+- Type-safe polymorphism, zero runtime overhead
 - Clean, readable component code
-- Autocomplete works perfectly in VSCode
-- Refactoring is safe (TypeScript catches errors)
+- Perfect autocomplete in VSCode
+- Safe refactoring (TypeScript catches errors)
 
 **Negative:**
 - Requires understanding discriminated unions
-- Need to handle all cases in switches (TypeScript enforces this)
+- Must handle all cases in switches (TypeScript enforces)
 
 ### SOLID Principles
-- **Open/Closed**: Adding new entry types requires only extending the union
-- **Liskov Substitution**: All entries can be treated uniformly where appropriate
-
-### Implementation Notes
-**Planned:**
-- Update `TaskInput.tsx` → `EntryInput.tsx` with type selector
-- Update `TaskItem.tsx` → `EntryItem.tsx` with bullet/field rendering
-- Update `TaskList.tsx` → `EntryList.tsx` to handle all entry types
-- Add filtering UI for entry types
-
-**Files to Update:**
-- `packages/client/src/components/EntryInput.tsx` (rename from TaskInput)
-- `packages/client/src/components/EntryItem.tsx` (rename from TaskItem)
-- `packages/client/src/components/EntryList.tsx` (rename from TaskList)
-- `packages/client/src/App.tsx` - Wire up Note and Event handlers
+- **Open/Closed**: Adding new entry types extends the union
+- **Liskov Substitution**: All entries treated uniformly where appropriate
 
 ---
 
-## Future ADRs
+## ADR-006: Reactive Projections with Event Subscriptions
 
-### Upcoming Decisions
-- Frontend component architecture (React patterns)
+**Date**: 2026-01-25  
+**Status**: Accepted
+
+### Context
+UI needs to update automatically when events are appended. Options:
+1. Manual reload after each command
+2. Polling projections periodically
+3. Event store subscriptions (reactive)
+
+### Decision
+Implement reactive projections via event store subscriptions:
+
+```typescript
+class EventStore {
+  private subscribers = new Set<(event: DomainEvent) => void>();
+
+  subscribe(callback: (event: DomainEvent) => void): () => void {
+    this.subscribers.add(callback);
+    return () => this.subscribers.delete(callback);
+  }
+
+  async append(event: DomainEvent): Promise<void> {
+    // ... append logic ...
+    this.notifySubscribers(event);
+  }
+}
+
+class EntryListProjection {
+  constructor(private eventStore: IEventStore) {
+    this.eventStore.subscribe(() => {
+      this.notifySubscribers(); // Tell UI to reload
+    });
+  }
+}
+```
+
+### Rationale
+- **Automatic Updates**: UI updates immediately after events
+- **No Manual Coordination**: Don't need to remember to reload
+- **Proper Event Sourcing**: Follows reactive event-driven pattern
+- **Testable**: Can verify subscriptions work correctly
+
+**Alternatives Rejected:**
+- Manual reload: Fragile, easy to forget
+- Polling: Inefficient, delays updates
+
+### Consequences
+**Positive:**
+- UI always reflects current state
+- No manual reload code needed
+- Follows reactive programming patterns
+- Works offline (subscriptions still fire)
+
+**Negative:**
+- Slightly more complex event store implementation
+- Need to manage subscriptions properly (cleanup)
+
+### SOLID Principles
+- **Single Responsibility**: Event store handles events, projections handle state
+- **Open/Closed**: Add new subscribers without modifying event store
+
+---
+
+## ADR-007: Daily Logs View (Date-Grouped Entries)
+
+**Date**: 2026-01-25  
+**Status**: Accepted
+
+### Context
+Bullet journal paradigm groups entries by creation date (daily logs), not by type or completion status.
+
+### Decision
+Primary view groups entries by **local creation date** (YYYY-MM-DD):
+- Sort days newest first (today at top)
+- Sort entries within day by creation order
+- Progressive loading: 7 days at a time
+- Drag-drop only within same day (prevents accidental date changes)
+
+### Rationale
+- **Authentic BuJo**: Matches bullet journal daily log paradigm
+- **Chronological Context**: See what you were working on each day
+- **Natural Workflow**: Add entries to "today" section
+- **Performance**: Progressive loading handles large datasets
+
+### Consequences
+**Positive:**
+- Matches bullet journal methodology
+- Provides temporal context
+- Prevents overwhelming UI with all entries
+- Drag-drop constraints prevent mistakes
+
+**Negative:**
+- More complex than flat list
+- Timezone considerations for date grouping
+
+### SOLID Principles
+- **Single Responsibility**: DailyLogsView handles grouping, DaySection handles one day
+- **Open/Closed**: Can add new grouping strategies without changing projection
+
+---
+
+## Future Considerations
+
+Potential future ADRs:
 - Event schema versioning strategy
 - Conflict resolution for multi-device sync
 - Backend event store schema (PostgreSQL)
 - Authentication flow with Google OAuth
+- Collections (monthly log, future log, custom)
 
 ---
 
-*Architecture decisions are revisited as we learn more. Status may change to Deprecated or Superseded.*
+*Architecture decisions are revisited as we learn. Status may change to Deprecated or Superseded.*

@@ -1,202 +1,127 @@
-# Event Models
+# Event Models - Quick Reference
 
-This document contains all event models created by **Model-First Morgan** for Squickr Life.
-
-## What is Event Modeling?
-
-Event modeling is a visual technique for designing event-sourced systems. It focuses on:
-- **User actions** - What the user does
-- **Commands** - Intent to change state
-- **Events** - Facts that happened
-- **Projections** - Views derived from events
-
-Each feature will be documented here with:
-- User story
-- Event flow timeline
-- Event schemas
-- State transitions
-- UI implications
+**Purpose:** Quick reference for event schemas. Full TypeScript definitions are in `packages/shared/src/task.types.ts`.
 
 ---
 
-## Event Models
+## Core Concepts
 
-### EM-001: Create Task
-
-**Date**: 2026-01-24  
-**Status**: Active  
-**Modeled by**: Model-First Morgan
-
-#### User Story
-> As a Squickr Life user, I want to quickly capture a task so I don't forget what I need to do.
-
-**Acceptance Criteria:**
-- User can enter a task title
-- Task is immediately visible in the task list
-- No due date required (quick capture)
-- System generates unique ID and timestamp
-- Works offline (events stored locally)
-
----
-
-#### Event Flow Timeline
-
+### Event Sourcing Pattern
 ```
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│  User Action │      │   Command    │      │    Event     │      │  Projection  │
-│              │─────>│              │─────>│              │─────>│   (View)     │
-└──────────────┘      └──────────────┘      └──────────────┘      └──────────────┘
-       │                     │                      │                     │
-  Types title           CreateTask             TaskCreated          Task appears
-  "Buy milk"            {                      {                    in list with
-  Presses Enter          title: "Buy milk"     id: uuid             • Title
-                        }                       title: "Buy milk"    • Timestamp
-                                                createdAt: ISO       • Status: open
-                                                status: "open"
-                                               }
+User Action → Command → Event → Projection (Read Model)
 ```
 
-**Flow Steps:**
-1. **User sees**: Empty input field at top of task list
-2. **User does**: Types task title, presses Enter (or clicks Add)
-3. **System validates**: Title is not empty, max 500 characters
-4. **Command issued**: `CreateTask { title }`
-5. **Event stored**: `TaskCreated { id, title, createdAt, status }`
-6. **Projection updated**: Task list rebuilds from events
-7. **User sees**: New task appears at top of list, input clears, focus returns
+**Write Side (Commands):**
+- Validate input
+- Generate event
+- Append to event store
+
+**Read Side (Projections):**
+- Subscribe to events
+- Rebuild state by replaying events
+- Multiple projections for different views
 
 ---
 
-#### Event Schema
+## Event Naming Conventions
 
-**Event Name**: `TaskCreated`
+- **Events:** Past tense (`TaskCreated`, not `CreateTask`)
+- **Commands:** Imperative (`CreateTaskCommand`)
+- **Aggregates:** Noun (`Task`, `Note`, `Event`)
+
+---
+
+## Aggregate Types
+
+### Task Events
+- `TaskCreated` - New task added
+- `TaskCompleted` - Task marked done
+- `TaskReopened` - Completed task reopened
+- `TaskTitleChanged` - Title edited
+- `TaskDeleted` - Task removed
+- `TaskReordered` - Order changed
+
+### Note Events
+- `NoteCreated` - New note added
+- `NoteContentChanged` - Content edited
+- `NoteDeleted` - Note removed
+- `NoteReordered` - Order changed
+
+### Event Events (Calendar/Future Log)
+- `EventCreated` - New calendar event
+- `EventContentChanged` - Content edited
+- `EventDateChanged` - Date changed or removed
+- `EventDeleted` - Event removed
+- `EventReordered` - Order changed
+
+---
+
+## Entry Types (Discriminated Union)
 
 ```typescript
-interface TaskCreated extends DomainEvent {
-  type: 'TaskCreated';
-  aggregateId: string;        // Same as task ID
-  payload: {
-    id: string;               // UUID v4
-    title: string;            // 1-500 characters
-    createdAt: string;        // ISO 8601 timestamp
-    status: 'open';           // Always 'open' when created
-    userId?: string;          // Optional: for future multi-user support
-  };
+type Entry = 
+  | (Task & { type: 'task' })
+  | (Note & { type: 'note' })
+  | (Event & { type: 'event' });
+```
+
+**Why separate events per type?**
+- Type safety (TypeScript narrows types)
+- Clear audit trail (know exactly what changed)
+- No migration needed when adding fields to one type
+- See ADR-003 in `architecture-decisions.md`
+
+---
+
+## Event Store Interface
+
+```typescript
+interface IEventStore {
+  append(event: DomainEvent): Promise<void>;
+  getEvents(): Promise<DomainEvent[]>;
+  subscribe(callback: (event: DomainEvent) => void): () => void;
 }
 ```
 
-**Validation Rules:**
-- `title`: Required, 1-500 characters, trimmed
-- `id`: UUID v4, generated by system
-- `createdAt`: ISO 8601 format, server/client timestamp
-- `status`: Always 'open' for newly created tasks
-- `aggregateId`: Must equal payload.id
-
-**Invariants (business rules):**
-- Task ID must be unique within the event store
-- Title cannot be empty after trimming whitespace
-- CreatedAt must not be in the future
+**Implementations:**
+- `EventStore` - In-memory (testing)
+- `IndexedDBEventStore` - Browser persistence (production)
 
 ---
 
-#### State Transitions
+## Projection Pattern
 
-**Before Event:**
 ```typescript
-tasks: []  // Empty task list
-```
-
-**After Event:**
-```typescript
-tasks: [
-  {
-    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    title: "Buy milk",
-    createdAt: "2026-01-24T10:30:00.000Z",
-    status: "open"
+class EntryListProjection {
+  constructor(private eventStore: IEventStore) {
+    // Subscribe for reactive updates
+    this.eventStore.subscribe(() => {
+      this.notifySubscribers();
+    });
   }
-]
-```
 
-**Projection Logic:**
-```typescript
-function applyTaskCreated(state: TaskList, event: TaskCreated): TaskList {
-  return {
-    ...state,
-    tasks: [event.payload, ...state.tasks]  // Prepend new task
-  };
+  async getEntries(): Promise<Entry[]> {
+    const events = await this.eventStore.getEvents();
+    return this.applyEvents(events);
+  }
+
+  private applyEvents(events: DomainEvent[]): Entry[] {
+    // Replay events to rebuild current state
+  }
 }
 ```
 
 ---
 
-#### UI Implications
+## For Full Schemas
 
-**Components Needed:**
-1. **TaskInput** - Text input with Enter/Add button
-2. **TaskList** - Displays all tasks from projection
-3. **TaskItem** - Individual task display
+**See TypeScript definitions:**
+- `packages/shared/src/task.types.ts` - All event types
+- `packages/shared/src/*.handlers.ts` - Command handlers
+- `packages/shared/src/entry.projections.ts` - Read models
 
-**UX Decisions:**
-- **Input placement**: Top of screen (most accessible)
-- **Auto-focus**: Input should auto-focus after task creation
-- **Keyboard shortcut**: Ctrl+N to focus input from anywhere
-- **Visual feedback**: Task slides/fades in when created
-- **Optimistic UI**: Show task immediately, even if offline
-- **Error handling**: If validation fails, show inline error, keep input value
+**See Architecture Decisions:**
+- `docs/architecture-decisions.md` - Why we chose this design
 
-**Responsive Design:**
-- Mobile: Full-width input, large touch target for Add button
-- Tablet/Desktop: Constrained width (max 600px), Enter key primary action
-
-**Accessibility:**
-- Input has proper label/aria-label
-- Enter key submits form
-- Success announcement for screen readers: "Task 'Buy milk' added"
-
----
-
-#### Technical Notes
-
-**CQRS Pattern:**
-- **Write Side (Command)**: 
-  - Validate input → Generate event → Store in EventStore
-  - No database updates, just append event
-  
-- **Read Side (Query)**:
-  - TaskListProjection subscribes to TaskCreated events
-  - Rebuilds task list by replaying all events
-  - Projection can be rebuilt from scratch anytime
-
-**Event Sourcing Benefits:**
-- Full audit trail: Know exactly when each task was created
-- Offline support: Queue events locally, sync later
-- Time travel: Can view task list at any point in history
-- Undo/Redo: Just replay events up to a certain point
-
-**Edge Cases to Handle:**
-- Empty title after trim → Show validation error
-- Very long title → Truncate or show character count
-- Rapid creation → Ensure UUIDs don't collide (use crypto.randomUUID)
-- Offline creation → Store in IndexedDB, sync when online
-
----
-
-#### Future Extensions
-
-Features we might add later (don't implement now):
-- Due dates (new event: `TaskDueDateSet`)
-- Priority levels (new event: `TaskPriorityChanged`)
-- Tags/categories (new event: `TaskTagged`)
-- Task description (new event: `TaskDescriptionAdded`)
-- Recurring tasks (new aggregate: RecurringTask)
-
-**Why not include them now?**
-- Keep it simple (YAGNI principle)
-- Learn event sourcing with minimal complexity first
-- Each new feature = new event type + projection logic
-- We can add them later without breaking existing code!
-
----
-
-*Event model reviewed by: Architecture Alex (SOLID ✓), Test-First Terry (Testable ✓)*
+**See Implementation Examples:**
+- `packages/shared/tests/*.test.ts` - Event creation examples

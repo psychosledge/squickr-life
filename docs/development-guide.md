@@ -7,8 +7,6 @@ Practical guide for working with the Squickr Life codebase.
 - [Development Workflow](#development-workflow)
 - [Testing Patterns](#testing-patterns)
 - [Common Tasks](#common-tasks)
-- [Troubleshooting](#troubleshooting)
-- [Windows-Specific Notes](#windows-specific-notes)
 
 ---
 
@@ -17,120 +15,117 @@ Practical guide for working with the Squickr Life codebase.
 ```
 squickr/life/
 ├── packages/
-│   ├── shared/          # Domain logic + event sourcing
+│   ├── shared/              # Domain logic + event sourcing
 │   │   ├── src/
-│   │   │   ├── event-store.ts           # Core event store
-│   │   │   ├── task.types.ts            # Type definitions
-│   │   │   ├── task.handlers.ts         # Task command handlers
-│   │   │   ├── note.handlers.ts         # Note command handlers
-│   │   │   ├── event.handlers.ts        # Event command handlers
-│   │   │   ├── entry-list.projection.ts # Unified projection
-│   │   │   ├── content-validation.ts    # Shared validators
-│   │   │   └── index.ts                 # Public API
+│   │   │   ├── event-store.ts
+│   │   │   ├── indexeddb-event-store.ts
+│   │   │   ├── task.types.ts
+│   │   │   ├── *.handlers.ts         # Command handlers
+│   │   │   ├── entry.projections.ts  # Read models
+│   │   │   ├── date-utils.ts
+│   │   │   └── index.ts
 │   │   └── tests/
-│   │       ├── task.handlers.test.ts
-│   │       ├── note.handlers.test.ts
-│   │       ├── event.handlers.test.ts
-│   │       └── entry-list.projection.test.ts
 │   │
-│   └── client/          # React UI
+│   └── client/              # React UI
 │       ├── src/
+│       │   ├── App.tsx
 │       │   ├── components/
-│       │   │   ├── TaskInput.tsx    # (Will become EntryInput)
-│       │   │   ├── TaskList.tsx     # (Will become EntryList)
-│       │   │   └── TaskItem.tsx     # (Will become EntryItem)
-│       │   ├── hooks/
-│       │   │   └── useDragAndDrop.ts
-│       │   └── App.tsx
+│       │   └── utils/
 │       └── tests/
 │
+├── .opencode/
+│   ├── agents/              # Alex, Casey, Sam, Diane
+│   └── commands/            # /design, /implement, /debug, /review
+│
 └── docs/
-    ├── current-status.md           # Living status document
+    ├── README.md
+    ├── opencode-workflow.md
     ├── development-guide.md        # This file
-    ├── opencode-workflow.md        # Agent workflow guide
-    ├── architecture-decisions.md   # ADRs with status
-    └── README.md                   # Documentation index
+    ├── architecture-decisions.md
+    └── event-models.md
 ```
 
-### Key Files to Know
+### Key Files
 
-**Domain Layer (`packages/shared/src/`):**
-- `event-store.ts` - In-memory event store with persistence
-- `*.handlers.ts` - Command handlers (create, update, complete, reorder)
-- `entry-list.projection.ts` - Unified view of all entries (tasks, notes, events)
-- `content-validation.ts` - Shared validation logic
+**Domain Layer:**
+- `event-store.ts` / `indexeddb-event-store.ts` - Event persistence
+- `*.handlers.ts` - Command handlers (create, update, delete, reorder)
+- `entry.projections.ts` - Read models (reactive subscriptions)
+- `task.types.ts` - All type definitions
 
-**Client Layer (`packages/client/src/`):**
-- `App.tsx` - Main application, initializes handlers and projections
-- `components/*.tsx` - React components (currently task-focused, will support all entry types)
-- `hooks/useDragAndDrop.ts` - Drag-and-drop logic for reordering
+**Client Layer:**
+- `App.tsx` - Initializes handlers and projections
+- `components/DailyLogsView.tsx` - Main UI container
+- `components/Entry*.tsx` - Entry components
 
 ---
 
 ## Development Workflow
 
-### 1. Making Changes
-
-Follow Test-Driven Development (TDD):
+### TDD Red-Green-Refactor
 
 ```bash
-# 1. Write failing test
-# Edit: packages/shared/tests/[feature].test.ts
+# 1. RED: Write failing test
+cd packages/shared
+# Edit: tests/[feature].test.ts
 
 # 2. Run tests (should fail)
-cd packages/shared
 pnpm test run
 
-# 3. Implement feature
-# Edit: packages/shared/src/[feature].ts
+# 3. GREEN: Implement minimal code
+# Edit: src/[feature].ts
 
-# 4. Run tests again (should pass)
+# 4. Run tests (should pass)
 pnpm test run
 
-# 5. Refactor if needed
-# Keep tests green
-
-# 6. Build to check TypeScript
-pnpm run build
+# 5. REFACTOR: Clean up, keep tests green
 ```
 
-### 2. Code Review Workflow
+### With Agents
 
-When a feature is complete:
-
-1. OpenCode says: **"Ready for code review"**
-2. User says: **"review"**
-3. OpenCode launches review agent
-4. Agent provides feedback
-5. User does manual review + testing
-6. User says: **"commit"**
-7. OpenCode commits changes
-
-### 3. Running the Application
+Use slash commands from OpenCode:
 
 ```bash
-# Terminal 1: Start client dev server
+# Design first (if complex)
+/design event model for recurring tasks
+
+# Implement with TDD
+/implement add recurring tasks feature
+
+# Debug if issues
+/debug tasks duplicating on submit
+
+# Always review before commit
+/review
+```
+
+### Running the App
+
+```bash
+# Dev server
 cd packages/client
 pnpm dev
-# Opens browser to http://localhost:5173
+# → http://localhost:3002
 
-# Terminal 2: Run tests in watch mode (optional)
+# Tests
 cd packages/shared
-pnpm test
+pnpm test run           # Run once
+pnpm test              # Watch mode
+
+# Build
+cd packages/shared
+pnpm run build
 ```
 
 ---
 
 ## Testing Patterns
 
-### Testing Command Handlers
-
-**Pattern:** Arrange → Act → Assert on events
+### Handler Tests (Arrange-Act-Assert)
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest';
-import { EventStore } from '../src/event-store';
-import { CreateTaskHandler } from '../src/task.handlers';
+import { EventStore, CreateTaskHandler } from '@squickr/shared';
 
 describe('CreateTaskHandler', () => {
   let eventStore: EventStore;
@@ -141,13 +136,9 @@ describe('CreateTaskHandler', () => {
     handler = new CreateTaskHandler(eventStore);
   });
 
-  it('should create a task with valid input', () => {
+  it('should create task and append event', () => {
     // Arrange
-    const command = {
-      type: 'create-task' as const,
-      taskId: 'task-1',
-      title: 'Buy milk',
-    };
+    const command = { title: 'Buy milk' };
 
     // Act
     handler.handle(command);
@@ -157,30 +148,18 @@ describe('CreateTaskHandler', () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       type: 'task-created',
-      aggregateId: 'task-1',
-      data: {
-        taskId: 'task-1',
-        title: 'Buy milk',
-        status: 'open',
-      },
+      data: { title: 'Buy milk', status: 'open' }
     });
   });
 
-  it('should throw for invalid input', () => {
-    const command = {
-      type: 'create-task' as const,
-      taskId: 'task-1',
-      title: '',  // Invalid: empty title
-    };
-
-    expect(() => handler.handle(command)).toThrow('Title cannot be empty');
+  it('should throw for empty title', () => {
+    expect(() => handler.handle({ title: '' }))
+      .toThrow('Title cannot be empty');
   });
 });
 ```
 
-### Testing Projections
-
-**Pattern:** Given events → When projection replays → Then state is correct
+### Projection Tests (Given-When-Then)
 
 ```typescript
 describe('EntryListProjection', () => {
@@ -192,53 +171,47 @@ describe('EntryListProjection', () => {
     projection = new EntryListProjection(eventStore);
   });
 
-  it('should project tasks, notes, and events', () => {
-    // Given: Events in the store
-    eventStore.append({
+  it('should rebuild state from events', async () => {
+    // Given: Events in store
+    await eventStore.append({
       type: 'task-created',
       aggregateId: 'task-1',
       data: { taskId: 'task-1', title: 'Buy milk', status: 'open' },
-      timestamp: new Date().toISOString(),
-    });
-    
-    eventStore.append({
-      type: 'note-created',
-      aggregateId: 'note-1',
-      data: { noteId: 'note-1', content: 'Remember to call mom' },
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
 
-    // When: Projection rebuilds
-    projection.rebuild();
+    // When: Get entries from projection
+    const entries = await projection.getEntries();
 
-    // Then: State contains both entries
-    const entries = projection.getEntries();
-    expect(entries).toHaveLength(2);
-    expect(entries[0]).toMatchObject({ type: 'task', id: 'task-1' });
-    expect(entries[1]).toMatchObject({ type: 'note', id: 'note-1' });
+    // Then: State matches events
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      type: 'task',
+      id: 'task-1',
+      title: 'Buy milk'
+    });
   });
 });
 ```
 
-### Testing React Components
-
-**Pattern:** Render → Interact → Assert on UI changes
+### React Component Tests
 
 ```typescript
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-import { TaskInput } from '../src/components/TaskInput';
+import { vi } from 'vitest';
+import { EntryInput } from './EntryInput';
 
-describe('TaskInput', () => {
-  it('should call onSubmit when form is submitted', () => {
+describe('EntryInput', () => {
+  it('should call onSubmit when Enter pressed', () => {
     const onSubmit = vi.fn();
-    render(<TaskInput onSubmit={onSubmit} />);
+    render(<EntryInput onSubmit={onSubmit} />);
 
-    const input = screen.getByPlaceholderText(/new task/i);
+    const input = screen.getByPlaceholderText(/add entry/i);
     fireEvent.change(input, { target: { value: 'Buy milk' } });
     fireEvent.submit(input.closest('form')!);
 
     expect(onSubmit).toHaveBeenCalledWith('Buy milk');
+    expect(onSubmit).toHaveBeenCalledTimes(1); // Prevent double-submit!
   });
 });
 ```
@@ -247,276 +220,99 @@ describe('TaskInput', () => {
 
 ## Common Tasks
 
-### Adding a New Command Handler
+### Adding a New Handler
 
-**Example:** Adding a "DeleteTaskHandler"
+**Example:** Create `DeleteTaskHandler`
 
-1. **Define command type** (`packages/shared/src/task.types.ts`):
+1. **Define types** (`task.types.ts`):
 ```typescript
 export type DeleteTaskCommand = {
   type: 'delete-task';
   taskId: string;
 };
-```
 
-2. **Define event type** (`packages/shared/src/task.types.ts`):
-```typescript
 export type TaskDeleted = {
   type: 'task-deleted';
   aggregateId: string;
-  data: {
-    taskId: string;
-  };
+  data: { taskId: string };
   timestamp: string;
 };
 ```
 
-3. **Write test** (`packages/shared/tests/task.handlers.test.ts`):
+2. **Write test** (`tests/task.handlers.test.ts`):
 ```typescript
-describe('DeleteTaskHandler', () => {
-  it('should delete an existing task', () => {
-    // Arrange: Create task first
-    const createHandler = new CreateTaskHandler(eventStore);
-    createHandler.handle({ type: 'create-task', taskId: 'task-1', title: 'Buy milk' });
+it('should delete existing task', () => {
+  // Arrange: Create task
+  createHandler.handle({ title: 'Buy milk' });
+  const taskId = eventStore.getEvents()[0].aggregateId;
 
-    // Act: Delete it
-    const deleteHandler = new DeleteTaskHandler(eventStore);
-    deleteHandler.handle({ type: 'delete-task', taskId: 'task-1' });
+  // Act: Delete it
+  deleteHandler.handle({ taskId });
 
-    // Assert: TaskDeleted event appended
-    const events = eventStore.getEvents();
-    expect(events[1].type).toBe('task-deleted');
-  });
+  // Assert: TaskDeleted event
+  const events = eventStore.getEvents();
+  expect(events[1].type).toBe('task-deleted');
 });
 ```
 
-4. **Implement handler** (`packages/shared/src/task.handlers.ts`):
+3. **Implement handler** (`task.handlers.ts`):
 ```typescript
 export class DeleteTaskHandler {
-  constructor(private eventStore: EventStore) {}
+  constructor(private eventStore: IEventStore) {}
 
-  handle(command: DeleteTaskCommand): void {
+  async handle(command: DeleteTaskCommand): Promise<void> {
     const { taskId } = command;
 
     // Validate task exists
-    const events = this.eventStore.getEvents();
-    const taskExists = events.some(
+    const events = await this.eventStore.getEvents();
+    const exists = events.some(
       e => e.aggregateId === taskId && e.type === 'task-created'
     );
-    if (!taskExists) throw new Error('Task not found');
+    if (!exists) throw new Error('Task not found');
 
     // Append event
-    this.eventStore.append({
+    await this.eventStore.append({
       type: 'task-deleted',
       aggregateId: taskId,
       data: { taskId },
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     });
   }
 }
 ```
 
-5. **Update projection** to handle new event
-6. **Export** from `index.ts`
-7. **Wire up** in `App.tsx`
+4. **Update projection** to handle `task-deleted`
+5. **Export** from `index.ts`
+6. **Wire up** in `App.tsx`
+
+---
 
 ### Adding a New Aggregate Type
 
-Already have Task, Note, Event. If you need a fourth type (e.g., "Goal"):
+We have: Task, Note, Event. To add a fourth (e.g., "Collection"):
 
-1. Define types in `task.types.ts` (or create `goal.types.ts`)
-2. Create handlers in `goal.handlers.ts`
-3. Update `entry-list.projection.ts` to include Goals
-4. Write tests for all handlers
-5. Update UI components to handle `type: 'goal'`
-
-### Running Specific Tests
-
-```bash
-# Run all tests
-pnpm test run
-
-# Run specific test file
-pnpm test run task.handlers.test.ts
-
-# Run tests matching pattern
-pnpm test run --grep "CreateTaskHandler"
-
-# Run tests in watch mode
-pnpm test
-```
-
-### Debugging Event Store
-
-Add temporary logging to see event stream:
-
-```typescript
-// In App.tsx or any component
-useEffect(() => {
-  const events = eventStore.getEvents();
-  console.log('All events:', events);
-}, []);
-```
-
-Or use browser DevTools:
-1. Open Console
-2. Type: `localStorage.getItem('squickr-life-events')`
-3. See raw event JSON
+1. Define types in `collection.types.ts`
+2. Create handlers in `collection.handlers.ts`
+3. Update `Entry` union type in `task.types.ts`
+4. Update `EntryListProjection` to handle collection events
+5. Write tests for all handlers
+6. Update UI components to render collections
 
 ---
 
-## Troubleshooting
+### Event Sourcing Best Practices
 
-### Tests Fail After Adding New Handler
+**Event Naming:**
+- ✅ Past tense: `TaskCreated`, `TaskCompleted`
+- ❌ Not imperative: `CreateTask`, `CompleteTask`
 
-**Problem:** New handler works but breaks existing tests.
+**Command Naming:**
+- ✅ Imperative: `CreateTaskCommand`
+- ❌ Not past tense: `TaskCreatedCommand`
 
-**Solution:** Check if you modified shared types. Update all affected tests.
-
-```bash
-# Run all tests to see full picture
-pnpm test run
-```
-
-### TypeScript Errors: "Type X is not assignable to type Y"
-
-**Problem:** Discriminated union type mismatch.
-
-**Solution:** Ensure all entry types have correct `type` discriminant:
-
+**Validation:**
 ```typescript
-// Correct
-const task: Entry = {
-  type: 'task',  // Must be literal 'task'
-  id: 'task-1',
-  title: 'Buy milk',
-  status: 'open',
-  order: 0,
-};
-
-// Wrong
-const task: Entry = {
-  type: taskType,  // Variable - breaks type narrowing
-  ...
-};
-```
-
-### UI Not Updating After Command
-
-**Problem:** Called handler but UI doesn't reflect change.
-
-**Solution:** Check:
-1. Did handler append event to event store?
-2. Did projection subscribe to event store?
-3. Did React component trigger re-render?
-
-```typescript
-// Verify projection is subscribed
-projection.rebuild();  // Force rebuild
-console.log(projection.getEntries());  // Check state
-```
-
-### Drag-and-Drop Not Working
-
-**Problem:** Items don't reorder when dragged.
-
-**Solution:** Check:
-1. Are items setting `draggable={true}`?
-2. Is `useDragAndDrop` hook being used?
-3. Does ReorderHandler exist for this entry type?
-4. Check browser console for errors
-
-### Build Fails with "Cannot find module"
-
-**Problem:** Import paths broken after moving files.
-
-**Solution:** 
-1. Check `packages/shared/src/index.ts` exports
-2. Verify relative import paths
-3. Run `pnpm install` in workspace root
-
-```bash
-# Clean install
-rm -rf node_modules packages/*/node_modules
-pnpm install
-```
-
-### localStorage Data Corruption
-
-**Problem:** App crashes on load with "Unexpected token" or similar.
-
-**Solution:** Clear localStorage:
-
-```javascript
-// In browser console
-localStorage.removeItem('squickr-life-events');
-location.reload();
-```
-
----
-
-## Windows-Specific Notes
-
-### Using PowerShell for Commands
-
-**Problem:** Commands fail in Windows Command Prompt.
-
-**Solution:** Use PowerShell and proper quoting:
-
-```powershell
-# Correct
-powershell.exe -Command "cd 'C:\Repos\squickr\life\packages\shared'; pnpm test run"
-
-# Wrong
-cd C:\Repos\squickr\life\packages\shared && pnpm test run
-```
-
-### Path Separators
-
-Use forward slashes in npm scripts, backslashes for Windows commands:
-
-```json
-// package.json (use forward slashes)
-"scripts": {
-  "test": "vitest"
-}
-```
-
-```powershell
-# PowerShell (use backslashes or quotes)
-cd C:\Repos\squickr\life
-cd "C:\Repos\squickr\life"
-```
-
-### Line Endings
-
-Git may auto-convert CRLF ↔ LF. Set consistent line endings:
-
-```bash
-# .gitattributes
-* text=auto
-*.ts eol=lf
-*.tsx eol=lf
-```
-
----
-
-## Best Practices
-
-### 1. Event Naming
-
-Use past tense: `TaskCreated`, `TaskCompleted` (not `CreateTask`, `CompleteTask`)
-
-### 2. Command Naming
-
-Use imperative: `CreateTaskCommand`, `CompleteTaskCommand`
-
-### 3. Validation
-
-Put validation in handlers, not in UI:
-
-```typescript
-// Good
+// ✅ Good: Validate in handler
 class CreateTaskHandler {
   handle(command: CreateTaskCommand) {
     if (!command.title?.trim()) {
@@ -526,86 +322,64 @@ class CreateTaskHandler {
   }
 }
 
-// Bad (validation in UI only)
+// ❌ Bad: Validation only in UI
 <input onChange={e => {
-  if (!e.target.value) alert('Title required');
+  if (!e.target.value) alert('Required');
 }} />
 ```
 
-### 4. Type Safety
-
-Always use discriminated unions for polymorphic data:
-
+**Type Safety:**
 ```typescript
-// Good
+// ✅ Good: Discriminated union
 type Entry = 
   | (Task & { type: 'task' })
   | (Note & { type: 'note' })
   | (Event & { type: 'event' });
 
-// Bad
-type Entry = Task | Note | Event;  // No way to discriminate
+// ❌ Bad: No discriminant
+type Entry = Task | Note | Event;
 ```
 
-### 5. Testing
-
-Test behavior, not implementation:
-
+**Reactive Projections:**
 ```typescript
-// Good - tests behavior
-it('should mark task as completed', () => {
-  handler.handle({ type: 'complete-task', taskId: 'task-1' });
-  const events = eventStore.getEvents();
-  expect(events.some(e => e.type === 'task-completed')).toBe(true);
-});
+// ✅ Good: Subscribe to event store
+constructor(private eventStore: IEventStore) {
+  this.eventStore.subscribe(() => {
+    this.notifySubscribers(); // Tell UI to reload
+  });
+}
 
-// Bad - tests implementation details
-it('should call eventStore.append', () => {
-  const spy = vi.spyOn(eventStore, 'append');
-  handler.handle({ type: 'complete-task', taskId: 'task-1' });
-  expect(spy).toHaveBeenCalled();
-});
+// ❌ Bad: Manually reload after each command
+await createTaskHandler.handle(command);
+await projection.rebuild(); // Fragile, easy to forget
 ```
 
 ---
 
-## Quick Reference
+## Quick Commands
 
-### Run Tests
 ```bash
-cd packages/shared
-pnpm test run
-```
+# Run tests
+cd C:/Repos/squickr/life
+cd packages/shared && pnpm test run
 
-### Run Dev Server
-```bash
-cd packages/client
-pnpm dev
-```
+# Start dev server
+cd packages/client && pnpm dev
 
-### Build Everything
-```bash
-cd packages/shared
-pnpm run build
+# Build
+cd packages/shared && pnpm run build
 
-cd ../client
-pnpm run build
-```
-
-### Check Types
-```bash
-cd packages/shared
-pnpm run build  # Runs tsc
-```
-
-### Format Code
-```bash
-# If prettier configured
-pnpm run format
+# Git
+git status
+git log --oneline -10
+git diff
 ```
 
 ---
 
-For architecture decisions, see `architecture-decisions.md`.  
-For current implementation status, see `current-status.md`.  
-For OpenCode workflow, see `opencode-workflow.md`.
+## Further Reading
+
+- **Architecture decisions:** `docs/architecture-decisions.md`
+- **Event model reference:** `docs/event-models.md`
+- **Agent workflow:** `docs/opencode-workflow.md`
+- **Code:** `packages/shared/src/` (TypeScript is self-documenting)
