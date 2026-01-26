@@ -1,9 +1,9 @@
 # Netlify configuration for Squickr Life PWA
 
 [build]
-  base = "packages/client"
-  command = "pnpm install && pnpm build"
-  publish = "dist"
+  base = "/"
+  command = "cd packages/shared && pnpm install && pnpm build && cd ../client && pnpm install && pnpm build"
+  publish = "packages/client/dist"
 
 # SPA redirects - all routes go to index.html
 [[redirects]]
