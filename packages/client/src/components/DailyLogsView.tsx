@@ -53,7 +53,10 @@ export function DailyLogsView({
     }
     
     if (logs.length > 0) {
-      earliestDateRef.current = logs[logs.length - 1].date;
+      const lastLog = logs[logs.length - 1];
+      if (lastLog) {
+        earliestDateRef.current = lastLog.date;
+      }
       setHasMoreDays(logs.length === daysToLoad);
     } else {
       setHasMoreDays(false);
