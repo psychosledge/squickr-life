@@ -5,6 +5,8 @@ interface EntryInputProps {
   onSubmitTask: (title: string) => Promise<void>;
   onSubmitNote: (content: string) => Promise<void>;
   onSubmitEvent: (content: string, eventDate?: string) => Promise<void>;
+  variant?: 'default' | 'modal';
+  onSuccess?: () => void;
 }
 
 /**
@@ -21,7 +23,13 @@ interface EntryInputProps {
  * - Input clears after submission
  * - Icon button type selector
  */
-export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryInputProps) {
+export function EntryInput({ 
+  onSubmitTask, 
+  onSubmitNote, 
+  onSubmitEvent,
+  variant = 'default',
+  onSuccess
+}: EntryInputProps) {
   const [entryType, setEntryType] = useState<EntryType>('task');
   const [inputValue, setInputValue] = useState('');
   const [eventDate, setEventDate] = useState('');
@@ -29,10 +37,12 @@ export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryI
   const [dateError, setDateError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus on mount and when type changes
+  // Auto-focus on mount and when type changes (default variant only)
   useEffect(() => {
-    inputRef.current?.focus();
-  }, [entryType]);
+    if (variant === 'default') {
+      inputRef.current?.focus();
+    }
+  }, [entryType, variant]);
 
   const handleSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
@@ -76,6 +86,9 @@ export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryI
       setEventDate('');
       setError('');
       setDateError('');
+      
+      // Call success callback (for modal auto-close)
+      onSuccess?.();
       
       // Return focus
       inputRef.current?.focus();
@@ -138,7 +151,7 @@ export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryI
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto mb-6">
+    <div className={variant === 'default' ? 'w-full max-w-2xl mx-auto mb-6' : 'w-full'}>
       <form onSubmit={handleSubmit} className="space-y-2">
         {/* Type Selector - Icon Buttons */}
         <div className="flex gap-2 mb-3" role="group" aria-label="Entry type">
@@ -200,14 +213,17 @@ export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryI
                          transition-colors"
               aria-label="Entry content"
             />
-            <button
-              type="submit"
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold 
-                         rounded-lg transition-colors focus:outline-none focus:ring-2 
-                         focus:ring-blue-500 focus:ring-offset-2 self-start"
-            >
-              Add
-            </button>
+            {/* Only show Add button in default variant */}
+            {variant === 'default' && (
+              <button
+                type="submit"
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold 
+                           rounded-lg transition-colors focus:outline-none focus:ring-2 
+                           focus:ring-blue-500 focus:ring-offset-2 self-start"
+              >
+                Add
+              </button>
+            )}
           </div>
           
           {/* Character Counter */}

@@ -23,9 +23,10 @@ import {
   EntryListProjection,
   TaskListProjection
 } from '@squickr/shared';
-import { EntryInput } from './components/EntryInput';
 import { DailyLogsView } from './components/DailyLogsView';
 import { DarkModeToggle } from './components/DarkModeToggle';
+import { FAB } from './components/FAB';
+import { EntryInputModal } from './components/EntryInputModal';
 
 /**
  * Main App Component
@@ -66,6 +67,7 @@ function App() {
   
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Track if app is initialized (prevents double-init in React StrictMode)
   const isInitialized = useRef(false);
@@ -192,13 +194,6 @@ function App() {
           </p>
         </div>
 
-        {/* Entry Input (Write Side) */}
-        <EntryInput 
-          onSubmitTask={handleCreateTask}
-          onSubmitNote={handleCreateNote}
-          onSubmitEvent={handleCreateEvent}
-        />
-
         {/* Daily Logs View (Read Side - Reactive Updates) */}
         <DailyLogsView
           projection={entryProjection}
@@ -219,6 +214,18 @@ function App() {
           <p className="mt-1">Built by the AI Agent Team</p>
         </div>
       </div>
+
+      {/* FAB - All screen sizes */}
+      <FAB onClick={() => setIsModalOpen(true)} />
+
+      {/* Entry Input Modal */}
+      <EntryInputModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmitTask={handleCreateTask}
+        onSubmitNote={handleCreateNote}
+        onSubmitEvent={handleCreateEvent}
+      />
     </div>
   );
 }
