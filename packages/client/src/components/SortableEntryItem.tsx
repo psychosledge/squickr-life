@@ -67,8 +67,8 @@ export function SortableEntryItem({
                    opacity-100 md:opacity-30 
                    md:group-hover:opacity-100 md:group-focus-within:opacity-100
                    transition-all duration-200
-                   active:scale-95
-                   touch-manipulation"
+                   active:scale-95"
+        style={{ touchAction: 'none' }}
         aria-label="Drag to reorder"
         title="Drag to reorder"
       >

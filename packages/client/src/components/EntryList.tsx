@@ -1,5 +1,5 @@
 import type { Entry } from '@squickr/shared';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableEntryItem } from './SortableEntryItem';
 
@@ -38,9 +38,15 @@ export function EntryList({
   onReorder 
 }: EntryListProps) {
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8, // Require 8px movement before drag starts
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250, // 250ms delay for touch devices
+        tolerance: 5, // Allow 5px of movement during delay
       },
     }),
     useSensor(KeyboardSensor, {

@@ -44,6 +44,7 @@ export function SortableTaskItem({ task, onComplete, onReopen, onDelete, onUpdat
                    text-gray-400 hover:text-gray-600 dark:hover:text-gray-300
                    cursor-grab active:cursor-grabbing
                    opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ touchAction: 'none' }}
         aria-label="Drag to reorder"
       >
         <svg
