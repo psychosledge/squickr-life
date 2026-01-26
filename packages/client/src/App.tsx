@@ -25,6 +25,7 @@ import {
 } from '@squickr/shared';
 import { EntryInput } from './components/EntryInput';
 import { DailyLogsView } from './components/DailyLogsView';
+import { DarkModeToggle } from './components/DarkModeToggle';
 
 /**
  * Main App Component
@@ -177,7 +178,12 @@ function App() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 relative">
+          {/* Dark mode toggle - positioned top-right */}
+          <div className="absolute top-0 right-0">
+            <DarkModeToggle />
+          </div>
+          
           <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Squickr Life
           </h1>
