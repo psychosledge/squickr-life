@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  IndexedDBEventStore, 
+import {
+  IndexedDBEventStore,
   // Task handlers
-  CreateTaskHandler, 
+  CreateTaskHandler,
   CompleteTaskHandler,
   ReopenTaskHandler,
   DeleteTaskHandler,
@@ -23,9 +23,8 @@ import {
   EntryListProjection,
   TaskListProjection
 } from '@squickr/shared';
-import type { Entry } from '@squickr/shared';
 import { EntryInput } from './components/EntryInput';
-import { EntryList } from './components/EntryList';
+import { DailyLogsView } from './components/DailyLogsView';
 
 /**
  * Main App Component
@@ -64,8 +63,7 @@ function App() {
   const [deleteEventHandler] = useState(() => new DeleteEventHandler(eventStore, entryProjection));
   const [reorderEventHandler] = useState(() => new ReorderEventHandler(eventStore, entryProjection, entryProjection));
   
-  // UI state (derived from projections)
-  const [entries, setEntries] = useState<Entry[]>([]);
+  // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
   
   // Track if app is initialized (prevents double-init in React StrictMode)
@@ -86,9 +84,6 @@ function App() {
     try {
       // Initialize IndexedDB connection
       await eventStore.initialize();
-      
-      // Load existing entries from persisted events
-      await loadEntries();
     } catch (error) {
       console.error('Failed to initialize app:', error);
     } finally {
@@ -96,62 +91,49 @@ function App() {
     }
   };
 
-  const loadEntries = async () => {
-    const allEntries = await entryProjection.getEntries('all');
-    setEntries(allEntries);
-  };
-
   // Task handlers
   const handleCreateTask = async (title: string) => {
     await createTaskHandler.handle({ title });
-    await loadEntries();
   };
 
   const handleCompleteTask = async (taskId: string) => {
     await completeTaskHandler.handle({ taskId });
-    await loadEntries();
   };
 
   const handleReopenTask = async (taskId: string) => {
     await reopenTaskHandler.handle({ taskId });
-    await loadEntries();
   };
 
   const handleUpdateTaskTitle = async (taskId: string, newTitle: string) => {
     await updateTaskTitleHandler.handle({ taskId, title: newTitle });
-    await loadEntries();
   };
 
   // Note handlers
   const handleCreateNote = async (content: string) => {
     await createNoteHandler.handle({ content });
-    await loadEntries();
   };
 
   const handleUpdateNoteContent = async (noteId: string, newContent: string) => {
     await updateNoteContentHandler.handle({ noteId, content: newContent });
-    await loadEntries();
   };
 
   // Event handlers
   const handleCreateEvent = async (content: string, eventDate?: string) => {
     await createEventHandler.handle({ content, eventDate });
-    await loadEntries();
   };
 
   const handleUpdateEventContent = async (eventId: string, newContent: string) => {
     await updateEventContentHandler.handle({ eventId, content: newContent });
-    await loadEntries();
   };
 
   const handleUpdateEventDate = async (eventId: string, newDate: string | null) => {
     await updateEventDateHandler.handle({ eventId, eventDate: newDate });
-    await loadEntries();
   };
 
   // Common handlers
   const handleDelete = async (entryId: string) => {
     // Find the entry to determine its type
+    const entries = await entryProjection.getEntries('all');
     const entry = entries.find(e => e.id === entryId);
     if (!entry) return;
 
@@ -162,8 +144,6 @@ function App() {
     } else if (entry.type === 'event') {
       await deleteEventHandler.handle({ eventId: entryId });
     }
-    
-    await loadEntries();
   };
 
   const handleReorder = async (
@@ -172,6 +152,7 @@ function App() {
     nextEntryId: string | null
   ) => {
     // Find the entry to determine its type
+    const entries = await entryProjection.getEntries('all');
     const entry = entries.find(e => e.id === entryId);
     if (!entry) return;
 
@@ -182,8 +163,6 @@ function App() {
     } else if (entry.type === 'event') {
       await reorderEventHandler.handle({ eventId: entryId, previousEventId: previousEntryId, nextEventId: nextEntryId });
     }
-    
-    await loadEntries();
   };
 
   if (isLoading) {
@@ -214,9 +193,9 @@ function App() {
           onSubmitEvent={handleCreateEvent}
         />
 
-        {/* Entry List (Read Side) */}
-        <EntryList 
-          entries={entries} 
+        {/* Daily Logs View (Read Side - Reactive Updates) */}
+        <DailyLogsView
+          projection={entryProjection}
           onCompleteTask={handleCompleteTask}
           onReopenTask={handleReopenTask}
           onUpdateTaskTitle={handleUpdateTaskTitle}

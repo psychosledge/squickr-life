@@ -20,6 +20,9 @@ vi.mock('@squickr/shared', async () => {
     async getById() {
       return Promise.resolve([]);
     }
+    subscribe() {
+      return () => {}; // Return unsubscribe function
+    }
   }
   
   return {

@@ -8,6 +8,7 @@ import type { DomainEvent } from './domain-event';
  * - Events are immutable (never updated or deleted)
  * - Events are append-only (insert order preserved)
  * - Events can be replayed to rebuild state
+ * - Reactive: Subscribers are notified when events are appended
  */
 export interface IEventStore {
   /**
@@ -28,6 +29,13 @@ export interface IEventStore {
    * @returns All events in the order they were appended
    */
   getAll(): Promise<DomainEvent[]>;
+
+  /**
+   * Subscribe to event store changes
+   * @param callback - Function to call when events are appended
+   * @returns Unsubscribe function
+   */
+  subscribe(callback: (event: DomainEvent) => void): () => void;
 }
 
 /**
@@ -45,14 +53,19 @@ export interface IEventStore {
  */
 export class EventStore implements IEventStore {
   private events: DomainEvent[] = [];
+  private subscribers = new Set<(event: DomainEvent) => void>();
 
   /**
    * Append an event to the in-memory store
+   * Notifies all subscribers after appending
    */
   async append(event: DomainEvent): Promise<void> {
     // In event sourcing, events are immutable facts
     // We never modify or delete events, only append
     this.events.push(event);
+    
+    // Notify subscribers of the new event
+    this.notifySubscribers(event);
   }
 
   /**
@@ -70,5 +83,21 @@ export class EventStore implements IEventStore {
   async getAll(): Promise<DomainEvent[]> {
     // Return a copy to prevent external mutation
     return [...this.events];
+  }
+
+  /**
+   * Subscribe to event store changes
+   * Returns an unsubscribe function
+   */
+  subscribe(callback: (event: DomainEvent) => void): () => void {
+    this.subscribers.add(callback);
+    return () => this.subscribers.delete(callback);
+  }
+
+  /**
+   * Notify all subscribers of a new event
+   */
+  private notifySubscribers(event: DomainEvent): void {
+    this.subscribers.forEach(callback => callback(event));
   }
 }

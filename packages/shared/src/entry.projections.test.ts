@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { EventStore } from './event-store';
 import { EntryListProjection } from './entry.projections';
 import { TaskListProjection } from './task.projections';
-import { CreateTaskHandler, CompleteTaskHandler } from './task.handlers';
+import { CreateTaskHandler, CompleteTaskHandler, DeleteTaskHandler } from './task.handlers';
 import { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler } from './note.handlers';
 import { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler } from './event.handlers';
 import type { CreateTaskCommand, CreateNoteCommand, CreateEventCommand } from './task.types';
@@ -673,6 +673,160 @@ describe('EntryListProjection', () => {
       // Filtering to only tasks should return just the task
       const tasks = await projection.getEntries('tasks');
       expect(tasks.map(e => e.id)).toEqual([task1Id]);
+    });
+  });
+
+  describe('getDailyLogs', () => {
+    it('should return empty array when no entries exist', async () => {
+      const logs = await projection.getDailyLogs();
+      expect(logs).toEqual([]);
+    });
+
+    it('should group entries created at the same time on the same day', async () => {
+      // Create multiple entries (they'll all have same creation time in tests)
+      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      const noteId = await noteHandler.handle({ content: 'Note 1' });
+      const eventId = await eventHandler.handle({ content: 'Event 1' });
+
+      const logs = await projection.getDailyLogs(30);
+      
+      // All entries created at same time should be in same day log
+      expect(logs).toHaveLength(1);
+      expect(logs[0].entries).toHaveLength(3);
+      
+      const entryIds = logs[0].entries.map(e => e.id);
+      expect(entryIds).toEqual([taskId, noteId, eventId]);
+    });
+
+    it('should maintain entry order within each day', async () => {
+      // Create multiple entries 
+      const taskId1 = await taskHandler.handle({ title: 'First task' });
+      const noteId = await noteHandler.handle({ content: 'Middle note' });
+      const taskId2 = await taskHandler.handle({ title: 'Last task' });
+
+      const logs = await projection.getDailyLogs();
+      
+      expect(logs).toHaveLength(1);
+      expect(logs[0].entries).toHaveLength(3);
+      
+      // Should be ordered by fractional index (order field)
+      const entryIds = logs[0].entries.map(e => e.id);
+      expect(entryIds).toEqual([taskId1, noteId, taskId2]);
+    });
+
+    it('should respect limit parameter', async () => {
+      // Create some entries
+      await taskHandler.handle({ title: 'Task 1' });
+      await noteHandler.handle({ content: 'Note 1' });
+
+      // Request with limit
+      const logs = await projection.getDailyLogs(1);
+      
+      // Should return at most 1 day
+      expect(logs.length).toBeLessThanOrEqual(1);
+    });
+
+    it('should handle events with eventDate field', async () => {
+      // Create event with eventDate
+      const eventId = await eventHandler.handle({ content: 'Future event' });
+      
+      // Update the event to have a future date
+      const updateHandler = new UpdateEventDateHandler(eventStore, projection);
+      await updateHandler.handle({
+        eventId,
+        eventDate: '2026-07-15', // Future date
+      });
+
+      const logs = await projection.getDailyLogs();
+      
+      expect(logs).toHaveLength(1);
+      expect(logs[0].entries).toHaveLength(1);
+      expect(logs[0].entries[0].type).toBe('event');
+      
+      // Event should appear on creation day but retain future eventDate
+      if (logs[0].entries[0].type === 'event') {
+        expect(logs[0].entries[0].eventDate).toBe('2026-07-15');
+      }
+    });
+
+    it('should respect filter parameter', async () => {
+      await taskHandler.handle({ title: 'Task 1' });
+      await noteHandler.handle({ content: 'Note 1' });
+      await eventHandler.handle({ content: 'Event 1' });
+
+      // Filter to only tasks
+      const taskLogs = await projection.getDailyLogs(7, undefined, 'tasks');
+      
+      expect(taskLogs).toHaveLength(1);
+      expect(taskLogs[0].entries).toHaveLength(1);
+      expect(taskLogs[0].entries[0].type).toBe('task');
+      
+      // Filter to only notes
+      const noteLogs = await projection.getDailyLogs(7, undefined, 'notes');
+      
+      expect(noteLogs).toHaveLength(1);
+      expect(noteLogs[0].entries).toHaveLength(1);
+      expect(noteLogs[0].entries[0].type).toBe('note');
+    });
+
+    it('should handle deleted entries correctly', async () => {
+      const taskId = await taskHandler.handle({ title: 'To be deleted' });
+      await noteHandler.handle({ content: 'Stays' });
+
+      // Delete the task
+      const deleteHandler = new DeleteTaskHandler(eventStore, taskProjection, projection);
+      await deleteHandler.handle({ taskId });
+
+      const logs = await projection.getDailyLogs();
+      
+      expect(logs).toHaveLength(1);
+      expect(logs[0].entries).toHaveLength(1); // Only note remains
+      expect(logs[0].entries[0].type).toBe('note');
+    });
+
+    it('should handle completed tasks correctly', async () => {
+      const taskId = await taskHandler.handle({ title: 'Task to complete' });
+
+      // Complete the task
+      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection, projection);
+      await completeHandler.handle({ taskId });
+
+      const logs = await projection.getDailyLogs();
+      
+      expect(logs).toHaveLength(1);
+      expect(logs[0].entries).toHaveLength(1);
+      expect(logs[0].entries[0].type).toBe('task');
+      
+      if (logs[0].entries[0].type === 'task') {
+        expect(logs[0].entries[0].status).toBe('completed');
+        expect(logs[0].entries[0].completedAt).toBeDefined();
+      }
+    });
+
+    it('should return daily logs with valid date format (YYYY-MM-DD)', async () => {
+      await taskHandler.handle({ title: 'Test task' });
+
+      const logs = await projection.getDailyLogs();
+      
+      expect(logs).toHaveLength(1);
+      // Date should be in YYYY-MM-DD format
+      expect(logs[0].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    it('should include all entry types in same daily log', async () => {
+      await taskHandler.handle({ title: 'Task' });
+      await noteHandler.handle({ content: 'Note' });
+      await eventHandler.handle({ content: 'Event' });
+
+      const logs = await projection.getDailyLogs();
+      
+      expect(logs).toHaveLength(1);
+      expect(logs[0].entries).toHaveLength(3);
+      
+      const types = logs[0].entries.map(e => e.type);
+      expect(types).toContain('task');
+      expect(types).toContain('note');
+      expect(types).toContain('event');
     });
   });
 });

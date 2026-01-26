@@ -61,6 +61,7 @@ export type {
   EntryType,
   Entry,
   EntryFilter,
+  DailyLog,
   SquickrDomainEvent,
 } from './task.types';
 
@@ -85,6 +86,7 @@ export { generateEventMetadata } from './event-helpers';
 export type { EventMetadata } from './event-helpers';
 export { validateTaskExists, validateTaskStatus } from './task-validation';
 export { validateContent, isValidISODate, validateOptionalISODate } from './content-validation';
+export { getLocalDateKey, isoToLocalDateKey } from './date-utils';
 
 // Projections (Read Models)
 export { TaskListProjection } from './task.projections';

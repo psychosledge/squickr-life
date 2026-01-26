@@ -23,6 +23,7 @@ export class IndexedDBEventStore implements IEventStore {
   private readonly dbName: string;
   private readonly storeName = 'events';
   private readonly version = 1;
+  private subscribers = new Set<(event: DomainEvent) => void>();
 
   constructor(dbName: string = 'squickr-events') {
     this.dbName = dbName;
@@ -67,6 +68,7 @@ export class IndexedDBEventStore implements IEventStore {
 
   /**
    * Append an event to IndexedDB
+   * Notifies all subscribers after successful append
    */
   async append(event: DomainEvent): Promise<void> {
     if (!this.db) {
@@ -79,7 +81,11 @@ export class IndexedDBEventStore implements IEventStore {
       const request = objectStore.add(event);
 
       // Wait for transaction to complete, not just the request
-      transaction.oncomplete = () => resolve();
+      transaction.oncomplete = () => {
+        // Notify subscribers after successful append
+        this.notifySubscribers(event);
+        resolve();
+      };
       transaction.onerror = () => reject(new Error(`Failed to append event: ${transaction.error}`));
       request.onerror = () => reject(new Error(`Failed to append event: ${request.error}`));
     });
@@ -150,5 +156,21 @@ export class IndexedDBEventStore implements IEventStore {
       request.onsuccess = () => resolve();
       request.onerror = () => reject(new Error(`Failed to clear events: ${request.error}`));
     });
+  }
+
+  /**
+   * Subscribe to event store changes
+   * Returns an unsubscribe function
+   */
+  subscribe(callback: (event: DomainEvent) => void): () => void {
+    this.subscribers.add(callback);
+    return () => this.subscribers.delete(callback);
+  }
+
+  /**
+   * Notify all subscribers of a new event
+   */
+  private notifySubscribers(event: DomainEvent): void {
+    this.subscribers.forEach(callback => callback(event));
   }
 }

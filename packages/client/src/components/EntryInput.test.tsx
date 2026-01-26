@@ -200,8 +200,10 @@ describe('EntryInput', () => {
     );
     
     const input = screen.getByPlaceholderText(/add a task/i);
+    const form = input.closest('form');
     fireEvent.change(input, { target: { value: '  Buy milk  ' } });
     fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.submit(form!);
     
     await waitFor(() => {
       expect(mockOnSubmitTask).toHaveBeenCalledWith('Buy milk');
@@ -218,8 +220,10 @@ describe('EntryInput', () => {
     );
     
     const input = screen.getByPlaceholderText(/add a task/i);
+    const form = input.closest('form');
     fireEvent.change(input, { target: { value: 'Test task' } });
     fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.submit(form!);
     
     await waitFor(() => {
       expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task');
@@ -333,5 +337,157 @@ describe('EntryInput', () => {
     
     const textarea = screen.getByPlaceholderText(/add a note/i) as HTMLTextAreaElement;
     expect(textarea.value).toBe('');
+  });
+
+  // REGRESSION TESTS: Prevent double-submit bug
+  describe('should call submit handlers exactly once', () => {
+    it('should call onSubmitTask exactly once when pressing Enter in task input', async () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const input = screen.getByPlaceholderText(/add a task/i);
+      const form = input.closest('form');
+      
+      fireEvent.change(input, { target: { value: 'Test task' } });
+      
+      // Simulate Enter key which submits the form
+      fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
+      fireEvent.submit(form!);
+      
+      // Wait for async submission
+      await waitFor(() => {
+        expect(mockOnSubmitTask).toHaveBeenCalledTimes(1);
+      });
+      
+      expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task');
+    });
+
+    it('should call onSubmitTask exactly once when clicking Add button', async () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const input = screen.getByPlaceholderText(/add a task/i);
+      const button = screen.getByRole('button', { name: /add/i });
+      
+      fireEvent.change(input, { target: { value: 'Test task' } });
+      fireEvent.click(button);
+      
+      await waitFor(() => {
+        expect(mockOnSubmitTask).toHaveBeenCalledTimes(1);
+      });
+      
+      expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task');
+    });
+
+    it('should call onSubmitNote exactly once when pressing Enter in note textarea', async () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const selector = screen.getByLabelText(/entry type/i);
+      fireEvent.change(selector, { target: { value: 'note' } });
+      
+      const textarea = screen.getByPlaceholderText(/add a note/i);
+      fireEvent.change(textarea, { target: { value: 'Test note' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+      
+      await waitFor(() => {
+        expect(mockOnSubmitNote).toHaveBeenCalledTimes(1);
+      });
+      
+      expect(mockOnSubmitNote).toHaveBeenCalledWith('Test note');
+    });
+
+    it('should call onSubmitNote exactly once when clicking Add button', async () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const selector = screen.getByLabelText(/entry type/i);
+      fireEvent.change(selector, { target: { value: 'note' } });
+      
+      const textarea = screen.getByPlaceholderText(/add a note/i);
+      const button = screen.getByRole('button', { name: /add/i });
+      
+      fireEvent.change(textarea, { target: { value: 'Test note' } });
+      fireEvent.click(button);
+      
+      await waitFor(() => {
+        expect(mockOnSubmitNote).toHaveBeenCalledTimes(1);
+      });
+      
+      expect(mockOnSubmitNote).toHaveBeenCalledWith('Test note');
+    });
+
+    it('should call onSubmitEvent exactly once when pressing Enter in event textarea', async () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const selector = screen.getByLabelText(/entry type/i);
+      fireEvent.change(selector, { target: { value: 'event' } });
+      
+      const textarea = screen.getByPlaceholderText(/add an event/i);
+      const dateInput = screen.getByLabelText(/event date/i);
+      
+      fireEvent.change(textarea, { target: { value: 'Test event' } });
+      fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
+      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+      
+      await waitFor(() => {
+        expect(mockOnSubmitEvent).toHaveBeenCalledTimes(1);
+      });
+      
+      expect(mockOnSubmitEvent).toHaveBeenCalledWith('Test event', '2026-02-15');
+    });
+
+    it('should call onSubmitEvent exactly once when clicking Add button', async () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const selector = screen.getByLabelText(/entry type/i);
+      fireEvent.change(selector, { target: { value: 'event' } });
+      
+      const textarea = screen.getByPlaceholderText(/add an event/i);
+      const dateInput = screen.getByLabelText(/event date/i);
+      const button = screen.getByRole('button', { name: /add/i });
+      
+      fireEvent.change(textarea, { target: { value: 'Test event' } });
+      fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
+      fireEvent.click(button);
+      
+      await waitFor(() => {
+        expect(mockOnSubmitEvent).toHaveBeenCalledTimes(1);
+      });
+      
+      expect(mockOnSubmitEvent).toHaveBeenCalledWith('Test event', '2026-02-15');
+    });
   });
 });

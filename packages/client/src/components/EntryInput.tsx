@@ -95,12 +95,15 @@ export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryI
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    // For textarea, only submit on Enter (not Shift+Enter for new lines)
+    // For textarea (notes/events), submit on Enter without Shift
+    // For input (tasks), let the form handle Enter naturally
     if (e.key === 'Enter' && !e.shiftKey) {
       if (entryType !== 'task') {
-        e.preventDefault(); // Prevent new line in textarea
+        // Textarea: prevent newline and submit manually
+        e.preventDefault();
+        handleSubmit();
       }
-      handleSubmit();
+      // For tasks: Enter triggers form submit naturally, don't call handleSubmit manually
     }
   };
 

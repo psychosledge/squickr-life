@@ -539,6 +539,18 @@ export type Entry =
 export type EntryFilter = 'all' | 'tasks' | 'notes' | 'events' | 'open-tasks' | 'completed-tasks';
 
 /**
+ * DailyLog - Groups entries by their creation date
+ * Used for the bullet journal daily logs view
+ */
+export interface DailyLog {
+  /** Date in YYYY-MM-DD format */
+  readonly date: string;
+  
+  /** Entries created on this date, sorted by order field */
+  readonly entries: Entry[];
+}
+
+/**
  * Union of all domain events in the system
  */
 export type SquickrDomainEvent = TaskEvent | NoteEvent | EventEvent;
