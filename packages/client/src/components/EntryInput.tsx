@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, FormEvent, KeyboardEvent, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
 import type { EntryType } from '@squickr/shared';
 
 interface EntryInputProps {
@@ -12,14 +12,14 @@ interface EntryInputProps {
  * 
  * Allows users to quickly capture entries of different types:
  * - Task: short title (1-500 characters)
- * - Note: longer content (1-5000 characters)
- * - Event: content + optional date
+ * - Note: short content (1-500 characters)
+ * - Event: content (1-500 characters) + optional date
  * 
  * Features:
  * - Auto-focus on mount
- * - Enter key submits (Shift+Enter for new line in textarea)
+ * - Enter key submits for all types
  * - Input clears after submission
- * - Type selector dropdown
+ * - Icon button type selector
  */
 export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryInputProps) {
   const [entryType, setEntryType] = useState<EntryType>('task');
@@ -28,15 +28,10 @@ export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryI
   const [error, setError] = useState('');
   const [dateError, setDateError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-focus on mount and when type changes
   useEffect(() => {
-    if (entryType === 'task') {
-      inputRef.current?.focus();
-    } else {
-      textareaRef.current?.focus();
-    }
+    inputRef.current?.focus();
   }, [entryType]);
 
   const handleSubmit = async (e?: FormEvent) => {
@@ -83,27 +78,18 @@ export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryI
       setDateError('');
       
       // Return focus
-      if (entryType === 'task') {
-        inputRef.current?.focus();
-      } else {
-        textareaRef.current?.focus();
-      }
+      inputRef.current?.focus();
     } catch (err) {
       // Show validation errors from command handler
       setError(err instanceof Error ? err.message : 'Failed to create entry');
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    // For textarea (notes/events), submit on Enter without Shift
-    // For input (tasks), let the form handle Enter naturally
-    if (e.key === 'Enter' && !e.shiftKey) {
-      if (entryType !== 'task') {
-        // Textarea: prevent newline and submit manually
-        e.preventDefault();
-        handleSubmit();
-      }
-      // For tasks: Enter triggers form submit naturally, don't call handleSubmit manually
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    // All types: submit on Enter key
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
@@ -116,8 +102,8 @@ export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryI
     }
   };
 
-  const handleTypeChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    setEntryType(e.target.value as EntryType);
+  const handleTypeChange = (type: EntryType) => {
+    setEntryType(type);
     setInputValue('');
     setEventDate('');
     setError('');
@@ -129,14 +115,14 @@ export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryI
       case 'task':
         return 'Add a task... (press Enter)';
       case 'note':
-        return 'Add a note... (press Enter, Shift+Enter for new line)';
+        return 'Add a note... (press Enter)';
       case 'event':
-        return 'Add an event... (press Enter, Shift+Enter for new line)';
+        return 'Add an event... (press Enter)';
     }
   };
 
   const getMaxLength = () => {
-    return entryType === 'task' ? 500 : 5000;
+    return 500;
   };
 
   const getCharacterCountColor = () => {
@@ -154,59 +140,66 @@ export function EntryInput({ onSubmitTask, onSubmitNote, onSubmitEvent }: EntryI
   return (
     <div className="w-full max-w-2xl mx-auto mb-6">
       <form onSubmit={handleSubmit} className="space-y-2">
-        {/* Type Selector */}
-        <div className="flex gap-2">
-          <select
-            value={entryType}
-            onChange={handleTypeChange}
-            className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                       bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                       transition-colors cursor-pointer"
-            aria-label="Entry type"
+        {/* Type Selector - Icon Buttons */}
+        <div className="flex gap-2 mb-3" role="group" aria-label="Entry type">
+          <button
+            type="button"
+            onClick={() => handleTypeChange('task')}
+            className={`flex-1 min-h-[44px] px-4 py-3 rounded-lg font-medium transition-colors
+              ${entryType === 'task' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+            aria-pressed={entryType === 'task'}
           >
-            <option value="task">☐ Task</option>
-            <option value="note">- Note</option>
-            <option value="event">○ Event</option>
-          </select>
+            <span className="text-lg mr-2">✓</span>
+            Task
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => handleTypeChange('note')}
+            className={`flex-1 min-h-[44px] px-4 py-3 rounded-lg font-medium transition-colors
+              ${entryType === 'note' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+            aria-pressed={entryType === 'note'}
+          >
+            <span className="text-lg mr-2">•</span>
+            Note
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => handleTypeChange('event')}
+            className={`flex-1 min-h-[44px] px-4 py-3 rounded-lg font-medium transition-colors
+              ${entryType === 'event' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+            aria-pressed={entryType === 'event'}
+          >
+            <span className="text-lg mr-2">○</span>
+            Event
+          </button>
         </div>
 
         {/* Input Field */}
         <div className="space-y-1">
           <div className="flex gap-2">
-            {entryType === 'task' ? (
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputValue}
-                onChange={(e) => handleChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={getPlaceholder()}
-                maxLength={getMaxLength()}
-                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                           placeholder-gray-400 dark:placeholder-gray-500
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           transition-colors"
-                aria-label="Entry content"
-              />
-            ) : (
-              <textarea
-                ref={textareaRef}
-                value={inputValue}
-                onChange={(e) => handleChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={getPlaceholder()}
-                maxLength={getMaxLength()}
-                rows={3}
-                className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                           bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                           placeholder-gray-400 dark:placeholder-gray-500
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                           transition-colors resize-y"
-                aria-label="Entry content"
-              />
-            )}
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => handleChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={getPlaceholder()}
+              maxLength={500}
+              className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
+                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+                         placeholder-gray-400 dark:placeholder-gray-500
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                         transition-colors"
+              aria-label="Entry content"
+            />
             <button
               type="submit"
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold 
