@@ -553,4 +553,4 @@ export interface DailyLog {
 /**
  * Union of all domain events in the system
  */
-export type SquickrDomainEvent = TaskEvent | NoteEvent | EventEvent;
+export type SquickrDomainEvent = TaskEvent | NoteEvent | EventEvent | import('./collection.types').CollectionEvent;

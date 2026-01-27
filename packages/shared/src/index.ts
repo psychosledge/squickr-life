@@ -56,6 +56,21 @@ export type {
   EventEvent,
 } from './task.types';
 
+// Collection domain types
+export type {
+  CollectionType,
+  Collection,
+  CollectionCreated,
+  CollectionRenamed,
+  CollectionReordered,
+  CollectionDeleted,
+  CreateCollectionCommand,
+  RenameCollectionCommand,
+  ReorderCollectionCommand,
+  DeleteCollectionCommand,
+  CollectionEvent,
+} from './collection.types';
+
 // Unified entry types
 export type {
   EntryType,
@@ -81,13 +96,18 @@ export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, Reorder
 // Event Command Handlers
 export { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler, ReorderEventHandler } from './event.handlers';
 
+// Collection Command Handlers
+export { CreateCollectionHandler, RenameCollectionHandler, ReorderCollectionHandler, DeleteCollectionHandler } from './collection.handlers';
+
 // Helpers
 export { generateEventMetadata } from './event-helpers';
 export type { EventMetadata } from './event-helpers';
 export { validateTaskExists, validateTaskStatus } from './task-validation';
 export { validateContent, isValidISODate, validateOptionalISODate } from './content-validation';
 export { getLocalDateKey, isoToLocalDateKey } from './date-utils';
+export { validateCollectionName } from './collection-validation';
 
 // Projections (Read Models)
 export { TaskListProjection } from './task.projections';
 export { EntryListProjection } from './entry.projections';
+export { CollectionListProjection } from './collection.projections';
