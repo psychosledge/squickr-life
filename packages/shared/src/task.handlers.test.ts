@@ -143,6 +143,31 @@ describe('CreateTaskHandler', () => {
       const event = events[0] as TaskCreated;
       expect(event.payload.title).toHaveLength(500);
     });
+
+    it('should include collectionId if provided', async () => {
+      const command: CreateTaskCommand = {
+        title: 'Task in collection',
+        collectionId: 'collection-123',
+      };
+
+      await handler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[0] as TaskCreated;
+      expect(event.payload.collectionId).toBe('collection-123');
+    });
+
+    it('should create task without collectionId (uncategorized)', async () => {
+      const command: CreateTaskCommand = {
+        title: 'Uncategorized task',
+      };
+
+      await handler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[0] as TaskCreated;
+      expect(event.payload.collectionId).toBeUndefined();
+    });
   });
 });
 

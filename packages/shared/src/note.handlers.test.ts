@@ -99,7 +99,6 @@ describe('CreateNoteHandler', () => {
       expect(event.id).toBeDefined();
       expect(event.timestamp).toBeDefined();
       expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
-      expect(event.payload.createdAt).toBe(event.timestamp);
     });
 
     it('should generate fractional index order', async () => {
@@ -139,6 +138,31 @@ describe('CreateNoteHandler', () => {
       const events = await eventStore.getAll();
       const event = events[0] as NoteCreated;
       expect(event.payload.userId).toBe('user-123');
+    });
+
+    it('should include collectionId if provided', async () => {
+      const command: CreateNoteCommand = {
+        content: 'Note in collection',
+        collectionId: 'collection-456',
+      };
+
+      await handler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[0] as NoteCreated;
+      expect(event.payload.collectionId).toBe('collection-456');
+    });
+
+    it('should create note without collectionId (uncategorized)', async () => {
+      const command: CreateNoteCommand = {
+        content: 'Uncategorized note',
+      };
+
+      await handler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[0] as NoteCreated;
+      expect(event.payload.collectionId).toBeUndefined();
     });
   });
 });

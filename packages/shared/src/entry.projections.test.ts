@@ -829,4 +829,191 @@ describe('EntryListProjection', () => {
       expect(types).toContain('event');
     });
   });
+
+  describe('getEntriesByCollection', () => {
+    it('should return entries in specified collection', async () => {
+      // Create entries in different collections
+      await taskHandler.handle({ title: 'Task in A', collectionId: 'collection-A' });
+      await taskHandler.handle({ title: 'Task in B', collectionId: 'collection-B' });
+      await noteHandler.handle({ content: 'Note in A', collectionId: 'collection-A' });
+
+      const entriesInA = await projection.getEntriesByCollection('collection-A');
+      
+      expect(entriesInA).toHaveLength(2);
+      expect(entriesInA[0].type).toBe('task');
+      expect(entriesInA[1].type).toBe('note');
+      
+      if (entriesInA[0].type === 'task') {
+        expect(entriesInA[0].title).toBe('Task in A');
+      }
+      if (entriesInA[1].type === 'note') {
+        expect(entriesInA[1].content).toBe('Note in A');
+      }
+    });
+
+    it('should return uncategorized entries when collectionId is null', async () => {
+      // Create entries without collectionId
+      await taskHandler.handle({ title: 'Uncategorized task' });
+      await noteHandler.handle({ content: 'Uncategorized note' });
+      
+      // Create entry with collection
+      await taskHandler.handle({ title: 'Task in collection', collectionId: 'collection-A' });
+
+      const uncategorized = await projection.getEntriesByCollection(null);
+      
+      expect(uncategorized).toHaveLength(2);
+      expect(uncategorized.every(e => !e.collectionId)).toBe(true);
+    });
+
+    it('should return empty array when no entries in collection', async () => {
+      await taskHandler.handle({ title: 'Task in A', collectionId: 'collection-A' });
+
+      const entriesInB = await projection.getEntriesByCollection('collection-B');
+      
+      expect(entriesInB).toHaveLength(0);
+    });
+
+    it('should handle mixed entry types in same collection', async () => {
+      await taskHandler.handle({ title: 'Task', collectionId: 'collection-X' });
+      await noteHandler.handle({ content: 'Note', collectionId: 'collection-X' });
+      await eventHandler.handle({ content: 'Event', collectionId: 'collection-X' });
+
+      const entries = await projection.getEntriesByCollection('collection-X');
+      
+      expect(entries).toHaveLength(3);
+      
+      const types = entries.map(e => e.type);
+      expect(types).toContain('task');
+      expect(types).toContain('note');
+      expect(types).toContain('event');
+    });
+
+    it('should return entries sorted by order field', async () => {
+      // Create entries in reverse order but same collection
+      const noteId = await noteHandler.handle({ content: 'First', collectionId: 'col-1' });
+      const taskId = await taskHandler.handle({ title: 'Second', collectionId: 'col-1' });
+      const eventId = await eventHandler.handle({ content: 'Third', collectionId: 'col-1' });
+
+      const entries = await projection.getEntriesByCollection('col-1');
+      
+      expect(entries).toHaveLength(3);
+      // Should be in creation order (order field determines sorting)
+      expect(entries[0].id).toBe(noteId);
+      expect(entries[1].id).toBe(taskId);
+      expect(entries[2].id).toBe(eventId);
+    });
+
+    it('should update when entry is moved to collection', async () => {
+      const { MoveEntryToCollectionHandler } = await import('./task.handlers');
+      const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
+      
+      // Create task without collection
+      const taskId = await taskHandler.handle({ title: 'Task to move' });
+
+      // Initially in uncategorized
+      let uncategorized = await projection.getEntriesByCollection(null);
+      expect(uncategorized).toHaveLength(1);
+
+      // Move to collection-A
+      await moveHandler.handle({ entryId: taskId, collectionId: 'collection-A' });
+
+      // Now should be in collection-A
+      const inCollectionA = await projection.getEntriesByCollection('collection-A');
+      expect(inCollectionA).toHaveLength(1);
+      expect(inCollectionA[0].id).toBe(taskId);
+
+      // And no longer in uncategorized
+      uncategorized = await projection.getEntriesByCollection(null);
+      expect(uncategorized).toHaveLength(0);
+    });
+
+    it('should handle entry moved from one collection to another', async () => {
+      const { MoveEntryToCollectionHandler } = await import('./task.handlers');
+      const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
+      
+      // Create task in collection-A
+      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+
+      // Move to collection-B
+      await moveHandler.handle({ entryId: taskId, collectionId: 'collection-B' });
+
+      // Should be in B, not A
+      const inA = await projection.getEntriesByCollection('collection-A');
+      const inB = await projection.getEntriesByCollection('collection-B');
+      
+      expect(inA).toHaveLength(0);
+      expect(inB).toHaveLength(1);
+      expect(inB[0].id).toBe(taskId);
+    });
+
+    it('should handle entry moved to uncategorized (null)', async () => {
+      const { MoveEntryToCollectionHandler } = await import('./task.handlers');
+      const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
+      
+      // Create task in collection-A
+      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+
+      // Move to uncategorized
+      await moveHandler.handle({ entryId: taskId, collectionId: null });
+
+      // Should be in uncategorized
+      const uncategorized = await projection.getEntriesByCollection(null);
+      const inA = await projection.getEntriesByCollection('collection-A');
+      
+      expect(uncategorized).toHaveLength(1);
+      expect(uncategorized[0].id).toBe(taskId);
+      expect(inA).toHaveLength(0);
+    });
+
+    // Regression tests for type guard bug (Casey's review)
+    it('should update note collectionId when moved via EntryMovedToCollection event', async () => {
+      const { MoveEntryToCollectionHandler } = await import('./task.handlers');
+      const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
+      
+      // Create note in collection-A
+      const noteId = await noteHandler.handle({ content: 'Note in A', collectionId: 'collection-A' });
+      
+      // Verify initial state
+      let note = await projection.getNoteById(noteId);
+      expect(note?.collectionId).toBe('collection-A');
+      
+      // Move to collection-B
+      await moveHandler.handle({ entryId: noteId, collectionId: 'collection-B' });
+      
+      // Verify updated state - collectionId should change
+      note = await projection.getNoteById(noteId);
+      expect(note?.collectionId).toBe('collection-B');
+      
+      // Verify filtering works
+      const inA = await projection.getEntriesByCollection('collection-A');
+      const inB = await projection.getEntriesByCollection('collection-B');
+      expect(inA.some(e => e.id === noteId)).toBe(false);
+      expect(inB.some(e => e.id === noteId)).toBe(true);
+    });
+
+    it('should update event collectionId when moved via EntryMovedToCollection event', async () => {
+      const { MoveEntryToCollectionHandler } = await import('./task.handlers');
+      const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
+      
+      // Create event in collection-X
+      const eventId = await eventHandler.handle({ content: 'Event in X', collectionId: 'collection-X' });
+      
+      // Verify initial state
+      let evt = await projection.getEventById(eventId);
+      expect(evt?.collectionId).toBe('collection-X');
+      
+      // Move to collection-Y
+      await moveHandler.handle({ entryId: eventId, collectionId: 'collection-Y' });
+      
+      // Verify updated state - collectionId should change
+      evt = await projection.getEventById(eventId);
+      expect(evt?.collectionId).toBe('collection-Y');
+      
+      // Verify filtering works
+      const inX = await projection.getEntriesByCollection('collection-X');
+      const inY = await projection.getEntriesByCollection('collection-Y');
+      expect(inX.some(e => e.id === eventId)).toBe(false);
+      expect(inY.some(e => e.id === eventId)).toBe(true);
+    });
+  });
 });

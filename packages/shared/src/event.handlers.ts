@@ -79,6 +79,7 @@ export class CreateEventHandler {
         createdAt: metadata.timestamp,
         eventDate: command.eventDate,
         order,
+        collectionId: command.collectionId,
         userId: command.userId,
       },
     };

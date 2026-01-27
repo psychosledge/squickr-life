@@ -72,6 +72,7 @@ export class CreateNoteHandler {
         content,
         createdAt: metadata.timestamp,
         order,
+        collectionId: command.collectionId,
         userId: command.userId,
       },
     };

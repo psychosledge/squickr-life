@@ -24,6 +24,8 @@ export type {
   ReorderTaskCommand,
   UpdateTaskTitleCommand,
   TaskEvent,
+  EntryMovedToCollection,
+  MoveEntryToCollectionCommand,
 } from './task.types';
 
 // Note domain types
@@ -88,7 +90,7 @@ export { EventStore, type IEventStore } from './event-store';
 export { IndexedDBEventStore } from './indexeddb-event-store';
 
 // Task Command Handlers
-export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler } from './task.handlers';
+export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler, MoveEntryToCollectionHandler } from './task.handlers';
 
 // Note Command Handlers
 export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, ReorderNoteHandler } from './note.handlers';

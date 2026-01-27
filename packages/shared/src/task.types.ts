@@ -39,6 +39,9 @@ export interface Task {
    * Optional for backward compatibility with tasks created before this field was added */
   readonly order?: string;
   
+  /** Optional: Collection this task belongs to (null/undefined = uncategorized) */
+  readonly collectionId?: string;
+  
   /** Optional: User who created the task (for future multi-user support) */
   readonly userId?: string;
 }
@@ -63,6 +66,7 @@ export interface TaskCreated extends DomainEvent {
     readonly createdAt: string;
     readonly status: 'open';
     readonly order?: string; // Optional for backward compatibility
+    readonly collectionId?: string; // Optional - collection this task belongs to
     readonly userId?: string;
   };
 }
@@ -76,6 +80,7 @@ export interface TaskCreated extends DomainEvent {
  */
 export interface CreateTaskCommand {
   readonly title: string;
+  readonly collectionId?: string;
   readonly userId?: string;
 }
 
@@ -219,10 +224,38 @@ export interface UpdateTaskTitleCommand {
 }
 
 /**
+ * EntryMovedToCollection Event
+ * Emitted when an entry (task/note/event) is moved to a different collection
+ * 
+ * Invariants:
+ * - aggregateId must match an existing entry
+ * - Entry can be of any type (task, note, or event)
+ * - collectionId can be null to move to uncategorized
+ */
+export interface EntryMovedToCollection extends DomainEvent {
+  readonly type: 'EntryMovedToCollection';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly entryId: string;
+    readonly collectionId: string | null; // null = move to uncategorized
+    readonly movedAt: string;
+  };
+}
+
+/**
+ * MoveEntryToCollection Command
+ * Represents the user's intent to move an entry to a different collection
+ */
+export interface MoveEntryToCollectionCommand {
+  readonly entryId: string;
+  readonly collectionId: string | null;
+}
+
+/**
  * Union type of all task-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged;
+export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | EntryMovedToCollection;
 
 // ============================================================================
 // Note Domain Types (Bullet Journal Notes)
@@ -245,6 +278,9 @@ export interface Note {
   /** Fractional index for ordering entries */
   readonly order?: string;
   
+  /** Optional: Collection this note belongs to (null/undefined = uncategorized) */
+  readonly collectionId?: string;
+  
   /** Optional: User who created the note */
   readonly userId?: string;
 }
@@ -266,6 +302,7 @@ export interface NoteCreated extends DomainEvent {
     readonly content: string;
     readonly createdAt: string;
     readonly order?: string;
+    readonly collectionId?: string; // Optional - collection this note belongs to
     readonly userId?: string;
   };
 }
@@ -279,6 +316,7 @@ export interface NoteCreated extends DomainEvent {
  */
 export interface CreateNoteCommand {
   readonly content: string;
+  readonly collectionId?: string;
   readonly userId?: string;
 }
 
@@ -353,7 +391,7 @@ export interface NoteReordered extends DomainEvent {
 /**
  * Union type of all note-related events
  */
-export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered;
+export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | EntryMovedToCollection;
 
 // ============================================================================
 // Event Domain Types (Bullet Journal Events)
@@ -379,6 +417,9 @@ export interface Event {
   /** Fractional index for ordering entries */
   readonly order?: string;
   
+  /** Optional: Collection this event belongs to (null/undefined = uncategorized) */
+  readonly collectionId?: string;
+  
   /** Optional: User who created the event */
   readonly userId?: string;
 }
@@ -401,6 +442,7 @@ export interface EventCreated extends DomainEvent {
     readonly createdAt: string;
     readonly eventDate?: string;
     readonly order?: string;
+    readonly collectionId?: string; // Optional - collection this event belongs to
     readonly userId?: string;
   };
 }
@@ -416,6 +458,7 @@ export interface EventCreated extends DomainEvent {
 export interface CreateEventCommand {
   readonly content: string;
   readonly eventDate?: string;
+  readonly collectionId?: string;
   readonly userId?: string;
 }
 
@@ -513,7 +556,7 @@ export interface EventReordered extends DomainEvent {
 /**
  * Union type of all event-related events
  */
-export type EventEvent = EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered;
+export type EventEvent = EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered | EntryMovedToCollection;
 
 // ============================================================================
 // Unified Entry Types (for UI)

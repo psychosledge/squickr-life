@@ -174,6 +174,31 @@ describe('CreateEventHandler', () => {
       const event = events[0] as EventCreated;
       expect(event.payload.userId).toBe('user-123');
     });
+
+    it('should include collectionId if provided', async () => {
+      const command: CreateEventCommand = {
+        content: 'Event in collection',
+        collectionId: 'collection-789',
+      };
+
+      await handler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[0] as EventCreated;
+      expect(event.payload.collectionId).toBe('collection-789');
+    });
+
+    it('should create event without collectionId (uncategorized)', async () => {
+      const command: CreateEventCommand = {
+        content: 'Uncategorized event',
+      };
+
+      await handler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[0] as EventCreated;
+      expect(event.payload.collectionId).toBeUndefined();
+    });
   });
 });
 

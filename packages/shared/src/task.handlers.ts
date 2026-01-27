@@ -13,7 +13,9 @@ import type {
   ReorderTaskCommand,
   TaskReordered,
   UpdateTaskTitleCommand,
-  TaskTitleChanged
+  TaskTitleChanged,
+  MoveEntryToCollectionCommand,
+  EntryMovedToCollection
 } from './task.types';
 import { generateEventMetadata } from './event-helpers';
 import { validateTaskExists, validateTaskStatus } from './task-validation';
@@ -81,6 +83,7 @@ export class CreateTaskHandler {
         createdAt: metadata.timestamp,
         status: 'open',
         order,
+        collectionId: command.collectionId,
         userId: command.userId,
       },
     };
@@ -363,6 +366,69 @@ export class UpdateTaskTitleHandler {
         taskId: command.taskId,
         newTitle: title,
         changedAt: metadata.timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for MoveEntryToCollection
+ * 
+ * Responsibilities:
+ * - Validate entry exists (can be task, note, or event)
+ * - Check if entry is already in target collection (idempotency)
+ * - Create EntryMovedToCollection event
+ * - Persist event to EventStore
+ */
+export class MoveEntryToCollectionHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly entryProjection: EntryListProjection
+  ) {}
+
+  /**
+   * Handle MoveEntryToCollection command
+   * 
+   * Validation rules:
+   * - Entry must exist (can be task, note, or event)
+   * - Idempotent: No event if entry is already in target collection
+   * - collectionId can be null to move to uncategorized
+   * 
+   * @param command - The MoveEntryToCollection command
+   * @throws Error if validation fails
+   */
+  async handle(command: MoveEntryToCollectionCommand): Promise<void> {
+    // Validate entry exists (polymorphic - works for tasks, notes, and events)
+    const entry = await this.entryProjection.getEntryById(command.entryId);
+    if (!entry) {
+      throw new Error(`Entry ${command.entryId} not found`);
+    }
+
+    // Idempotency check: Don't create event if already in target collection
+    // Compare with undefined/null handling: both undefined and null mean uncategorized
+    const currentCollectionId = entry.collectionId ?? null;
+    const targetCollectionId = command.collectionId;
+    
+    if (currentCollectionId === targetCollectionId) {
+      // Already in target collection - no event needed (idempotent)
+      return;
+    }
+
+    // Generate event metadata
+    const metadata = generateEventMetadata();
+
+    // Create EntryMovedToCollection event
+    const event: EntryMovedToCollection = {
+      ...metadata,
+      type: 'EntryMovedToCollection',
+      aggregateId: command.entryId,
+      payload: {
+        entryId: command.entryId,
+        collectionId: command.collectionId,
+        movedAt: metadata.timestamp,
       },
     };
 

@@ -212,6 +212,23 @@ export class EntryListProjection {
   }
 
   /**
+   * Get entries filtered by collection
+   * 
+   * @param collectionId - The collection ID to filter by (null = uncategorized)
+   * @returns Array of entries in the specified collection, sorted by order
+   */
+  async getEntriesByCollection(collectionId: string | null): Promise<Entry[]> {
+    const allEntries = await this.getEntries('all');
+    
+    // Filter entries by collectionId
+    // Note: both undefined and null are treated as "uncategorized"
+    return allEntries.filter(entry => {
+      const entryCollectionId = entry.collectionId ?? null;
+      return entryCollectionId === collectionId;
+    });
+  }
+
+  /**
    * Apply events to build entry state
    * This handles Task, Note, and Event events polymorphically
    */
@@ -221,15 +238,31 @@ export class EntryListProjection {
     const eventEntries: Map<string, EventEntry> = new Map();
 
     for (const event of events) {
-      // Handle Task events
-      if (this.isTaskEvent(event)) {
+      // Handle polymorphic EntryMovedToCollection FIRST (cross-cutting concern)
+      // This event can apply to any entry type, so we check all three maps
+      if (this.isEntryMovedEvent(event)) {
+        const entryId = event.payload.entryId;
+        const collectionId = event.payload.collectionId ?? undefined;
+        
+        // Check which map contains this entry and update it
+        if (tasks.has(entryId)) {
+          const task = tasks.get(entryId)!;
+          tasks.set(task.id, { ...task, collectionId });
+        } else if (notes.has(entryId)) {
+          const note = notes.get(entryId)!;
+          notes.set(note.id, { ...note, collectionId });
+        } else if (eventEntries.has(entryId)) {
+          const evt = eventEntries.get(entryId)!;
+          eventEntries.set(evt.id, { ...evt, collectionId });
+        }
+      }
+      // Handle type-specific events
+      else if (this.isTaskEvent(event)) {
         this.applyTaskEvent(tasks, event);
       }
-      // Handle Note events
       else if (this.isNoteEvent(event)) {
         this.applyNoteEvent(notes, event);
       }
-      // Handle Event events
       else if (this.isEventEvent(event)) {
         this.applyEventEvent(eventEntries, event);
       }
@@ -267,6 +300,7 @@ export class EntryListProjection {
           createdAt: event.payload.createdAt,
           status: event.payload.status,
           order: event.payload.order,
+          collectionId: event.payload.collectionId,
           userId: event.payload.userId,
         };
         tasks.set(task.id, task);
@@ -332,6 +366,7 @@ export class EntryListProjection {
           content: event.payload.content,
           createdAt: event.payload.createdAt,
           order: event.payload.order,
+          collectionId: event.payload.collectionId,
           userId: event.payload.userId,
         };
         notes.set(note.id, note);
@@ -376,6 +411,7 @@ export class EntryListProjection {
           createdAt: event.payload.createdAt,
           eventDate: event.payload.eventDate,
           order: event.payload.order,
+          collectionId: event.payload.collectionId,
           userId: event.payload.userId,
         };
         eventEntries.set(evt.id, evt);
@@ -443,6 +479,10 @@ export class EntryListProjection {
   /**
    * Type guards
    */
+  private isEntryMovedEvent(event: import('./domain-event').DomainEvent): event is import('./task.types').EntryMovedToCollection {
+    return event.type === 'EntryMovedToCollection';
+  }
+
   private isTaskEvent(event: import('./domain-event').DomainEvent): event is TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged {
     return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened' || event.type === 'TaskDeleted' || event.type === 'TaskReordered' || event.type === 'TaskTitleChanged';
   }
