@@ -1,8 +1,66 @@
 # Collections Feature - Implementation Plan
 
-**Status:** In Progress  
+**Status:** In Progress - Phase 1A/1B Complete ✅  
 **Started:** 2026-01-26  
+**Current Phase:** Ready for Phase 2A (React Router Setup)  
 **Architecture:** ADR-008 (Collections as Journal Pages)
+
+---
+
+## Progress Summary
+
+### Completed Phases ✅
+
+**Phase 1A: Collection Aggregate (Backend)** - DONE  
+- ✅ Committed: `ac7f0c4` (2026-01-26)
+- ✅ Created Collection domain types, events, commands
+- ✅ Implemented 4 handlers: Create, Rename, Reorder, Delete
+- ✅ Added CollectionListProjection for read model
+- ✅ Added validation helpers and comprehensive tests (58 tests)
+- ✅ All handlers are idempotent (prevent double-submit bugs)
+- ✅ Casey review: 9/10 rating
+- Files: 8 new + 2 modified
+
+**Phase 1B: Add collectionId to Entries** - DONE  
+- ✅ Committed: `ab0591b` (2026-01-26)
+- ✅ Added `collectionId` field to Task, Note, Event types
+- ✅ Updated all Create handlers to accept collectionId
+- ✅ Implemented MoveEntryToCollectionHandler (polymorphic, idempotent)
+- ✅ Added getEntriesByCollection() to EntryListProjection
+- ✅ Fixed type guard ambiguity bug (Notes/Events can now be moved)
+- ✅ Added regression tests (18 new tests, 288 total passing)
+- ✅ Backward compatible (legacy entries work as uncategorized)
+- ✅ Casey review: 9.5/10 rating
+- Files: 1 new + 10 modified
+
+### Git Status
+- 📦 3 commits ahead of origin/master
+- ✅ All 288 tests passing
+- ✅ No TypeScript errors
+- Ready to push or continue with Phase 2
+
+---
+
+## 🚀 Quick Start for Next Session (Phase 2A)
+
+### What to tell Sam:
+
+> "Sam, please implement Phase 2A: React Router Setup. The backend (Phase 1A/1B) is complete and committed. Now we need to add routing infrastructure so users can navigate between the collection index and individual collection pages."
+
+### Context for Sam:
+- Phase 1A/1B added all backend logic (Collections aggregate + collectionId on entries)
+- All 288 tests passing, code reviewed by Casey (9.5/10)
+- No UI exists yet - Phase 2A starts the UI layer
+- Current app shows "Daily Logs" view - we'll replace this with Collections-based navigation
+
+### Sam's Task (Phase 2A):
+1. Install `react-router-dom` dependency
+2. Create `routes.tsx` with route constants
+3. Wrap App with BrowserRouter
+4. Create placeholder views: `CollectionIndexView` and `CollectionDetailView`
+5. Verify routing works (navigate via URL, back/forward buttons)
+
+See **Phase 2A** section below for full details.
 
 ---
 
@@ -40,44 +98,64 @@ Replace the current date-based Daily Logs view with a **Collections-based archit
 ## Implementation Phases
 
 ### Phase 1A: Collection Aggregate (Backend)
-**Status:** Pending  
+**Status:** ✅ COMPLETE (Committed: `ac7f0c4`)  
 **Goal:** Create Collection as first-class aggregate
 
-**Files to Create:**
-- `packages/shared/src/collection.types.ts`
-- `packages/shared/src/collection.handlers.ts`
-- `packages/shared/src/collection.projections.ts`
-- `packages/shared/tests/collection.handlers.test.ts`
+**Completed Work:**
+- ✅ Created `collection.types.ts` with Collection entity, 4 events, 4 commands
+- ✅ Created `collection.handlers.ts` with 4 handlers (Create, Rename, Reorder, Delete)
+- ✅ Created `collection.projections.ts` with CollectionListProjection
+- ✅ Created `collection-validation.ts` with reusable helpers
+- ✅ Created comprehensive test suite (58 tests)
+- ✅ All handlers implement idempotency safeguards
+- ✅ Exported all types and handlers in index.ts
+- ✅ Casey code review: 9/10 rating
 
-**Key Types:**
+**Key Implementation Details:**
 ```typescript
-interface Collection {
-  id: string;              // UUID
-  name: string;            // User-facing, can duplicate
-  type: CollectionType;    // 'log' (default) | 'custom' | 'tracker'
-  order: string;           // Fractional index
-  createdAt: string;
-  deletedAt?: string;      // Soft delete
-}
+// Idempotency patterns used:
+// - CreateCollectionHandler: Time-based deduplication (5-second window)
+// - RenameCollectionHandler: State-based (no event if already has target name)
+// - ReorderCollectionHandler: State-based (no event if already in position)
+// - DeleteCollectionHandler: Throws error if already deleted
 
-type CollectionType = 'log' | 'custom' | 'tracker';
-
-// Events
-CollectionCreated
-CollectionRenamed
-CollectionReordered
-CollectionDeleted  // Soft delete (sets deletedAt)
+// Soft delete: Sets deletedAt timestamp, entries remain in event store
 ```
-
-**Validation Rules:**
-- Name required (min 1 char after trim)
-- Name can duplicate (no uniqueness check)
-- Type defaults to 'log'
-- Order uses fractional indexing
 
 ---
 
 ### Phase 1B: Add collectionId to Entries
+**Status:** ✅ COMPLETE (Committed: `ab0591b`)  
+**Goal:** Update all entry types to reference a collection
+
+**Completed Work:**
+- ✅ Added `collectionId?: string` to Task, Note, Event entities
+- ✅ Updated TaskCreated, NoteCreated, EventCreated event payloads
+- ✅ Updated CreateTaskCommand, CreateNoteCommand, CreateEventCommand
+- ✅ Modified all 3 Create handlers to accept and store collectionId
+- ✅ Implemented MoveEntryToCollectionHandler (polymorphic, works for all entry types)
+- ✅ Added EntryMovedToCollection event (included in TaskEvent, NoteEvent, EventEvent unions)
+- ✅ Updated EntryListProjection to handle collectionId
+- ✅ Added getEntriesByCollection() method (filters by collection, null = uncategorized)
+- ✅ Fixed type guard bug (EntryMovedToCollection handled centrally before type routing)
+- ✅ Added 18 new tests (16 from implementation + 2 regression tests)
+- ✅ Casey code review: 9.5/10 rating
+
+**Key Implementation Details:**
+```typescript
+// Legacy entry handling:
+// - Entries without collectionId are treated as "uncategorized"
+// - getEntriesByCollection(null) returns entries where collectionId is undefined/null
+// - Backward compatible: old entries work without migration
+
+// Type guard fix:
+// - EntryMovedToCollection is cross-cutting (applies to Task/Note/Event)
+// - Handled FIRST in applyEvents() before type-specific routing
+// - Checks all three maps (tasks, notes, eventEntries) dynamically
+// - Prevents bug where only Tasks could be moved to collections
+```
+
+---
 **Status:** Pending  
 **Goal:** Update all entry types to reference a collection
 
@@ -116,15 +194,20 @@ async getCollections(): Promise<Collection[]> {
 ---
 
 ### Phase 2A: React Router Setup
-**Status:** Pending  
+**Status:** 🔜 NEXT - Ready to start  
 **Goal:** Add routing infrastructure for navigation
 
-**Dependencies:**
+**Dependencies to Install:**
 ```bash
 cd packages/client
 pnpm add react-router-dom
 pnpm add -D @types/react-router-dom
 ```
+
+**Files to Create/Modify:**
+- `packages/client/src/routes.tsx` (NEW) - Route constants
+- `packages/client/src/App.tsx` (MODIFY) - Wrap with BrowserRouter
+- `packages/client/src/main.tsx` (CHECK) - May need changes
 
 **Route Structure:**
 ```typescript
@@ -143,10 +226,16 @@ export const routes = {
 </BrowserRouter>
 ```
 
+**Testing:**
+- Navigate to `/` should show collection index
+- Navigate to `/collection/:id` should show collection detail
+- Browser back/forward buttons work
+- URL updates when navigating
+
 ---
 
 ### Phase 2B: Collection Index View
-**Status:** Pending  
+**Status:** Pending (after Phase 2A)  
 **Goal:** "Table of contents" showing all collections
 
 **Files to Create:**
@@ -168,6 +257,7 @@ export const routes = {
 │                                 │
 │ [FAB: +]                        │  ← Create new collection
 └─────────────────────────────────┘
+
 ```
 
 **Features:**
