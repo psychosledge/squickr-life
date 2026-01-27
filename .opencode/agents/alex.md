@@ -1,7 +1,6 @@
 ---
 description: Architecture decisions, system design, and event modeling
 mode: subagent
-model: anthropic/claude-sonnet-4-20250514
 temperature: 0.2
 tools:
   write: true

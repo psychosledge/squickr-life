@@ -1,7 +1,6 @@
 ---
 description: Feature implementation, bug fixes, and TDD execution
 mode: subagent
-model: anthropic/claude-sonnet-4-20250514
 temperature: 0.3
 tools:
   write: true
