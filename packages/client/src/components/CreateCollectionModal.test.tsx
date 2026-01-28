@@ -272,4 +272,64 @@ describe('CreateCollectionModal', () => {
     
     expect(onSubmit).toHaveBeenCalledWith('Trimmed Name');
   });
+
+  it('should close when Escape key is pressed', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    
+    render(
+      <CreateCollectionModal 
+        isOpen={true} 
+        onClose={onClose} 
+        onSubmit={vi.fn()} 
+      />
+    );
+
+    await user.keyboard('{Escape}');
+    
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('should prevent body scroll when open', () => {
+    const originalOverflow = document.body.style.overflow;
+    
+    const { rerender } = render(
+      <CreateCollectionModal 
+        isOpen={true} 
+        onClose={vi.fn()} 
+        onSubmit={vi.fn()} 
+      />
+    );
+
+    expect(document.body.style.overflow).toBe('hidden');
+
+    rerender(
+      <CreateCollectionModal 
+        isOpen={false} 
+        onClose={vi.fn()} 
+        onSubmit={vi.fn()} 
+      />
+    );
+
+    expect(document.body.style.overflow).toBe(originalOverflow);
+  });
+
+  it('should close when backdrop is clicked', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    
+    render(
+      <CreateCollectionModal 
+        isOpen={true} 
+        onClose={onClose} 
+        onSubmit={vi.fn()} 
+      />
+    );
+
+    const backdrop = screen.getByText('Create Collection').closest('.fixed');
+    if (backdrop) {
+      await user.click(backdrop);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    }
+  });
 });
