@@ -28,7 +28,7 @@ describe('EntryItem', () => {
       );
       
       // Task-specific elements
-      expect(screen.getByText('☐')).toBeInTheDocument();
+      expect(screen.getByText('•')).toBeInTheDocument();
       expect(screen.getByText('Buy milk')).toBeInTheDocument();
     });
 
@@ -48,7 +48,7 @@ describe('EntryItem', () => {
       );
       
       // Note-specific elements
-      expect(screen.getByText('-')).toBeInTheDocument();
+      expect(screen.getByText('–')).toBeInTheDocument();
       expect(screen.getByText('Important meeting notes')).toBeInTheDocument();
     });
 
@@ -95,7 +95,7 @@ describe('EntryItem', () => {
       );
       
       // TaskEntryItem should render Complete button
-      expect(screen.getByRole('button', { name: /complete task/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /open task.*complete/i })).toBeInTheDocument();
     });
 
     it('should forward note-specific props to NoteEntryItem', () => {

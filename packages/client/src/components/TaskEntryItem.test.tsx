@@ -30,7 +30,7 @@ describe('TaskEntryItem', () => {
     completedAt: '2026-01-24T10:30:00.000Z',
   };
 
-  it('should render task with checkbox bullet', () => {
+  it('should render task with bullet icon', () => {
     render(
       <TaskEntryItem 
         entry={mockOpenTask} 
@@ -38,11 +38,11 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    expect(screen.getByText('☐')).toBeInTheDocument();
+    expect(screen.getByText('•')).toBeInTheDocument();
     expect(screen.getByText('Buy milk')).toBeInTheDocument();
   });
 
-  it('should render completed task with checked bullet', () => {
+  it('should render completed task with X bullet', () => {
     render(
       <TaskEntryItem 
         entry={mockCompletedTask} 
@@ -50,10 +50,10 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    expect(screen.getByText('☑')).toBeInTheDocument();
+    expect(screen.getByText('×')).toBeInTheDocument();
   });
 
-  it('should show unchecked checkbox for open tasks', () => {
+  it('should show bullet for open tasks', () => {
     render(
       <TaskEntryItem 
         entry={mockOpenTask} 
@@ -62,12 +62,12 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    const checkbox = screen.getByRole('button', { name: /complete task/i });
-    expect(checkbox).toBeInTheDocument();
-    expect(checkbox).toHaveTextContent('☐');
+    const bullet = screen.getByRole('button', { name: /open task.*complete/i });
+    expect(bullet).toBeInTheDocument();
+    expect(bullet).toHaveTextContent('•');
   });
 
-  it('should show checked checkbox for completed tasks', () => {
+  it('should show X bullet for completed tasks', () => {
     render(
       <TaskEntryItem 
         entry={mockCompletedTask} 
@@ -76,12 +76,12 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    const checkbox = screen.getByRole('button', { name: /reopen task/i });
-    expect(checkbox).toBeInTheDocument();
-    expect(checkbox).toHaveTextContent('☑');
+    const bullet = screen.getByRole('button', { name: /completed task.*reopen/i });
+    expect(bullet).toBeInTheDocument();
+    expect(bullet).toHaveTextContent('×');
   });
 
-  it('should call onCompleteTask when checkbox is clicked for open task', () => {
+  it('should call onCompleteTask when bullet is clicked for open task', () => {
     render(
       <TaskEntryItem 
         entry={mockOpenTask} 
@@ -90,13 +90,13 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    const checkbox = screen.getByRole('button', { name: /complete task/i });
-    fireEvent.click(checkbox);
+    const bullet = screen.getByRole('button', { name: /open task.*complete/i });
+    fireEvent.click(bullet);
 
     expect(mockOnCompleteTask).toHaveBeenCalledWith('task-1');
   });
 
-  it('should call onReopenTask when checkbox is clicked for completed task', () => {
+  it('should call onReopenTask when bullet is clicked for completed task', () => {
     render(
       <TaskEntryItem 
         entry={mockCompletedTask} 
@@ -105,8 +105,8 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    const checkbox = screen.getByRole('button', { name: /reopen task/i });
-    fireEvent.click(checkbox);
+    const bullet = screen.getByRole('button', { name: /completed task.*reopen/i });
+    fireEvent.click(bullet);
 
     expect(mockOnReopenTask).toHaveBeenCalledWith('task-2');
   });
@@ -208,7 +208,7 @@ describe('TaskEntryItem', () => {
     // Status badge should not be present
     expect(screen.queryByText('open')).not.toBeInTheDocument();
     
-    // But checkbox should still be visible
-    expect(screen.getByText('☐')).toBeInTheDocument();
+    // But bullet should still be visible
+    expect(screen.getByText('•')).toBeInTheDocument();
   });
 });

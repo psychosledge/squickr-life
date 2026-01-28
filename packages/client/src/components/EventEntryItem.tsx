@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { Entry, Collection } from '@squickr/shared';
 import { formatTimestamp, formatDate } from '../utils/formatters';
 import { MoveEntryToCollectionModal } from './MoveEntryToCollectionModal';
+import { BulletIcon } from './BulletIcon';
 
 interface EventEntryItemProps {
   entry: Entry & { type: 'event' };
@@ -104,9 +105,7 @@ export function EventEntryItem({
       <div className="flex items-start justify-between gap-3">
         {/* Bullet and Content */}
         <div className="flex-1 flex gap-3 min-w-0">
-          <div className="text-2xl text-gray-600 dark:text-gray-400 leading-none pt-1">
-            ○
-          </div>
+          <BulletIcon entry={entry} />
           <div className="flex-1">
             {isEditing ? (
               <div className="space-y-2">
@@ -151,10 +150,6 @@ export function EventEntryItem({
                   title={canEdit ? 'Double-click to edit' : undefined}
                   style={{ whiteSpace: 'pre-wrap' }}
                 >
-                  {/* Migration indicator */}
-                  {entry.migratedTo && (
-                    <span className="text-gray-400 dark:text-gray-500 mr-1" title="Migrated to another collection">→</span>
-                  )}
                   {entry.content}
                 </div>
                 {entry.eventDate && (

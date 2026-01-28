@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { Entry, Collection } from '@squickr/shared';
 import { formatTimestamp } from '../utils/formatters';
 import { MoveEntryToCollectionModal } from './MoveEntryToCollectionModal';
+import { BulletIcon } from './BulletIcon';
 
 interface TaskEntryItemProps {
   entry: Entry & { type: 'task' };
@@ -104,15 +105,11 @@ export function TaskEntryItem({
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
                     rounded-lg p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start gap-3">
-        {/* Clickable Checkbox - toggles complete/reopen */}
-        <button
-          onClick={handleToggleComplete}
-          className="text-2xl text-gray-600 dark:text-gray-400 leading-none pt-1 
-                     hover:scale-110 transition-transform flex-shrink-0"
-          aria-label={isCompleted ? 'Reopen task' : 'Complete task'}
-        >
-          {isCompleted ? '☑' : '☐'}
-        </button>
+        {/* Bullet Journal Icon - integrates type + state + migration */}
+        <BulletIcon 
+          entry={entry} 
+          onClick={entry.migratedTo ? undefined : handleToggleComplete}
+        />
         
         {/* Content Area */}
         <div className="flex-1 min-w-0">
@@ -148,10 +145,6 @@ export function TaskEntryItem({
                 title={canEdit ? 'Double-click to edit' : undefined}
                 style={{ whiteSpace: 'pre-wrap' }}
               >
-                {/* Migration indicator */}
-                {entry.migratedTo && (
-                  <span className="text-gray-400 dark:text-gray-500 mr-1" title="Migrated to another collection">→</span>
-                )}
                 {entry.title}
               </div>
               <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
