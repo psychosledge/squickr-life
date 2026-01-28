@@ -102,3 +102,62 @@ describe('CollectionHeader', () => {
     expect(screen.queryByText(/rename/i)).not.toBeInTheDocument();
   });
 });
+
+describe('CollectionHeader - Virtual Collection Behavior', () => {
+  const defaultProps = {
+    collectionName: 'Uncategorized',
+    onRename: vi.fn(),
+    onDelete: vi.fn(),
+  };
+
+  function renderHeader(props = {}) {
+    return render(
+      <BrowserRouter>
+        <CollectionHeader {...defaultProps} {...props} />
+      </BrowserRouter>
+    );
+  }
+
+  it('should hide menu button when isVirtual=true', () => {
+    renderHeader({ isVirtual: true });
+    
+    const menuButton = screen.queryByLabelText(/collection menu/i);
+    expect(menuButton).not.toBeInTheDocument();
+  });
+
+  it('should show menu button when isVirtual=false', () => {
+    renderHeader({ isVirtual: false });
+    
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    expect(menuButton).toBeInTheDocument();
+  });
+
+  it('should show menu button by default (when isVirtual not provided)', () => {
+    renderHeader();
+    
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    expect(menuButton).toBeInTheDocument();
+  });
+
+  it('should show spacer div for layout balance when isVirtual=true', () => {
+    const { container } = renderHeader({ isVirtual: true });
+    
+    // Should have a spacer div with w-10 class for balance
+    const spacer = container.querySelector('.w-10');
+    expect(spacer).toBeInTheDocument();
+  });
+
+  it('should make title clickable and navigate to index', () => {
+    renderHeader({ isVirtual: true });
+    
+    const titleLink = screen.getByText('Uncategorized').closest('a');
+    expect(titleLink).toHaveAttribute('href', '/');
+  });
+
+  it('should make back arrow navigate to index', () => {
+    renderHeader({ isVirtual: true });
+    
+    const backButton = screen.getByLabelText(/back to collections/i);
+    expect(backButton).toHaveAttribute('href', '/');
+  });
+});

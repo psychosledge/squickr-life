@@ -2,16 +2,12 @@
  * Route Constants
  * 
  * Centralized route definitions for the application.
- * Phase 2A: Infrastructure setup
- * Phase 2B: Collection Index becomes default
+ * Phase 2D: Collections as primary interface
  */
 
 export const ROUTES = {
   index: '/',
-  collections: '/collections',
   collection: '/collection/:id',
-  dailyLogs: '/daily-logs',
-  uncategorized: '/uncategorized',
 } as const;
 
 /**
@@ -19,3 +15,8 @@ export const ROUTES = {
  */
 export const buildCollectionPath = (id: string): string => 
   `/collection/${id}`;
+
+/**
+ * Special collection ID for uncategorized entries
+ */
+export const UNCATEGORIZED_COLLECTION_ID = 'uncategorized';

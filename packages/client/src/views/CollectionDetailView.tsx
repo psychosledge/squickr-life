@@ -39,7 +39,7 @@ import { EntryInputModal } from '../components/EntryInputModal';
 import { RenameCollectionModal } from '../components/RenameCollectionModal';
 import { DeleteCollectionModal } from '../components/DeleteCollectionModal';
 import { FAB } from '../components/FAB';
-import { ROUTES } from '../routes';
+import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
 export function CollectionDetailView() {
   const { id: collectionId } = useParams<{ id: string }>();
@@ -78,6 +78,26 @@ export function CollectionDetailView() {
 
     setIsLoading(true);
     
+    // Handle virtual "uncategorized" collection
+    if (collectionId === UNCATEGORIZED_COLLECTION_ID) {
+      // Synthesize virtual collection
+      setCollection({
+        id: UNCATEGORIZED_COLLECTION_ID,
+        name: 'Uncategorized',
+        type: 'custom',
+        order: '!',
+        createdAt: new Date().toISOString(),
+      });
+      
+      // Load orphaned entries (null collectionId)
+      const orphanedEntries = await entryProjection.getEntriesByCollection(null);
+      setEntries(orphanedEntries);
+      
+      setIsLoading(false);
+      return;
+    }
+    
+    // Handle real collections
     const collections = await collectionProjection.getCollections();
     const foundCollection = collections.find(c => c.id === collectionId);
     setCollection(foundCollection || null);
@@ -108,15 +128,21 @@ export function CollectionDetailView() {
 
   // Handlers for entry operations
   const handleCreateTask = async (title: string) => {
-    await createTaskHandler.handle({ title, collectionId });
+    // If in uncategorized view, don't set collectionId (keep entries truly uncategorized)
+    const actualCollectionId = collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId;
+    await createTaskHandler.handle({ title, collectionId: actualCollectionId });
   };
 
   const handleCreateNote = async (content: string) => {
-    await createNoteHandler.handle({ content, collectionId });
+    // If in uncategorized view, don't set collectionId (keep entries truly uncategorized)
+    const actualCollectionId = collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId;
+    await createNoteHandler.handle({ content, collectionId: actualCollectionId });
   };
 
   const handleCreateEvent = async (content: string, eventDate?: string) => {
-    await createEventHandler.handle({ content, eventDate, collectionId });
+    // If in uncategorized view, don't set collectionId (keep entries truly uncategorized)
+    const actualCollectionId = collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId;
+    await createEventHandler.handle({ content, eventDate, collectionId: actualCollectionId });
   };
 
   const handleCompleteTask = async (taskId: string) => {
@@ -231,7 +257,7 @@ export function CollectionDetailView() {
             The collection you're looking for doesn't exist.
           </p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(ROUTES.index)}
             className="
               px-4 py-2
               bg-blue-600 text-white
@@ -256,6 +282,7 @@ export function CollectionDetailView() {
         collectionName={collection.name}
         onRename={handleRenameCollection}
         onDelete={handleDeleteCollection}
+        isVirtual={collection.id === UNCATEGORIZED_COLLECTION_ID}
       />
 
       {/* Entry list */}

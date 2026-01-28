@@ -13,12 +13,14 @@ interface CollectionHeaderProps {
   collectionName: string;
   onRename: () => void;
   onDelete: () => void;
+  isVirtual?: boolean;
 }
 
 export function CollectionHeader({
   collectionName,
   onRename,
   onDelete,
+  isVirtual = false,
 }: CollectionHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -80,85 +82,100 @@ export function CollectionHeader({
           </svg>
         </Link>
 
-        {/* Center: Collection name */}
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white truncate mx-4 flex-1 text-center">
+        {/* Center: Collection name (clickable, navigates to index) */}
+        <Link
+          to={ROUTES.index}
+          className="
+            text-xl font-semibold 
+            text-gray-900 dark:text-white 
+            hover:text-blue-600 dark:hover:text-blue-400
+            truncate mx-4 flex-1 text-center
+            transition-colors
+            focus:outline-none focus:ring-2 focus:ring-blue-500 rounded
+          "
+        >
           {collectionName}
-        </h1>
+        </Link>
 
-        {/* Right: Menu button */}
-        <div className="relative" ref={menuRef}>
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="
-              p-2 -mr-2
-              text-gray-600 dark:text-gray-400
-              hover:text-gray-900 dark:hover:text-white
-              hover:bg-gray-100 dark:hover:bg-gray-700
-              rounded-lg
-              transition-colors
-              focus:outline-none focus:ring-2 focus:ring-blue-500
-            "
-            aria-label="Collection menu"
-            type="button"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 6v.01M12 12v.01M12 18v.01M12 7a1 1 0 110-2 1 1 0 010 2zm0 6a1 1 0 110-2 1 1 0 010 2zm0 6a1 1 0 110-2 1 1 0 010 2z"
-              />
-            </svg>
-          </button>
-
-          {/* Dropdown menu */}
-          {isMenuOpen && (
-            <div
+        {/* Right: Menu button (or spacer for virtual collections) */}
+        {isVirtual ? (
+          // Spacer for layout balance (same width as menu button)
+          <div className="w-10" />
+        ) : (
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="
-                absolute right-0 mt-2
-                w-48
-                bg-white dark:bg-gray-800
-                border border-gray-200 dark:border-gray-700
+                p-2 -mr-2
+                text-gray-600 dark:text-gray-400
+                hover:text-gray-900 dark:hover:text-white
+                hover:bg-gray-100 dark:hover:bg-gray-700
                 rounded-lg
-                shadow-lg
-                py-1
-                z-50
+                transition-colors
+                focus:outline-none focus:ring-2 focus:ring-blue-500
               "
+              aria-label="Collection menu"
+              type="button"
             >
-              <button
-                onClick={handleRename}
-                className="
-                  w-full px-4 py-2
-                  text-left text-gray-700 dark:text-gray-300
-                  hover:bg-gray-100 dark:hover:bg-gray-700
-                  transition-colors
-                  focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
-                "
-                type="button"
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
               >
-                Rename
-              </button>
-              <button
-                onClick={handleDelete}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 6v.01M12 12v.01M12 18v.01M12 7a1 1 0 110-2 1 1 0 010 2zm0 6a1 1 0 110-2 1 1 0 010 2zm0 6a1 1 0 110-2 1 1 0 010 2z"
+                />
+              </svg>
+            </button>
+
+            {/* Dropdown menu */}
+            {isMenuOpen && (
+              <div
                 className="
-                  w-full px-4 py-2
-                  text-left text-red-600 dark:text-red-400
-                  hover:bg-gray-100 dark:hover:bg-gray-700
-                  transition-colors
-                  focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                  absolute right-0 mt-2
+                  w-48
+                  bg-white dark:bg-gray-800
+                  border border-gray-200 dark:border-gray-700
+                  rounded-lg
+                  shadow-lg
+                  py-1
+                  z-50
                 "
-                type="button"
               >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
+                <button
+                  onClick={handleRename}
+                  className="
+                    w-full px-4 py-2
+                    text-left text-gray-700 dark:text-gray-300
+                    hover:bg-gray-100 dark:hover:bg-gray-700
+                    transition-colors
+                    focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                  "
+                  type="button"
+                >
+                  Rename
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="
+                    w-full px-4 py-2
+                    text-left text-red-600 dark:text-red-400
+                    hover:bg-gray-100 dark:hover:bg-gray-700
+                    transition-colors
+                    focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                  "
+                  type="button"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

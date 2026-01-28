@@ -1,36 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import {
   IndexedDBEventStore,
-  // Task handlers
-  CreateTaskHandler,
-  CompleteTaskHandler,
-  ReopenTaskHandler,
-  DeleteTaskHandler,
-  ReorderTaskHandler,
-  UpdateTaskTitleHandler,
-  // Note handlers
-  CreateNoteHandler,
-  UpdateNoteContentHandler,
-  DeleteNoteHandler,
-  ReorderNoteHandler,
-  // Event handlers
-  CreateEventHandler,
-  UpdateEventContentHandler,
-  UpdateEventDateHandler,
-  DeleteEventHandler,
-  ReorderEventHandler,
-  // Collection handlers
   CreateCollectionHandler,
-  // Projections
   EntryListProjection,
   TaskListProjection,
   CollectionListProjection
 } from '@squickr/shared';
-import { DailyLogsView } from './components/DailyLogsView';
-import { DarkModeToggle } from './components/DarkModeToggle';
-import { FAB } from './components/FAB';
-import { EntryInputModal } from './components/EntryInputModal';
 import { AppProvider } from './context/AppContext';
 import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
@@ -39,12 +15,9 @@ import { ROUTES } from './routes';
 /**
  * Main App Component
  * 
- * This demonstrates the complete CQRS + Event Sourcing flow:
- * - Write Side: EntryInput → Handler → Event → IndexedDBEventStore
- * - Read Side: IndexedDBEventStore → EntryListProjection → Entry[] → EntryList display
- * 
- * Supports three entry types: Tasks, Notes, Events
- * Data persists across page refreshes via IndexedDB!
+ * Phase 2D: Collection-first interface
+ * - Collections Index at root (/)
+ * - Collection Detail View for individual collections
  */
 function App() {
   // Initialize event sourcing infrastructure with IndexedDB persistence
@@ -53,33 +26,11 @@ function App() {
   const [taskProjection] = useState(() => new TaskListProjection(eventStore));
   const [collectionProjection] = useState(() => new CollectionListProjection(eventStore));
   
-  // Task handlers
-  const [createTaskHandler] = useState(() => new CreateTaskHandler(eventStore, taskProjection, entryProjection));
-  const [completeTaskHandler] = useState(() => new CompleteTaskHandler(eventStore, taskProjection));
-  const [reopenTaskHandler] = useState(() => new ReopenTaskHandler(eventStore, taskProjection));
-  const [deleteTaskHandler] = useState(() => new DeleteTaskHandler(eventStore, taskProjection));
-  const [reorderTaskHandler] = useState(() => new ReorderTaskHandler(eventStore, taskProjection, entryProjection));
-  const [updateTaskTitleHandler] = useState(() => new UpdateTaskTitleHandler(eventStore, taskProjection));
-  
-  // Note handlers
-  const [createNoteHandler] = useState(() => new CreateNoteHandler(eventStore, entryProjection));
-  const [updateNoteContentHandler] = useState(() => new UpdateNoteContentHandler(eventStore, entryProjection));
-  const [deleteNoteHandler] = useState(() => new DeleteNoteHandler(eventStore, entryProjection));
-  const [reorderNoteHandler] = useState(() => new ReorderNoteHandler(eventStore, entryProjection, entryProjection));
-  
-  // Event handlers
-  const [createEventHandler] = useState(() => new CreateEventHandler(eventStore, entryProjection));
-  const [updateEventContentHandler] = useState(() => new UpdateEventContentHandler(eventStore, entryProjection));
-  const [updateEventDateHandler] = useState(() => new UpdateEventDateHandler(eventStore, entryProjection));
-  const [deleteEventHandler] = useState(() => new DeleteEventHandler(eventStore, entryProjection));
-  const [reorderEventHandler] = useState(() => new ReorderEventHandler(eventStore, entryProjection, entryProjection));
-  
   // Collection handlers
   const [createCollectionHandler] = useState(() => new CreateCollectionHandler(eventStore, collectionProjection));
   
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Track if app is initialized (prevents double-init in React StrictMode)
   const isInitialized = useRef(false);
@@ -106,80 +57,6 @@ function App() {
     }
   };
 
-  // Task handlers
-  const handleCreateTask = async (title: string) => {
-    await createTaskHandler.handle({ title });
-  };
-
-  const handleCompleteTask = async (taskId: string) => {
-    await completeTaskHandler.handle({ taskId });
-  };
-
-  const handleReopenTask = async (taskId: string) => {
-    await reopenTaskHandler.handle({ taskId });
-  };
-
-  const handleUpdateTaskTitle = async (taskId: string, newTitle: string) => {
-    await updateTaskTitleHandler.handle({ taskId, title: newTitle });
-  };
-
-  // Note handlers
-  const handleCreateNote = async (content: string) => {
-    await createNoteHandler.handle({ content });
-  };
-
-  const handleUpdateNoteContent = async (noteId: string, newContent: string) => {
-    await updateNoteContentHandler.handle({ noteId, content: newContent });
-  };
-
-  // Event handlers
-  const handleCreateEvent = async (content: string, eventDate?: string) => {
-    await createEventHandler.handle({ content, eventDate });
-  };
-
-  const handleUpdateEventContent = async (eventId: string, newContent: string) => {
-    await updateEventContentHandler.handle({ eventId, content: newContent });
-  };
-
-  const handleUpdateEventDate = async (eventId: string, newDate: string | null) => {
-    await updateEventDateHandler.handle({ eventId, eventDate: newDate });
-  };
-
-  // Common handlers
-  const handleDelete = async (entryId: string) => {
-    // Find the entry to determine its type
-    const entries = await entryProjection.getEntries('all');
-    const entry = entries.find(e => e.id === entryId);
-    if (!entry) return;
-
-    if (entry.type === 'task') {
-      await deleteTaskHandler.handle({ taskId: entryId });
-    } else if (entry.type === 'note') {
-      await deleteNoteHandler.handle({ noteId: entryId });
-    } else if (entry.type === 'event') {
-      await deleteEventHandler.handle({ eventId: entryId });
-    }
-  };
-
-  const handleReorder = async (
-    entryId: string,
-    previousEntryId: string | null,
-    nextEntryId: string | null
-  ) => {
-    // Find the entry to determine its type
-    const entries = await entryProjection.getEntries('all');
-    const entry = entries.find(e => e.id === entryId);
-    if (!entry) return;
-
-    if (entry.type === 'task') {
-      await reorderTaskHandler.handle({ taskId: entryId, previousTaskId: previousEntryId, nextTaskId: nextEntryId });
-    } else if (entry.type === 'note') {
-      await reorderNoteHandler.handle({ noteId: entryId, previousNoteId: previousEntryId, nextNoteId: nextEntryId });
-    } else if (entry.type === 'event') {
-      await reorderEventHandler.handle({ eventId: entryId, previousEventId: previousEntryId, nextEventId: nextEntryId });
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -201,64 +78,9 @@ function App() {
     <AppProvider value={contextValue}>
       <BrowserRouter>
         <Routes>
-          {/* Phase 2A: Keep existing Daily Logs as default (no disruption) */}
-          <Route path={ROUTES.index} element={
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-              <div className="max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="text-center mb-8 relative">
-                  {/* Dark mode toggle - positioned top-right */}
-                  <div className="absolute top-0 right-0">
-                    <DarkModeToggle />
-                  </div>
-                  
-                  <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Squickr Life
-                  </h1>
-                  <p className="text-lg text-gray-600 dark:text-gray-400">
-                    Get shit done quicker with Squickr!
-                  </p>
-                </div>
-
-                {/* Daily Logs View (Read Side - Reactive Updates) */}
-                <DailyLogsView
-                  projection={entryProjection}
-                  onCompleteTask={handleCompleteTask}
-                  onReopenTask={handleReopenTask}
-                  onUpdateTaskTitle={handleUpdateTaskTitle}
-                  onUpdateNoteContent={handleUpdateNoteContent}
-                  onUpdateEventContent={handleUpdateEventContent}
-                  onUpdateEventDate={handleUpdateEventDate}
-                  onDelete={handleDelete}
-                  onReorder={handleReorder}
-                />
-
-                {/* Footer */}
-                <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                  <p>Event-Sourced • CQRS • TDD • Offline-First PWA</p>
-                  <p className="mt-1">✓ Data persists with IndexedDB</p>
-                  <p className="mt-1">Built by the AI Agent Team</p>
-                </div>
-              </div>
-
-              {/* FAB - All screen sizes */}
-              <FAB onClick={() => setIsModalOpen(true)} />
-
-              {/* Entry Input Modal */}
-              <EntryInputModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onSubmitTask={handleCreateTask}
-                onSubmitNote={handleCreateNote}
-                onSubmitEvent={handleCreateEvent}
-              />
-            </div>
-          } />
-          
-          {/* Phase 2A: New routes (placeholders, not yet linked in UI) */}
-          <Route path={ROUTES.collections} element={<CollectionIndexView />} />
+          {/* Phase 2D: Collection Index is now the default */}
+          <Route path={ROUTES.index} element={<CollectionIndexView />} />
           <Route path={ROUTES.collection} element={<CollectionDetailView />} />
-          <Route path={ROUTES.dailyLogs} element={<Navigate to={ROUTES.index} replace />} />
         </Routes>
       </BrowserRouter>
     </AppProvider>

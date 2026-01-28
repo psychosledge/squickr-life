@@ -1,0 +1,234 @@
+/**
+ * CollectionIndexView Tests
+ * 
+ * Phase 2D: Tests for virtual 'Uncategorized' collection synthesis
+ */
+
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { userEvent } from '@testing-library/user-event';
+import { BrowserRouter } from 'react-router-dom';
+import { CollectionIndexView } from './CollectionIndexView';
+import { AppProvider } from '../context/AppContext';
+import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
+import type { Collection, Entry } from '@squickr/shared';
+
+// Mock collections
+const mockCollections: Collection[] = [
+  {
+    id: 'col-1',
+    name: 'Books to Read',
+    type: 'log',
+    order: 'a0',
+    createdAt: '2026-01-27T10:00:00Z',
+  },
+  {
+    id: 'col-2',
+    name: 'Movies to Watch',
+    type: 'log',
+    order: 'a1',
+    createdAt: '2026-01-27T10:05:00Z',
+  },
+];
+
+// Mock orphaned entries
+const mockOrphanedEntries: Entry[] = [
+  {
+    id: 'task-orphan-1',
+    type: 'task',
+    title: 'Orphaned task',
+    status: 'open',
+    createdAt: '2026-01-27T10:00:00Z',
+    order: 'a0',
+    // No collectionId
+  },
+  {
+    id: 'note-orphan-1',
+    type: 'note',
+    content: 'Orphaned note',
+    createdAt: '2026-01-27T10:01:00Z',
+    order: 'a1',
+    // No collectionId
+  },
+];
+
+describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+  let mockCreateCollectionHandler: any;
+
+  beforeEach(() => {
+    mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue(mockCollections),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn((collectionId: string | null) => {
+        // Return orphaned entries for null collectionId
+        if (collectionId === null) {
+          return Promise.resolve(mockOrphanedEntries);
+        }
+        // Return empty for real collections in these tests
+        return Promise.resolve([]);
+      }),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockCreateCollectionHandler = {
+      handle: vi.fn().mockResolvedValue(undefined),
+    };
+  });
+
+  function renderView() {
+    const mockAppContext = {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: mockCreateCollectionHandler,
+    };
+
+    return render(
+      <BrowserRouter>
+        <AppProvider value={mockAppContext}>
+          <CollectionIndexView />
+        </AppProvider>
+      </BrowserRouter>
+    );
+  }
+
+  it('should synthesize virtual Uncategorized collection when orphaned entries exist', async () => {
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Uncategorized')).toBeInTheDocument();
+    });
+
+    // Verify it queried for orphaned entries
+    expect(mockEntryProjection.getEntriesByCollection).toHaveBeenCalledWith(null);
+  });
+
+  it('should NOT show virtual Uncategorized collection when no orphaned entries exist', async () => {
+    // Mock no orphaned entries
+    mockEntryProjection.getEntriesByCollection.mockImplementation((collectionId: string | null) => {
+      if (collectionId === null) {
+        return Promise.resolve([]); // No orphaned entries
+      }
+      return Promise.resolve([]);
+    });
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Books to Read')).toBeInTheDocument();
+    });
+
+    // Should not show Uncategorized
+    expect(screen.queryByText('Uncategorized')).not.toBeInTheDocument();
+  });
+
+  it('should show virtual Uncategorized collection FIRST in the list (order "!")', async () => {
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Uncategorized')).toBeInTheDocument();
+    });
+
+    // Get all collection cards
+    const collectionCards = screen.getAllByRole('link');
+    const collectionNames = collectionCards.map(card => card.textContent);
+
+    // Uncategorized should be first (order '!' comes before alphanumerics)
+    expect(collectionNames[0]).toContain('Uncategorized');
+  });
+
+  it('should create virtual collection object with correct properties', async () => {
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Uncategorized')).toBeInTheDocument();
+    });
+
+    // The virtual collection should have:
+    // - id: UNCATEGORIZED_COLLECTION_ID
+    // - name: 'Uncategorized'
+    // - order: '!'
+    // We can verify this by checking the link href
+    const uncategorizedLink = screen.getByText('Uncategorized').closest('a');
+    expect(uncategorizedLink).toHaveAttribute('href', `/collection/${UNCATEGORIZED_COLLECTION_ID}`);
+  });
+
+  it('should display correct entry count for virtual Uncategorized collection', async () => {
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Uncategorized')).toBeInTheDocument();
+    });
+
+    // Should show count of 2 orphaned entries
+    const uncategorizedCard = screen.getByText('Uncategorized').closest('a');
+    expect(uncategorizedCard?.textContent).toContain('2');
+  });
+
+  it('should navigate to detail view when virtual Uncategorized collection is clicked', async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Uncategorized')).toBeInTheDocument();
+    });
+
+    const uncategorizedLink = screen.getByText('Uncategorized').closest('a');
+    expect(uncategorizedLink).toHaveAttribute('href', `/collection/${UNCATEGORIZED_COLLECTION_ID}`);
+  });
+
+  it('should subscribe to both collection and entry projections for reactive updates', async () => {
+    renderView();
+
+    await waitFor(() => {
+      expect(mockCollectionProjection.subscribe).toHaveBeenCalled();
+      expect(mockEntryProjection.subscribe).toHaveBeenCalled();
+    });
+  });
+
+  it('should reload data when projections notify changes', async () => {
+    let notifyCallback: (() => void) | undefined;
+    mockEntryProjection.subscribe.mockImplementation((callback: () => void) => {
+      notifyCallback = callback;
+      return () => {};
+    });
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Uncategorized')).toBeInTheDocument();
+    });
+
+    // Clear previous calls
+    mockEntryProjection.getEntriesByCollection.mockClear();
+
+    // Simulate projection change (orphaned entries removed)
+    mockEntryProjection.getEntriesByCollection.mockImplementation((collectionId: string | null) => {
+      if (collectionId === null) {
+        return Promise.resolve([]); // No more orphaned entries
+      }
+      return Promise.resolve([]);
+    });
+
+    // Trigger update
+    notifyCallback?.();
+
+    // Wait for Uncategorized to disappear
+    await waitFor(() => {
+      expect(screen.queryByText('Uncategorized')).not.toBeInTheDocument();
+    });
+  });
+});

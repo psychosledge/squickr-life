@@ -13,6 +13,7 @@ import { CollectionList } from '../components/CollectionList';
 import { CreateCollectionModal } from '../components/CreateCollectionModal';
 import { FAB } from '../components/FAB';
 import { DarkModeToggle } from '../components/DarkModeToggle';
+import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
 export function CollectionIndexView() {
   const { collectionProjection, entryProjection, createCollectionHandler } = useApp();
@@ -23,15 +24,45 @@ export function CollectionIndexView() {
 
   // Load collections and entry counts
   const loadData = async () => {
+    // Load real collections
     const loadedCollections = await collectionProjection.getCollections();
-    setCollections(loadedCollections);
+    
+    // Load orphaned entries (entries with no collection)
+    const orphanedEntries = await entryProjection.getEntriesByCollection(null);
+    
+    // Build collections array with virtual "Uncategorized" if needed
+    const collectionsWithVirtual: Collection[] = [];
+    
+    // If there are orphaned entries, add virtual "Uncategorized" collection first
+    if (orphanedEntries.length > 0) {
+      collectionsWithVirtual.push({
+        id: UNCATEGORIZED_COLLECTION_ID,
+        name: 'Uncategorized',
+        type: 'custom',
+        order: '!', // Sorts first (! comes before alphanumerics)
+        createdAt: new Date().toISOString(),
+      });
+    }
+    
+    // Add real collections
+    collectionsWithVirtual.push(...loadedCollections);
+    
+    setCollections(collectionsWithVirtual);
 
-    // Calculate entry counts for each collection
+    // Calculate entry counts for all collections (including virtual)
     const counts = new Map<string, number>();
+    
+    // Count for uncategorized (if it exists in our list)
+    if (orphanedEntries.length > 0) {
+      counts.set(UNCATEGORIZED_COLLECTION_ID, orphanedEntries.length);
+    }
+    
+    // Count for real collections
     for (const collection of loadedCollections) {
       const entries = await entryProjection.getEntriesByCollection(collection.id);
       counts.set(collection.id, entries.length);
     }
+    
     setEntryCountsByCollection(counts);
   };
 
