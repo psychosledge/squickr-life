@@ -113,7 +113,7 @@ describe('EntryListProjection', () => {
 
     it('should handle completed task status', async () => {
       const taskId = await taskHandler.handle({ title: 'Task to complete' });
-      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection);
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId });
 
       const entries = await projection.getEntries();
@@ -213,7 +213,7 @@ describe('EntryListProjection', () => {
 
     it('should filter to show only open tasks', async () => {
       const taskId = await taskHandler.handle({ title: 'Task 3' });
-      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection);
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId });
 
       const entries = await projection.getEntries('open-tasks');
@@ -224,7 +224,7 @@ describe('EntryListProjection', () => {
 
     it('should filter to show only completed tasks', async () => {
       const taskId = await taskHandler.handle({ title: 'Task to complete' });
-      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection);
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId });
 
       const entries = await projection.getEntries('completed-tasks');
@@ -440,7 +440,7 @@ describe('EntryListProjection', () => {
       const task2 = await taskHandler.handle({ title: 'Task 2' });
 
       // Modify entries
-      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection);
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId: task1 });
 
       const updateNoteHandler = new UpdateNoteContentHandler(eventStore, projection);
@@ -497,7 +497,7 @@ describe('EntryListProjection', () => {
       const task3 = await taskHandler.handle({ title: 'Task 3' });
       await noteHandler.handle({ content: 'Note 1' });
 
-      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection);
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId: task1 });
       await completeHandler.handle({ taskId: task2 });
 
@@ -558,7 +558,7 @@ describe('EntryListProjection', () => {
       const { ReorderTaskHandler } = await import('./task.handlers');
       const { TaskListProjection } = await import('./task.projections');
       const taskProjection = new TaskListProjection(eventStore);
-      const reorderHandler = new ReorderTaskHandler(eventStore, taskProjection, projection);
+      const reorderHandler = new ReorderTaskHandler(eventStore, projection);
       
       await reorderHandler.handle({
         taskId,
@@ -629,9 +629,7 @@ describe('EntryListProjection', () => {
       
       // Move Task 2 between Event 1 and Task 1
       const { ReorderTaskHandler } = await import('./task.handlers');
-      const { TaskListProjection } = await import('./task.projections');
-      const taskProjection = new TaskListProjection(eventStore);
-      const taskReorderHandler = new ReorderTaskHandler(eventStore, taskProjection, projection);
+      const taskReorderHandler = new ReorderTaskHandler(eventStore, projection);
       
       await taskReorderHandler.handle({
         taskId: task2Id,
@@ -652,9 +650,7 @@ describe('EntryListProjection', () => {
       
       // Move task1 to the beginning
       const { ReorderTaskHandler } = await import('./task.handlers');
-      const { TaskListProjection } = await import('./task.projections');
-      const taskProjection = new TaskListProjection(eventStore);
-      const taskReorderHandler = new ReorderTaskHandler(eventStore, taskProjection, projection);
+      const taskReorderHandler = new ReorderTaskHandler(eventStore, projection);
       
       await taskReorderHandler.handle({
         taskId: task1Id,
@@ -774,7 +770,7 @@ describe('EntryListProjection', () => {
       await noteHandler.handle({ content: 'Stays' });
 
       // Delete the task
-      const deleteHandler = new DeleteTaskHandler(eventStore, taskProjection, projection);
+      const deleteHandler = new DeleteTaskHandler(eventStore, projection);
       await deleteHandler.handle({ taskId });
 
       const logs = await projection.getDailyLogs();
@@ -788,7 +784,7 @@ describe('EntryListProjection', () => {
       const taskId = await taskHandler.handle({ title: 'Task to complete' });
 
       // Complete the task
-      const completeHandler = new CompleteTaskHandler(eventStore, taskProjection, projection);
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId });
 
       const logs = await projection.getDailyLogs();

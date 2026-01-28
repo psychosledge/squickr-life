@@ -90,6 +90,9 @@ describe('CollectionDetailView', () => {
       taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: {} as any,
+      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     };
 
     return render(
@@ -269,6 +272,9 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       taskProjection: mockTaskProjection,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: {} as any,
+      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     };
 
     return render(
@@ -309,9 +315,10 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       expect(screen.getByText('Uncategorized')).toBeInTheDocument();
     });
 
-    // Should not try to find 'uncategorized' in real collections
-    // The collection is synthesized, not loaded
-    expect(mockCollectionProjection.getCollections).not.toHaveBeenCalled();
+    // NOTE: We now ALWAYS call getCollections (even for uncategorized) 
+    // to populate the migration modal with available collections.
+    // The collection itself is still synthesized, not loaded from getCollections.
+    expect(mockCollectionProjection.getCollections).toHaveBeenCalled();
   });
 
   it('should synthesize virtual collection object for uncategorized', async () => {

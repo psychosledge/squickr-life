@@ -1,12 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Entry } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/shared';
 import { formatTimestamp, formatDate } from '../utils/formatters';
+import { MoveEntryToCollectionModal } from './MoveEntryToCollectionModal';
 
 interface EventEntryItemProps {
   entry: Entry & { type: 'event' };
   onUpdateEventContent?: (eventId: string, newContent: string) => void | Promise<void>;
   onUpdateEventDate?: (eventId: string, newDate: string | null) => void | Promise<void>;
   onDelete: (entryId: string) => void;
+  onMigrate?: (eventId: string, targetCollectionId: string | null) => Promise<void>;
+  collections?: Collection[];
+  currentCollectionId?: string;
 }
 
 /**
@@ -21,12 +25,16 @@ export function EventEntryItem({
   entry,
   onUpdateEventContent,
   onUpdateEventDate,
-  onDelete
+  onDelete,
+  onMigrate,
+  collections,
+  currentCollectionId
 }: EventEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [editDate, setEditDate] = useState('');
   const [editError, setEditError] = useState('');
+  const [showMoveModal, setShowMoveModal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Focus textarea when entering edit mode
@@ -143,6 +151,10 @@ export function EventEntryItem({
                   title={canEdit ? 'Double-click to edit' : undefined}
                   style={{ whiteSpace: 'pre-wrap' }}
                 >
+                  {/* Migration indicator */}
+                  {entry.migratedTo && (
+                    <span className="text-gray-400 dark:text-gray-500 mr-1" title="Migrated to another collection">→</span>
+                  )}
                   {entry.content}
                 </div>
                 {entry.eventDate && (
@@ -158,6 +170,18 @@ export function EventEntryItem({
           </div>
         </div>
         
+        {/* Move button - only show if onMigrate provided and not already migrated */}
+        {onMigrate && !entry.migratedTo && (
+          <button
+            onClick={() => setShowMoveModal(true)}
+            className="text-xl text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0"
+            aria-label="Move to collection"
+            title="Move to collection"
+          >
+            ↗️
+          </button>
+        )}
+        
         {/* Compact Trash Icon */}
         <button
           onClick={() => onDelete(entry.id)}
@@ -167,6 +191,18 @@ export function EventEntryItem({
           🗑️
         </button>
       </div>
+      
+      {/* Move modal */}
+      {onMigrate && collections && (
+        <MoveEntryToCollectionModal
+          isOpen={showMoveModal}
+          onClose={() => setShowMoveModal(false)}
+          entry={entry}
+          currentCollectionId={currentCollectionId}
+          collections={collections}
+          onMigrate={onMigrate}
+        />
+      )}
     </div>
   );
 }

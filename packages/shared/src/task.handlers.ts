@@ -15,10 +15,11 @@ import type {
   UpdateTaskTitleCommand,
   TaskTitleChanged,
   MoveEntryToCollectionCommand,
-  EntryMovedToCollection
+  EntryMovedToCollection,
+  MigrateTaskCommand,
+  TaskMigrated
 } from './task.types';
 import { generateEventMetadata } from './event-helpers';
-import { validateTaskExists, validateTaskStatus } from './task-validation';
 import { generateKeyBetween } from 'fractional-indexing';
 
 /**
@@ -100,29 +101,35 @@ export class CreateTaskHandler {
  * Command Handler for CompleteTask
  * 
  * Responsibilities:
- * - Validate task exists and is in 'open' status
+ * - Validate task exists and is in 'open' status (including migrated tasks)
  * - Create TaskCompleted event
  * - Persist event to EventStore
  */
 export class CompleteTaskHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly projection: TaskListProjection
+    private readonly entryProjection: EntryListProjection
   ) {}
 
   /**
    * Handle CompleteTask command
    * 
    * Validation rules:
-   * - Task must exist
+   * - Task must exist (including migrated tasks)
    * - Task must be in 'open' status
    * 
    * @param command - The CompleteTask command
    * @throws Error if validation fails
    */
   async handle(command: CompleteTaskCommand): Promise<void> {
-    // Validate task exists and is open
-    await validateTaskStatus(this.projection, command.taskId, 'open');
+    // Validate task exists and is open (use EntryListProjection to find migrated tasks)
+    const task = await this.entryProjection.getTaskById(command.taskId);
+    if (!task) {
+      throw new Error(`Task ${command.taskId} not found`);
+    }
+    if (task.status !== 'open') {
+      throw new Error(`Task ${command.taskId} is not open (status: ${task.status})`);
+    }
 
     // Generate event metadata
     const metadata = generateEventMetadata();
@@ -147,29 +154,35 @@ export class CompleteTaskHandler {
  * Command Handler for ReopenTask
  * 
  * Responsibilities:
- * - Validate task exists and is in 'completed' status
+ * - Validate task exists and is in 'completed' status (including migrated tasks)
  * - Create TaskReopened event
  * - Persist event to EventStore
  */
 export class ReopenTaskHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly projection: TaskListProjection
+    private readonly entryProjection: EntryListProjection
   ) {}
 
   /**
    * Handle ReopenTask command
    * 
    * Validation rules:
-   * - Task must exist
+   * - Task must exist (including migrated tasks)
    * - Task must be in 'completed' status
    * 
    * @param command - The ReopenTask command
    * @throws Error if validation fails
    */
   async handle(command: ReopenTaskCommand): Promise<void> {
-    // Validate task exists and is completed
-    await validateTaskStatus(this.projection, command.taskId, 'completed');
+    // Validate task exists and is completed (use EntryListProjection to find migrated tasks)
+    const task = await this.entryProjection.getTaskById(command.taskId);
+    if (!task) {
+      throw new Error(`Task ${command.taskId} not found`);
+    }
+    if (task.status !== 'completed') {
+      throw new Error(`Task ${command.taskId} is not completed (status: ${task.status})`);
+    }
 
     // Generate event metadata
     const metadata = generateEventMetadata();
@@ -194,29 +207,32 @@ export class ReopenTaskHandler {
  * Command Handler for DeleteTask
  * 
  * Responsibilities:
- * - Validate task exists
+ * - Validate task exists (including migrated tasks)
  * - Create TaskDeleted event
  * - Persist event to EventStore
  */
 export class DeleteTaskHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly projection: TaskListProjection
+    private readonly entryProjection: EntryListProjection
   ) {}
 
   /**
    * Handle DeleteTask command
    * 
    * Validation rules:
-   * - Task must exist
+   * - Task must exist (including migrated tasks)
    * - Task can be in any status (open or completed)
    * 
    * @param command - The DeleteTask command
    * @throws Error if validation fails
    */
   async handle(command: DeleteTaskCommand): Promise<void> {
-    // Validate task exists
-    await validateTaskExists(this.projection, command.taskId);
+    // Validate task exists (use EntryListProjection to find migrated tasks)
+    const task = await this.entryProjection.getTaskById(command.taskId);
+    if (!task) {
+      throw new Error(`Task ${command.taskId} not found`);
+    }
 
     // Generate event metadata
     const metadata = generateEventMetadata();
@@ -241,7 +257,7 @@ export class DeleteTaskHandler {
  * Command Handler for ReorderTask
  * 
  * Responsibilities:
- * - Validate task exists
+ * - Validate task exists (including migrated tasks)
  * - Calculate new fractional index based on neighboring entries (of ANY type)
  * - Create TaskReordered event
  * - Persist event to EventStore
@@ -249,7 +265,6 @@ export class DeleteTaskHandler {
 export class ReorderTaskHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly taskProjection: TaskListProjection,
     private readonly entryProjection: EntryListProjection
   ) {}
 
@@ -257,7 +272,7 @@ export class ReorderTaskHandler {
    * Handle ReorderTask command
    * 
    * Validation rules:
-   * - Task must exist
+   * - Task must exist (including migrated tasks)
    * - Task can be in any status (open or completed)
    * - previousTaskId and nextTaskId can be ANY entry type (task, note, or event)
    * 
@@ -265,8 +280,11 @@ export class ReorderTaskHandler {
    * @throws Error if validation fails
    */
   async handle(command: ReorderTaskCommand): Promise<void> {
-    // Validate task exists
-    await validateTaskExists(this.taskProjection, command.taskId);
+    // Validate task exists (use EntryListProjection to find migrated tasks)
+    const task = await this.entryProjection.getTaskById(command.taskId);
+    if (!task) {
+      throw new Error(`Task ${command.taskId} not found`);
+    }
 
     // Get the neighboring ENTRIES (not just tasks) to calculate new order
     // This allows tasks to be reordered relative to notes and events
@@ -316,7 +334,7 @@ export class ReorderTaskHandler {
  * Command Handler for UpdateTaskTitle
  * 
  * Responsibilities:
- * - Validate task exists
+ * - Validate task exists (including migrated tasks)
  * - Validate new title meets requirements
  * - Create TaskTitleChanged event
  * - Persist event to EventStore
@@ -324,14 +342,14 @@ export class ReorderTaskHandler {
 export class UpdateTaskTitleHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly projection: TaskListProjection
+    private readonly entryProjection: EntryListProjection
   ) {}
 
   /**
    * Handle UpdateTaskTitle command
    * 
    * Validation rules:
-   * - Task must exist
+   * - Task must exist (including migrated tasks)
    * - Task can be in any status (open or completed)
    * - Title must not be empty after trimming
    * - Title must be 1-500 characters
@@ -340,8 +358,11 @@ export class UpdateTaskTitleHandler {
    * @throws Error if validation fails
    */
   async handle(command: UpdateTaskTitleCommand): Promise<void> {
-    // Validate task exists
-    await validateTaskExists(this.projection, command.taskId);
+    // Validate task exists (use EntryListProjection to find migrated tasks)
+    const task = await this.entryProjection.getTaskById(command.taskId);
+    if (!task) {
+      throw new Error(`Task ${command.taskId} not found`);
+    }
 
     // Validate title (same rules as CreateTask)
     const title = command.title.trim();
@@ -434,5 +455,91 @@ export class MoveEntryToCollectionHandler {
 
     // Persist event
     await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for MigrateTask
+ * 
+ * Responsibilities:
+ * - Validate task exists
+ * - Validate task has not already been migrated
+ * - Create new task in target collection (with migratedFrom pointer)
+ * - Create TaskMigrated event (marks original with migratedTo pointer)
+ * - Ensure idempotency (return existing migration if same target)
+ * 
+ * This implements the bullet journal migration pattern:
+ * - Original task is preserved in its original collection
+ * - New task is created in target collection
+ * - Both tasks have migration pointers for audit trail
+ */
+export class MigrateTaskHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly entryProjection: EntryListProjection
+  ) {}
+
+  /**
+   * Handle MigrateTask command
+   * 
+   * Validation rules:
+   * - Task must exist
+   * - Task must not already be migrated (migratedTo must be undefined)
+   * - Idempotent: Return existing migration if already migrated to same target
+   * 
+   * @param command - The MigrateTask command
+   * @returns The ID of the newly created task in the target collection
+   * @throws Error if validation fails
+   */
+  async handle(command: MigrateTaskCommand): Promise<string> {
+    // Validate task exists
+    const originalTask = await this.entryProjection.getTaskById(command.taskId);
+    if (!originalTask) {
+      throw new Error(`Entry ${command.taskId} not found`);
+    }
+
+    // Idempotency check: If already migrated, check if to same target
+    if (originalTask.migratedTo) {
+      // Task has already been migrated
+      // Check if the target is the same - if so, return existing migration (idempotent)
+      const migratedTask = await this.entryProjection.getTaskById(originalTask.migratedTo);
+      if (migratedTask) {
+        const migratedCollectionId = migratedTask.collectionId ?? null;
+        const targetCollectionId = command.targetCollectionId;
+        
+        if (migratedCollectionId === targetCollectionId) {
+          // Already migrated to the same collection - idempotent, return existing
+          return originalTask.migratedTo;
+        }
+      }
+      
+      // Migrated to different collection - throw error
+      throw new Error('Task has already been migrated');
+    }
+
+    // Generate unique ID for new task
+    const newTaskId = crypto.randomUUID();
+    
+    // Generate event metadata
+    const metadata = generateEventMetadata();
+
+    // Create TaskMigrated event
+    // The projection will handle creating the new task with proper properties
+    const event: TaskMigrated = {
+      ...metadata,
+      type: 'TaskMigrated',
+      aggregateId: command.taskId,
+      payload: {
+        originalTaskId: command.taskId,
+        targetCollectionId: command.targetCollectionId,
+        migratedToId: newTaskId,
+        migratedAt: metadata.timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+    
+    return newTaskId;
   }
 }

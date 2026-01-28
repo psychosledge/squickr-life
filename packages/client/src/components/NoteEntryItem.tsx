@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Entry } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/shared';
 import { formatTimestamp } from '../utils/formatters';
+import { MoveEntryToCollectionModal } from './MoveEntryToCollectionModal';
 
 interface NoteEntryItemProps {
   entry: Entry & { type: 'note' };
   onUpdateNoteContent?: (noteId: string, newContent: string) => void | Promise<void>;
   onDelete: (entryId: string) => void;
+  onMigrate?: (noteId: string, targetCollectionId: string | null) => Promise<void>;
+  collections?: Collection[];
+  currentCollectionId?: string;
 }
 
 /**
@@ -18,11 +22,15 @@ interface NoteEntryItemProps {
 export function NoteEntryItem({
   entry,
   onUpdateNoteContent,
-  onDelete
+  onDelete,
+  onMigrate,
+  collections,
+  currentCollectionId
 }: NoteEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [editError, setEditError] = useState('');
+  const [showMoveModal, setShowMoveModal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Focus textarea when entering edit mode
@@ -117,6 +125,10 @@ export function NoteEntryItem({
                   title={canEdit ? 'Double-click to edit' : undefined}
                   style={{ whiteSpace: 'pre-wrap' }}
                 >
+                  {/* Migration indicator */}
+                  {entry.migratedTo && (
+                    <span className="text-gray-400 dark:text-gray-500 mr-1" title="Migrated to another collection">→</span>
+                  )}
                   {entry.content}
                 </div>
                 <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -127,6 +139,18 @@ export function NoteEntryItem({
           </div>
         </div>
         
+        {/* Move button - only show if onMigrate provided and not already migrated */}
+        {onMigrate && !entry.migratedTo && (
+          <button
+            onClick={() => setShowMoveModal(true)}
+            className="text-xl text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0"
+            aria-label="Move to collection"
+            title="Move to collection"
+          >
+            ↗️
+          </button>
+        )}
+        
         {/* Compact Trash Icon */}
         <button
           onClick={() => onDelete(entry.id)}
@@ -136,6 +160,18 @@ export function NoteEntryItem({
           🗑️
         </button>
       </div>
+      
+      {/* Move modal */}
+      {onMigrate && collections && (
+        <MoveEntryToCollectionModal
+          isOpen={showMoveModal}
+          onClose={() => setShowMoveModal(false)}
+          entry={entry}
+          currentCollectionId={currentCollectionId}
+          collections={collections}
+          onMigrate={onMigrate}
+        />
+      )}
     </div>
   );
 }

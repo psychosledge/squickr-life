@@ -11,7 +11,9 @@ import type {
   DeleteEventCommand,
   EventDeleted,
   ReorderEventCommand,
-  EventReordered
+  EventReordered,
+  MigrateEventCommand,
+  EventMigrated
 } from './task.types';
 import { generateEventMetadata } from './event-helpers';
 import { generateKeyBetween } from 'fractional-indexing';
@@ -327,5 +329,90 @@ export class ReorderEventHandler {
 
     // Persist event
     await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for MigrateEvent
+ * 
+ * Responsibilities:
+ * - Validate event exists
+ * - Validate event has not already been migrated
+ * - Create EventMigrated event
+ * - Ensure idempotency (return existing migration if same target)
+ * 
+ * This implements the bullet journal migration pattern:
+ * - Original event is preserved in its original collection
+ * - EventMigrated event marks original with migratedTo pointer
+ * - Projection creates new event in target collection with migratedFrom pointer
+ */
+export class MigrateEventHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly entryProjection: EntryListProjection
+  ) {}
+
+  /**
+   * Handle MigrateEvent command
+   * 
+   * Validation rules:
+   * - Event must exist
+   * - Event must not already be migrated (migratedTo must be undefined)
+   * - Idempotent: Return existing migration if already migrated to same target
+   * 
+   * @param command - The MigrateEvent command
+   * @returns The ID of the newly created event in the target collection
+   * @throws Error if validation fails
+   */
+  async handle(command: MigrateEventCommand): Promise<string> {
+    // Validate event exists
+    const originalEvent = await this.entryProjection.getEventById(command.eventId);
+    if (!originalEvent) {
+      throw new Error(`Entry ${command.eventId} not found`);
+    }
+
+    // Idempotency check: If already migrated, check if to same target
+    if (originalEvent.migratedTo) {
+      // Event has already been migrated
+      // Check if the target is the same - if so, return existing migration (idempotent)
+      const migratedEvent = await this.entryProjection.getEventById(originalEvent.migratedTo);
+      if (migratedEvent) {
+        const migratedCollectionId = migratedEvent.collectionId ?? null;
+        const targetCollectionId = command.targetCollectionId;
+        
+        if (migratedCollectionId === targetCollectionId) {
+          // Already migrated to the same collection - idempotent, return existing
+          return originalEvent.migratedTo;
+        }
+      }
+      
+      // Migrated to different collection - throw error
+      throw new Error('Event has already been migrated');
+    }
+
+    // Generate unique ID for new event
+    const newEventId = crypto.randomUUID();
+    
+    // Generate event metadata
+    const metadata = generateEventMetadata();
+
+    // Create EventMigrated event
+    // The projection will handle creating the new event with proper properties
+    const event: EventMigrated = {
+      ...metadata,
+      type: 'EventMigrated',
+      aggregateId: command.eventId,
+      payload: {
+        originalEventId: command.eventId,
+        targetCollectionId: command.targetCollectionId,
+        migratedToId: newEventId,
+        migratedAt: metadata.timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+    
+    return newEventId;
   }
 }

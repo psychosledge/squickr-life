@@ -9,7 +9,9 @@ import type {
   DeleteNoteCommand,
   NoteDeleted,
   ReorderNoteCommand,
-  NoteReordered
+  NoteReordered,
+  MigrateNoteCommand,
+  NoteMigrated
 } from './task.types';
 import { generateEventMetadata } from './event-helpers';
 import { generateKeyBetween } from 'fractional-indexing';
@@ -265,5 +267,90 @@ export class ReorderNoteHandler {
 
     // Persist event
     await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for MigrateNote
+ * 
+ * Responsibilities:
+ * - Validate note exists
+ * - Validate note has not already been migrated
+ * - Create NoteMigrated event
+ * - Ensure idempotency (return existing migration if same target)
+ * 
+ * This implements the bullet journal migration pattern:
+ * - Original note is preserved in its original collection
+ * - NoteMigrated event marks original with migratedTo pointer
+ * - Projection creates new note in target collection with migratedFrom pointer
+ */
+export class MigrateNoteHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly entryProjection: EntryListProjection
+  ) {}
+
+  /**
+   * Handle MigrateNote command
+   * 
+   * Validation rules:
+   * - Note must exist
+   * - Note must not already be migrated (migratedTo must be undefined)
+   * - Idempotent: Return existing migration if already migrated to same target
+   * 
+   * @param command - The MigrateNote command
+   * @returns The ID of the newly created note in the target collection
+   * @throws Error if validation fails
+   */
+  async handle(command: MigrateNoteCommand): Promise<string> {
+    // Validate note exists
+    const originalNote = await this.entryProjection.getNoteById(command.noteId);
+    if (!originalNote) {
+      throw new Error(`Entry ${command.noteId} not found`);
+    }
+
+    // Idempotency check: If already migrated, check if to same target
+    if (originalNote.migratedTo) {
+      // Note has already been migrated
+      // Check if the target is the same - if so, return existing migration (idempotent)
+      const migratedNote = await this.entryProjection.getNoteById(originalNote.migratedTo);
+      if (migratedNote) {
+        const migratedCollectionId = migratedNote.collectionId ?? null;
+        const targetCollectionId = command.targetCollectionId;
+        
+        if (migratedCollectionId === targetCollectionId) {
+          // Already migrated to the same collection - idempotent, return existing
+          return originalNote.migratedTo;
+        }
+      }
+      
+      // Migrated to different collection - throw error
+      throw new Error('Note has already been migrated');
+    }
+
+    // Generate unique ID for new note
+    const newNoteId = crypto.randomUUID();
+    
+    // Generate event metadata
+    const metadata = generateEventMetadata();
+
+    // Create NoteMigrated event
+    // The projection will handle creating the new note with proper properties
+    const event: NoteMigrated = {
+      ...metadata,
+      type: 'NoteMigrated',
+      aggregateId: command.noteId,
+      payload: {
+        originalNoteId: command.noteId,
+        targetCollectionId: command.targetCollectionId,
+        migratedToId: newNoteId,
+        migratedAt: metadata.timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+    
+    return newNoteId;
   }
 }

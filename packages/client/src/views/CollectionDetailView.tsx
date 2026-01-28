@@ -44,9 +44,10 @@ import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 export function CollectionDetailView() {
   const { id: collectionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { eventStore, collectionProjection, entryProjection, taskProjection } = useApp();
+  const { eventStore, collectionProjection, entryProjection, taskProjection, migrateTaskHandler, migrateNoteHandler, migrateEventHandler } = useApp();
 
   const [collection, setCollection] = useState<Collection | null>(null);
+  const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -57,16 +58,16 @@ export function CollectionDetailView() {
   const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
   const createNoteHandler = new CreateNoteHandler(eventStore, entryProjection);
   const createEventHandler = new CreateEventHandler(eventStore, entryProjection);
-  const completeTaskHandler = new CompleteTaskHandler(eventStore, taskProjection);
-  const reopenTaskHandler = new ReopenTaskHandler(eventStore, taskProjection);
-  const updateTaskTitleHandler = new UpdateTaskTitleHandler(eventStore, taskProjection);
+  const completeTaskHandler = new CompleteTaskHandler(eventStore, entryProjection);
+  const reopenTaskHandler = new ReopenTaskHandler(eventStore, entryProjection);
+  const updateTaskTitleHandler = new UpdateTaskTitleHandler(eventStore, entryProjection);
   const updateNoteContentHandler = new UpdateNoteContentHandler(eventStore, entryProjection);
   const updateEventContentHandler = new UpdateEventContentHandler(eventStore, entryProjection);
   const updateEventDateHandler = new UpdateEventDateHandler(eventStore, entryProjection);
-  const deleteTaskHandler = new DeleteTaskHandler(eventStore, taskProjection);
+  const deleteTaskHandler = new DeleteTaskHandler(eventStore, entryProjection);
   const deleteNoteHandler = new DeleteNoteHandler(eventStore, entryProjection);
   const deleteEventHandler = new DeleteEventHandler(eventStore, entryProjection);
-  const reorderTaskHandler = new ReorderTaskHandler(eventStore, taskProjection, entryProjection);
+  const reorderTaskHandler = new ReorderTaskHandler(eventStore, entryProjection);
   const reorderNoteHandler = new ReorderNoteHandler(eventStore, entryProjection, entryProjection);
   const reorderEventHandler = new ReorderEventHandler(eventStore, entryProjection, entryProjection);
   const renameCollectionHandler = new RenameCollectionHandler(eventStore, collectionProjection);
@@ -77,6 +78,10 @@ export function CollectionDetailView() {
     if (!collectionId) return;
 
     setIsLoading(true);
+    
+    // Load all collections (for migration modal)
+    const collections = await collectionProjection.getCollections();
+    setAllCollections(collections);
     
     // Handle virtual "uncategorized" collection
     if (collectionId === UNCATEGORIZED_COLLECTION_ID) {
@@ -98,7 +103,6 @@ export function CollectionDetailView() {
     }
     
     // Handle real collections
-    const collections = await collectionProjection.getCollections();
     const foundCollection = collections.find(c => c.id === collectionId);
     setCollection(foundCollection || null);
 
@@ -234,6 +238,23 @@ export function CollectionDetailView() {
     navigate(ROUTES.index); // Navigate back to index after delete
   };
 
+  const handleMigrate = async (entryId: string, targetCollectionId: string | null) => {
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    switch (entry.type) {
+      case 'task':
+        await migrateTaskHandler.handle({ taskId: entryId, targetCollectionId });
+        break;
+      case 'note':
+        await migrateNoteHandler.handle({ noteId: entryId, targetCollectionId });
+        break;
+      case 'event':
+        await migrateEventHandler.handle({ eventId: entryId, targetCollectionId });
+        break;
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -297,6 +318,9 @@ export function CollectionDetailView() {
           onUpdateEventDate={handleUpdateEventDate}
           onDelete={handleDelete}
           onReorder={handleReorder}
+          onMigrate={handleMigrate}
+          collections={allCollections}
+          currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
         />
       </div>
 

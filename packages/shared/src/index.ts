@@ -17,12 +17,14 @@ export type {
   TaskDeleted,
   TaskReordered,
   TaskTitleChanged,
+  TaskMigrated,
   CreateTaskCommand,
   CompleteTaskCommand,
   ReopenTaskCommand,
   DeleteTaskCommand,
   ReorderTaskCommand,
   UpdateTaskTitleCommand,
+  MigrateTaskCommand,
   TaskEvent,
   EntryMovedToCollection,
   MoveEntryToCollectionCommand,
@@ -35,10 +37,12 @@ export type {
   NoteContentChanged,
   NoteDeleted,
   NoteReordered,
+  NoteMigrated,
   CreateNoteCommand,
   UpdateNoteContentCommand,
   DeleteNoteCommand,
   ReorderNoteCommand,
+  MigrateNoteCommand,
   NoteEvent,
 } from './task.types';
 
@@ -50,11 +54,13 @@ export type {
   EventDateChanged,
   EventDeleted,
   EventReordered,
+  EventMigrated,
   CreateEventCommand,
   UpdateEventContentCommand,
   UpdateEventDateCommand,
   DeleteEventCommand,
   ReorderEventCommand,
+  MigrateEventCommand,
   EventEvent,
 } from './task.types';
 
@@ -90,13 +96,13 @@ export { EventStore, type IEventStore } from './event-store';
 export { IndexedDBEventStore } from './indexeddb-event-store';
 
 // Task Command Handlers
-export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler, MoveEntryToCollectionHandler } from './task.handlers';
+export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler, MoveEntryToCollectionHandler, MigrateTaskHandler } from './task.handlers';
 
 // Note Command Handlers
-export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, ReorderNoteHandler } from './note.handlers';
+export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, ReorderNoteHandler, MigrateNoteHandler } from './note.handlers';
 
 // Event Command Handlers
-export { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler, ReorderEventHandler } from './event.handlers';
+export { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler, ReorderEventHandler, MigrateEventHandler } from './event.handlers';
 
 // Collection Command Handlers
 export { CreateCollectionHandler, RenameCollectionHandler, ReorderCollectionHandler, DeleteCollectionHandler } from './collection.handlers';

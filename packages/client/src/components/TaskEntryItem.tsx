@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Entry } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/shared';
 import { formatTimestamp } from '../utils/formatters';
+import { MoveEntryToCollectionModal } from './MoveEntryToCollectionModal';
 
 interface TaskEntryItemProps {
   entry: Entry & { type: 'task' };
@@ -8,6 +9,9 @@ interface TaskEntryItemProps {
   onReopenTask?: (taskId: string) => void | Promise<void>;
   onUpdateTaskTitle?: (taskId: string, newTitle: string) => void | Promise<void>;
   onDelete: (entryId: string) => void;
+  onMigrate?: (taskId: string, targetCollectionId: string | null) => Promise<void>;
+  collections?: Collection[];
+  currentCollectionId?: string;
 }
 
 /**
@@ -24,11 +28,15 @@ export function TaskEntryItem({
   onCompleteTask,
   onReopenTask,
   onUpdateTaskTitle,
-  onDelete
+  onDelete,
+  onMigrate,
+  collections,
+  currentCollectionId
 }: TaskEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [editError, setEditError] = useState('');
+  const [showMoveModal, setShowMoveModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when entering edit mode
@@ -140,6 +148,10 @@ export function TaskEntryItem({
                 title={canEdit ? 'Double-click to edit' : undefined}
                 style={{ whiteSpace: 'pre-wrap' }}
               >
+                {/* Migration indicator */}
+                {entry.migratedTo && (
+                  <span className="text-gray-400 dark:text-gray-500 mr-1" title="Migrated to another collection">→</span>
+                )}
                 {entry.title}
               </div>
               <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -154,6 +166,18 @@ export function TaskEntryItem({
           )}
         </div>
         
+        {/* Move button - only show if onMigrate provided and not already migrated */}
+        {onMigrate && !entry.migratedTo && (
+          <button
+            onClick={() => setShowMoveModal(true)}
+            className="text-xl text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0"
+            aria-label="Move to collection"
+            title="Move to collection"
+          >
+            ↗️
+          </button>
+        )}
+        
         {/* Compact Trash Icon */}
         <button
           onClick={() => onDelete(entry.id)}
@@ -163,6 +187,18 @@ export function TaskEntryItem({
           🗑️
         </button>
       </div>
+      
+      {/* Move modal */}
+      {onMigrate && collections && (
+        <MoveEntryToCollectionModal
+          isOpen={showMoveModal}
+          onClose={() => setShowMoveModal(false)}
+          entry={entry}
+          currentCollectionId={currentCollectionId}
+          collections={collections}
+          onMigrate={onMigrate}
+        />
+      )}
     </div>
   );
 }

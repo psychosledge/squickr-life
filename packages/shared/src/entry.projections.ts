@@ -10,15 +10,18 @@ import type {
   TaskDeleted, 
   TaskReordered, 
   TaskTitleChanged,
+  TaskMigrated,
   NoteCreated,
   NoteContentChanged,
   NoteDeleted,
   NoteReordered,
+  NoteMigrated,
   EventCreated,
   EventContentChanged,
   EventDateChanged,
   EventDeleted,
   EventReordered,
+  EventMigrated,
   EntryFilter,
   DailyLog
 } from './task.types';
@@ -84,9 +87,12 @@ export class EntryListProjection {
    * @returns The entry, or undefined if not found
    */
   async getEntryById(entryId: string): Promise<Entry | undefined> {
-    const events = await this.eventStore.getById(entryId);
+    // IMPORTANT: We must get ALL events and apply them, not just events with this aggregateId
+    // This is because migrated entries are created by TaskMigrated/NoteMigrated/EventMigrated events
+    // which have the ORIGINAL task ID as aggregateId, not the new task ID
+    const events = await this.eventStore.getAll();
     const entries = this.applyEvents(events);
-    return entries[0];
+    return entries.find(entry => entry.id === entryId);
   }
 
   /**
@@ -311,7 +317,7 @@ export class EntryListProjection {
   /**
    * Apply task events (reuse logic from TaskListProjection)
    */
-  private applyTaskEvent(tasks: Map<string, Task>, event: TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged): void {
+  private applyTaskEvent(tasks: Map<string, Task>, event: TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | TaskMigrated): void {
     switch (event.type) {
       case 'TaskCreated': {
         const task: Task = {
@@ -372,13 +378,41 @@ export class EntryListProjection {
         }
         break;
       }
+      case 'TaskMigrated': {
+        // Mark original task with migratedTo pointer
+        const originalTask = tasks.get(event.payload.originalTaskId);
+        if (originalTask) {
+          tasks.set(originalTask.id, {
+            ...originalTask,
+            migratedTo: event.payload.migratedToId,
+          });
+        }
+
+        // Create new task in target collection with migratedFrom pointer
+        // New task inherits all properties from original except collectionId and migration pointers
+        if (originalTask) {
+          const newTask: Task = {
+            id: event.payload.migratedToId,
+            title: originalTask.title,
+            createdAt: event.payload.migratedAt, // New creation time
+            status: originalTask.status, // Preserve status
+            completedAt: originalTask.completedAt, // Preserve completion if completed
+            order: originalTask.order, // Same order as original (will need reordering in UI)
+            collectionId: event.payload.targetCollectionId ?? undefined,
+            userId: originalTask.userId,
+            migratedFrom: event.payload.originalTaskId,
+          };
+          tasks.set(newTask.id, newTask);
+        }
+        break;
+      }
     }
   }
 
   /**
    * Apply note events
    */
-  private applyNoteEvent(notes: Map<string, Note>, event: NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered): void {
+  private applyNoteEvent(notes: Map<string, Note>, event: NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | NoteMigrated): void {
     switch (event.type) {
       case 'NoteCreated': {
         const note: Note = {
@@ -416,13 +450,38 @@ export class EntryListProjection {
         }
         break;
       }
+      case 'NoteMigrated': {
+        // Mark original note with migratedTo pointer
+        const originalNote = notes.get(event.payload.originalNoteId);
+        if (originalNote) {
+          notes.set(originalNote.id, {
+            ...originalNote,
+            migratedTo: event.payload.migratedToId,
+          });
+        }
+
+        // Create new note in target collection with migratedFrom pointer
+        if (originalNote) {
+          const newNote: Note = {
+            id: event.payload.migratedToId,
+            content: originalNote.content,
+            createdAt: event.payload.migratedAt, // New creation time
+            order: originalNote.order, // Same order as original
+            collectionId: event.payload.targetCollectionId ?? undefined,
+            userId: originalNote.userId,
+            migratedFrom: event.payload.originalNoteId,
+          };
+          notes.set(newNote.id, newNote);
+        }
+        break;
+      }
     }
   }
 
   /**
    * Apply event events
    */
-  private applyEventEvent(eventEntries: Map<string, EventEntry>, event: EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered): void {
+  private applyEventEvent(eventEntries: Map<string, EventEntry>, event: EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered | EventMigrated): void {
     switch (event.type) {
       case 'EventCreated': {
         const evt: EventEntry = {
@@ -471,6 +530,32 @@ export class EntryListProjection {
         }
         break;
       }
+      case 'EventMigrated': {
+        // Mark original event with migratedTo pointer
+        const originalEvent = eventEntries.get(event.payload.originalEventId);
+        if (originalEvent) {
+          eventEntries.set(originalEvent.id, {
+            ...originalEvent,
+            migratedTo: event.payload.migratedToId,
+          });
+        }
+
+        // Create new event in target collection with migratedFrom pointer
+        if (originalEvent) {
+          const newEvent: EventEntry = {
+            id: event.payload.migratedToId,
+            content: originalEvent.content,
+            createdAt: event.payload.migratedAt, // New creation time
+            eventDate: originalEvent.eventDate, // Preserve event date
+            order: originalEvent.order, // Same order as original
+            collectionId: event.payload.targetCollectionId ?? undefined,
+            userId: originalEvent.userId,
+            migratedFrom: event.payload.originalEventId,
+          };
+          eventEntries.set(newEvent.id, newEvent);
+        }
+        break;
+      }
     }
   }
 
@@ -503,15 +588,15 @@ export class EntryListProjection {
     return event.type === 'EntryMovedToCollection';
   }
 
-  private isTaskEvent(event: import('./domain-event').DomainEvent): event is TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged {
-    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened' || event.type === 'TaskDeleted' || event.type === 'TaskReordered' || event.type === 'TaskTitleChanged';
+  private isTaskEvent(event: import('./domain-event').DomainEvent): event is TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | TaskMigrated {
+    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened' || event.type === 'TaskDeleted' || event.type === 'TaskReordered' || event.type === 'TaskTitleChanged' || event.type === 'TaskMigrated';
   }
 
-  private isNoteEvent(event: import('./domain-event').DomainEvent): event is NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered {
-    return event.type === 'NoteCreated' || event.type === 'NoteContentChanged' || event.type === 'NoteDeleted' || event.type === 'NoteReordered';
+  private isNoteEvent(event: import('./domain-event').DomainEvent): event is NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | NoteMigrated {
+    return event.type === 'NoteCreated' || event.type === 'NoteContentChanged' || event.type === 'NoteDeleted' || event.type === 'NoteReordered' || event.type === 'NoteMigrated';
   }
 
-  private isEventEvent(event: import('./domain-event').DomainEvent): event is EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered {
-    return event.type === 'EventCreated' || event.type === 'EventContentChanged' || event.type === 'EventDateChanged' || event.type === 'EventDeleted' || event.type === 'EventReordered';
+  private isEventEvent(event: import('./domain-event').DomainEvent): event is EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered | EventMigrated {
+    return event.type === 'EventCreated' || event.type === 'EventContentChanged' || event.type === 'EventDateChanged' || event.type === 'EventDeleted' || event.type === 'EventReordered' || event.type === 'EventMigrated';
   }
 }

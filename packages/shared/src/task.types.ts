@@ -44,6 +44,12 @@ export interface Task {
   
   /** Optional: User who created the task (for future multi-user support) */
   readonly userId?: string;
+  
+  /** Optional: ID of entry this task was migrated to (audit trail) */
+  readonly migratedTo?: string;
+  
+  /** Optional: ID of entry this task was migrated from (audit trail) */
+  readonly migratedFrom?: string;
 }
 
 /**
@@ -252,10 +258,47 @@ export interface MoveEntryToCollectionCommand {
 }
 
 /**
+ * TaskMigrated Event
+ * Emitted when a task is migrated to a different collection
+ * 
+ * This is a bullet journal migration pattern:
+ * - Original task is preserved with migratedTo pointer
+ * - New task is created in target collection with migratedFrom pointer
+ * - Audit trail is maintained
+ * 
+ * Invariants:
+ * - aggregateId must match an existing task
+ * - Task must not already be migrated (migratedTo must be undefined)
+ * - migratedToId must be the ID of the newly created task
+ */
+export interface TaskMigrated extends DomainEvent {
+  readonly type: 'TaskMigrated';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly originalTaskId: string;
+    readonly targetCollectionId: string | null; // null = migrate to uncategorized
+    readonly migratedToId: string; // ID of new task created in target
+    readonly migratedAt: string;
+  };
+}
+
+/**
+ * MigrateTask Command
+ * Represents the user's intent to migrate a task to a different collection
+ * 
+ * This creates a new task in the target collection and marks both tasks
+ * with migration pointers for audit trail.
+ */
+export interface MigrateTaskCommand {
+  readonly taskId: string;
+  readonly targetCollectionId: string | null;
+}
+
+/**
  * Union type of all task-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | EntryMovedToCollection;
+export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | EntryMovedToCollection | TaskMigrated;
 
 // ============================================================================
 // Note Domain Types (Bullet Journal Notes)
@@ -283,6 +326,12 @@ export interface Note {
   
   /** Optional: User who created the note */
   readonly userId?: string;
+  
+  /** Optional: ID of entry this note was migrated to (audit trail) */
+  readonly migratedTo?: string;
+  
+  /** Optional: ID of entry this note was migrated from (audit trail) */
+  readonly migratedFrom?: string;
 }
 
 /**
@@ -389,9 +438,43 @@ export interface NoteReordered extends DomainEvent {
 }
 
 /**
+ * NoteMigrated Event
+ * Emitted when a note is migrated to a different collection
+ * 
+ * This is a bullet journal migration pattern:
+ * - Original note is preserved with migratedTo pointer
+ * - New note is created in target collection with migratedFrom pointer
+ * - Audit trail is maintained
+ * 
+ * Invariants:
+ * - aggregateId must match an existing note
+ * - Note must not already be migrated (migratedTo must be undefined)
+ * - migratedToId must be the ID of the newly created note
+ */
+export interface NoteMigrated extends DomainEvent {
+  readonly type: 'NoteMigrated';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly originalNoteId: string;
+    readonly targetCollectionId: string | null;
+    readonly migratedToId: string;
+    readonly migratedAt: string;
+  };
+}
+
+/**
+ * MigrateNote Command
+ * Represents the user's intent to migrate a note to a different collection
+ */
+export interface MigrateNoteCommand {
+  readonly noteId: string;
+  readonly targetCollectionId: string | null;
+}
+
+/**
  * Union type of all note-related events
  */
-export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | EntryMovedToCollection;
+export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | EntryMovedToCollection | NoteMigrated;
 
 // ============================================================================
 // Event Domain Types (Bullet Journal Events)
@@ -422,6 +505,12 @@ export interface Event {
   
   /** Optional: User who created the event */
   readonly userId?: string;
+  
+  /** Optional: ID of entry this event was migrated to (audit trail) */
+  readonly migratedTo?: string;
+  
+  /** Optional: ID of entry this event was migrated from (audit trail) */
+  readonly migratedFrom?: string;
 }
 
 /**
@@ -554,9 +643,43 @@ export interface EventReordered extends DomainEvent {
 }
 
 /**
+ * EventMigrated Event
+ * Emitted when an event is migrated to a different collection
+ * 
+ * This is a bullet journal migration pattern:
+ * - Original event is preserved with migratedTo pointer
+ * - New event is created in target collection with migratedFrom pointer
+ * - Audit trail is maintained
+ * 
+ * Invariants:
+ * - aggregateId must match an existing event
+ * - Event must not already be migrated (migratedTo must be undefined)
+ * - migratedToId must be the ID of the newly created event
+ */
+export interface EventMigrated extends DomainEvent {
+  readonly type: 'EventMigrated';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly originalEventId: string;
+    readonly targetCollectionId: string | null;
+    readonly migratedToId: string;
+    readonly migratedAt: string;
+  };
+}
+
+/**
+ * MigrateEvent Command
+ * Represents the user's intent to migrate an event to a different collection
+ */
+export interface MigrateEventCommand {
+  readonly eventId: string;
+  readonly targetCollectionId: string | null;
+}
+
+/**
  * Union type of all event-related events
  */
-export type EventEvent = EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered | EntryMovedToCollection;
+export type EventEvent = EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered | EntryMovedToCollection | EventMigrated;
 
 // ============================================================================
 // Unified Entry Types (for UI)

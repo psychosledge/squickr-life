@@ -1,4 +1,4 @@
-import type { Entry } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/shared';
 import { TaskEntryItem } from './TaskEntryItem';
 import { NoteEntryItem } from './NoteEntryItem';
 import { EventEntryItem } from './EventEntryItem';
@@ -16,6 +16,10 @@ interface EntryItemProps {
   onUpdateEventDate?: (eventId: string, newDate: string | null) => void | Promise<void>;
   // Common handlers
   onDelete: (entryId: string) => void;
+  // Migration handlers
+  onMigrate?: (entryId: string, targetCollectionId: string | null) => Promise<void>;
+  collections?: Collection[];
+  currentCollectionId?: string;
 }
 
 /**
@@ -34,7 +38,10 @@ export function EntryItem({
   onUpdateNoteContent,
   onUpdateEventContent,
   onUpdateEventDate,
-  onDelete 
+  onDelete,
+  onMigrate,
+  collections,
+  currentCollectionId
 }: EntryItemProps) {
   // Route to the appropriate type-specific component
   if (entry.type === 'task') {
@@ -45,6 +52,9 @@ export function EntryItem({
         onReopenTask={onReopenTask}
         onUpdateTaskTitle={onUpdateTaskTitle}
         onDelete={onDelete}
+        onMigrate={onMigrate}
+        collections={collections}
+        currentCollectionId={currentCollectionId}
       />
     );
   }
@@ -55,6 +65,9 @@ export function EntryItem({
         entry={entry}
         onUpdateNoteContent={onUpdateNoteContent}
         onDelete={onDelete}
+        onMigrate={onMigrate}
+        collections={collections}
+        currentCollectionId={currentCollectionId}
       />
     );
   }
@@ -66,6 +79,9 @@ export function EntryItem({
         onUpdateEventContent={onUpdateEventContent}
         onUpdateEventDate={onUpdateEventDate}
         onDelete={onDelete}
+        onMigrate={onMigrate}
+        collections={collections}
+        currentCollectionId={currentCollectionId}
       />
     );
   }

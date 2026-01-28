@@ -3,6 +3,9 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import {
   IndexedDBEventStore,
   CreateCollectionHandler,
+  MigrateTaskHandler,
+  MigrateNoteHandler,
+  MigrateEventHandler,
   EntryListProjection,
   TaskListProjection,
   CollectionListProjection
@@ -28,6 +31,11 @@ function App() {
   
   // Collection handlers
   const [createCollectionHandler] = useState(() => new CreateCollectionHandler(eventStore, collectionProjection));
+  
+  // Migration handlers
+  const [migrateTaskHandler] = useState(() => new MigrateTaskHandler(eventStore, entryProjection));
+  const [migrateNoteHandler] = useState(() => new MigrateNoteHandler(eventStore, entryProjection));
+  const [migrateEventHandler] = useState(() => new MigrateEventHandler(eventStore, entryProjection));
   
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
@@ -72,6 +80,9 @@ function App() {
     taskProjection,
     collectionProjection,
     createCollectionHandler,
+    migrateTaskHandler,
+    migrateNoteHandler,
+    migrateEventHandler,
   };
 
   return (

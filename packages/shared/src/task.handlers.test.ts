@@ -183,7 +183,7 @@ describe('CompleteTaskHandler', () => {
     projection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     createHandler = new CreateTaskHandler(eventStore, projection, entryProjection);
-    completeHandler = new CompleteTaskHandler(eventStore, projection);
+    completeHandler = new CompleteTaskHandler(eventStore, entryProjection);
   });
 
   describe('handle', () => {
@@ -259,8 +259,8 @@ describe('ReopenTaskHandler', () => {
     projection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     createHandler = new CreateTaskHandler(eventStore, projection, entryProjection);
-    completeHandler = new CompleteTaskHandler(eventStore, projection);
-    reopenHandler = new ReopenTaskHandler(eventStore, projection);
+    completeHandler = new CompleteTaskHandler(eventStore, entryProjection);
+    reopenHandler = new ReopenTaskHandler(eventStore, entryProjection);
   });
 
   describe('handle', () => {
@@ -350,7 +350,7 @@ describe('DeleteTaskHandler', () => {
     projection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     createHandler = new CreateTaskHandler(eventStore, projection, entryProjection);
-    deleteHandler = new DeleteTaskHandler(eventStore, projection);
+    deleteHandler = new DeleteTaskHandler(eventStore, entryProjection);
   });
 
   describe('handle', () => {
@@ -416,7 +416,7 @@ describe('DeleteTaskHandler', () => {
 
     it('should allow deleting completed tasks', async () => {
       const taskId = await createHandler.handle({ title: 'Completed task' });
-      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      const completeHandler = new CompleteTaskHandler(eventStore, entryProjection);
       await completeHandler.handle({ taskId });
 
       await deleteHandler.handle({ taskId });
@@ -448,7 +448,7 @@ describe('ReorderTaskHandler', () => {
     projection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     createHandler = new CreateTaskHandler(eventStore, projection, entryProjection);
-    reorderHandler = new ReorderTaskHandler(eventStore, projection, entryProjection);
+    reorderHandler = new ReorderTaskHandler(eventStore, entryProjection);
   });
 
   describe('handle', () => {
@@ -678,7 +678,7 @@ describe('UpdateTaskTitleHandler', () => {
     projection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     createHandler = new CreateTaskHandler(eventStore, projection, entryProjection);
-    updateTitleHandler = new UpdateTaskTitleHandler(eventStore, projection);
+    updateTitleHandler = new UpdateTaskTitleHandler(eventStore, entryProjection);
   });
 
   describe('handle', () => {
@@ -803,7 +803,7 @@ describe('UpdateTaskTitleHandler', () => {
         title: 'Original Title',
       });
 
-      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      const completeHandler = new CompleteTaskHandler(eventStore, entryProjection);
       await completeHandler.handle({ taskId });
 
       // Update title of completed task

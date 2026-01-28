@@ -1,4 +1,4 @@
-import type { Entry } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/shared';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableEntryItem } from './SortableEntryItem';
@@ -17,6 +17,10 @@ interface EntryListProps {
   // Common handlers
   onDelete: (entryId: string) => void;
   onReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => void;
+  // Migration handlers
+  onMigrate?: (entryId: string, targetCollectionId: string | null) => Promise<void>;
+  collections?: Collection[];
+  currentCollectionId?: string;
 }
 
 /**
@@ -35,7 +39,10 @@ export function EntryList({
   onUpdateEventContent,
   onUpdateEventDate,
   onDelete, 
-  onReorder 
+  onReorder,
+  onMigrate,
+  collections,
+  currentCollectionId
 }: EntryListProps) {
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -119,6 +126,9 @@ export function EntryList({
                 onUpdateEventContent={onUpdateEventContent}
                 onUpdateEventDate={onUpdateEventDate}
                 onDelete={onDelete}
+                onMigrate={onMigrate}
+                collections={collections}
+                currentCollectionId={currentCollectionId}
               />
             ))}
           </div>

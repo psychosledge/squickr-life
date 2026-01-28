@@ -1,4 +1,4 @@
-import type { Entry } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/shared';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { EntryItem } from './EntryItem';
@@ -16,6 +16,10 @@ interface SortableEntryItemProps {
   onUpdateEventDate?: (eventId: string, newDate: string | null) => void;
   // Common handlers
   onDelete: (entryId: string) => void;
+  // Migration handlers
+  onMigrate?: (entryId: string, targetCollectionId: string | null) => Promise<void>;
+  collections?: Collection[];
+  currentCollectionId?: string;
 }
 
 /**
@@ -32,7 +36,10 @@ export function SortableEntryItem({
   onUpdateNoteContent,
   onUpdateEventContent,
   onUpdateEventDate,
-  onDelete 
+  onDelete,
+  onMigrate,
+  collections,
+  currentCollectionId
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -92,6 +99,9 @@ export function SortableEntryItem({
         onUpdateEventContent={onUpdateEventContent}
         onUpdateEventDate={onUpdateEventDate}
         onDelete={onDelete}
+        onMigrate={onMigrate}
+        collections={collections}
+        currentCollectionId={currentCollectionId}
       />
     </div>
   );
