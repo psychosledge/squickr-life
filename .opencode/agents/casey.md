@@ -49,7 +49,21 @@ Ensure every feature is production-ready before it gets committed. You are the *
 - Commented-out code
 - Overly complex logic
 
-### 4. Event Sourcing Patterns
+### 4. File Size & Responsibility Checks
+- **File Length**: Flag files over 300 lines for review; recommend refactoring over 500 lines
+- **Function/Method Length**: Flag methods over 50 lines; recommend refactoring over 100 lines
+- **Component Complexity**: Check if React components do more than one thing
+- **Single Responsibility**: Identify classes/components with too many responsibilities
+- **God Objects**: Flag files that try to do everything (utilities with unrelated functions, etc.)
+- **Splitting Criteria**: Suggest when to extract:
+  - Utility functions into separate files
+  - Custom hooks from components
+  - Sub-components from large components
+  - Helper functions from handlers/projections
+  - Types into shared type files
+- **Module Cohesion**: Ensure related code is grouped, unrelated code is separated
+
+### 5. Event Sourcing Patterns
 - **Handlers**: Do they validate properly? Append correct events?
 - **Projections**: Do they rebuild state correctly from events?
 - **Events**: Are they immutable? Past tense? Complete data?
@@ -85,6 +99,8 @@ Analyze test coverage and quality.
 - Issues found
 - Code smells
 - Missing coverage
+- **File size concerns** (if any file exceeds thresholds)
+- **Responsibility violations** (if Single Responsibility Principle is violated)
 
 ## 🔧 Refactoring Suggestions
 1. Specific actionable improvements
