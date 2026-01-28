@@ -1,0 +1,165 @@
+/**
+ * Collection Header Component
+ * 
+ * Displays collection name with back button and menu for rename/delete actions.
+ * Phase 2C: Collection Detail View
+ */
+
+import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ROUTES } from '../routes';
+
+interface CollectionHeaderProps {
+  collectionName: string;
+  onRename: () => void;
+  onDelete: () => void;
+}
+
+export function CollectionHeader({
+  collectionName,
+  onRename,
+  onDelete,
+}: CollectionHeaderProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return undefined;
+  }, [isMenuOpen]);
+
+  const handleRename = () => {
+    setIsMenuOpen(false);
+    onRename();
+  };
+
+  const handleDelete = () => {
+    setIsMenuOpen(false);
+    onDelete();
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+      <div className="max-w-4xl mx-auto flex items-center justify-between">
+        {/* Left: Back button */}
+        <Link
+          to={ROUTES.index}
+          className="
+            p-2 -ml-2
+            text-gray-600 dark:text-gray-400
+            hover:text-gray-900 dark:hover:text-white
+            hover:bg-gray-100 dark:hover:bg-gray-700
+            rounded-lg
+            transition-colors
+            focus:outline-none focus:ring-2 focus:ring-blue-500
+          "
+          aria-label="Back to collections"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </Link>
+
+        {/* Center: Collection name */}
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white truncate mx-4 flex-1 text-center">
+          {collectionName}
+        </h1>
+
+        {/* Right: Menu button */}
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="
+              p-2 -mr-2
+              text-gray-600 dark:text-gray-400
+              hover:text-gray-900 dark:hover:text-white
+              hover:bg-gray-100 dark:hover:bg-gray-700
+              rounded-lg
+              transition-colors
+              focus:outline-none focus:ring-2 focus:ring-blue-500
+            "
+            aria-label="Collection menu"
+            type="button"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 6v.01M12 12v.01M12 18v.01M12 7a1 1 0 110-2 1 1 0 010 2zm0 6a1 1 0 110-2 1 1 0 010 2zm0 6a1 1 0 110-2 1 1 0 010 2z"
+              />
+            </svg>
+          </button>
+
+          {/* Dropdown menu */}
+          {isMenuOpen && (
+            <div
+              className="
+                absolute right-0 mt-2
+                w-48
+                bg-white dark:bg-gray-800
+                border border-gray-200 dark:border-gray-700
+                rounded-lg
+                shadow-lg
+                py-1
+                z-50
+              "
+            >
+              <button
+                onClick={handleRename}
+                className="
+                  w-full px-4 py-2
+                  text-left text-gray-700 dark:text-gray-300
+                  hover:bg-gray-100 dark:hover:bg-gray-700
+                  transition-colors
+                  focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                "
+                type="button"
+              >
+                Rename
+              </button>
+              <button
+                onClick={handleDelete}
+                className="
+                  w-full px-4 py-2
+                  text-left text-red-600 dark:text-red-400
+                  hover:bg-gray-100 dark:hover:bg-gray-700
+                  transition-colors
+                  focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                "
+                type="button"
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
