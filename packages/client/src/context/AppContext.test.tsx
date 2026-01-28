@@ -6,6 +6,7 @@ import type {
   EntryListProjection,
   TaskListProjection,
   CollectionListProjection,
+  CreateCollectionHandler,
 } from '@squickr/shared';
 
 describe('AppContext', () => {
@@ -14,6 +15,7 @@ describe('AppContext', () => {
     entryProjection: {} as EntryListProjection,
     taskProjection: {} as TaskListProjection,
     collectionProjection: {} as CollectionListProjection,
+    createCollectionHandler: {} as CreateCollectionHandler,
   });
 
   describe('useApp', () => {

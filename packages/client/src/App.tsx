@@ -20,6 +20,8 @@ import {
   UpdateEventDateHandler,
   DeleteEventHandler,
   ReorderEventHandler,
+  // Collection handlers
+  CreateCollectionHandler,
   // Projections
   EntryListProjection,
   TaskListProjection,
@@ -71,6 +73,9 @@ function App() {
   const [updateEventDateHandler] = useState(() => new UpdateEventDateHandler(eventStore, entryProjection));
   const [deleteEventHandler] = useState(() => new DeleteEventHandler(eventStore, entryProjection));
   const [reorderEventHandler] = useState(() => new ReorderEventHandler(eventStore, entryProjection, entryProjection));
+  
+  // Collection handlers
+  const [createCollectionHandler] = useState(() => new CreateCollectionHandler(eventStore, collectionProjection));
   
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
@@ -189,6 +194,7 @@ function App() {
     entryProjection,
     taskProjection,
     collectionProjection,
+    createCollectionHandler,
   };
 
   return (

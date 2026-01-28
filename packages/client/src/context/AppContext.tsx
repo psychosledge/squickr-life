@@ -14,6 +14,7 @@ import type {
   EntryListProjection,
   TaskListProjection,
   CollectionListProjection,
+  CreateCollectionHandler,
 } from '@squickr/shared';
 
 interface AppContextValue {
@@ -21,6 +22,7 @@ interface AppContextValue {
   entryProjection: EntryListProjection;
   taskProjection: TaskListProjection;
   collectionProjection: CollectionListProjection;
+  createCollectionHandler: CreateCollectionHandler;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
