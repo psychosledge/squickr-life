@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import {
   IndexedDBEventStore,
   // Task handlers
@@ -19,14 +20,19 @@ import {
   UpdateEventDateHandler,
   DeleteEventHandler,
   ReorderEventHandler,
-  // Projection
+  // Projections
   EntryListProjection,
-  TaskListProjection
+  TaskListProjection,
+  CollectionListProjection
 } from '@squickr/shared';
 import { DailyLogsView } from './components/DailyLogsView';
 import { DarkModeToggle } from './components/DarkModeToggle';
 import { FAB } from './components/FAB';
 import { EntryInputModal } from './components/EntryInputModal';
+import { AppProvider } from './context/AppContext';
+import { CollectionIndexView } from './views/CollectionIndexView';
+import { CollectionDetailView } from './views/CollectionDetailView';
+import { ROUTES } from './routes';
 
 /**
  * Main App Component
@@ -43,6 +49,7 @@ function App() {
   const [eventStore] = useState(() => new IndexedDBEventStore());
   const [entryProjection] = useState(() => new EntryListProjection(eventStore));
   const [taskProjection] = useState(() => new TaskListProjection(eventStore));
+  const [collectionProjection] = useState(() => new CollectionListProjection(eventStore));
   
   // Task handlers
   const [createTaskHandler] = useState(() => new CreateTaskHandler(eventStore, taskProjection, entryProjection));
@@ -176,57 +183,79 @@ function App() {
     );
   }
 
+  // Create context value for AppProvider
+  const contextValue = {
+    eventStore,
+    entryProjection,
+    taskProjection,
+    collectionProjection,
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8 relative">
-          {/* Dark mode toggle - positioned top-right */}
-          <div className="absolute top-0 right-0">
-            <DarkModeToggle />
-          </div>
+    <AppProvider value={contextValue}>
+      <BrowserRouter>
+        <Routes>
+          {/* Phase 2A: Keep existing Daily Logs as default (no disruption) */}
+          <Route path={ROUTES.index} element={
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+              <div className="max-w-4xl mx-auto">
+                {/* Header */}
+                <div className="text-center mb-8 relative">
+                  {/* Dark mode toggle - positioned top-right */}
+                  <div className="absolute top-0 right-0">
+                    <DarkModeToggle />
+                  </div>
+                  
+                  <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Squickr Life
+                  </h1>
+                  <p className="text-lg text-gray-600 dark:text-gray-400">
+                    Get shit done quicker with Squickr!
+                  </p>
+                </div>
+
+                {/* Daily Logs View (Read Side - Reactive Updates) */}
+                <DailyLogsView
+                  projection={entryProjection}
+                  onCompleteTask={handleCompleteTask}
+                  onReopenTask={handleReopenTask}
+                  onUpdateTaskTitle={handleUpdateTaskTitle}
+                  onUpdateNoteContent={handleUpdateNoteContent}
+                  onUpdateEventContent={handleUpdateEventContent}
+                  onUpdateEventDate={handleUpdateEventDate}
+                  onDelete={handleDelete}
+                  onReorder={handleReorder}
+                />
+
+                {/* Footer */}
+                <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <p>Event-Sourced • CQRS • TDD • Offline-First PWA</p>
+                  <p className="mt-1">✓ Data persists with IndexedDB</p>
+                  <p className="mt-1">Built by the AI Agent Team</p>
+                </div>
+              </div>
+
+              {/* FAB - All screen sizes */}
+              <FAB onClick={() => setIsModalOpen(true)} />
+
+              {/* Entry Input Modal */}
+              <EntryInputModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmitTask={handleCreateTask}
+                onSubmitNote={handleCreateNote}
+                onSubmitEvent={handleCreateEvent}
+              />
+            </div>
+          } />
           
-          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Squickr Life
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
-            Get shit done quicker with Squickr!
-          </p>
-        </div>
-
-        {/* Daily Logs View (Read Side - Reactive Updates) */}
-        <DailyLogsView
-          projection={entryProjection}
-          onCompleteTask={handleCompleteTask}
-          onReopenTask={handleReopenTask}
-          onUpdateTaskTitle={handleUpdateTaskTitle}
-          onUpdateNoteContent={handleUpdateNoteContent}
-          onUpdateEventContent={handleUpdateEventContent}
-          onUpdateEventDate={handleUpdateEventDate}
-          onDelete={handleDelete}
-          onReorder={handleReorder}
-        />
-
-        {/* Footer */}
-        <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>Event-Sourced • CQRS • TDD • Offline-First PWA</p>
-          <p className="mt-1">✓ Data persists with IndexedDB</p>
-          <p className="mt-1">Built by the AI Agent Team</p>
-        </div>
-      </div>
-
-      {/* FAB - All screen sizes */}
-      <FAB onClick={() => setIsModalOpen(true)} />
-
-      {/* Entry Input Modal */}
-      <EntryInputModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmitTask={handleCreateTask}
-        onSubmitNote={handleCreateNote}
-        onSubmitEvent={handleCreateEvent}
-      />
-    </div>
+          {/* Phase 2A: New routes (placeholders, not yet linked in UI) */}
+          <Route path={ROUTES.collections} element={<CollectionIndexView />} />
+          <Route path={ROUTES.collection} element={<CollectionDetailView />} />
+          <Route path={ROUTES.dailyLogs} element={<Navigate to={ROUTES.index} replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AppProvider>
   );
 }
 

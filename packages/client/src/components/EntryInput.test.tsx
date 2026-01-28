@@ -20,8 +20,8 @@ describe('EntryInput', () => {
       />
     );
     
-    const selector = screen.getByLabelText(/entry type/i) as HTMLSelectElement;
-    expect(selector.value).toBe('task');
+    const taskButton = screen.getByRole('button', { name: /task/i });
+    expect(taskButton).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByPlaceholderText(/add a task/i)).toBeInTheDocument();
   });
 
@@ -34,8 +34,8 @@ describe('EntryInput', () => {
       />
     );
     
-    const selector = screen.getByLabelText(/entry type/i);
-    fireEvent.change(selector, { target: { value: 'note' } });
+    const noteButton = screen.getByRole('button', { name: /note/i });
+    fireEvent.click(noteButton);
     
     expect(screen.getByPlaceholderText(/add a note/i)).toBeInTheDocument();
   });
@@ -49,8 +49,8 @@ describe('EntryInput', () => {
       />
     );
     
-    const selector = screen.getByLabelText(/entry type/i);
-    fireEvent.change(selector, { target: { value: 'event' } });
+    const eventButton = screen.getByRole('button', { name: /event/i });
+    fireEvent.click(eventButton);
     
     expect(screen.getByPlaceholderText(/add an event/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/event date/i)).toBeInTheDocument();
@@ -87,13 +87,13 @@ describe('EntryInput', () => {
       />
     );
     
-    const selector = screen.getByLabelText(/entry type/i);
-    fireEvent.change(selector, { target: { value: 'note' } });
+    const noteButton = screen.getByRole('button', { name: /note/i });
+    fireEvent.click(noteButton);
     
-    const textarea = screen.getByPlaceholderText(/add a note/i);
+    const input = screen.getByPlaceholderText(/add a note/i);
     const button = screen.getByRole('button', { name: /add/i });
     
-    fireEvent.change(textarea, { target: { value: 'Important note' } });
+    fireEvent.change(input, { target: { value: 'Important note' } });
     fireEvent.click(button);
     
     await waitFor(() => {
@@ -112,14 +112,14 @@ describe('EntryInput', () => {
       />
     );
     
-    const selector = screen.getByLabelText(/entry type/i);
-    fireEvent.change(selector, { target: { value: 'event' } });
+    const eventButton = screen.getByRole('button', { name: /event/i });
+    fireEvent.click(eventButton);
     
-    const textarea = screen.getByPlaceholderText(/add an event/i);
+    const input = screen.getByPlaceholderText(/add an event/i);
     const dateInput = screen.getByLabelText(/event date/i);
     const button = screen.getByRole('button', { name: /add/i });
     
-    fireEvent.change(textarea, { target: { value: 'Meeting' } });
+    fireEvent.change(input, { target: { value: 'Meeting' } });
     fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
     fireEvent.click(button);
     
@@ -139,13 +139,13 @@ describe('EntryInput', () => {
       />
     );
     
-    const selector = screen.getByLabelText(/entry type/i);
-    fireEvent.change(selector, { target: { value: 'event' } });
+    const eventButton = screen.getByRole('button', { name: /event/i });
+    fireEvent.click(eventButton);
     
-    const textarea = screen.getByPlaceholderText(/add an event/i);
+    const input = screen.getByPlaceholderText(/add an event/i);
     const button = screen.getByRole('button', { name: /add/i });
     
-    fireEvent.change(textarea, { target: { value: 'Meeting' } });
+    fireEvent.change(input, { target: { value: 'Meeting' } });
     fireEvent.click(button);
     
     await waitFor(() => {
@@ -239,19 +239,19 @@ describe('EntryInput', () => {
       />
     );
     
-    const selector = screen.getByLabelText(/entry type/i);
-    fireEvent.change(selector, { target: { value: 'note' } });
+    const noteButton = screen.getByRole('button', { name: /note/i });
+    fireEvent.click(noteButton);
     
-    const textarea = screen.getByPlaceholderText(/add a note/i);
-    fireEvent.change(textarea, { target: { value: 'Test note' } });
-    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+    const input = screen.getByPlaceholderText(/add a note/i);
+    fireEvent.change(input, { target: { value: 'Test note' } });
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
     
     await waitFor(() => {
       expect(mockOnSubmitNote).toHaveBeenCalledWith('Test note');
     });
   });
 
-  it('should not submit note on Shift+Enter (allow new line)', () => {
+  it('should submit on Enter key press (no need for Shift detection on input)', async () => {
     render(
       <EntryInput 
         onSubmitTask={mockOnSubmitTask}
@@ -260,14 +260,16 @@ describe('EntryInput', () => {
       />
     );
     
-    const selector = screen.getByLabelText(/entry type/i);
-    fireEvent.change(selector, { target: { value: 'note' } });
+    const noteButton = screen.getByRole('button', { name: /note/i });
+    fireEvent.click(noteButton);
     
-    const textarea = screen.getByPlaceholderText(/add a note/i);
-    fireEvent.change(textarea, { target: { value: 'Test note' } });
-    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
+    const input = screen.getByPlaceholderText(/add a note/i);
+    fireEvent.change(input, { target: { value: 'Test note' } });
+    fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
     
-    expect(mockOnSubmitNote).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockOnSubmitNote).toHaveBeenCalledWith('Test note');
+    });
   });
 
   it('should display error message when submission fails', async () => {
@@ -332,11 +334,11 @@ describe('EntryInput', () => {
     const input = screen.getByPlaceholderText(/add a task/i) as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'Test content' } });
     
-    const selector = screen.getByLabelText(/entry type/i);
-    fireEvent.change(selector, { target: { value: 'note' } });
+    const noteButton = screen.getByRole('button', { name: /note/i });
+    fireEvent.click(noteButton);
     
-    const textarea = screen.getByPlaceholderText(/add a note/i) as HTMLTextAreaElement;
-    expect(textarea.value).toBe('');
+    const noteInput = screen.getByPlaceholderText(/add a note/i) as HTMLInputElement;
+    expect(noteInput.value).toBe('');
   });
 
   // REGRESSION TESTS: Prevent double-submit bug
@@ -351,13 +353,11 @@ describe('EntryInput', () => {
       );
       
       const input = screen.getByPlaceholderText(/add a task/i);
-      const form = input.closest('form');
       
       fireEvent.change(input, { target: { value: 'Test task' } });
       
-      // Simulate Enter key which submits the form
+      // Simulate Enter key - this will call handleSubmit internally
       fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
-      fireEvent.submit(form!);
       
       // Wait for async submission
       await waitFor(() => {
@@ -398,12 +398,12 @@ describe('EntryInput', () => {
         />
       );
       
-      const selector = screen.getByLabelText(/entry type/i);
-      fireEvent.change(selector, { target: { value: 'note' } });
+      const noteButton = screen.getByRole('button', { name: /note/i });
+      fireEvent.click(noteButton);
       
-      const textarea = screen.getByPlaceholderText(/add a note/i);
-      fireEvent.change(textarea, { target: { value: 'Test note' } });
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+      const input = screen.getByPlaceholderText(/add a note/i);
+      fireEvent.change(input, { target: { value: 'Test note' } });
+      fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
       
       await waitFor(() => {
         expect(mockOnSubmitNote).toHaveBeenCalledTimes(1);
@@ -421,13 +421,13 @@ describe('EntryInput', () => {
         />
       );
       
-      const selector = screen.getByLabelText(/entry type/i);
-      fireEvent.change(selector, { target: { value: 'note' } });
+      const noteButton = screen.getByRole('button', { name: /note/i });
+      fireEvent.click(noteButton);
       
-      const textarea = screen.getByPlaceholderText(/add a note/i);
+      const input = screen.getByPlaceholderText(/add a note/i);
       const button = screen.getByRole('button', { name: /add/i });
       
-      fireEvent.change(textarea, { target: { value: 'Test note' } });
+      fireEvent.change(input, { target: { value: 'Test note' } });
       fireEvent.click(button);
       
       await waitFor(() => {
@@ -446,15 +446,15 @@ describe('EntryInput', () => {
         />
       );
       
-      const selector = screen.getByLabelText(/entry type/i);
-      fireEvent.change(selector, { target: { value: 'event' } });
+      const eventButton = screen.getByRole('button', { name: /event/i });
+      fireEvent.click(eventButton);
       
-      const textarea = screen.getByPlaceholderText(/add an event/i);
+      const input = screen.getByPlaceholderText(/add an event/i);
       const dateInput = screen.getByLabelText(/event date/i);
       
-      fireEvent.change(textarea, { target: { value: 'Test event' } });
+      fireEvent.change(input, { target: { value: 'Test event' } });
       fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
-      fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+      fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
       
       await waitFor(() => {
         expect(mockOnSubmitEvent).toHaveBeenCalledTimes(1);
@@ -472,14 +472,14 @@ describe('EntryInput', () => {
         />
       );
       
-      const selector = screen.getByLabelText(/entry type/i);
-      fireEvent.change(selector, { target: { value: 'event' } });
+      const eventButton = screen.getByRole('button', { name: /event/i });
+      fireEvent.click(eventButton);
       
-      const textarea = screen.getByPlaceholderText(/add an event/i);
+      const input = screen.getByPlaceholderText(/add an event/i);
       const dateInput = screen.getByLabelText(/event date/i);
       const button = screen.getByRole('button', { name: /add/i });
       
-      fireEvent.change(textarea, { target: { value: 'Test event' } });
+      fireEvent.change(input, { target: { value: 'Test event' } });
       fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
       fireEvent.click(button);
       

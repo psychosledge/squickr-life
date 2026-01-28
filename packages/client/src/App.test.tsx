@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 import type { IndexedDBEventStore } from '@squickr/shared';
@@ -48,11 +48,11 @@ describe('App', () => {
     });
   });
 
-  it('should render the task input after loading', async () => {
+  it('should render the FAB button after loading', async () => {
     render(<App />);
     
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/add a task/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /add new entry/i })).toBeInTheDocument();
     });
   });
 

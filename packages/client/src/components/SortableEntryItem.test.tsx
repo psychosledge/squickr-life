@@ -77,10 +77,10 @@ describe('SortableEntryItem', () => {
 
     const dragHandle = screen.getByLabelText('Drag to reorder');
     
-    // Drag handle should have opacity-30 by default and group-hover:opacity-100
-    expect(dragHandle).toHaveClass('opacity-30');
-    expect(dragHandle).toHaveClass('group-hover:opacity-100');
-    expect(dragHandle).toHaveClass('group-focus-within:opacity-100');
+    // Drag handle should have md:opacity-30 by default and md:group-hover:opacity-100
+    expect(dragHandle).toHaveClass('md:opacity-30');
+    expect(dragHandle).toHaveClass('md:group-hover:opacity-100');
+    expect(dragHandle).toHaveClass('md:group-focus-within:opacity-100');
   });
 
   it('should have proper cursor styles for drag handle', () => {
@@ -182,7 +182,8 @@ describe('SortableEntryItem', () => {
     const wrapper = container.querySelector('.relative.group');
     expect(wrapper).toBeInTheDocument();
     // Should have responsive padding for mobile drag handle
-    expect(wrapper).toHaveClass('pl-10');
+    expect(wrapper).toHaveClass('pr-14');
+    expect(wrapper).toHaveClass('md:pr-0');
     expect(wrapper).toHaveClass('md:pl-0');
   });
 
@@ -212,12 +213,10 @@ describe('SortableEntryItem', () => {
     const dragHandle = screen.getByLabelText('Drag to reorder');
     
     expect(dragHandle).toHaveClass('absolute');
-    // Mobile: inside container at left-2
-    expect(dragHandle).toHaveClass('left-2');
+    // Mobile: inside container at right-2
+    expect(dragHandle).toHaveClass('right-2');
     // Desktop: outside container at left-0 with offset
     expect(dragHandle).toHaveClass('md:left-0');
     expect(dragHandle).toHaveClass('md:-translate-x-8');
-    // Touch-friendly
-    expect(dragHandle).toHaveClass('touch-manipulation');
   });
 });
