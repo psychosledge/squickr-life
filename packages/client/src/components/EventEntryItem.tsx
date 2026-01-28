@@ -161,7 +161,7 @@ export function EventEntryItem({
         {/* Compact Trash Icon */}
         <button
           onClick={() => onDelete(entry.id)}
-          className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+          className="text-xl text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
           aria-label="Delete entry"
         >
           🗑️
