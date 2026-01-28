@@ -73,6 +73,14 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
         // Return empty for real collections in these tests
         return Promise.resolve([]);
       }),
+      getEntryCountsByCollection: vi.fn(() => {
+        // Return counts for all collections
+        const counts = new Map<string | null, number>();
+        counts.set(null, mockOrphanedEntries.length); // Uncategorized count
+        counts.set('col-1', 0);
+        counts.set('col-2', 0);
+        return Promise.resolve(counts);
+      }),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -112,17 +120,18 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
       expect(screen.getByText('Uncategorized')).toBeInTheDocument();
     });
 
-    // Verify it queried for orphaned entries
-    expect(mockEntryProjection.getEntriesByCollection).toHaveBeenCalledWith(null);
+    // Verify it queried for entry counts (not individual orphaned entries)
+    expect(mockEntryProjection.getEntryCountsByCollection).toHaveBeenCalled();
   });
 
   it('should NOT show virtual Uncategorized collection when no orphaned entries exist', async () => {
     // Mock no orphaned entries
-    mockEntryProjection.getEntriesByCollection.mockImplementation((collectionId: string | null) => {
-      if (collectionId === null) {
-        return Promise.resolve([]); // No orphaned entries
-      }
-      return Promise.resolve([]);
+    mockEntryProjection.getEntryCountsByCollection.mockImplementation(() => {
+      const counts = new Map<string | null, number>();
+      // No null key = no uncategorized entries
+      counts.set('col-1', 0);
+      counts.set('col-2', 0);
+      return Promise.resolve(counts);
     });
 
     renderView();
@@ -213,14 +222,15 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
     });
 
     // Clear previous calls
-    mockEntryProjection.getEntriesByCollection.mockClear();
+    mockEntryProjection.getEntryCountsByCollection.mockClear();
 
     // Simulate projection change (orphaned entries removed)
-    mockEntryProjection.getEntriesByCollection.mockImplementation((collectionId: string | null) => {
-      if (collectionId === null) {
-        return Promise.resolve([]); // No more orphaned entries
-      }
-      return Promise.resolve([]);
+    mockEntryProjection.getEntryCountsByCollection.mockImplementation(() => {
+      const counts = new Map<string | null, number>();
+      // No null key = no uncategorized entries
+      counts.set('col-1', 0);
+      counts.set('col-2', 0);
+      return Promise.resolve(counts);
     });
 
     // Trigger update

@@ -1016,4 +1016,108 @@ describe('EntryListProjection', () => {
       expect(inY.some(e => e.id === eventId)).toBe(true);
     });
   });
+
+  describe('getEntryCountsByCollection', () => {
+    it('should return counts for all collections in a single query', async () => {
+      // Create entries in different collections
+      await taskHandler.handle({ title: 'Task in A', collectionId: 'collection-A' });
+      await taskHandler.handle({ title: 'Task 2 in A', collectionId: 'collection-A' });
+      await noteHandler.handle({ content: 'Note in A', collectionId: 'collection-A' });
+      await taskHandler.handle({ title: 'Task in B', collectionId: 'collection-B' });
+      await eventHandler.handle({ content: 'Event in C', collectionId: 'collection-C' });
+
+      const counts = await projection.getEntryCountsByCollection();
+      
+      expect(counts.get('collection-A')).toBe(3);
+      expect(counts.get('collection-B')).toBe(1);
+      expect(counts.get('collection-C')).toBe(1);
+    });
+
+    it('should count uncategorized entries with null key', async () => {
+      // Create uncategorized entries
+      await taskHandler.handle({ title: 'Uncategorized task' });
+      await noteHandler.handle({ content: 'Uncategorized note' });
+      
+      // Create categorized entry
+      await taskHandler.handle({ title: 'Task in A', collectionId: 'collection-A' });
+
+      const counts = await projection.getEntryCountsByCollection();
+      
+      expect(counts.get(null)).toBe(2);
+      expect(counts.get('collection-A')).toBe(1);
+    });
+
+    it('should return empty map when no entries exist', async () => {
+      const counts = await projection.getEntryCountsByCollection();
+      
+      expect(counts.size).toBe(0);
+    });
+
+    it('should handle mixed entry types in same collection', async () => {
+      await taskHandler.handle({ title: 'Task', collectionId: 'mixed' });
+      await noteHandler.handle({ content: 'Note', collectionId: 'mixed' });
+      await eventHandler.handle({ content: 'Event', collectionId: 'mixed' });
+
+      const counts = await projection.getEntryCountsByCollection();
+      
+      expect(counts.get('mixed')).toBe(3);
+    });
+
+    it('should update counts when entries are moved between collections', async () => {
+      const { MoveEntryToCollectionHandler } = await import('./task.handlers');
+      const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
+      
+      // Create entries
+      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      await noteHandler.handle({ content: 'Note', collectionId: 'collection-A' });
+
+      // Initial counts
+      let counts = await projection.getEntryCountsByCollection();
+      expect(counts.get('collection-A')).toBe(2);
+      expect(counts.get('collection-B')).toBeUndefined();
+
+      // Move task to collection-B
+      await moveHandler.handle({ entryId: taskId, collectionId: 'collection-B' });
+
+      // Updated counts
+      counts = await projection.getEntryCountsByCollection();
+      expect(counts.get('collection-A')).toBe(1);
+      expect(counts.get('collection-B')).toBe(1);
+    });
+
+    it('should update counts when entry is moved to uncategorized', async () => {
+      const { MoveEntryToCollectionHandler } = await import('./task.handlers');
+      const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
+      
+      // Create task in collection
+      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+
+      // Move to uncategorized
+      await moveHandler.handle({ entryId: taskId, collectionId: null });
+
+      const counts = await projection.getEntryCountsByCollection();
+      expect(counts.get('collection-A')).toBeUndefined();
+      expect(counts.get(null)).toBe(1);
+    });
+
+    it('should handle deleted entries correctly', async () => {
+      const { DeleteTaskHandler } = await import('./task.handlers');
+      const deleteHandler = new DeleteTaskHandler(eventStore, projection);
+      
+      // Create tasks
+      const taskId1 = await taskHandler.handle({ title: 'Task 1', collectionId: 'collection-A' });
+      await taskHandler.handle({ title: 'Task 2', collectionId: 'collection-A' });
+
+      // Initial count
+      let counts = await projection.getEntryCountsByCollection();
+      expect(counts.get('collection-A')).toBe(2);
+
+      // Delete one task
+      await deleteHandler.handle({ taskId: taskId1 });
+
+      // Updated count
+      counts = await projection.getEntryCountsByCollection();
+      expect(counts.get('collection-A')).toBe(1);
+    });
+  });
 });

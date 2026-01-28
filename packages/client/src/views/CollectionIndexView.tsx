@@ -27,14 +27,17 @@ export function CollectionIndexView() {
     // Load real collections
     const loadedCollections = await collectionProjection.getCollections();
     
-    // Load orphaned entries (entries with no collection)
-    const orphanedEntries = await entryProjection.getEntriesByCollection(null);
+    // Get entry counts for all collections in a single query (avoids N+1 pattern)
+    const allCounts = await entryProjection.getEntryCountsByCollection();
+    
+    // Check if uncategorized entries exist
+    const uncategorizedCount = allCounts.get(null) ?? 0;
     
     // Build collections array with virtual "Uncategorized" if needed
     const collectionsWithVirtual: Collection[] = [];
     
     // If there are orphaned entries, add virtual "Uncategorized" collection first
-    if (orphanedEntries.length > 0) {
+    if (uncategorizedCount > 0) {
       collectionsWithVirtual.push({
         id: UNCATEGORIZED_COLLECTION_ID,
         name: 'Uncategorized',
@@ -49,18 +52,18 @@ export function CollectionIndexView() {
     
     setCollections(collectionsWithVirtual);
 
-    // Calculate entry counts for all collections (including virtual)
+    // Build count map for display
     const counts = new Map<string, number>();
     
-    // Count for uncategorized (if it exists in our list)
-    if (orphanedEntries.length > 0) {
-      counts.set(UNCATEGORIZED_COLLECTION_ID, orphanedEntries.length);
+    // Add count for virtual uncategorized collection if it exists
+    if (uncategorizedCount > 0) {
+      counts.set(UNCATEGORIZED_COLLECTION_ID, uncategorizedCount);
     }
     
-    // Count for real collections
+    // Add counts for real collections
     for (const collection of loadedCollections) {
-      const entries = await entryProjection.getEntriesByCollection(collection.id);
-      counts.set(collection.id, entries.length);
+      const count = allCounts.get(collection.id) ?? 0;
+      counts.set(collection.id, count);
     }
     
     setEntryCountsByCollection(counts);

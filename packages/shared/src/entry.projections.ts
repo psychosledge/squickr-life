@@ -229,6 +229,26 @@ export class EntryListProjection {
   }
 
   /**
+   * Get entry counts grouped by collection ID
+   * Efficiently counts all entries and groups them by collection in a single query.
+   * This avoids the N+1 query pattern when displaying collection badges.
+   * 
+   * @returns Map of collection ID to entry count (null key = uncategorized entries)
+   */
+  async getEntryCountsByCollection(): Promise<Map<string | null, number>> {
+    const allEntries = await this.getEntries('all');
+    const counts = new Map<string | null, number>();
+    
+    // Count entries by collection ID in memory (fast!)
+    for (const entry of allEntries) {
+      const collectionId = entry.collectionId ?? null;
+      counts.set(collectionId, (counts.get(collectionId) ?? 0) + 1);
+    }
+    
+    return counts;
+  }
+
+  /**
    * Apply events to build entry state
    * This handles Task, Note, and Event events polymorphically
    */
