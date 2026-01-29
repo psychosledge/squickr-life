@@ -751,6 +751,343 @@ interface TaskMigrated extends DomainEvent {
 
 ---
 
+## Phase 5: Manual Testing Feedback & UX Refinements
+
+**Status:** 📋 Planning  
+**Started:** 2026-01-29  
+**Goal:** Address UX issues discovered during manual testing of Phase 4
+
+### Feedback Item #1: FAB Overlapping Drag Handles (Mobile)
+
+**Issue:**
+- FAB (Floating Action Button) covers drag handles on mobile despite Phase 4B's `pb-32` padding fix
+- Occurs in collection detail views when ~10+ entries exist
+- Bottom padding doesn't prevent overlap because FAB is `fixed` positioned and hovers over scrolled content
+
+**Current State:**
+- **Desktop (md+):** Drag handles on LEFT side (`md:left-0 md:-translate-x-8`) - ✅ No overlap
+- **Mobile (<md):** Drag handles on RIGHT side (`right-2`) - ❌ **Overlaps with FAB at `right-5`**
+- **FAB position:** Bottom-right corner (`fixed bottom-5 right-5`)
+
+**Why `pb-32` Padding Didn't Work:**
+- Padding creates space at bottom of list, but FAB is `fixed` positioned
+- When scrolling, FAB stays in place and covers the last entry's drag handle
+- Drag handle at `right-2` + FAB at `right-5` = only 3 units apart = overlap zone
+
+**Proposed Solutions (Needs Architecture Review with Alex):**
+
+**Option A: Move FAB to Bottom Center (Mobile Only)**
+- **Pros:** Doesn't interfere with right-side handles, common mobile pattern (Material Design)
+- **Cons:** Breaks muscle memory, may interfere with center UI elements
+- **Implementation:** Change `right-5` to `left-1/2 -translate-x-1/2` on mobile
+- **Effort:** ~30 minutes
+
+**Option B: Move Drag Handles to Left Side (All Devices)**
+- **Pros:** Consistent with desktop, follows convention (left = structure, right = content)
+- **Cons:** More complex, need to update both entries AND collections for consistency
+- **Implementation:** Reorder DOM to `[drag-handle] [bujo-icon] [content] [actions-menu]`
+- **Files to modify:** SortableEntryItem, SortableCollectionItem, all entry item components
+- **Effort:** ~2-3 hours
+
+**Option C: Move FAB to Top-Right (Mobile Only)**
+- **Pros:** Clear separation from bottom content
+- **Cons:** Unconventional, may conflict with header, less thumb-friendly
+- **Effort:** ~30 minutes
+
+**Questions for Alex:**
+1. Which solution best aligns with modern mobile UX standards?
+2. Any accessibility concerns with drag handle positioning?
+3. Will we add more bottom-positioned UI elements that could conflict?
+4. Should mobile and desktop follow the same pattern, or is divergence acceptable?
+
+**Impact Analysis:**
+- **Users affected:** Mobile users (all collections with 10+ entries)
+- **Severity:** Medium (functional issue, but drag handles are still accessible with careful tapping)
+- **Frequency:** High (occurs whenever lists grow beyond viewport)
+
+**Deferred Until:** Architecture design session with Alex (`/design`)
+
+---
+
+### Feedback Item #2: Completed Task Management & Collection Types
+
+**Issue:**
+- Different collections have different needs for managing completed tasks
+- Logs (journals) benefit from seeing completed tasks (show what was accomplished)
+- Lists/ToDos need to hide or separate completed tasks (focus on remaining work)
+- Current behavior treats all collections the same
+
+**Current Behavior:**
+- All collections show completed tasks in place with strikethrough
+- Works well for logs, clutters todo lists
+
+**Key Insight:**
+User is discovering potential for **three distinct collection types**:
+1. **Log** - Date-based, chronological, shows all entries (future: tied to calendar)
+2. **List** - General-purpose, mixed entry types, optional completed filter
+3. **ToDo** - Task-only, project-focused, completed tasks separated/collapsed
+
+**Proposed Solutions:**
+
+**Option A: Simple Filter Toggle** (~1-2 hours)
+- Add per-collection toggle to show/hide completed tasks
+- No collection types needed
+- User controls each collection manually
+
+**Option B: Collection Types with Default Behaviors** (~4-6 hours)
+- Introduce `type: 'log' | 'list' | 'todo'` to Collection entity
+- Log: Shows all (current behavior)
+- List: Shows all but has optional filter
+- ToDo: Task-only, completed tasks moved to bottom or collapsed section
+- Aligns with Bullet Journal paradigm (different page types)
+- Opens door for future features (calendar, auto-migrations, trackers)
+
+**Option C: Hybrid** (~6-8 hours)
+- Collection types + per-collection filter overrides
+- Most flexible, most complex
+
+**Questions for Alex:**
+1. Should we embrace BuJo's concept of different page types (Index, Future/Monthly/Daily Logs, Collections)?
+2. Is a task-only "ToDo" collection type architecturally sound?
+3. What's the migration strategy for existing "custom" collections?
+4. Should collection type be immutable or convertible?
+5. How to handle entry type restrictions (UI-only or command validation)?
+6. Completed task auto-sorting: immediate or on-demand?
+7. Should we prototype both options and user test?
+
+**Impact:**
+- High business value (aligns with BuJo methodology, differentiates from simple todo apps)
+- Medium severity (nice-to-have, not a blocker)
+- Affects users using collections for projects/todos more than journal users
+
+**Recommendation:**
+Option B (collection types) for long-term BuJo authenticity, but needs Alex's architectural input on:
+- ToDo type viability
+- Migration strategy
+- Future vision for other types (Index, Tracker, etc.)
+
+**Deferred Until:** Architecture design session with Alex (`/design`)
+
+---
+
+### Feedback Item #3: Create Collection During Migration 🟢 READY TO IMPLEMENT
+
+**Issue:**
+When migrating an entry, target collection often doesn't exist yet. Current flow requires canceling, creating collection separately, then restarting migration. This breaks the daily ritual flow.
+
+**User Requirement:**
+- Add "+ Create New Collection" option in migration modal
+- Opens standard CreateCollectionModal (with type selector if #2 is implemented)
+- Auto-completes migration after collection is created
+- Part of daily BuJo ritual (e.g., creating tomorrow's log during migration)
+
+**Also: Terminology Fix**
+- Change "Move to..." → "Migrate to..." throughout UI (more BuJo-authentic)
+
+**Proposed Solution:**
+Two-modal flow:
+1. MigrateEntryModal (renamed from MoveEntryToCollectionModal)
+   - Collection list + "+ Create New Collection" option at bottom
+   - Selecting "Create New" changes button to "Next"
+2. CreateCollectionModal opens with callback
+   - Button says "Create & Migrate" (instead of "Create")
+   - After creation, auto-triggers migration
+   - Both modals close, success feedback shown
+
+**Implementation:**
+- Rename MoveEntryToCollectionModal → MigrateEntryModal
+- Add "+ Create New Collection" radio option
+- Wire up CreateCollectionModal callback flow
+- Update EntryActionsMenu text
+- Add 10-15 new tests
+
+**Files to Modify:**
+- `packages/client/src/components/MoveEntryToCollectionModal.tsx` (rename file)
+- `packages/client/src/components/CreateCollectionModal.tsx` (add callback prop)
+- `packages/client/src/components/EntryActionsMenu.tsx` (update text)
+- All entry item components (update modal import)
+- Test files
+
+**Effort:** 3-4 hours
+**Complexity:** Low-Medium (mostly UI/flow logic, reuses existing handlers)
+**Dependencies:** None (works with or without collection types from #2)
+
+**User Stories:**
+- Daily ritual: Create tomorrow's log while migrating tasks
+- Quick categorization: Realize task needs new collection, create on the spot
+- Batch migrations: Create collection once, migrate multiple entries
+
+**Status:** Ready to implement (no architecture questions needed)
+
+---
+
+### Feedback Item #4: Collection Navigation (Page Flipping) 🟡 MEDIUM COMPLEXITY
+
+**Issue:**
+Navigating between collections requires going back to index, finding next collection, and opening it. Cumbersome for daily rituals where users review multiple collections in sequence.
+
+**User Requirement:**
+- Quick navigation between collections like flipping pages in a physical journal
+- Previous/Next arrow buttons in collection header
+- Swipe gestures on mobile (left/right to flip)
+- Keyboard shortcuts on desktop (Left/Right arrow keys)
+- Navigate in same order as Collection Index (user's custom order)
+- Include Uncategorized (always first)
+- At end, show placeholder page with option to create new collection
+
+**Proposed Solution:**
+
+**Collection Header with Navigation:**
+```
+← Daily Log - Jan 29 → [⋮]
+```
+
+**Navigation Order:**
+```
+[Uncategorized] → [Work] → [Personal] → [Daily Log] → [+ Create New Page]
+```
+
+**End Placeholder:**
+- "You've reached the end!" message
+- "+ Create New Collection" button
+- Back arrow returns to last collection
+
+**Implementation:**
+- Add prev/next arrow buttons to CollectionHeader
+- Calculate adjacent collections from ordered list
+- Keyboard shortcuts (Left/Right arrows)
+- Swipe detection on mobile using `react-swipeable`
+- New route: `/collections/end` for placeholder page
+- Page transition animations (optional polish)
+
+**Interaction Modes:**
+- **Mobile:** Swipe gestures + navigation icons
+- **Desktop:** Navigation icons + keyboard shortcuts
+
+**Files to Modify:**
+- `packages/client/src/components/CollectionHeader.tsx` (add nav buttons)
+- `packages/client/src/views/CollectionDetailView.tsx` (add keyboard/swipe handlers)
+- `packages/client/src/views/CollectionEndPlaceholder.tsx` (new component)
+- `packages/client/src/routes.tsx` (add end route)
+- `packages/client/src/context/AppContext.tsx` (expose ordered collection list)
+
+**Dependencies:**
+- `react-swipeable` for swipe detection (~4KB)
+- OR `framer-motion` for animations + gestures (~32KB, optional)
+
+**Effort:** 8-9 hours (11-12 with animations)
+**Complexity:** Medium (multiple interaction modes, accessibility, cross-device behavior)
+
+**User Stories:**
+- Morning ritual: Review each collection in sequence
+- Quick browse: Jump through collections without going back to index
+- Create while browsing: Reach end, create next collection in flow
+
+**Value:**
+- High (core BuJo workflow enhancement)
+- Makes app feel more like physical journal
+- Differentiates from basic todo apps
+
+**Status:** Ready to implement (straightforward feature, no architectural decisions needed)
+
+---
+
+### Feedback Item #5: Active Task Count on Collection Index 🟢 LOW COMPLEXITY
+
+**Issue:**
+Collection Index shows total entry count (tasks + notes + events), but users want to quickly see **how many active tasks** remain per collection to prioritize their work.
+
+**User Requirement:**
+- Show count of active tasks (pending, not migrated) per collection
+- Exclude completed tasks
+- Exclude migrated tasks
+- Don't count notes or events
+
+**Current Behavior:**
+```
+💼 Work Projects             (23)   ← Total entries (tasks + notes + events)
+```
+
+**Desired Behavior:**
+```
+💼 Work Projects        5 tasks     ← Active tasks only
+```
+
+**Proposed Solution:**
+
+Add new projection method:
+```typescript
+async getActiveTaskCountsByCollection(): Promise<Map<string | null, number>> {
+  // Count only tasks with:
+  // - type === 'task'
+  // - status === 'pending' (not completed)
+  // - !migratedTo (not migrated away)
+}
+```
+
+Replace total count with active task count in Collection Index.
+
+**Implementation:**
+- Add `getActiveTaskCountsByCollection()` to EntryListProjection
+- Update CollectionIndexView to use new method
+- Update CollectionListItem display text
+- Add 6-8 tests for filtering logic
+
+**Files to Modify:**
+- `packages/shared/src/entry.projections.ts`
+- `packages/shared/src/entry.projections.test.ts`
+- `packages/client/src/views/CollectionIndexView.tsx`
+- `packages/client/src/components/CollectionListItem.tsx`
+
+**Edge Cases:**
+- Collection with only notes/events → "0 tasks"
+- Collection with only completed tasks → "0 tasks"
+- Collection with only migrated tasks → "0 tasks"
+
+**Effort:** 3 hours  
+**Complexity:** Low (simple filtering logic)  
+**Dependencies:** None
+
+**Value:**
+- Helps users prioritize which collections need attention
+- Aligns with BuJo principle of focusing on actionable items
+- High frequency impact (every Collection Index visit)
+
+**Status:** Ready to implement
+
+---
+
+## Summary: Phase 5 Feedback Items
+
+### By Implementation Readiness
+
+**✅ Ready to Implement (No Alex Needed):**
+- **#3:** Create collection during migration (3-4 hours)
+- **#5:** Active task count (3 hours)
+- **#4:** Page flipping navigation (8-9 hours)
+
+**⏳ Needs Architecture Review with Alex:**
+- **#1:** FAB overlapping drag handles (depends on consistency vs. quick-fix decision)
+- **#2:** Collection types & completed task management (major feature, impacts app identity)
+
+### Recommended Order
+
+**Phase 5A: Quick Wins** (6-7 hours)
+1. #5: Active task count
+2. #3: Create during migration
+3. #1: FAB center position (if choosing quick fix)
+
+**Phase 5B: Architecture Session with Alex**
+4. #2: Collection types discussion
+5. #1: Drag handle position (if choosing consistency approach)
+
+**Phase 5C: Navigation Enhancement** (8-9 hours)
+6. #4: Page flipping
+
+**Total Effort:** 18-25 hours
+
+---
+
 ## Future Enhancements (Backlog)
 
 **Post-Backend Sync Features:**
