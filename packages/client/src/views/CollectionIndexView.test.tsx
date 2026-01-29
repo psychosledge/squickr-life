@@ -13,6 +13,68 @@ import { AppProvider } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import type { Collection, Entry } from '@squickr/shared';
 
+// Test for header branding
+describe('CollectionIndexView - Header Branding', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+  let mockCreateCollectionHandler: any;
+
+  beforeEach(() => {
+    mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getEntryCountsByCollection: vi.fn(() => Promise.resolve(new Map())),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockCreateCollectionHandler = {
+      handle: vi.fn().mockResolvedValue(undefined),
+    };
+  });
+
+  function renderView() {
+    const mockAppContext = {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: mockCreateCollectionHandler,
+    };
+
+    return render(
+      <BrowserRouter>
+        <AppProvider value={mockAppContext}>
+          <CollectionIndexView />
+        </AppProvider>
+      </BrowserRouter>
+    );
+  }
+
+  it('should display "Squickr Life" as the title', async () => {
+    renderView();
+    await waitFor(() => {
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    });
+  });
+
+  it('should display "Get shit done quicker with Squickr!" as the subtitle', async () => {
+    renderView();
+    await waitFor(() => {
+      expect(screen.getByText('Get shit done quicker with Squickr!')).toBeInTheDocument();
+    });
+  });
+});
+
 // Mock collections
 const mockCollections: Collection[] = [
   {
