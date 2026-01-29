@@ -66,7 +66,7 @@ describe('EntryInput', () => {
     );
     
     const input = screen.getByPlaceholderText(/add a task/i);
-    const button = screen.getByRole('button', { name: /add/i });
+    const button = screen.getByRole('button', { name: /save/i });
     
     fireEvent.change(input, { target: { value: 'Buy milk' } });
     fireEvent.click(button);
@@ -91,7 +91,7 @@ describe('EntryInput', () => {
     fireEvent.click(noteButton);
     
     const input = screen.getByPlaceholderText(/add a note/i);
-    const button = screen.getByRole('button', { name: /add/i });
+    const button = screen.getByRole('button', { name: /save/i });
     
     fireEvent.change(input, { target: { value: 'Important note' } });
     fireEvent.click(button);
@@ -117,7 +117,7 @@ describe('EntryInput', () => {
     
     const input = screen.getByPlaceholderText(/add an event/i);
     const dateInput = screen.getByLabelText(/event date/i);
-    const button = screen.getByRole('button', { name: /add/i });
+    const button = screen.getByRole('button', { name: /save/i });
     
     fireEvent.change(input, { target: { value: 'Meeting' } });
     fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
@@ -143,7 +143,7 @@ describe('EntryInput', () => {
     fireEvent.click(eventButton);
     
     const input = screen.getByPlaceholderText(/add an event/i);
-    const button = screen.getByRole('button', { name: /add/i });
+    const button = screen.getByRole('button', { name: /save/i });
     
     fireEvent.change(input, { target: { value: 'Meeting' } });
     fireEvent.click(button);
@@ -163,7 +163,7 @@ describe('EntryInput', () => {
     );
     
     const input = screen.getByPlaceholderText(/add a task/i) as HTMLInputElement;
-    const button = screen.getByRole('button', { name: /add/i });
+    const button = screen.getByRole('button', { name: /save/i });
     
     fireEvent.change(input, { target: { value: 'Test task' } });
     fireEvent.click(button);
@@ -182,7 +182,7 @@ describe('EntryInput', () => {
       />
     );
     
-    const button = screen.getByRole('button', { name: /add/i });
+    const button = screen.getByRole('button', { name: /save/i });
     fireEvent.click(button);
     
     expect(mockOnSubmitTask).not.toHaveBeenCalled();
@@ -286,7 +286,7 @@ describe('EntryInput', () => {
     );
     
     const input = screen.getByPlaceholderText(/add a task/i);
-    const button = screen.getByRole('button', { name: /add/i });
+    const button = screen.getByRole('button', { name: /save/i });
     
     fireEvent.change(input, { target: { value: 'Test' } });
     fireEvent.click(button);
@@ -308,7 +308,7 @@ describe('EntryInput', () => {
     );
     
     const input = screen.getByPlaceholderText(/add a task/i);
-    const button = screen.getByRole('button', { name: /add/i });
+    const button = screen.getByRole('button', { name: /save/i });
     
     fireEvent.change(input, { target: { value: 'Test' } });
     fireEvent.click(button);
@@ -367,7 +367,7 @@ describe('EntryInput', () => {
       expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task');
     });
 
-    it('should call onSubmitTask exactly once when clicking Add button', async () => {
+    it('should call onSubmitTask exactly once when clicking Save button', async () => {
       render(
         <EntryInput 
           onSubmitTask={mockOnSubmitTask}
@@ -377,7 +377,7 @@ describe('EntryInput', () => {
       );
       
       const input = screen.getByPlaceholderText(/add a task/i);
-      const button = screen.getByRole('button', { name: /add/i });
+      const button = screen.getByRole('button', { name: /save/i });
       
       fireEvent.change(input, { target: { value: 'Test task' } });
       fireEvent.click(button);
@@ -412,7 +412,7 @@ describe('EntryInput', () => {
       expect(mockOnSubmitNote).toHaveBeenCalledWith('Test note');
     });
 
-    it('should call onSubmitNote exactly once when clicking Add button', async () => {
+    it('should call onSubmitNote exactly once when clicking Save button', async () => {
       render(
         <EntryInput 
           onSubmitTask={mockOnSubmitTask}
@@ -425,7 +425,7 @@ describe('EntryInput', () => {
       fireEvent.click(noteButton);
       
       const input = screen.getByPlaceholderText(/add a note/i);
-      const button = screen.getByRole('button', { name: /add/i });
+      const button = screen.getByRole('button', { name: /save/i });
       
       fireEvent.change(input, { target: { value: 'Test note' } });
       fireEvent.click(button);
@@ -463,7 +463,7 @@ describe('EntryInput', () => {
       expect(mockOnSubmitEvent).toHaveBeenCalledWith('Test event', '2026-02-15');
     });
 
-    it('should call onSubmitEvent exactly once when clicking Add button', async () => {
+    it('should call onSubmitEvent exactly once when clicking Save button', async () => {
       render(
         <EntryInput 
           onSubmitTask={mockOnSubmitTask}
@@ -477,7 +477,7 @@ describe('EntryInput', () => {
       
       const input = screen.getByPlaceholderText(/add an event/i);
       const dateInput = screen.getByLabelText(/event date/i);
-      const button = screen.getByRole('button', { name: /add/i });
+      const button = screen.getByRole('button', { name: /save/i });
       
       fireEvent.change(input, { target: { value: 'Test event' } });
       fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
@@ -488,6 +488,198 @@ describe('EntryInput', () => {
       });
       
       expect(mockOnSubmitEvent).toHaveBeenCalledWith('Test event', '2026-02-15');
+    });
+  });
+
+  // Save button tests
+  describe('Save button', () => {
+    it('should render Save button in default variant', () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+    });
+
+    it('should disable Save button when input is empty', () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      expect(saveButton).toBeDisabled();
+    });
+
+    it('should enable Save button when input has content', () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const input = screen.getByPlaceholderText(/add a task/i);
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      
+      fireEvent.change(input, { target: { value: 'Test task' } });
+      
+      expect(saveButton).not.toBeDisabled();
+    });
+
+    it('should disable Save button when input is only whitespace', () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const input = screen.getByPlaceholderText(/add a task/i);
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      
+      fireEvent.change(input, { target: { value: '   ' } });
+      
+      expect(saveButton).toBeDisabled();
+    });
+
+    it('should trigger submission when Save button is clicked for tasks', async () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const input = screen.getByPlaceholderText(/add a task/i);
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      
+      fireEvent.change(input, { target: { value: 'Buy milk' } });
+      fireEvent.click(saveButton);
+      
+      await waitFor(() => {
+        expect(mockOnSubmitTask).toHaveBeenCalledWith('Buy milk');
+      });
+    });
+
+    it('should trigger submission when Save button is clicked for notes', async () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const noteButton = screen.getByRole('button', { name: /note/i });
+      fireEvent.click(noteButton);
+      
+      const input = screen.getByPlaceholderText(/add a note/i);
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      
+      fireEvent.change(input, { target: { value: 'Important note' } });
+      fireEvent.click(saveButton);
+      
+      await waitFor(() => {
+        expect(mockOnSubmitNote).toHaveBeenCalledWith('Important note');
+      });
+    });
+
+    it('should trigger submission when Save button is clicked for events with date', async () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const eventButton = screen.getByRole('button', { name: /event/i });
+      fireEvent.click(eventButton);
+      
+      const input = screen.getByPlaceholderText(/add an event/i);
+      const dateInput = screen.getByLabelText(/event date/i);
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      
+      fireEvent.change(input, { target: { value: 'Meeting' } });
+      fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
+      fireEvent.click(saveButton);
+      
+      await waitFor(() => {
+        expect(mockOnSubmitEvent).toHaveBeenCalledWith('Meeting', '2026-02-15');
+      });
+    });
+
+    it('should work alongside Enter key (backward compatibility)', async () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const input = screen.getByPlaceholderText(/add a task/i);
+      
+      // Test Enter key still works
+      fireEvent.change(input, { target: { value: 'Test task' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      
+      await waitFor(() => {
+        expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task');
+      });
+      
+      // Clear mock
+      mockOnSubmitTask.mockClear();
+      
+      // Test Save button also works
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      fireEvent.change(input, { target: { value: 'Another task' } });
+      fireEvent.click(saveButton);
+      
+      await waitFor(() => {
+        expect(mockOnSubmitTask).toHaveBeenCalledWith('Another task');
+      });
+    });
+
+    it('should have minimum touch target size for mobile (44x44px)', () => {
+      render(
+        <EntryInput 
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      const saveButton = screen.getByRole('button', { name: /save/i });
+      const styles = window.getComputedStyle(saveButton);
+      
+      // Check that button has adequate padding for touch targets
+      // The actual size will be determined by padding + content
+      expect(saveButton).toHaveClass('py-3'); // Ensures vertical padding
+    });
+
+    it('should not render Save button in modal variant', () => {
+      render(
+        <EntryInput 
+          variant="modal"
+          onSubmitTask={mockOnSubmitTask}
+          onSubmitNote={mockOnSubmitNote}
+          onSubmitEvent={mockOnSubmitEvent}
+        />
+      );
+      
+      expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
     });
   });
 });

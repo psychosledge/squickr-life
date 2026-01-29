@@ -216,15 +216,17 @@ export function EntryInput({
                          transition-colors"
               aria-label="Entry content"
             />
-            {/* Only show Add button in default variant */}
+            {/* Only show Save button in default variant */}
             {variant === 'default' && (
               <button
                 type="submit"
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold 
+                disabled={inputValue.trim().length === 0}
+                className="min-h-[44px] min-w-[44px] px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold 
                            rounded-lg transition-colors focus:outline-none focus:ring-2 
-                           focus:ring-blue-500 focus:ring-offset-2 self-start"
+                           focus:ring-blue-500 focus:ring-offset-2 self-start
+                           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
               >
-                Add
+                Save
               </button>
             )}
           </div>
