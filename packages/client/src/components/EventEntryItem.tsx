@@ -3,6 +3,7 @@ import type { Entry, Collection } from '@squickr/shared';
 import { formatTimestamp, formatDate } from '../utils/formatters';
 import { MoveEntryToCollectionModal } from './MoveEntryToCollectionModal';
 import { BulletIcon } from './BulletIcon';
+import { EntryActionsMenu } from './EntryActionsMenu';
 
 interface EventEntryItemProps {
   entry: Entry & { type: 'event' };
@@ -12,6 +13,7 @@ interface EventEntryItemProps {
   onMigrate?: (eventId: string, targetCollectionId: string | null) => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
+  onNavigateToMigrated?: (collectionId: string | null) => void;
 }
 
 /**
@@ -29,7 +31,8 @@ export function EventEntryItem({
   onDelete,
   onMigrate,
   collections,
-  currentCollectionId
+  currentCollectionId,
+  onNavigateToMigrated
 }: EventEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -95,6 +98,23 @@ export function EventEntryItem({
     } else if (e.key === 'Escape') {
       handleCancel();
     }
+  };
+
+  const handleEdit = () => {
+    if (onUpdateEventContent) {
+      setEditValue(entry.content);
+      setEditDate(entry.eventDate || '');
+      setEditError('');
+      setIsEditing(true);
+    }
+  };
+
+  const handleMove = () => {
+    setShowMoveModal(true);
+  };
+
+  const handleDelete = () => {
+    onDelete(entry.id);
   };
 
   const canEdit = !!onUpdateEventContent;
@@ -165,26 +185,15 @@ export function EventEntryItem({
           </div>
         </div>
         
-        {/* Move button - only show if onMigrate provided and not already migrated */}
-        {onMigrate && !entry.migratedTo && (
-          <button
-            onClick={() => setShowMoveModal(true)}
-            className="text-xl text-gray-400 hover:text-blue-500 transition-colors flex-shrink-0"
-            aria-label="Move to collection"
-            title="Move to collection"
-          >
-            ↗️
-          </button>
-        )}
-        
-        {/* Compact Trash Icon */}
-        <button
-          onClick={() => onDelete(entry.id)}
-          className="text-xl text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
-          aria-label="Delete entry"
-        >
-          🗑️
-        </button>
+        {/* Actions Menu */}
+        <EntryActionsMenu
+          entry={entry}
+          onEdit={handleEdit}
+          onMove={handleMove}
+          onDelete={handleDelete}
+          collections={collections}
+          onNavigateToMigrated={onNavigateToMigrated}
+        />
       </div>
       
       {/* Move modal */}

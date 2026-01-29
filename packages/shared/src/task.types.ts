@@ -50,6 +50,9 @@ export interface Task {
   
   /** Optional: ID of entry this task was migrated from (audit trail) */
   readonly migratedFrom?: string;
+  
+  /** Optional: Collection ID where this task was migrated to (for "Go to" navigation) */
+  readonly migratedToCollectionId?: string;
 }
 
 /**
@@ -332,6 +335,9 @@ export interface Note {
   
   /** Optional: ID of entry this note was migrated from (audit trail) */
   readonly migratedFrom?: string;
+  
+  /** Optional: Collection ID where this note was migrated to (for "Go to" navigation) */
+  readonly migratedToCollectionId?: string;
 }
 
 /**
@@ -511,6 +517,9 @@ export interface Event {
   
   /** Optional: ID of entry this event was migrated from (audit trail) */
   readonly migratedFrom?: string;
+  
+  /** Optional: Collection ID where this event was migrated to (for "Go to" navigation) */
+  readonly migratedToCollectionId?: string;
 }
 
 /**

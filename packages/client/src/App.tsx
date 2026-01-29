@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import {
   IndexedDBEventStore,
   CreateCollectionHandler,
+  ReorderCollectionHandler,
   MigrateTaskHandler,
   MigrateNoteHandler,
   MigrateEventHandler,
@@ -31,6 +32,7 @@ function App() {
   
   // Collection handlers
   const [createCollectionHandler] = useState(() => new CreateCollectionHandler(eventStore, collectionProjection));
+  const [reorderCollectionHandler] = useState(() => new ReorderCollectionHandler(eventStore, collectionProjection));
   
   // Migration handlers
   const [migrateTaskHandler] = useState(() => new MigrateTaskHandler(eventStore, entryProjection));
@@ -80,6 +82,7 @@ function App() {
     taskProjection,
     collectionProjection,
     createCollectionHandler,
+    reorderCollectionHandler,
     migrateTaskHandler,
     migrateNoteHandler,
     migrateEventHandler,

@@ -20,6 +20,8 @@ interface EntryItemProps {
   onMigrate?: (entryId: string, targetCollectionId: string | null) => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
+  // Navigation handler for migrated entries
+  onNavigateToMigrated?: (collectionId: string | null) => void;
 }
 
 /**
@@ -41,7 +43,8 @@ export function EntryItem({
   onDelete,
   onMigrate,
   collections,
-  currentCollectionId
+  currentCollectionId,
+  onNavigateToMigrated
 }: EntryItemProps) {
   // Route to the appropriate type-specific component
   if (entry.type === 'task') {
@@ -55,6 +58,7 @@ export function EntryItem({
         onMigrate={onMigrate}
         collections={collections}
         currentCollectionId={currentCollectionId}
+        onNavigateToMigrated={onNavigateToMigrated}
       />
     );
   }
@@ -68,6 +72,7 @@ export function EntryItem({
         onMigrate={onMigrate}
         collections={collections}
         currentCollectionId={currentCollectionId}
+        onNavigateToMigrated={onNavigateToMigrated}
       />
     );
   }
@@ -82,6 +87,7 @@ export function EntryItem({
         onMigrate={onMigrate}
         collections={collections}
         currentCollectionId={currentCollectionId}
+        onNavigateToMigrated={onNavigateToMigrated}
       />
     );
   }

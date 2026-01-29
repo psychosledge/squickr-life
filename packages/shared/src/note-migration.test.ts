@@ -84,7 +84,7 @@ describe('MigrateNoteHandler', () => {
       expect(originalNote!.migratedTo).toBe(newNoteId);
     });
 
-    it('should preserve original note in original collection', async () => {
+    it('should update original note collectionId to point to target collection', async () => {
       const noteId = await createNoteHandler.handle({ 
         content: 'Test note',
         collectionId: 'collection-A',
@@ -95,10 +95,12 @@ describe('MigrateNoteHandler', () => {
         targetCollectionId: 'collection-B',
       });
 
-      // Original note should still exist and be in collection A
+      // Original note should still exist in its original collection
+      // but have migratedToCollectionId set for "Go to" navigation
       const originalNote = await entryProjection.getNoteById(noteId);
       expect(originalNote).toBeDefined();
-      expect(originalNote!.collectionId).toBe('collection-A');
+      expect(originalNote!.collectionId).toBe('collection-A'); // Stays in original collection
+      expect(originalNote!.migratedToCollectionId).toBe('collection-B'); // Points to target
     });
 
     it('should throw error if note does not exist', async () => {

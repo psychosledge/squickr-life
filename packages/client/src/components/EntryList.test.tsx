@@ -352,4 +352,33 @@ describe('EntryList', () => {
       expect(dragHandles).toHaveLength(3);
     });
   });
+
+  it('should apply bottom padding to prevent FAB overlap', () => {
+    const entries: Entry[] = [
+      {
+        type: 'task',
+        id: 'task-1',
+        title: 'Task 1',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        status: 'open',
+      },
+    ];
+
+    const { container } = render(
+      <EntryList 
+        entries={entries}
+        onCompleteTask={mockOnCompleteTask}
+        onReopenTask={mockOnReopenTask}
+        onUpdateTaskTitle={mockOnUpdateTaskTitle}
+        onUpdateNoteContent={mockOnUpdateNoteContent}
+        onUpdateEventContent={mockOnUpdateEventContent}
+        onUpdateEventDate={mockOnUpdateEventDate}
+        onDelete={mockOnDelete}
+        onReorder={mockOnReorder}
+      />
+    );
+    
+    const listContainer = container.querySelector('.pb-32');
+    expect(listContainer).toBeInTheDocument();
+  });
 });

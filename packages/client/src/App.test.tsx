@@ -32,11 +32,11 @@ vi.mock('@squickr/shared', async () => {
 });
 
 describe('App', () => {
-  it('should render the Collections title', async () => {
+  it('should render the Squickr Life title', async () => {
     render(<App />);
     
     await waitFor(() => {
-      expect(screen.getByText('Collections')).toBeInTheDocument();
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
     });
   });
 
@@ -44,7 +44,7 @@ describe('App', () => {
     render(<App />);
     
     await waitFor(() => {
-      expect(screen.getByText(/Organize your life into collections/i)).toBeInTheDocument();
+      expect(screen.getByText('Get shit done quicker with Squickr!')).toBeInTheDocument();
     });
   });
 

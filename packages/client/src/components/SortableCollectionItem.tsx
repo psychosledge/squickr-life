@@ -1,49 +1,23 @@
-import type { Entry, Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/shared';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { EntryItem } from './EntryItem';
+import { CollectionListItem } from './CollectionListItem';
 
-interface SortableEntryItemProps {
-  entry: Entry;
-  // Task handlers
-  onCompleteTask?: (taskId: string) => void;
-  onReopenTask?: (taskId: string) => void;
-  onUpdateTaskTitle?: (taskId: string, newTitle: string) => void;
-  // Note handlers
-  onUpdateNoteContent?: (noteId: string, newContent: string) => void;
-  // Event handlers
-  onUpdateEventContent?: (eventId: string, newContent: string) => void;
-  onUpdateEventDate?: (eventId: string, newDate: string | null) => void;
-  // Common handlers
-  onDelete: (entryId: string) => void;
-  // Migration handlers
-  onMigrate?: (entryId: string, targetCollectionId: string | null) => Promise<void>;
-  collections?: Collection[];
-  currentCollectionId?: string;
-  // Navigation handler for migrated entries
-  onNavigateToMigrated?: (collectionId: string | null) => void;
+interface SortableCollectionItemProps {
+  collection: Collection;
+  entryCount: number;
 }
 
 /**
- * SortableEntryItem Component
+ * SortableCollectionItem Component
  * 
- * Wrapper around EntryItem that adds drag-and-drop functionality.
+ * Wrapper around CollectionListItem that adds drag-and-drop functionality.
  * Provides a drag handle and visual feedback during dragging.
  */
-export function SortableEntryItem({ 
-  entry, 
-  onCompleteTask,
-  onReopenTask,
-  onUpdateTaskTitle,
-  onUpdateNoteContent,
-  onUpdateEventContent,
-  onUpdateEventDate,
-  onDelete,
-  onMigrate,
-  collections,
-  currentCollectionId,
-  onNavigateToMigrated
-}: SortableEntryItemProps) {
+export function SortableCollectionItem({ 
+  collection, 
+  entryCount 
+}: SortableCollectionItemProps) {
   const {
     attributes,
     listeners,
@@ -51,7 +25,7 @@ export function SortableEntryItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: entry.id });
+  } = useSortable({ id: collection.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -92,20 +66,10 @@ export function SortableEntryItem({
         </svg>
       </div>
 
-      {/* The actual entry item */}
-      <EntryItem
-        entry={entry}
-        onCompleteTask={onCompleteTask}
-        onReopenTask={onReopenTask}
-        onUpdateTaskTitle={onUpdateTaskTitle}
-        onUpdateNoteContent={onUpdateNoteContent}
-        onUpdateEventContent={onUpdateEventContent}
-        onUpdateEventDate={onUpdateEventDate}
-        onDelete={onDelete}
-        onMigrate={onMigrate}
-        collections={collections}
-        currentCollectionId={currentCollectionId}
-        onNavigateToMigrated={onNavigateToMigrated}
+      {/* The actual collection item */}
+      <CollectionListItem
+        collection={collection}
+        entryCount={entryCount}
       />
     </div>
   );

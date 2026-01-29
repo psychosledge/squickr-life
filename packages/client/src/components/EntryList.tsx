@@ -21,6 +21,8 @@ interface EntryListProps {
   onMigrate?: (entryId: string, targetCollectionId: string | null) => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
+  // Navigation handler for migrated entries
+  onNavigateToMigrated?: (collectionId: string | null) => void;
 }
 
 /**
@@ -42,7 +44,8 @@ export function EntryList({
   onReorder,
   onMigrate,
   collections,
-  currentCollectionId
+  currentCollectionId,
+  onNavigateToMigrated
 }: EntryListProps) {
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -103,7 +106,7 @@ export function EntryList({
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto pb-32">
       <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
         {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
       </div>
@@ -129,6 +132,7 @@ export function EntryList({
                 onMigrate={onMigrate}
                 collections={collections}
                 currentCollectionId={currentCollectionId}
+                onNavigateToMigrated={onNavigateToMigrated}
               />
             ))}
           </div>

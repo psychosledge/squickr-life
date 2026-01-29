@@ -184,11 +184,7 @@
 
 ## Known Limitations
 
-### Migration UI
-- ❌ **No migration UI in app yet** - handlers are implemented and tested, but there's no button/menu to trigger migration from the UI
-- ✅ Backend fully functional
-- ✅ All logic tested
-- 📋 Future task: Add "Migrate to Collection" menu item
+**UPDATE:** Migration UI was completed in commit `b0efdc3` - all features are now fully functional!
 
 ### Future Enhancements (from backlog)
 - [ ] Collection icons/colors
@@ -216,20 +212,18 @@
 
 ## Next Session Recommendations
 
-### Option 1: Complete Migration Feature (High Priority)
-**What:** Add UI for migrating entries between collections
-**Why:** Backend is complete, just needs UI trigger
-**Effort:** 1-2 hours
-**Impact:** Makes migration feature user-accessible
+**UPDATE:** Migration UI has been completed! (See commit `b0efdc3`)
 
-**Tasks:**
-1. Add "Migrate to Collection" menu item to entry items
-2. Create collection picker modal
-3. Wire up migration handlers
-4. Add success/error notifications
-5. Manual test full migration flow
+The Collections feature is now **fully complete** with:
+- ✅ Backend handlers for all entry types
+- ✅ MoveEntryToCollectionModal component
+- ✅ Move buttons (↗️) on all entry items
+- ✅ Migration indicators (→) integrated with bullet journal icons
+- ✅ Full test coverage (553 tests passing)
 
-### Option 2: Manual Testing & Polish (Medium Priority)
+### Recommended Next Steps:
+
+### Option 1: Manual Testing & UX Polish (Recommended)
 **What:** Manual UX testing on real devices
 **Why:** All automated tests pass, but UX needs validation
 **Effort:** 1-2 hours
@@ -243,7 +237,20 @@
 5. Verify animations/transitions
 6. Polish edge cases
 
-### Option 3: Future Enhancements (Low Priority)
+### Option 2: Backend & Sync (Phase 4 - High Impact)
+**What:** Multi-device synchronization with cloud storage
+**Why:** Enable using Squickr across multiple devices
+**Effort:** 1-2 weeks
+**Impact:** Unlocks core value proposition
+
+**Tasks:**
+- Supabase setup and authentication
+- Google OAuth integration
+- Event sync mechanism
+- Conflict resolution for offline changes
+- Multi-device testing
+
+### Option 3: UI Polish & Enhancements (Low Priority)
 **What:** Start on backlog items
 **Why:** Core features complete
 **Effort:** Varies

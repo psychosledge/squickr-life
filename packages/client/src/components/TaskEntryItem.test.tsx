@@ -134,7 +134,7 @@ describe('TaskEntryItem', () => {
     expect(screen.getByText(/• Completed/i)).toBeInTheDocument();
   });
 
-  it('should call onDelete when trash icon is clicked', () => {
+  it('should call onDelete when Delete is clicked from menu', () => {
     render(
       <TaskEntryItem 
         entry={mockOpenTask} 
@@ -142,7 +142,12 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    const deleteButton = screen.getByRole('button', { name: /delete entry/i });
+    // Open the actions menu
+    const menuButton = screen.getByRole('button', { name: /entry actions/i });
+    fireEvent.click(menuButton);
+
+    // Click Delete from the menu
+    const deleteButton = screen.getByRole('menuitem', { name: /delete/i });
     fireEvent.click(deleteButton);
 
     expect(mockOnDelete).toHaveBeenCalledWith('task-1');
