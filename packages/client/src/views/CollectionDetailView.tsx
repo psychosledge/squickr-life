@@ -255,6 +255,14 @@ export function CollectionDetailView() {
     }
   };
 
+  const handleNavigateToMigrated = (targetCollectionId: string | null) => {
+    if (targetCollectionId) {
+      navigate(`/collection/${targetCollectionId}`);
+    } else {
+      navigate(`/collection/${UNCATEGORIZED_COLLECTION_ID}`);
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -321,6 +329,7 @@ export function CollectionDetailView() {
           onMigrate={handleMigrate}
           collections={allCollections}
           currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
+          onNavigateToMigrated={handleNavigateToMigrated}
         />
       </div>
 

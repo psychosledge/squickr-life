@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Entry } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/shared';
 
 interface EntryActionsMenuProps {
   entry: Entry;
   onEdit: () => void;
   onMove: () => void;
   onDelete: () => void;
+  collections?: Collection[];
+  onNavigateToMigrated?: (collectionId: string | null) => void;
 }
 
 /**
@@ -19,15 +21,25 @@ interface EntryActionsMenuProps {
  * - Escape key to close
  * - Keyboard accessible
  * - ARIA compliant
+ * - "Go to" navigation for migrated entries
  */
 export function EntryActionsMenu({
   entry,
   onEdit,
   onMove,
   onDelete,
+  collections,
+  onNavigateToMigrated,
 }: EntryActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Determine if entry is migrated and get target collection name
+  const isMigrated = !!entry.migratedTo;
+  const targetCollectionId = entry.collectionId;
+  const targetCollection = collections?.find(c => c.id === targetCollectionId);
+  const targetCollectionName = targetCollection?.name || 'Unknown Collection';
+  const showGoTo = isMigrated && collections && onNavigateToMigrated;
 
   // Close menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -73,6 +85,13 @@ export function EntryActionsMenu({
     setIsOpen(false);
   };
 
+  const handleGoTo = () => {
+    if (onNavigateToMigrated) {
+      onNavigateToMigrated(targetCollectionId || null);
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div className="relative" ref={menuRef}>
       {/* Trigger Button */}
@@ -92,10 +111,22 @@ export function EntryActionsMenu({
           role="menu"
           className="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
         >
+          {/* Go To option for migrated entries */}
+          {showGoTo && (
+            <button
+              role="menuitem"
+              onClick={handleGoTo}
+              className="w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg transition-colors"
+            >
+              Go to {targetCollectionId ? targetCollectionName : 'Uncategorized'}
+            </button>
+          )}
           <button
             role="menuitem"
             onClick={handleEdit}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg transition-colors"
+            className={`w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+              showGoTo ? '' : 'rounded-t-lg'
+            }`}
           >
             Edit
           </button>

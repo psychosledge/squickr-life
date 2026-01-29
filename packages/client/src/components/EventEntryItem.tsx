@@ -13,6 +13,7 @@ interface EventEntryItemProps {
   onMigrate?: (eventId: string, targetCollectionId: string | null) => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
+  onNavigateToMigrated?: (collectionId: string | null) => void;
 }
 
 /**
@@ -30,7 +31,8 @@ export function EventEntryItem({
   onDelete,
   onMigrate,
   collections,
-  currentCollectionId
+  currentCollectionId,
+  onNavigateToMigrated
 }: EventEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -189,6 +191,8 @@ export function EventEntryItem({
           onEdit={handleEdit}
           onMove={handleMove}
           onDelete={handleDelete}
+          collections={collections}
+          onNavigateToMigrated={onNavigateToMigrated}
         />
       </div>
       
