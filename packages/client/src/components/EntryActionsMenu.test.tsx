@@ -447,7 +447,7 @@ describe('EntryActionsMenu', () => {
       const migratedTask: Entry & { type: 'task' } = {
         ...mockEntry,
         migratedTo: 'task-2',
-        collectionId: 'col-1',
+        migratedToCollectionId: 'col-1',
       };
 
       render(
@@ -471,7 +471,7 @@ describe('EntryActionsMenu', () => {
       const migratedTask: Entry & { type: 'task' } = {
         ...mockEntry,
         migratedTo: 'task-2',
-        collectionId: undefined,
+        migratedToCollectionId: undefined,
       };
 
       render(
@@ -491,11 +491,14 @@ describe('EntryActionsMenu', () => {
       expect(screen.getByRole('menuitem', { name: /go to uncategorized/i })).toBeInTheDocument();
     });
 
-    it('should call onNavigateToMigrated with collectionId when clicked', () => {
+    it('should navigate to migrated collection when clicked', () => {
+      // When a task is migrated, the projection keeps the original task's collectionId
+      // unchanged and sets migratedToCollectionId to point to the target collection
       const migratedTask: Entry & { type: 'task' } = {
         ...mockEntry,
         migratedTo: 'task-2',
-        collectionId: 'col-1',
+        collectionId: 'original-collection',
+        migratedToCollectionId: 'col-1',
       };
 
       render(
@@ -515,6 +518,7 @@ describe('EntryActionsMenu', () => {
       const goToButton = screen.getByRole('menuitem', { name: /go to work projects/i });
       fireEvent.click(goToButton);
 
+      // Should navigate to the target collection (where the new task lives)
       expect(mockOnNavigateToMigrated).toHaveBeenCalledWith('col-1');
       expect(mockOnNavigateToMigrated).toHaveBeenCalledTimes(1);
     });
@@ -523,7 +527,7 @@ describe('EntryActionsMenu', () => {
       const migratedTask: Entry & { type: 'task' } = {
         ...mockEntry,
         migratedTo: 'task-2',
-        collectionId: undefined,
+        migratedToCollectionId: undefined,
       };
 
       render(
@@ -551,7 +555,7 @@ describe('EntryActionsMenu', () => {
       const migratedTask: Entry & { type: 'task' } = {
         ...mockEntry,
         migratedTo: 'task-2',
-        collectionId: 'col-1',
+        migratedToCollectionId: 'col-1',
       };
 
       render(
@@ -583,7 +587,7 @@ describe('EntryActionsMenu', () => {
         content: 'Test note',
         createdAt: '2026-01-24T10:00:00.000Z',
         migratedTo: 'note-2',
-        collectionId: 'col-2',
+        migratedToCollectionId: 'col-2',
       };
 
       render(
@@ -611,7 +615,7 @@ describe('EntryActionsMenu', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         eventDate: '2026-02-01',
         migratedTo: 'event-2',
-        collectionId: 'col-1',
+        migratedToCollectionId: 'col-1',
       };
 
       render(
@@ -635,7 +639,7 @@ describe('EntryActionsMenu', () => {
       const migratedTask: Entry & { type: 'task' } = {
         ...mockEntry,
         migratedTo: 'task-2',
-        collectionId: 'col-999', // Non-existent collection
+        migratedToCollectionId: 'col-999', // Non-existent collection
       };
 
       render(
@@ -660,7 +664,7 @@ describe('EntryActionsMenu', () => {
       const migratedTask: Entry & { type: 'task' } = {
         ...mockEntry,
         migratedTo: 'task-2',
-        collectionId: 'col-1',
+        migratedToCollectionId: 'col-1',
       };
 
       render(
@@ -683,7 +687,7 @@ describe('EntryActionsMenu', () => {
       const migratedTask: Entry & { type: 'task' } = {
         ...mockEntry,
         migratedTo: 'task-2',
-        collectionId: 'col-1',
+        migratedToCollectionId: 'col-1',
       };
 
       render(

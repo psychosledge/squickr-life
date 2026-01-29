@@ -669,7 +669,7 @@ describe('EntryInput', () => {
       expect(saveButton).toHaveClass('py-3'); // Ensures vertical padding
     });
 
-    it('should not render Save button in modal variant', () => {
+    it('should render save button in modal variant', () => {
       render(
         <EntryInput 
           variant="modal"
@@ -679,7 +679,8 @@ describe('EntryInput', () => {
         />
       );
       
-      expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
+      // Save button should be visible in modal variant too (for mobile users)
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
     });
   });
 });

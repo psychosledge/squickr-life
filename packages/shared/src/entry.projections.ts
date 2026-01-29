@@ -379,12 +379,14 @@ export class EntryListProjection {
         break;
       }
       case 'TaskMigrated': {
-        // Mark original task with migratedTo pointer
+        // Mark original task with migratedTo pointer and store target collection
+        // for "Go to" navigation. Original task stays in its original collection.
         const originalTask = tasks.get(event.payload.originalTaskId);
         if (originalTask) {
           tasks.set(originalTask.id, {
             ...originalTask,
             migratedTo: event.payload.migratedToId,
+            migratedToCollectionId: event.payload.targetCollectionId ?? undefined,
           });
         }
 
@@ -451,12 +453,14 @@ export class EntryListProjection {
         break;
       }
       case 'NoteMigrated': {
-        // Mark original note with migratedTo pointer
+        // Mark original note with migratedTo pointer and store target collection
+        // for "Go to" navigation. Original note stays in its original collection.
         const originalNote = notes.get(event.payload.originalNoteId);
         if (originalNote) {
           notes.set(originalNote.id, {
             ...originalNote,
             migratedTo: event.payload.migratedToId,
+            migratedToCollectionId: event.payload.targetCollectionId ?? undefined,
           });
         }
 
@@ -531,12 +535,14 @@ export class EntryListProjection {
         break;
       }
       case 'EventMigrated': {
-        // Mark original event with migratedTo pointer
+        // Mark original event with migratedTo pointer and store target collection
+        // for "Go to" navigation. Original event stays in its original collection.
         const originalEvent = eventEntries.get(event.payload.originalEventId);
         if (originalEvent) {
           eventEntries.set(originalEvent.id, {
             ...originalEvent,
             migratedTo: event.payload.migratedToId,
+            migratedToCollectionId: event.payload.targetCollectionId ?? undefined,
           });
         }
 

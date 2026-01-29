@@ -36,7 +36,7 @@ export function EntryActionsMenu({
 
   // Determine if entry is migrated and get target collection name
   const isMigrated = !!entry.migratedTo;
-  const targetCollectionId = entry.collectionId;
+  const targetCollectionId = entry.migratedToCollectionId;
   const targetCollection = collections?.find(c => c.id === targetCollectionId);
   const targetCollectionName = targetCollection?.name || 'Unknown Collection';
   const showGoTo = isMigrated && collections && onNavigateToMigrated;

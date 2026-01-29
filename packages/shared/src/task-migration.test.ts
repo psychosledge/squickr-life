@@ -88,7 +88,7 @@ describe('MigrateTaskHandler', () => {
       expect(originalTask!.migratedTo).toBe(newTaskId);
     });
 
-    it('should preserve original task in original collection', async () => {
+    it('should update original task collectionId to point to target collection', async () => {
       const taskId = await createTaskHandler.handle({ 
         title: 'Test task',
         collectionId: 'collection-A',
@@ -99,10 +99,12 @@ describe('MigrateTaskHandler', () => {
         targetCollectionId: 'collection-B',
       });
 
-      // Original task should still exist and be in collection A
+      // Original task should still exist in its original collection
+      // but have migratedToCollectionId set for "Go to" navigation
       const originalTask = await entryProjection.getTaskById(taskId);
       expect(originalTask).toBeDefined();
-      expect(originalTask!.collectionId).toBe('collection-A');
+      expect(originalTask!.collectionId).toBe('collection-A'); // Stays in original collection
+      expect(originalTask!.migratedToCollectionId).toBe('collection-B'); // Points to target
     });
 
     it('should throw error if task does not exist', async () => {

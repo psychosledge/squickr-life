@@ -87,7 +87,7 @@ describe('MigrateEventHandler', () => {
       expect(originalEvent!.migratedTo).toBe(newEventId);
     });
 
-    it('should preserve original event in original collection', async () => {
+    it('should update original event collectionId to point to target collection', async () => {
       const eventId = await createEventHandler.handle({ 
         content: 'Test event',
         collectionId: 'collection-A',
@@ -98,10 +98,12 @@ describe('MigrateEventHandler', () => {
         targetCollectionId: 'collection-B',
       });
 
-      // Original event should still exist and be in collection A
+      // Original event should still exist in its original collection
+      // but have migratedToCollectionId set for "Go to" navigation
       const originalEvent = await entryProjection.getEventById(eventId);
       expect(originalEvent).toBeDefined();
-      expect(originalEvent!.collectionId).toBe('collection-A');
+      expect(originalEvent!.collectionId).toBe('collection-A'); // Stays in original collection
+      expect(originalEvent!.migratedToCollectionId).toBe('collection-B'); // Points to target
     });
 
     it('should throw error if event does not exist', async () => {
