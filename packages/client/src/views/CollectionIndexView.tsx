@@ -16,7 +16,7 @@ import { DarkModeToggle } from '../components/DarkModeToggle';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
 export function CollectionIndexView() {
-  const { collectionProjection, entryProjection, createCollectionHandler } = useApp();
+  const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler } = useApp();
   
   const [collections, setCollections] = useState<Collection[]>([]);
   const [entryCountsByCollection, setEntryCountsByCollection] = useState<Map<string, number>>(new Map());
@@ -93,6 +93,22 @@ export function CollectionIndexView() {
     await createCollectionHandler.handle({ name });
   };
 
+  const handleReorder = async (
+    collectionId: string,
+    previousCollectionId: string | null,
+    nextCollectionId: string | null
+  ) => {
+    if (!reorderCollectionHandler) {
+      return;
+    }
+
+    await reorderCollectionHandler.handle({
+      collectionId,
+      previousCollectionId,
+      nextCollectionId,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -115,6 +131,7 @@ export function CollectionIndexView() {
         <CollectionList 
           collections={collections} 
           entryCountsByCollection={entryCountsByCollection}
+          onReorder={handleReorder}
         />
 
         {/* Footer */}
