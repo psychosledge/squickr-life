@@ -126,4 +126,16 @@ describe('CollectionList', () => {
     expect(links[1]).toHaveTextContent('Personal Goals');
     expect(links[2]).toHaveTextContent('Reading List');
   });
+
+  it('should apply bottom padding to prevent FAB overlap', () => {
+    const { container } = renderWithRouter(
+      <CollectionList 
+        collections={mockCollections} 
+        entryCountsByCollection={mockEntryCountsByCollection}
+      />
+    );
+    
+    const listContainer = container.querySelector('.pb-32');
+    expect(listContainer).toBeInTheDocument();
+  });
 });

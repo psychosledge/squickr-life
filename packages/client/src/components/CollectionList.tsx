@@ -37,7 +37,7 @@ export function CollectionList({ collections, entryCountsByCollection }: Collect
   const collectionText = collections.length === 1 ? 'collection' : 'collections';
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto pb-32">
       <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
         {collections.length} {collectionText}
       </div>
