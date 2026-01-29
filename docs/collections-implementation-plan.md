@@ -135,7 +135,7 @@ Icon mapping:
 - ✅ No TypeScript errors
 - ✅ Phase 3 complete
 - ✅ Bullet journal icon system complete
-- ✅ Ready for future enhancements
+- 🚧 Phase 4 in progress: UX Enhancements (see session-2026-01-28-ux-enhancements.md)
 
 ---
 
@@ -164,29 +164,24 @@ The Collections feature is **feature-complete** and ready for user testing. All 
 - **Phase 3** (Migration): Move entries between collections ✅
 - **Visual Polish**: Bullet journal icon system ✅
 
-### Recommended Next Steps:
+### Current Status (2026-01-28):
 
-**Option 1: User Testing & Polish**
-- Manual test the full user journey
-- Check mobile responsiveness
-- Test accessibility with screen reader
-- Polish animations/transitions
-- Add loading states
+**Phase 4: UX Enhancements (In Progress)**
+- Manual testing completed, identified 7 UX improvements
+- Implementing 6 enhancements now (deferred event time to post-sync)
+- See detailed plan: `docs/session-2026-01-28-ux-enhancements.md`
 
-**Option 2: Future Enhancements** (see Backlog below)
-- Collection icons/colors (customization)
-- Quick collection switcher dropdown
-- Bulk operations (migrate multiple entries)
-- Collection templates
-- Search/filter collections
+**Phase 4 Tasks:**
+1. Restore "Squickr Life" title/subtitle
+2. Add padding to prevent FAB overlap
+3. Add Save button to EntryInput
+4. Create entry actions menu (Edit, Move, Delete)
+5. Add "Go To" navigation for migrated entries
+6. Implement collection drag-and-drop reordering
 
-**Option 3: New Feature**
-- Start a new feature from the backlog
-- Focus on a different area of the app
-
-### Tell the Next Agent:
-
-> "The Collections feature is complete and all tests are passing (553 tests). Phase 3 (migration) and bullet journal icons are done. We're ready to either polish the existing features or start on a new enhancement. What would you like to work on?"
+**After Phase 4:**
+- User manual testing on mobile/desktop
+- Backend & Sync (Phase 5) - Multi-device synchronization
 
 ---
 
@@ -494,36 +489,65 @@ if (orphanedEntries.length > 0) {
 
 ---
 
-### Phase 3: Entry Migration
+### Phase 3: Entry Migration (Backend + Frontend UI)
 **Status:** ✅ COMPLETE (Committed: `b0efdc3`)  
-**Goal:** Move entries between collections with full audit trail
+**Goal:** Move entries between collections with full audit trail + UI
 
 **Completed Work:**
+
+**Backend:**
 - ✅ Added `migratedTo` and `migratedFrom` fields to Task, Note, Event entities
 - ✅ Created TaskMigrated, NoteMigrated, EventMigrated events
 - ✅ Implemented MigrateTaskHandler, MigrateNoteHandler, MigrateEventHandler
 - ✅ All handlers idempotent (prevent double-migration)
-- ✅ Added migration handlers to AppContext
-- ✅ Added UI migration indicator (`→`) in TaskEntryItem, NoteEntryItem, EventEntryItem
-- ✅ Migration preserves original entry and creates new copy
-- ✅ Added 25 comprehensive migration tests (553 total tests passing)
+- ✅ Added 30 comprehensive migration tests (10 per entry type)
 - ✅ Bug fix: Updated handlers to use EntryListProjection (not TaskListProjection)
-- ✅ Casey review: 9.5/10 rating
+- ✅ Casey review: 8.5/10 rating (production-ready)
+
+**Frontend UI:**
+- ✅ Created MoveEntryToCollectionModal component (collection picker)
+- ✅ Added move button (↗️) to TaskEntryItem, NoteEntryItem, EventEntryItem
+- ✅ Added migration indicator (→) for migrated entries
+- ✅ Wired migration handlers through AppContext
+- ✅ Integrated migration UI in CollectionDetailView
+- ✅ Full prop threading: CollectionDetailView → EntryList → SortableEntryItem → EntryItem → specific entry items
+
+**Features:**
+- ✅ Migration creates new entry in target collection with migratedFrom pointer
+- ✅ Original entry preserved with migratedTo pointer (complete audit trail)
+- ✅ Idempotent: migrating to same collection twice returns existing migration
+- ✅ Prevents migrating already-migrated entries to different collection
+- ✅ Visual indicators prevent confusion about entry state
+- ✅ Supports migrating to/from Uncategorized collection
+- ✅ All tests passing: 553 total (325 shared + 228 client)
 
 **Files Created:**
-- `packages/shared/src/task.migrations.ts` (handler + 9 tests)
-- `packages/shared/src/note.migrations.ts` (handler + 8 tests)
-- `packages/shared/src/event.migrations.ts` (handler + 8 tests)
+- `packages/shared/src/task.migrations.ts` (handler + tests - later renamed)
+- `packages/shared/src/note.migrations.ts` (handler + tests - later renamed)
+- `packages/shared/src/event.migrations.ts` (handler + tests - later renamed)
+- `packages/shared/src/task-migration.test.ts` (10 migration tests)
+- `packages/shared/src/note-migration.test.ts` (10 migration tests)
+- `packages/shared/src/event-migration.test.ts` (10 migration tests)
+- `packages/client/src/components/MoveEntryToCollectionModal.tsx` (collection picker UI)
 
 **Files Modified:**
-- `packages/shared/src/task.types.ts` (added migratedTo/migratedFrom)
-- `packages/shared/src/note.types.ts` (added migratedTo/migratedFrom)
-- `packages/shared/src/event.types.ts` (added migratedTo/migratedFrom)
+- `packages/shared/src/task.types.ts` (added migratedTo/migratedFrom + TaskMigrated event)
+- `packages/shared/src/note.types.ts` (added migratedTo/migratedFrom + NoteMigrated event)
+- `packages/shared/src/event.types.ts` (added migratedTo/migratedFrom + EventMigrated event)
+- `packages/shared/src/task.handlers.ts` (added MigrateTaskHandler + fixed projection usage)
+- `packages/shared/src/note.handlers.ts` (added MigrateNoteHandler)
+- `packages/shared/src/event.handlers.ts` (added MigrateEventHandler)
+- `packages/shared/src/entry.projections.ts` (handle migration events, create migrated entries)
 - `packages/shared/src/index.ts` (exported migration handlers)
 - `packages/client/src/context/AppContext.tsx` (added migration handlers)
-- `packages/client/src/components/TaskEntryItem.tsx` (added → indicator)
-- `packages/client/src/components/NoteEntryItem.tsx` (added → indicator)
-- `packages/client/src/components/EventEntryItem.tsx` (added → indicator)
+- `packages/client/src/components/TaskEntryItem.tsx` (added move button ↗️)
+- `packages/client/src/components/NoteEntryItem.tsx` (added move button ↗️)
+- `packages/client/src/components/EventEntryItem.tsx` (added move button ↗️)
+- `packages/client/src/components/EntryItem.tsx` (pass move handlers)
+- `packages/client/src/components/EntryList.tsx` (pass collections and handlers down)
+- `packages/client/src/components/SortableEntryItem.tsx` (pass props through)
+- `packages/client/src/views/CollectionDetailView.tsx` (integrate migration UI)
+- `packages/client/src/App.tsx` (provide migration handlers)
 
 **Events Implemented:**
 ```typescript
@@ -729,6 +753,10 @@ interface TaskMigrated extends DomainEvent {
 
 ## Future Enhancements (Backlog)
 
+**Post-Backend Sync Features:**
+- [ ] Event time field (combined date/time picker) - Deferred from Phase 4, requires architecture design
+
+**General Enhancements:**
 - [ ] Collection icons/colors (customization)
 - [ ] Quick collection switcher (dropdown while viewing detail)
 - [ ] Collection templates (quick create with default entries)
