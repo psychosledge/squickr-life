@@ -62,7 +62,7 @@ describe('EventEntryItem', () => {
     expect(screen.queryByText(/📅/)).not.toBeInTheDocument();
   });
 
-  it('should call onDelete when Delete button is clicked', () => {
+  it('should call onDelete when Delete is clicked from menu', () => {
     render(
       <EventEntryItem 
         entry={mockEvent} 
@@ -70,8 +70,13 @@ describe('EventEntryItem', () => {
       />
     );
     
-    const button = screen.getByLabelText('Delete entry');
-    fireEvent.click(button);
+    // Open the actions menu
+    const menuButton = screen.getByRole('button', { name: /entry actions/i });
+    fireEvent.click(menuButton);
+
+    // Click Delete from the menu
+    const deleteButton = screen.getByRole('menuitem', { name: /delete/i });
+    fireEvent.click(deleteButton);
 
     expect(mockOnDelete).toHaveBeenCalledWith('event-1');
   });
