@@ -17,4 +17,11 @@ export interface DomainEvent {
   
   /** ID of the aggregate this event belongs to */
   readonly aggregateId: string;
+  
+  /** 
+   * ID of the user who created this event (optional for backward compatibility)
+   * Added for multi-device sync: enables filtering events by userId in Firestore
+   * Can be undefined for events created before authentication was implemented
+   */
+  readonly userId?: string;
 }
