@@ -52,40 +52,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Debug - Check workspace structure
-        run: |
-          echo "=== Workspace packages ==="
-          pnpm list -r --depth 0
-          echo ""
-          echo "=== Shared package.json ==="
-          cat packages/shared/package.json
-          echo ""
-          echo "=== Client dependencies ==="
-          cat packages/client/package.json | grep -A 5 '"dependencies"'
-          echo ""
-          echo "=== Check node_modules linking ==="
-          ls -la packages/client/node_modules/@squickr/ || echo "No @squickr scope in client node_modules"
-          echo ""
-          echo "=== Check if shared dist exists after install ==="
-          ls -la packages/shared/dist/ || echo "No dist directory in shared package"
-
       - name: Run tests
         run: pnpm test
-
-      - name: Debug - Build shared package separately
-        run: |
-          echo "=== Building shared package ==="
-          cd packages/shared
-          pnpm build
-          echo ""
-          echo "=== Shared dist contents ==="
-          ls -la dist/
-          echo ""
-          echo "=== Check index.d.ts ==="
-          head -20 dist/index.d.ts || echo "No index.d.ts found"
-          echo ""
-          echo "=== Check index.js ==="
-          head -20 dist/index.js || echo "No index.js found"
 
       - name: Build production bundle
         run: pnpm build
