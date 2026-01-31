@@ -16,6 +16,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
 import { SignInView } from './views/SignInView';
+import { uploadLocalEvents, downloadRemoteEvents } from './firebase/syncEvents';
 import { ROUTES } from './routes';
 
 /**
@@ -61,6 +62,13 @@ function AppContent() {
     initializeApp();
   }, []);
 
+  // Trigger sync when user signs in (Phase 4: Upload)
+  useEffect(() => {
+    if (user && !isLoading) {
+      handleFirstLoginSync();
+    }
+  }, [user, isLoading]);
+
   const initializeApp = async () => {
     try {
       // Initialize IndexedDB connection
@@ -69,6 +77,24 @@ function AppContent() {
       console.error('Failed to initialize app:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleFirstLoginSync = async () => {
+    if (!user) return;
+
+    try {
+      console.log('[App] User signed in, starting bidirectional sync...');
+      
+      // Phase 4: Upload local events to Firestore
+      await uploadLocalEvents(user.uid, eventStore);
+      
+      // Phase 5: Download remote events to IndexedDB
+      await downloadRemoteEvents(user.uid, eventStore);
+      
+      console.log('[App] Sync complete ✓');
+    } catch (error) {
+      console.error('[App] Sync failed:', error);
     }
   };
 
