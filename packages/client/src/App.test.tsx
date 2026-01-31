@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 import type { IndexedDBEventStore } from '@squickr/shared';
+import { onAuthStateChanged } from 'firebase/auth';
 
 // Mock IndexedDBEventStore since we're in jsdom environment
 vi.mock('@squickr/shared', async () => {
@@ -32,6 +33,18 @@ vi.mock('@squickr/shared', async () => {
 });
 
 describe('App', () => {
+  beforeEach(() => {
+    // Mock authenticated user for these tests
+    vi.mocked(onAuthStateChanged).mockImplementation((_auth, callback) => {
+      // Simulate a signed-in user
+      callback({
+        uid: 'test-user-id',
+        email: 'test@example.com',
+      } as any);
+      return vi.fn(); // Return unsubscribe function
+    });
+  });
+
   it('should render the Squickr Life title', async () => {
     render(<App />);
     

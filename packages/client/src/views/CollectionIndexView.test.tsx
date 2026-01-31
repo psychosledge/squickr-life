@@ -10,6 +10,7 @@ import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { CollectionIndexView } from './CollectionIndexView';
 import { AppProvider } from '../context/AppContext';
+import { AuthProvider } from '../context/AuthContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import type { Collection, Entry } from '@squickr/shared';
 
@@ -52,11 +53,13 @@ describe('CollectionIndexView - Header Branding', () => {
     };
 
     return render(
-      <BrowserRouter>
-        <AppProvider value={mockAppContext}>
-          <CollectionIndexView />
-        </AppProvider>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppProvider value={mockAppContext}>
+            <CollectionIndexView />
+          </AppProvider>
+        </BrowserRouter>
+      </AuthProvider>
     );
   }
 
@@ -167,11 +170,13 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
     };
 
     return render(
-      <BrowserRouter>
-        <AppProvider value={mockAppContext}>
-          <CollectionIndexView />
-        </AppProvider>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppProvider value={mockAppContext}>
+            <CollectionIndexView />
+          </AppProvider>
+        </BrowserRouter>
+      </AuthProvider>
     );
   }
 
@@ -373,11 +378,13 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
     };
 
     return render(
-      <BrowserRouter>
-        <AppProvider value={mockAppContext}>
-          <CollectionIndexView />
-        </AppProvider>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppProvider value={mockAppContext}>
+            <CollectionIndexView />
+          </AppProvider>
+        </BrowserRouter>
+      </AuthProvider>
     );
   }
 
