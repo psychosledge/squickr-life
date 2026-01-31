@@ -123,7 +123,7 @@ export function EntryInput({
     setDateError('');
   };
 
-  const getPlaceholder = () => {
+  const getPlaceholder = (): string => {
     switch (entryType) {
       case 'task':
         return 'Add a task... (press Enter)';
@@ -131,6 +131,8 @@ export function EntryInput({
         return 'Add a note... (press Enter)';
       case 'event':
         return 'Add an event... (press Enter)';
+      default:
+        return 'Add an entry... (press Enter)';
     }
   };
 

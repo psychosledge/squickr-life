@@ -45,7 +45,7 @@ export async function uploadLocalEvents(
   
   // Filter to only new events
   const eventsToUpload = localEvents.filter(
-    (event) => !remoteEventIds.has(event.id)
+    (event: DomainEvent) => !remoteEventIds.has(event.id)
   );
   
   if (eventsToUpload.length === 0) {
@@ -158,7 +158,7 @@ export async function downloadRemoteEvents(
   
   // Get IDs of events already in IndexedDB
   const localEvents = await eventStore.getAll();
-  const localEventIds = new Set(localEvents.map((e) => e.id));
+  const localEventIds = new Set(localEvents.map((e: DomainEvent) => e.id));
   
   // Filter to only new events
   const newEvents: DomainEvent[] = [];

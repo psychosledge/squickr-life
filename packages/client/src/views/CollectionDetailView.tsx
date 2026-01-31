@@ -103,7 +103,7 @@ export function CollectionDetailView() {
     }
     
     // Handle real collections
-    const foundCollection = collections.find(c => c.id === collectionId);
+    const foundCollection = collections.find((c: Collection) => c.id === collectionId);
     setCollection(foundCollection || null);
 
     const collectionEntries = await entryProjection.getEntriesByCollection(collectionId);
