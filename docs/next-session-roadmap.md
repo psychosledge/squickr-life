@@ -68,7 +68,80 @@ See detailed implementation notes in this session's conversation history.
 
 ---
 
-### 🟢 POLISH: Session 3 (Future Enhancements) - ~8-9 hours
+### 🟢 POLISH: Session 3 (Future Enhancements)
+
+#### User Profile Menu 🎨 UX IMPROVEMENT
+**Effort:** 2-3 hours  
+**Priority:** 🟡 Medium - Improves header UX, especially on mobile  
+**Files:** `CollectionIndexView.tsx`, `AuthContext.tsx`
+
+**Current Behavior:**
+- Email address displayed as text in header (e.g., "user@example.com")
+- Separate "Sign Out" button next to email
+- Takes up significant space on mobile
+- No visual indication of signed-in user (no profile picture)
+
+**Desired Behavior:**
+- Google profile picture displayed as clickable avatar
+- Clicking avatar opens dropdown menu with:
+  - User email (display name if available)
+  - "Sign Out" option
+  - Future: Settings, Account info
+- Compact design saves header space
+
+**UI Mockup:**
+```
+┌─────────────────────────────────────┐
+│ Squickr Life              [👤 ▼]   │  ← Profile avatar with dropdown indicator
+└─────────────────────────────────────┘
+
+When clicked:
+┌─────────────────────────────────────┐
+│ Squickr Life              [👤 ▼]   │
+│                         ┌──────────┐│
+│                         │ John Doe ││  ← Display name
+│                         │ user@... ││  ← Email (truncated)
+│                         ├──────────┤│
+│                         │ Sign Out ││
+│                         └──────────┘│
+└─────────────────────────────────────┘
+```
+
+**Implementation:**
+1. **Get User Photo URL** from Firebase Auth user object (`user.photoURL`)
+2. **Create ProfileMenu Component:**
+   - Avatar image (circular, fallback to initials if no photo)
+   - Dropdown menu (similar to collection menu pattern)
+   - Display name from `user.displayName` or email
+   - Sign out option
+3. **Replace Header Layout:**
+   - Remove text email + sign out button
+   - Add ProfileMenu component
+   - Responsive sizing (larger on desktop, compact on mobile)
+4. **Accessibility:**
+   - Proper ARIA labels
+   - Keyboard navigation (Tab, Enter, Escape)
+   - Focus management
+
+**Files to Modify:**
+- `packages/client/src/views/CollectionIndexView.tsx` (replace sign-out UI)
+- `packages/client/src/context/AuthContext.tsx` (expose photoURL and displayName)
+- Create `packages/client/src/components/ProfileMenu.tsx` (new component)
+- Add ~15-20 tests for ProfileMenu component
+
+**Design Considerations:**
+- Avatar size: 32px mobile, 40px desktop
+- Fallback: Show user initials if no photo (e.g., "JD" for John Doe)
+- Menu position: Right-aligned dropdown, z-index above other content
+- Consistent with existing menu patterns (CollectionHeader menu)
+
+**Why This Matters:**
+- Cleaner header, especially on mobile
+- Visual confirmation of signed-in account (helpful with multiple Google accounts)
+- Better use of space
+- Scalable for future profile/settings options
+
+---
 
 #### Collection Navigation (Page Flipping) 🎨 JOURNAL METAPHOR
 **Effort:** 8-9 hours  
