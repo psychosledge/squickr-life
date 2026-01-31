@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Entry, Collection } from '@squickr/shared';
 import { formatTimestamp } from '../utils/formatters';
-import { MoveEntryToCollectionModal } from './MoveEntryToCollectionModal';
+import { MigrateEntryModal } from './MigrateEntryModal';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
 
@@ -164,9 +164,9 @@ export function NoteEntryItem({
         />
       </div>
       
-      {/* Move modal */}
+      {/* Migrate modal */}
       {onMigrate && collections && (
-        <MoveEntryToCollectionModal
+        <MigrateEntryModal
           isOpen={showMoveModal}
           onClose={() => setShowMoveModal(false)}
           entry={entry}

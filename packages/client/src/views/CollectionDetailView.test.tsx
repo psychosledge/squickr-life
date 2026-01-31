@@ -366,3 +366,286 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
     expect(screen.getByText(/add to:/i)).toBeInTheDocument();
   });
 });
+
+describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+
+  const mockCollectionWithSettings: Collection = {
+    id: 'col-1',
+    name: 'My Tasks',
+    type: 'log',
+    order: 'a0',
+    createdAt: '2026-01-27T10:00:00Z',
+    settings: {
+      collapseCompleted: true,
+    },
+  };
+
+  const mockMixedEntries: Entry[] = [
+    {
+      id: 'task-1',
+      type: 'task',
+      title: 'Active task 1',
+      status: 'open',
+      createdAt: '2026-01-27T10:00:00Z',
+      order: 'a0',
+      collectionId: 'col-1',
+    },
+    {
+      id: 'task-2',
+      type: 'task',
+      title: 'Completed task 1',
+      status: 'completed',
+      createdAt: '2026-01-27T10:01:00Z',
+      completedAt: '2026-01-27T11:00:00Z',
+      order: 'a1',
+      collectionId: 'col-1',
+    },
+    {
+      id: 'note-1',
+      type: 'note',
+      content: 'A note',
+      createdAt: '2026-01-27T10:02:00Z',
+      order: 'a2',
+      collectionId: 'col-1',
+    },
+    {
+      id: 'task-3',
+      type: 'task',
+      title: 'Completed task 2',
+      status: 'completed',
+      createdAt: '2026-01-27T10:03:00Z',
+      completedAt: '2026-01-27T11:01:00Z',
+      order: 'a3',
+      collectionId: 'col-1',
+    },
+  ];
+
+  beforeEach(() => {
+    mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([mockCollectionWithSettings]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue(mockMixedEntries),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+  });
+
+  function renderViewWithSettings(collection = mockCollectionWithSettings) {
+    mockCollectionProjection.getCollections.mockResolvedValue([collection]);
+
+    const mockAppContext = {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: {} as any,
+      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    };
+
+    return render(
+      <MemoryRouter initialEntries={['/collection/col-1']}>
+        <AppProvider value={mockAppContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it('should show active tasks and notes when collapseCompleted is true', async () => {
+    renderViewWithSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText('Active task 1')).toBeInTheDocument();
+      expect(screen.getByText('A note')).toBeInTheDocument();
+    });
+  });
+
+  it('should NOT show completed tasks inline when collapseCompleted is true', async () => {
+    renderViewWithSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText('Active task 1')).toBeInTheDocument();
+    });
+
+    // Completed tasks should not be visible in the main list
+    // We need to expand the section to see them
+    const completedTasks = screen.queryAllByText(/Completed task/);
+    expect(completedTasks).toHaveLength(0);
+  });
+
+  it('should show collapsible section with count when collapseCompleted is true', async () => {
+    renderViewWithSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/2 completed tasks/i)).toBeInTheDocument();
+    });
+  });
+
+  it('should expand completed tasks section when clicked', async () => {
+    const user = userEvent.setup();
+    renderViewWithSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/2 completed tasks/i)).toBeInTheDocument();
+    });
+
+    const expandButton = screen.getByRole('button', { name: /2 completed tasks/i });
+    await user.click(expandButton);
+
+    // Completed tasks should now be visible
+    expect(screen.getByText('Completed task 1')).toBeInTheDocument();
+    expect(screen.getByText('Completed task 2')).toBeInTheDocument();
+  });
+
+  it('should collapse completed tasks section when clicked again', async () => {
+    const user = userEvent.setup();
+    renderViewWithSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/2 completed tasks/i)).toBeInTheDocument();
+    });
+
+    const expandButton = screen.getByRole('button', { name: /2 completed tasks/i });
+    
+    // Expand
+    await user.click(expandButton);
+    expect(screen.getByText('Completed task 1')).toBeInTheDocument();
+    
+    // Collapse
+    await user.click(expandButton);
+    
+    // Should not be visible anymore (checking that they're not in document)
+    // Note: Due to conditional rendering, they should be removed from DOM
+    await waitFor(() => {
+      expect(screen.queryByText('Completed task 1')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should show all tasks inline when collapseCompleted is false', async () => {
+    const collectionWithoutCollapse: Collection = {
+      ...mockCollectionWithSettings,
+      settings: { collapseCompleted: false },
+    };
+    
+    renderViewWithSettings(collectionWithoutCollapse);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active task 1')).toBeInTheDocument();
+      expect(screen.getByText('Completed task 1')).toBeInTheDocument();
+      expect(screen.getByText('Completed task 2')).toBeInTheDocument();
+    });
+
+    // Should NOT show collapsible section
+    expect(screen.queryByText(/completed tasks/i)).not.toBeInTheDocument();
+  });
+
+  it('should show all tasks inline when settings is undefined', async () => {
+    const collectionWithoutSettings: Collection = {
+      ...mockCollectionWithSettings,
+      settings: undefined,
+    };
+    
+    renderViewWithSettings(collectionWithoutSettings);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active task 1')).toBeInTheDocument();
+      expect(screen.getByText('Completed task 1')).toBeInTheDocument();
+      expect(screen.getByText('Completed task 2')).toBeInTheDocument();
+    });
+
+    // Should NOT show collapsible section
+    expect(screen.queryByText(/completed tasks/i)).not.toBeInTheDocument();
+  });
+
+  it('should show singular "task" when only 1 completed task', async () => {
+    const singleCompletedTaskEntries: Entry[] = [
+      {
+        id: 'task-1',
+        type: 'task',
+        title: 'Active task',
+        status: 'open',
+        createdAt: '2026-01-27T10:00:00Z',
+        order: 'a0',
+        collectionId: 'col-1',
+      },
+      {
+        id: 'task-2',
+        type: 'task',
+        title: 'Completed task',
+        status: 'completed',
+        createdAt: '2026-01-27T10:01:00Z',
+        completedAt: '2026-01-27T11:00:00Z',
+        order: 'a1',
+        collectionId: 'col-1',
+      },
+    ];
+
+    mockEntryProjection.getEntriesByCollection.mockResolvedValue(singleCompletedTaskEntries);
+    renderViewWithSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 completed task/i)).toBeInTheDocument();
+      // Should NOT show "tasks" plural
+      expect(screen.queryByText(/1 completed tasks/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('should NOT show collapse section when no completed tasks', async () => {
+    const noCompletedEntries: Entry[] = [
+      {
+        id: 'task-1',
+        type: 'task',
+        title: 'Active task',
+        status: 'open',
+        createdAt: '2026-01-27T10:00:00Z',
+        order: 'a0',
+        collectionId: 'col-1',
+      },
+    ];
+
+    mockEntryProjection.getEntriesByCollection.mockResolvedValue(noCompletedEntries);
+    renderViewWithSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText('Active task')).toBeInTheDocument();
+    });
+
+    // Should NOT show collapsible section
+    expect(screen.queryByText(/completed/i)).not.toBeInTheDocument();
+  });
+
+  it('should open settings modal when Settings menu option is clicked', async () => {
+    const user = userEvent.setup();
+    renderViewWithSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText('My Tasks')).toBeInTheDocument();
+    });
+
+    // Open menu
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    // Click settings
+    const settingsOption = screen.getByText(/^Settings$/i);
+    await user.click(settingsOption);
+
+    // Settings modal should be open
+    expect(screen.getByText(/collection settings/i)).toBeInTheDocument();
+  });
+});

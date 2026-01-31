@@ -15,6 +15,7 @@ describe('CollectionHeader', () => {
     collectionName: 'Books to Read',
     onRename: vi.fn(),
     onDelete: vi.fn(),
+    onSettings: vi.fn(),
   };
 
   function renderHeader(props = {}) {
@@ -50,8 +51,25 @@ describe('CollectionHeader', () => {
     const menuButton = screen.getByLabelText(/collection menu/i);
     await user.click(menuButton);
     
+    expect(screen.getByText(/settings/i)).toBeInTheDocument();
     expect(screen.getByText(/rename/i)).toBeInTheDocument();
     expect(screen.getByText(/delete/i)).toBeInTheDocument();
+  });
+
+  it('should call onSettings when settings option is clicked', async () => {
+    const user = userEvent.setup();
+    const onSettings = vi.fn();
+    renderHeader({ onSettings });
+    
+    // Open menu
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+    
+    // Click settings
+    const settingsOption = screen.getByText(/^Settings$/i);
+    await user.click(settingsOption);
+    
+    expect(onSettings).toHaveBeenCalledOnce();
   });
 
   it('should call onRename when rename option is clicked', async () => {
@@ -93,13 +111,13 @@ describe('CollectionHeader', () => {
     // Open menu
     const menuButton = screen.getByLabelText(/collection menu/i);
     await user.click(menuButton);
-    expect(screen.getByText(/rename/i)).toBeInTheDocument();
+    expect(screen.getByText(/settings/i)).toBeInTheDocument();
     
     // Click outside (on the header title)
     const title = screen.getByText('Books to Read');
     await user.click(title);
     
-    expect(screen.queryByText(/rename/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/settings/i)).not.toBeInTheDocument();
   });
 });
 
@@ -108,6 +126,7 @@ describe('CollectionHeader - Virtual Collection Behavior', () => {
     collectionName: 'Uncategorized',
     onRename: vi.fn(),
     onDelete: vi.fn(),
+    onSettings: vi.fn(),
   };
 
   function renderHeader(props = {}) {

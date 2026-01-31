@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CollectionListProjection } from './collection.projections';
 import { EventStore } from './event-store';
-import type { CollectionCreated, CollectionRenamed, CollectionReordered, CollectionDeleted } from './collection.types';
+import type { CollectionCreated, CollectionRenamed, CollectionReordered, CollectionDeleted, CollectionSettingsUpdated } from './collection.types';
 import { generateEventMetadata } from './event-helpers';
 
 describe('CollectionListProjection', () => {
@@ -379,6 +379,107 @@ describe('CollectionListProjection', () => {
 
       const collection = await projection.getCollectionById('col-1');
       expect(collection?.name).toBe('Updated');
+    });
+  });
+
+  describe('CollectionSettingsUpdated events', () => {
+    it('should handle CollectionSettingsUpdated event', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Test',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+
+      const settingsUpdated: CollectionSettingsUpdated = {
+        ...generateEventMetadata(),
+        type: 'CollectionSettingsUpdated',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          settings: {
+            collapseCompleted: true,
+          },
+          updatedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+
+      await eventStore.append(created);
+      await eventStore.append(settingsUpdated);
+
+      const collections = await projection.getCollections();
+      expect(collections).toHaveLength(1);
+      expect(collections[0].settings?.collapseCompleted).toBe(true);
+    });
+
+    it('should update settings when changed', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Test',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+
+      const settings1: CollectionSettingsUpdated = {
+        ...generateEventMetadata(),
+        type: 'CollectionSettingsUpdated',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          settings: { collapseCompleted: true },
+          updatedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+
+      const settings2: CollectionSettingsUpdated = {
+        ...generateEventMetadata(),
+        type: 'CollectionSettingsUpdated',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          settings: { collapseCompleted: false },
+          updatedAt: '2026-01-26T00:02:00.000Z',
+        },
+      };
+
+      await eventStore.append(created);
+      await eventStore.append(settings1);
+      await eventStore.append(settings2);
+
+      const collection = await projection.getCollectionById('col-1');
+      expect(collection?.settings?.collapseCompleted).toBe(false);
+    });
+
+    it('should preserve collection without settings', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Test',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+
+      await eventStore.append(created);
+
+      const collection = await projection.getCollectionById('col-1');
+      expect(collection?.settings).toBeUndefined();
     });
   });
 

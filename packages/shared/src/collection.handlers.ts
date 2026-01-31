@@ -8,7 +8,9 @@ import type {
   ReorderCollectionCommand,
   CollectionReordered,
   DeleteCollectionCommand,
-  CollectionDeleted
+  CollectionDeleted,
+  UpdateCollectionSettingsCommand,
+  CollectionSettingsUpdated
 } from './collection.types';
 import { generateEventMetadata } from './event-helpers';
 import { generateKeyBetween } from 'fractional-indexing';
@@ -292,6 +294,70 @@ export class DeleteCollectionHandler {
       payload: {
         collectionId: command.collectionId,
         deletedAt: metadata.timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for UpdateCollectionSettings
+ * 
+ * Responsibilities:
+ * - Validate collection exists
+ * - Create CollectionSettingsUpdated event
+ * - Persist event to EventStore
+ */
+export class UpdateCollectionSettingsHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly projection: CollectionListProjection
+  ) {}
+
+  /**
+   * Handle UpdateCollectionSettings command
+   * 
+   * Validation rules:
+   * - Collection must exist
+   * 
+   * Idempotency:
+   * - If the collection already has the target settings, no event is emitted.
+   *   This prevents duplicate events from double-clicks or retries.
+   * - Treats undefined as false for boolean settings
+   * 
+   * @param command - The UpdateCollectionSettings command
+   * @throws Error if validation fails
+   */
+  async handle(command: UpdateCollectionSettingsCommand): Promise<void> {
+    // Validate collection exists
+    const collection = await this.projection.getCollectionById(command.collectionId);
+    if (!collection) {
+      throw new Error(`Collection ${command.collectionId} not found`);
+    }
+
+    // Normalize settings for comparison (treat undefined as false)
+    const currentCollapseCompleted = collection.settings?.collapseCompleted ?? false;
+    const newCollapseCompleted = command.settings.collapseCompleted ?? false;
+
+    // Idempotency: if settings unchanged, do nothing
+    if (currentCollapseCompleted === newCollapseCompleted) {
+      return; // Already in desired state, no event needed
+    }
+
+    // Generate event metadata
+    const metadata = generateEventMetadata();
+
+    // Create CollectionSettingsUpdated event
+    const event: CollectionSettingsUpdated = {
+      ...metadata,
+      type: 'CollectionSettingsUpdated',
+      aggregateId: command.collectionId,
+      payload: {
+        collectionId: command.collectionId,
+        settings: command.settings,
+        updatedAt: metadata.timestamp,
       },
     };
 

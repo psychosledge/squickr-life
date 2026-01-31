@@ -92,7 +92,7 @@ describe('EntryActionsMenu', () => {
     expect(screen.getByRole('menuitem', { name: /edit/i })).toBeInTheDocument();
   });
 
-  it('should show Move to... option in menu', () => {
+  it('should show Migrate to Collection option in menu', () => {
     render(
       <EntryActionsMenu
         entry={mockEntry}
@@ -105,7 +105,7 @@ describe('EntryActionsMenu', () => {
     const trigger = screen.getByRole('button', { name: /actions/i });
     fireEvent.click(trigger);
 
-    expect(screen.getByRole('menuitem', { name: /move to/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /migrate to collection/i })).toBeInTheDocument();
   });
 
   it('should show Delete option in menu', () => {
@@ -143,7 +143,7 @@ describe('EntryActionsMenu', () => {
     expect(mockOnEdit).toHaveBeenCalledTimes(1);
   });
 
-  it('should call onMove when Move to... is clicked', () => {
+  it('should call onMove when Migrate to Collection is clicked', () => {
     render(
       <EntryActionsMenu
         entry={mockEntry}
@@ -156,7 +156,7 @@ describe('EntryActionsMenu', () => {
     const trigger = screen.getByRole('button', { name: /actions/i });
     fireEvent.click(trigger);
 
-    const moveButton = screen.getByRole('menuitem', { name: /move to/i });
+    const moveButton = screen.getByRole('menuitem', { name: /migrate to collection/i });
     fireEvent.click(moveButton);
 
     expect(mockOnMove).toHaveBeenCalledTimes(1);
@@ -202,7 +202,7 @@ describe('EntryActionsMenu', () => {
     });
   });
 
-  it('should close menu after Move is clicked', async () => {
+  it('should close menu after Migrate is clicked', async () => {
     render(
       <EntryActionsMenu
         entry={mockEntry}
@@ -215,7 +215,7 @@ describe('EntryActionsMenu', () => {
     const trigger = screen.getByRole('button', { name: /actions/i });
     fireEvent.click(trigger);
 
-    const moveButton = screen.getByRole('menuitem', { name: /move to/i });
+    const moveButton = screen.getByRole('menuitem', { name: /migrate to collection/i });
     fireEvent.click(moveButton);
 
     await waitFor(() => {

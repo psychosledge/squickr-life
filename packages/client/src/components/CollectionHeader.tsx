@@ -13,6 +13,7 @@ interface CollectionHeaderProps {
   collectionName: string;
   onRename: () => void;
   onDelete: () => void;
+  onSettings: () => void;
   isVirtual?: boolean;
 }
 
@@ -20,6 +21,7 @@ export function CollectionHeader({
   collectionName,
   onRename,
   onDelete,
+  onSettings,
   isVirtual = false,
 }: CollectionHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -43,6 +45,11 @@ export function CollectionHeader({
   const handleRename = () => {
     setIsMenuOpen(false);
     onRename();
+  };
+
+  const handleSettings = () => {
+    setIsMenuOpen(false);
+    onSettings();
   };
 
   const handleDelete = () => {
@@ -146,6 +153,19 @@ export function CollectionHeader({
                   z-50
                 "
               >
+                <button
+                  onClick={handleSettings}
+                  className="
+                    w-full px-4 py-2
+                    text-left text-gray-700 dark:text-gray-300
+                    hover:bg-gray-100 dark:hover:bg-gray-700
+                    transition-colors
+                    focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                  "
+                  type="button"
+                >
+                  Settings
+                </button>
                 <button
                   onClick={handleRename}
                   className="

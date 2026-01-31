@@ -12,7 +12,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { Collection, Entry } from '@squickr/shared';
+import type { Collection, Entry, CollectionSettings } from '@squickr/shared';
 import {
   CreateTaskHandler,
   CreateNoteHandler,
@@ -31,6 +31,7 @@ import {
   ReorderEventHandler,
   RenameCollectionHandler,
   DeleteCollectionHandler,
+  UpdateCollectionSettingsHandler,
 } from '@squickr/shared';
 import { useApp } from '../context/AppContext';
 import { CollectionHeader } from '../components/CollectionHeader';
@@ -38,6 +39,7 @@ import { EntryList } from '../components/EntryList';
 import { EntryInputModal } from '../components/EntryInputModal';
 import { RenameCollectionModal } from '../components/RenameCollectionModal';
 import { DeleteCollectionModal } from '../components/DeleteCollectionModal';
+import { CollectionSettingsModal } from '../components/CollectionSettingsModal';
 import { FAB } from '../components/FAB';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
@@ -53,6 +55,8 @@ export function CollectionDetailView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
 
   // Initialize handlers with required projections
   const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
@@ -72,6 +76,7 @@ export function CollectionDetailView() {
   const reorderEventHandler = new ReorderEventHandler(eventStore, entryProjection, entryProjection);
   const renameCollectionHandler = new RenameCollectionHandler(eventStore, collectionProjection);
   const deleteCollectionHandler = new DeleteCollectionHandler(eventStore, collectionProjection);
+  const updateSettingsHandler = new UpdateCollectionSettingsHandler(eventStore, collectionProjection);
 
   // Load collection and entries
   const loadData = async () => {
@@ -238,6 +243,18 @@ export function CollectionDetailView() {
     navigate(ROUTES.index); // Navigate back to index after delete
   };
 
+  const handleOpenSettings = async () => {
+    setIsSettingsModalOpen(true);
+  };
+
+  const handleSettingsSubmit = async (settings: CollectionSettings) => {
+    if (!collection) return;
+    await updateSettingsHandler.handle({
+      collectionId: collection.id,
+      settings,
+    });
+  };
+
   const handleMigrate = async (entryId: string, targetCollectionId: string | null) => {
     const entry = entries.find(e => e.id === entryId);
     if (!entry) return;
@@ -304,6 +321,15 @@ export function CollectionDetailView() {
   }
 
   // Success state - show collection and entries
+  // Filter entries based on collapse settings
+  const collapseCompleted = collection.settings?.collapseCompleted ?? false;
+  const activeTasks = collapseCompleted
+    ? entries.filter(e => !(e.type === 'task' && e.status === 'completed'))
+    : entries;
+  const completedTasks = collapseCompleted
+    ? entries.filter(e => e.type === 'task' && e.status === 'completed')
+    : [];
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header with back button and menu */}
@@ -311,13 +337,15 @@ export function CollectionDetailView() {
         collectionName={collection.name}
         onRename={handleRenameCollection}
         onDelete={handleDeleteCollection}
+        onSettings={handleOpenSettings}
         isVirtual={collection.id === UNCATEGORIZED_COLLECTION_ID}
       />
 
       {/* Entry list */}
       <div className="py-8 px-4">
+        {/* Active entries (or all entries if not collapsed) */}
         <EntryList
-          entries={entries}
+          entries={activeTasks}
           onCompleteTask={handleCompleteTask}
           onReopenTask={handleReopenTask}
           onUpdateTaskTitle={handleUpdateTaskTitle}
@@ -331,6 +359,56 @@ export function CollectionDetailView() {
           currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
           onNavigateToMigrated={handleNavigateToMigrated}
         />
+
+        {/* Collapsible completed tasks section */}
+        {collapseCompleted && completedTasks.length > 0 && (
+          <div className="mt-8 max-w-4xl mx-auto">
+            <button
+              onClick={() => setIsCompletedExpanded(!isCompletedExpanded)}
+              className="
+                w-full py-3 px-4
+                flex items-center justify-center gap-2
+                text-sm text-gray-500 dark:text-gray-400
+                hover:text-gray-700 dark:hover:text-gray-300
+                border-t border-b border-gray-200 dark:border-gray-700
+                hover:bg-gray-50 dark:hover:bg-gray-800
+                transition-colors
+                focus:outline-none focus:ring-2 focus:ring-blue-500
+              "
+              type="button"
+            >
+              <span>─── {completedTasks.length} completed {completedTasks.length === 1 ? 'task' : 'tasks'}</span>
+              <svg
+                className={`w-4 h-4 transition-transform ${isCompletedExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {isCompletedExpanded && (
+              <div className="mt-4">
+                <EntryList
+                  entries={completedTasks}
+                  onCompleteTask={handleCompleteTask}
+                  onReopenTask={handleReopenTask}
+                  onUpdateTaskTitle={handleUpdateTaskTitle}
+                  onUpdateNoteContent={handleUpdateNoteContent}
+                  onUpdateEventContent={handleUpdateEventContent}
+                  onUpdateEventDate={handleUpdateEventDate}
+                  onDelete={handleDelete}
+                  onReorder={handleReorder}
+                  onMigrate={handleMigrate}
+                  collections={allCollections}
+                  currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
+                  onNavigateToMigrated={handleNavigateToMigrated}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* FAB for adding entries to this collection */}
@@ -360,6 +438,14 @@ export function CollectionDetailView() {
         entryCount={entries.length}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
+      />
+
+      {/* Collection settings modal */}
+      <CollectionSettingsModal
+        isOpen={isSettingsModalOpen}
+        currentSettings={collection.settings}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSubmit={handleSettingsSubmit}
       />
     </div>
   );

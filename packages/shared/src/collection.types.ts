@@ -10,6 +10,14 @@ import type { DomainEvent } from './domain-event';
 export type CollectionType = 'log' | 'custom' | 'tracker';
 
 /**
+ * Collection settings - user preferences for a collection
+ */
+export interface CollectionSettings {
+  /** Whether to collapse completed tasks into a collapsible section */
+  readonly collapseCompleted?: boolean;
+}
+
+/**
  * Collection entity - represents a user-created collection
  * This is derived from events, not stored directly
  */
@@ -34,6 +42,9 @@ export interface Collection {
   
   /** Optional: User who created the collection (for future multi-user support) */
   readonly userId?: string;
+  
+  /** Collection-specific settings */
+  readonly settings?: CollectionSettings;
 }
 
 // ============================================================================
@@ -116,6 +127,24 @@ export interface CollectionDeleted extends DomainEvent {
   };
 }
 
+/**
+ * CollectionSettingsUpdated Event
+ * Emitted when a collection's settings are updated
+ * 
+ * Invariants:
+ * - aggregateId must match an existing collection
+ * - settings must contain at least one property
+ */
+export interface CollectionSettingsUpdated extends DomainEvent {
+  readonly type: 'CollectionSettingsUpdated';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly collectionId: string;
+    readonly settings: CollectionSettings;
+    readonly updatedAt: string;
+  };
+}
+
 // ============================================================================
 // Collection Commands
 // ============================================================================
@@ -169,7 +198,16 @@ export interface DeleteCollectionCommand {
 }
 
 /**
+ * UpdateCollectionSettings Command
+ * Represents the user's intent to update collection settings
+ */
+export interface UpdateCollectionSettingsCommand {
+  readonly collectionId: string;
+  readonly settings: CollectionSettings;
+}
+
+/**
  * Union type of all collection-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type CollectionEvent = CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted;
+export type CollectionEvent = CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated;

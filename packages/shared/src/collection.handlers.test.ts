@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CreateCollectionHandler, RenameCollectionHandler, ReorderCollectionHandler, DeleteCollectionHandler } from './collection.handlers';
+import { CreateCollectionHandler, RenameCollectionHandler, ReorderCollectionHandler, DeleteCollectionHandler, UpdateCollectionSettingsHandler } from './collection.handlers';
 import { EventStore } from './event-store';
 import { CollectionListProjection } from './collection.projections';
 import type { 
@@ -10,7 +10,9 @@ import type {
   ReorderCollectionCommand,
   CollectionReordered,
   DeleteCollectionCommand,
-  CollectionDeleted
+  CollectionDeleted,
+  UpdateCollectionSettingsCommand,
+  CollectionSettingsUpdated
 } from './collection.types';
 
 describe('CreateCollectionHandler', () => {
@@ -648,6 +650,191 @@ describe('DeleteCollectionHandler', () => {
       await expect(
         deleteHandler.handle({ collectionId })
       ).rejects.toThrow('Collection');
+    });
+  });
+});
+
+describe('UpdateCollectionSettingsHandler', () => {
+  let eventStore: EventStore;
+  let projection: CollectionListProjection;
+  let createHandler: CreateCollectionHandler;
+  let settingsHandler: UpdateCollectionSettingsHandler;
+
+  beforeEach(() => {
+    eventStore = new EventStore();
+    projection = new CollectionListProjection(eventStore);
+    createHandler = new CreateCollectionHandler(eventStore, projection);
+    settingsHandler = new UpdateCollectionSettingsHandler(eventStore, projection);
+  });
+
+  describe('handle', () => {
+    it('should update collection settings', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      const command: UpdateCollectionSettingsCommand = {
+        collectionId,
+        settings: {
+          collapseCompleted: true,
+        },
+      };
+
+      await settingsHandler.handle(command);
+
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(2);
+
+      const settingsEvent = events[1] as CollectionSettingsUpdated;
+      expect(settingsEvent.type).toBe('CollectionSettingsUpdated');
+      expect(settingsEvent.payload.collectionId).toBe(collectionId);
+      expect(settingsEvent.payload.settings.collapseCompleted).toBe(true);
+      expect(settingsEvent.aggregateId).toBe(collectionId);
+    });
+
+    it('should update multiple settings properties', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      await settingsHandler.handle({
+        collectionId,
+        settings: {
+          collapseCompleted: true,
+        },
+      });
+
+      const events = await eventStore.getAll();
+      const settingsEvent = events[1] as CollectionSettingsUpdated;
+      expect(settingsEvent.payload.settings.collapseCompleted).toBe(true);
+    });
+
+    it('should set updatedAt timestamp', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      const beforeTime = new Date().toISOString();
+      await settingsHandler.handle({
+        collectionId,
+        settings: { collapseCompleted: true },
+      });
+      const afterTime = new Date().toISOString();
+
+      const events = await eventStore.getAll();
+      const event = events[1] as CollectionSettingsUpdated;
+
+      expect(event.payload.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(event.payload.updatedAt >= beforeTime).toBe(true);
+      expect(event.payload.updatedAt <= afterTime).toBe(true);
+    });
+
+    it('should throw error if collection does not exist', async () => {
+      await expect(
+        settingsHandler.handle({
+          collectionId: 'non-existent-id',
+          settings: { collapseCompleted: true },
+        })
+      ).rejects.toThrow('Collection non-existent-id not found');
+    });
+
+    it('should throw error if collection was deleted', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+      
+      const deleteHandler = new DeleteCollectionHandler(eventStore, projection);
+      await deleteHandler.handle({ collectionId });
+
+      await expect(
+        settingsHandler.handle({
+          collectionId,
+          settings: { collapseCompleted: true },
+        })
+      ).rejects.toThrow('Collection');
+    });
+
+    it('should reflect settings in projection after update', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      await settingsHandler.handle({
+        collectionId,
+        settings: { collapseCompleted: true },
+      });
+
+      const collection = await projection.getCollectionById(collectionId);
+      expect(collection?.settings?.collapseCompleted).toBe(true);
+    });
+  });
+
+  describe('Idempotency', () => {
+    it('should not emit event if settings unchanged', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      // Set initial settings
+      await settingsHandler.handle({
+        collectionId,
+        settings: { collapseCompleted: true },
+      });
+
+      const eventsBefore = await eventStore.getAll();
+      const countBefore = eventsBefore.length;
+
+      // Try to set same settings (idempotent)
+      await settingsHandler.handle({
+        collectionId,
+        settings: { collapseCompleted: true },
+      });
+
+      const eventsAfter = await eventStore.getAll();
+      expect(eventsAfter.length).toBe(countBefore); // No new event
+    });
+
+    it('should emit event if settings change', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      // Set initial settings
+      await settingsHandler.handle({
+        collectionId,
+        settings: { collapseCompleted: true },
+      });
+
+      const eventsBefore = await eventStore.getAll();
+      const countBefore = eventsBefore.length;
+
+      // Change settings
+      await settingsHandler.handle({
+        collectionId,
+        settings: { collapseCompleted: false },
+      });
+
+      const eventsAfter = await eventStore.getAll();
+      expect(eventsAfter.length).toBe(countBefore + 1); // New event created
+    });
+
+    it('should treat undefined same as false for collapseCompleted', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      // No settings set yet (undefined)
+      const eventsBefore = await eventStore.getAll();
+      const countBefore = eventsBefore.length;
+
+      // Try to set collapseCompleted to false (same as undefined default)
+      await settingsHandler.handle({
+        collectionId,
+        settings: { collapseCompleted: false },
+      });
+
+      const eventsAfter = await eventStore.getAll();
+      expect(eventsAfter.length).toBe(countBefore); // No new event (idempotent)
+    });
+
+    it('should emit event when going from undefined to true', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      const eventsBefore = await eventStore.getAll();
+      const countBefore = eventsBefore.length;
+
+      // Set to true (different from undefined default)
+      await settingsHandler.handle({
+        collectionId,
+        settings: { collapseCompleted: true },
+      });
+
+      const eventsAfter = await eventStore.getAll();
+      expect(eventsAfter.length).toBe(countBefore + 1); // New event created
     });
   });
 });

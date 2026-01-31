@@ -5,7 +5,8 @@ import type {
   CollectionCreated,
   CollectionRenamed,
   CollectionReordered,
-  CollectionDeleted
+  CollectionDeleted,
+  CollectionSettingsUpdated
 } from './collection.types';
 
 /**
@@ -97,7 +98,7 @@ export class CollectionListProjection {
    */
   private applyCollectionEvent(
     collections: Map<string, Collection>,
-    event: CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted
+    event: CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated
   ): void {
     switch (event.type) {
       case 'CollectionCreated': {
@@ -142,6 +143,16 @@ export class CollectionListProjection {
         }
         break;
       }
+      case 'CollectionSettingsUpdated': {
+        const collection = collections.get(event.payload.collectionId);
+        if (collection) {
+          collections.set(collection.id, {
+            ...collection,
+            settings: event.payload.settings,
+          });
+        }
+        break;
+      }
     }
   }
 
@@ -150,12 +161,13 @@ export class CollectionListProjection {
    */
   private isCollectionEvent(
     event: DomainEvent
-  ): event is CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted {
+  ): event is CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated {
     return (
       event.type === 'CollectionCreated' ||
       event.type === 'CollectionRenamed' ||
       event.type === 'CollectionReordered' ||
-      event.type === 'CollectionDeleted'
+      event.type === 'CollectionDeleted' ||
+      event.type === 'CollectionSettingsUpdated'
     );
   }
 }
