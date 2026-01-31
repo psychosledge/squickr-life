@@ -16,7 +16,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
 import { SignInView } from './views/SignInView';
-import { uploadLocalEvents, downloadRemoteEvents } from './firebase/syncEvents';
+import { SyncManager } from './firebase/SyncManager';
 import { ROUTES } from './routes';
 
 /**
@@ -26,6 +26,9 @@ import { ROUTES } from './routes';
  * Phase 3: Authentication UI
  * - Shows SignInView for unauthenticated users
  * - Shows Collections for authenticated users
+ * Phase 4-6: Background Sync (Issue #2)
+ * - Auto-sync every 5 minutes
+ * - Sync on window focus, network reconnect, tab visibility
  */
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
@@ -50,6 +53,9 @@ function AppContent() {
   
   // Track if app is initialized (prevents double-init in React StrictMode)
   const isInitialized = useRef(false);
+  
+  // Background sync manager
+  const syncManagerRef = useRef<SyncManager | null>(null);
 
   // Initialize IndexedDB and load tasks on mount
   useEffect(() => {
@@ -62,12 +68,27 @@ function AppContent() {
     initializeApp();
   }, []);
 
-  // Trigger sync when user signs in (Phase 4: Upload)
+  // Start/stop background sync when user signs in/out
   useEffect(() => {
-    if (user && !isLoading) {
-      handleFirstLoginSync();
+    if (!user || isLoading) {
+      // User signed out or still loading - stop sync
+      syncManagerRef.current?.stop();
+      syncManagerRef.current = null;
+      return;
     }
-  }, [user, isLoading]);
+    
+    // User signed in - start background sync
+    const manager = new SyncManager(user.uid, eventStore);
+    manager.start();
+    syncManagerRef.current = manager;
+    
+    console.log('[App] Background sync started');
+    
+    return () => {
+      manager.stop();
+      console.log('[App] Background sync stopped');
+    };
+  }, [user, isLoading, eventStore]);
 
   const initializeApp = async () => {
     try {
@@ -77,24 +98,6 @@ function AppContent() {
       console.error('Failed to initialize app:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleFirstLoginSync = async () => {
-    if (!user) return;
-
-    try {
-      console.log('[App] User signed in, starting bidirectional sync...');
-      
-      // Phase 4: Upload local events to Firestore
-      await uploadLocalEvents(user.uid, eventStore);
-      
-      // Phase 5: Download remote events to IndexedDB
-      await downloadRemoteEvents(user.uid, eventStore);
-      
-      console.log('[App] Sync complete ✓');
-    } catch (error) {
-      console.error('[App] Sync failed:', error);
     }
   };
 
