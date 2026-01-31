@@ -28,7 +28,7 @@ describe('CollectionIndexView - Header Branding', () => {
     };
 
     mockEntryProjection = {
-      getEntryCountsByCollection: vi.fn(() => Promise.resolve(new Map())),
+      getActiveTaskCountsByCollection: vi.fn(() => Promise.resolve(new Map())),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -138,7 +138,7 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
         // Return empty for real collections in these tests
         return Promise.resolve([]);
       }),
-      getEntryCountsByCollection: vi.fn(() => {
+      getActiveTaskCountsByCollection: vi.fn(() => {
         // Return counts for all collections
         const counts = new Map<string | null, number>();
         counts.set(null, mockOrphanedEntries.length); // Uncategorized count
@@ -188,12 +188,12 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
     });
 
     // Verify it queried for entry counts (not individual orphaned entries)
-    expect(mockEntryProjection.getEntryCountsByCollection).toHaveBeenCalled();
+    expect(mockEntryProjection.getActiveTaskCountsByCollection).toHaveBeenCalled();
   });
 
   it('should NOT show virtual Uncategorized collection when no orphaned entries exist', async () => {
     // Mock no orphaned entries
-    mockEntryProjection.getEntryCountsByCollection.mockImplementation(() => {
+    mockEntryProjection.getActiveTaskCountsByCollection.mockImplementation(() => {
       const counts = new Map<string | null, number>();
       // No null key = no uncategorized entries
       counts.set('col-1', 0);
@@ -289,10 +289,10 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
     });
 
     // Clear previous calls
-    mockEntryProjection.getEntryCountsByCollection.mockClear();
+    mockEntryProjection.getActiveTaskCountsByCollection.mockClear();
 
     // Simulate projection change (orphaned entries removed)
-    mockEntryProjection.getEntryCountsByCollection.mockImplementation(() => {
+    mockEntryProjection.getActiveTaskCountsByCollection.mockImplementation(() => {
       const counts = new Map<string | null, number>();
       // No null key = no uncategorized entries
       counts.set('col-1', 0);
@@ -328,7 +328,7 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
     };
 
     mockEntryProjection = {
-      getEntryCountsByCollection: vi.fn(() => {
+      getActiveTaskCountsByCollection: vi.fn(() => {
         const counts = new Map<string | null, number>();
         counts.set('col-1', 5);
         counts.set('col-2', 3);

@@ -20,32 +20,32 @@ describe('CollectionListItem', () => {
   };
 
   it('should render collection name', () => {
-    renderWithRouter(<CollectionListItem collection={mockCollection} entryCount={0} />);
+    renderWithRouter(<CollectionListItem collection={mockCollection} activeTaskCount={0} />);
     
     expect(screen.getByText('My Projects')).toBeInTheDocument();
   });
 
-  it('should render entry count with singular text', () => {
-    renderWithRouter(<CollectionListItem collection={mockCollection} entryCount={1} />);
+  it('should render singular active task text', () => {
+    renderWithRouter(<CollectionListItem collection={mockCollection} activeTaskCount={1} />);
     
-    expect(screen.getByText('1 entry')).toBeInTheDocument();
+    expect(screen.getByText('1 active task')).toBeInTheDocument();
   });
 
-  it('should render entry count with plural text', () => {
-    renderWithRouter(<CollectionListItem collection={mockCollection} entryCount={5} />);
+  it('should render plural active tasks text', () => {
+    renderWithRouter(<CollectionListItem collection={mockCollection} activeTaskCount={5} />);
     
-    expect(screen.getByText('5 entries')).toBeInTheDocument();
+    expect(screen.getByText('5 active tasks')).toBeInTheDocument();
   });
 
-  it('should render zero entries', () => {
-    renderWithRouter(<CollectionListItem collection={mockCollection} entryCount={0} />);
+  it('should render "No active tasks" when count is zero', () => {
+    renderWithRouter(<CollectionListItem collection={mockCollection} activeTaskCount={0} />);
     
-    expect(screen.getByText('0 entries')).toBeInTheDocument();
+    expect(screen.getByText('No active tasks')).toBeInTheDocument();
   });
 
   it('should navigate to collection detail page on click', async () => {
     const user = userEvent.setup();
-    renderWithRouter(<CollectionListItem collection={mockCollection} entryCount={3} />);
+    renderWithRouter(<CollectionListItem collection={mockCollection} activeTaskCount={3} />);
     
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', '/collection/collection-1');
@@ -55,7 +55,7 @@ describe('CollectionListItem', () => {
   });
 
   it('should have accessible name', () => {
-    renderWithRouter(<CollectionListItem collection={mockCollection} entryCount={3} />);
+    renderWithRouter(<CollectionListItem collection={mockCollection} activeTaskCount={3} />);
     
     const link = screen.getByRole('link', { name: /My Projects/i });
     expect(link).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe('CollectionListItem', () => {
       name: 'Books & Movies (2026)',
     };
     
-    renderWithRouter(<CollectionListItem collection={specialCollection} entryCount={0} />);
+    renderWithRouter(<CollectionListItem collection={specialCollection} activeTaskCount={0} />);
     
     expect(screen.getByText('Books & Movies (2026)')).toBeInTheDocument();
   });
@@ -78,7 +78,7 @@ describe('CollectionListItem', () => {
       name: 'This is a very long collection name that might need to wrap or truncate depending on the design',
     };
     
-    renderWithRouter(<CollectionListItem collection={longCollection} entryCount={0} />);
+    renderWithRouter(<CollectionListItem collection={longCollection} activeTaskCount={0} />);
     
     expect(screen.getByText(/This is a very long collection name/)).toBeInTheDocument();
   });

@@ -30,25 +30,25 @@ describe('SortableCollectionItem', () => {
 
   it('should render collection name', () => {
     renderWithContext(
-      <SortableCollectionItem collection={mockCollection} entryCount={5} />,
+      <SortableCollectionItem collection={mockCollection} activeTaskCount={5} />,
       [mockCollection.id]
     );
 
     expect(screen.getByText('Work Projects')).toBeInTheDocument();
   });
 
-  it('should render entry count', () => {
+  it('should render active task count', () => {
     renderWithContext(
-      <SortableCollectionItem collection={mockCollection} entryCount={5} />,
+      <SortableCollectionItem collection={mockCollection} activeTaskCount={5} />,
       [mockCollection.id]
     );
 
-    expect(screen.getByText('5 entries')).toBeInTheDocument();
+    expect(screen.getByText('5 active tasks')).toBeInTheDocument();
   });
 
   it('should render drag handle', () => {
     renderWithContext(
-      <SortableCollectionItem collection={mockCollection} entryCount={5} />,
+      <SortableCollectionItem collection={mockCollection} activeTaskCount={5} />,
       [mockCollection.id]
     );
 
@@ -58,7 +58,7 @@ describe('SortableCollectionItem', () => {
 
   it('should have drag handle with proper ARIA attributes', () => {
     renderWithContext(
-      <SortableCollectionItem collection={mockCollection} entryCount={5} />,
+      <SortableCollectionItem collection={mockCollection} activeTaskCount={5} />,
       [mockCollection.id]
     );
 
@@ -69,7 +69,7 @@ describe('SortableCollectionItem', () => {
 
   it('should have drag handle with cursor-grab class', () => {
     renderWithContext(
-      <SortableCollectionItem collection={mockCollection} entryCount={5} />,
+      <SortableCollectionItem collection={mockCollection} activeTaskCount={5} />,
       [mockCollection.id]
     );
 
@@ -79,7 +79,7 @@ describe('SortableCollectionItem', () => {
 
   it('should have drag handle with touch-action none for mobile', () => {
     renderWithContext(
-      <SortableCollectionItem collection={mockCollection} entryCount={5} />,
+      <SortableCollectionItem collection={mockCollection} activeTaskCount={5} />,
       [mockCollection.id]
     );
 
@@ -90,7 +90,7 @@ describe('SortableCollectionItem', () => {
 
   it('should render drag handle icon', () => {
     renderWithContext(
-      <SortableCollectionItem collection={mockCollection} entryCount={5} />,
+      <SortableCollectionItem collection={mockCollection} activeTaskCount={5} />,
       [mockCollection.id]
     );
 
@@ -102,7 +102,7 @@ describe('SortableCollectionItem', () => {
 
   it('should link to collection detail page', () => {
     renderWithContext(
-      <SortableCollectionItem collection={mockCollection} entryCount={5} />,
+      <SortableCollectionItem collection={mockCollection} activeTaskCount={5} />,
       [mockCollection.id]
     );
 
@@ -112,7 +112,7 @@ describe('SortableCollectionItem', () => {
 
   it('should render with proper spacing for drag handle', () => {
     const { container } = renderWithContext(
-      <SortableCollectionItem collection={mockCollection} entryCount={5} />,
+      <SortableCollectionItem collection={mockCollection} activeTaskCount={5} />,
       [mockCollection.id]
     );
 
@@ -123,7 +123,7 @@ describe('SortableCollectionItem', () => {
 
   it('should have proper hover states on drag handle', () => {
     renderWithContext(
-      <SortableCollectionItem collection={mockCollection} entryCount={5} />,
+      <SortableCollectionItem collection={mockCollection} activeTaskCount={5} />,
       [mockCollection.id]
     );
 

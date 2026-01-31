@@ -7,7 +7,7 @@ import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
 interface CollectionListProps {
   collections: Collection[];
-  entryCountsByCollection: Map<string, number>;
+  activeTaskCountsByCollection: Map<string, number>;
   onReorder?: (collectionId: string, previousCollectionId: string | null, nextCollectionId: string | null) => void;
 }
 
@@ -24,7 +24,7 @@ interface CollectionListProps {
  * - Uses entry counts from projection
  * - Supports drag-and-drop reordering (except for virtual Uncategorized)
  */
-export function CollectionList({ collections, entryCountsByCollection, onReorder }: CollectionListProps) {
+export function CollectionList({ collections, activeTaskCountsByCollection, onReorder }: CollectionListProps) {
   // Empty state
   if (collections.length === 0) {
     return (
@@ -122,7 +122,7 @@ export function CollectionList({ collections, entryCountsByCollection, onReorder
           <CollectionListItem
             key={uncategorizedCollection.id}
             collection={uncategorizedCollection}
-            entryCount={entryCountsByCollection.get(uncategorizedCollection.id) ?? 0}
+            activeTaskCount={activeTaskCountsByCollection.get(uncategorizedCollection.id) ?? 0}
           />
         )}
 
@@ -130,12 +130,12 @@ export function CollectionList({ collections, entryCountsByCollection, onReorder
         <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
             {realCollections.map((collection) => {
-              const entryCount = entryCountsByCollection.get(collection.id) ?? 0;
+              const activeTaskCount = activeTaskCountsByCollection.get(collection.id) ?? 0;
               return (
                 <SortableCollectionItem
                   key={collection.id}
                   collection={collection}
-                  entryCount={entryCount}
+                  activeTaskCount={activeTaskCount}
                 />
               );
             })}

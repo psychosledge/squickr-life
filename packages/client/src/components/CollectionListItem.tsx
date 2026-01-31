@@ -4,23 +4,28 @@ import { buildCollectionPath } from '../routes';
 
 interface CollectionListItemProps {
   collection: Collection;
-  entryCount: number;
+  activeTaskCount: number;
 }
 
 /**
  * CollectionListItem Component
  * 
- * Displays a single collection with name and entry count.
+ * Displays a single collection with name and active task count.
  * Tappable to navigate to collection detail view.
  * 
  * Features:
  * - Shows collection name prominently
- * - Shows entry count with proper pluralization
+ * - Shows active task count with smart display logic
  * - Links to collection detail page
  * - Card-style layout consistent with EntryList items
  */
-export function CollectionListItem({ collection, entryCount }: CollectionListItemProps) {
-  const entryText = entryCount === 1 ? 'entry' : 'entries';
+export function CollectionListItem({ collection, activeTaskCount }: CollectionListItemProps) {
+  // Smart display logic for active task count
+  const displayText = activeTaskCount === 0 
+    ? 'No active tasks' 
+    : activeTaskCount === 1 
+      ? '1 active task' 
+      : `${activeTaskCount} active tasks`;
 
   return (
     <Link
@@ -34,7 +39,7 @@ export function CollectionListItem({ collection, entryCount }: CollectionListIte
           {collection.name}
         </h3>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          {entryCount} {entryText}
+          {displayText}
         </p>
       </div>
     </Link>

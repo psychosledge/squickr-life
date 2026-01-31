@@ -35,7 +35,7 @@ describe('CollectionList', () => {
     },
   ];
 
-  const mockEntryCountsByCollection = new Map<string, number>([
+  const mockActiveTaskCountsByCollection = new Map<string, number>([
     ['collection-1', 5],
     ['collection-2', 3],
     ['collection-3', 0],
@@ -45,7 +45,7 @@ describe('CollectionList', () => {
     renderWithRouter(
       <CollectionList 
         collections={mockCollections} 
-        entryCountsByCollection={mockEntryCountsByCollection}
+        activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
       />
     );
 
@@ -54,24 +54,24 @@ describe('CollectionList', () => {
     expect(screen.getByText('Reading List')).toBeInTheDocument();
   });
 
-  it('should render entry counts for each collection', () => {
+  it('should render active task counts for each collection', () => {
     renderWithRouter(
       <CollectionList 
         collections={mockCollections} 
-        entryCountsByCollection={mockEntryCountsByCollection}
+        activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
       />
     );
 
-    expect(screen.getByText('5 entries')).toBeInTheDocument();
-    expect(screen.getByText('3 entries')).toBeInTheDocument();
-    expect(screen.getByText('0 entries')).toBeInTheDocument();
+    expect(screen.getByText('5 active tasks')).toBeInTheDocument();
+    expect(screen.getByText('3 active tasks')).toBeInTheDocument();
+    expect(screen.getByText('No active tasks')).toBeInTheDocument();
   });
 
   it('should render empty state when no collections exist', () => {
     renderWithRouter(
       <CollectionList 
         collections={[]} 
-        entryCountsByCollection={new Map()}
+        activeTaskCountsByCollection={new Map()}
       />
     );
 
@@ -83,7 +83,7 @@ describe('CollectionList', () => {
     renderWithRouter(
       <CollectionList 
         collections={mockCollections} 
-        entryCountsByCollection={mockEntryCountsByCollection}
+        activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
       />
     );
 
@@ -94,31 +94,31 @@ describe('CollectionList', () => {
     renderWithRouter(
       <CollectionList 
         collections={[mockCollections[0]]} 
-        entryCountsByCollection={mockEntryCountsByCollection}
+        activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
       />
     );
 
     expect(screen.getByText('1 collection')).toBeInTheDocument();
   });
 
-  it('should use 0 as default entry count if not provided', () => {
+  it('should use 0 as default active task count if not provided', () => {
     renderWithRouter(
       <CollectionList 
         collections={mockCollections} 
-        entryCountsByCollection={new Map()}
+        activeTaskCountsByCollection={new Map()}
       />
     );
 
-    // All should show 0 entries
-    const zeroEntries = screen.getAllByText('0 entries');
-    expect(zeroEntries).toHaveLength(3);
+    // All should show "No active tasks"
+    const noActiveTasks = screen.getAllByText('No active tasks');
+    expect(noActiveTasks).toHaveLength(3);
   });
 
   it('should render collections in provided order', () => {
     renderWithRouter(
       <CollectionList 
         collections={mockCollections} 
-        entryCountsByCollection={mockEntryCountsByCollection}
+        activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
       />
     );
 
@@ -132,7 +132,7 @@ describe('CollectionList', () => {
     const { container } = renderWithRouter(
       <CollectionList 
         collections={mockCollections} 
-        entryCountsByCollection={mockEntryCountsByCollection}
+        activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
       />
     );
     
@@ -145,7 +145,7 @@ describe('CollectionList', () => {
       renderWithRouter(
         <CollectionList 
           collections={mockCollections} 
-          entryCountsByCollection={mockEntryCountsByCollection}
+          activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
         />
       );
 
@@ -159,7 +159,7 @@ describe('CollectionList', () => {
       renderWithRouter(
         <CollectionList 
           collections={mockCollections} 
-          entryCountsByCollection={mockEntryCountsByCollection}
+          activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
           onReorder={onReorder}
         />
       );
@@ -181,7 +181,7 @@ describe('CollectionList', () => {
       renderWithRouter(
         <CollectionList 
           collections={[virtualCollection, ...mockCollections]} 
-          entryCountsByCollection={mockEntryCountsByCollection}
+          activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
         />
       );
 
@@ -202,7 +202,7 @@ describe('CollectionList', () => {
       renderWithRouter(
         <CollectionList 
           collections={[virtualCollection]} 
-          entryCountsByCollection={new Map([[UNCATEGORIZED_COLLECTION_ID, 5]])}
+          activeTaskCountsByCollection={new Map([[UNCATEGORIZED_COLLECTION_ID, 5]])}
         />
       );
 
@@ -219,7 +219,7 @@ describe('CollectionList', () => {
       renderWithRouter(
         <CollectionList 
           collections={mockCollections} 
-          entryCountsByCollection={mockEntryCountsByCollection}
+          activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
           onReorder={onReorder}
         />
       );
@@ -234,7 +234,7 @@ describe('CollectionList', () => {
       renderWithRouter(
         <CollectionList 
           collections={mockCollections} 
-          entryCountsByCollection={mockEntryCountsByCollection}
+          activeTaskCountsByCollection={mockActiveTaskCountsByCollection}
           onReorder={onReorder}
         />
       );

@@ -22,7 +22,7 @@ export function CollectionIndexView() {
   const { user } = useAuth();
   
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [entryCountsByCollection, setEntryCountsByCollection] = useState<Map<string, number>>(new Map());
+  const [activeTaskCountsByCollection, setActiveTaskCountsByCollection] = useState<Map<string, number>>(new Map());
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Load collections and entry counts
@@ -30,8 +30,8 @@ export function CollectionIndexView() {
     // Load real collections
     const loadedCollections = await collectionProjection.getCollections();
     
-    // Get entry counts for all collections in a single query (avoids N+1 pattern)
-    const allCounts = await entryProjection.getEntryCountsByCollection();
+    // Get active task counts for all collections in a single query (avoids N+1 pattern)
+    const allCounts = await entryProjection.getActiveTaskCountsByCollection();
     
     // Check if uncategorized entries exist
     const uncategorizedCount = allCounts.get(null) ?? 0;
@@ -69,7 +69,7 @@ export function CollectionIndexView() {
       counts.set(collection.id, count);
     }
     
-    setEntryCountsByCollection(counts);
+    setActiveTaskCountsByCollection(counts);
   };
 
   // Subscribe to projection changes (reactive updates)
@@ -160,7 +160,7 @@ export function CollectionIndexView() {
         {/* Collection List */}
         <CollectionList 
           collections={collections} 
-          entryCountsByCollection={entryCountsByCollection}
+          activeTaskCountsByCollection={activeTaskCountsByCollection}
           onReorder={handleReorder}
         />
 

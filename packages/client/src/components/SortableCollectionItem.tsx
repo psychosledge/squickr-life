@@ -5,7 +5,7 @@ import { CollectionListItem } from './CollectionListItem';
 
 interface SortableCollectionItemProps {
   collection: Collection;
-  entryCount: number;
+  activeTaskCount: number;
 }
 
 /**
@@ -16,7 +16,7 @@ interface SortableCollectionItemProps {
  */
 export function SortableCollectionItem({ 
   collection, 
-  entryCount 
+  activeTaskCount 
 }: SortableCollectionItemProps) {
   const {
     attributes,
@@ -69,7 +69,7 @@ export function SortableCollectionItem({
       {/* The actual collection item */}
       <CollectionListItem
         collection={collection}
-        entryCount={entryCount}
+        activeTaskCount={activeTaskCount}
       />
     </div>
   );
