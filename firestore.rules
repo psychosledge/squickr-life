@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - each user can only access their own events
+    match /users/{userId}/events/{eventId} {
+      // Allow read access only for authenticated users accessing their own data
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow create only for authenticated users creating their own events
+      // Enforce userId match and event ID match for security
+      allow create: if request.auth != null 
+        && request.auth.uid == userId
+        && request.resource.data.id == eventId;
+      
+      // Events are immutable (append-only) - no updates or deletes allowed
+      allow update, delete: if false;
+    }
+  }
+}
