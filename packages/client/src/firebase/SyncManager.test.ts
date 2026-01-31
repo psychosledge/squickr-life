@@ -82,8 +82,7 @@ describe('SyncManager', () => {
       vi.mocked(uploadLocalEvents).mockClear();
 
       // Advance past debounce + Fast-forward 5 minutes
-      vi.advanceTimersByTime(306000);
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(306000);
 
       expect(uploadLocalEvents).toHaveBeenCalled();
     });
@@ -96,12 +95,9 @@ describe('SyncManager', () => {
       await Promise.resolve();
       
       // Advance through 3 intervals
-      vi.advanceTimersByTime(306000); // Past debounce +  5 min
-      await Promise.resolve();
-      vi.advanceTimersByTime(300000); // 10 min
-      await Promise.resolve();
-      vi.advanceTimersByTime(300000); // 15 min
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(306000); // Past debounce +  5 min
+      await vi.advanceTimersByTimeAsync(300000); // 10 min
+      await vi.advanceTimersByTimeAsync(300000); // 15 min
 
       // Should have synced 4 times (initial + 3 intervals)
       expect(uploadLocalEvents).toHaveBeenCalledTimes(4);
@@ -237,7 +233,7 @@ describe('SyncManager', () => {
       vi.mocked(uploadLocalEvents).mockClear();
 
       // Wait 6 seconds (beyond 5-second debounce)
-      vi.advanceTimersByTime(6000);
+      await vi.advanceTimersByTimeAsync(6000);
 
       // Try to sync again
       await syncManager.syncNow();
@@ -257,7 +253,7 @@ describe('SyncManager', () => {
       vi.mocked(uploadLocalEvents).mockClear();
 
       // Wait for debounce period
-      vi.advanceTimersByTime(6000);
+      await vi.advanceTimersByTimeAsync(6000);
 
       // Trigger focus event
       window.dispatchEvent(new Event('focus'));
@@ -277,7 +273,7 @@ describe('SyncManager', () => {
       vi.mocked(uploadLocalEvents).mockClear();
 
       // Wait for debounce period
-      vi.advanceTimersByTime(6000);
+      await vi.advanceTimersByTimeAsync(6000);
 
       // Trigger online event
       window.dispatchEvent(new Event('online'));
@@ -337,7 +333,7 @@ describe('SyncManager', () => {
       });
 
       // Wait for debounce
-      vi.advanceTimersByTime(6000);
+      await vi.advanceTimersByTimeAsync(6000);
 
       // Trigger visibility change
       document.dispatchEvent(new Event('visibilitychange'));
@@ -373,7 +369,7 @@ describe('SyncManager', () => {
       vi.mocked(uploadLocalEvents).mockClear();
 
       // Wait for debounce to reset
-      vi.advanceTimersByTime(6000);
+      await vi.advanceTimersByTimeAsync(6000);
 
       // Cycle 2
       syncManager.start();
