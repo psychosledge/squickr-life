@@ -126,19 +126,19 @@ export function CollectionIndexView() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8 relative">
+        <div className="mb-8">
           {/* Top-right controls */}
-          <div className="absolute top-0 right-0 flex items-center gap-3">
+          <div className="flex justify-end items-center gap-3 mb-4">
             <DarkModeToggle />
             
             {/* User info and sign-out button */}
             <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-gray-200 dark:border-gray-700">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-[150px] sm:max-w-none">
                 {user?.email}
               </span>
               <button
                 onClick={handleSignOut}
-                className="text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors whitespace-nowrap"
                 title="Sign out"
               >
                 Sign out
@@ -146,12 +146,15 @@ export function CollectionIndexView() {
             </div>
           </div>
           
-          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Squickr Life
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
-            Get shit done quicker with Squickr!
-          </p>
+          {/* Title */}
+          <div className="text-center">
+            <h1 className="text-4xl sm:text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Squickr Life
+            </h1>
+            <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400">
+              Get shit done quicker with Squickr!
+            </p>
+          </div>
         </div>
 
         {/* Collection List */}
