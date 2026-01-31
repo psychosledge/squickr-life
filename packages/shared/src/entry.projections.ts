@@ -255,6 +255,37 @@ export class EntryListProjection {
   }
 
   /**
+   * Get active task counts grouped by collection ID
+   * 
+   * An "active task" is defined as:
+   * - entry.type === 'task'
+   * - entry.status === 'open'
+   * - !entry.migratedTo (don't count migrated originals)
+   * 
+   * This provides a more meaningful metric for collection badges than
+   * total entry counts, as it shows actionable work remaining.
+   * 
+   * @returns Map of collection ID to active task count (null key = uncategorized tasks)
+   */
+  async getActiveTaskCountsByCollection(): Promise<Map<string | null, number>> {
+    const allEntries = await this.getEntries('all');
+    const counts = new Map<string | null, number>();
+    
+    for (const entry of allEntries) {
+      // Only count active tasks:
+      // - Must be a task
+      // - Must have 'open' status
+      // - Must not be migrated (no migratedTo pointer)
+      if (entry.type === 'task' && entry.status === 'open' && !entry.migratedTo) {
+        const collectionId = entry.collectionId ?? null;
+        counts.set(collectionId, (counts.get(collectionId) ?? 0) + 1);
+      }
+    }
+    
+    return counts;
+  }
+
+  /**
    * Apply events to build entry state
    * This handles Task, Note, and Event events polymorphically
    */

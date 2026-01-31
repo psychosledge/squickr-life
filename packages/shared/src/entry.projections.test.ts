@@ -1116,4 +1116,159 @@ describe('EntryListProjection', () => {
       expect(counts.get('collection-A')).toBe(1);
     });
   });
+
+  describe('getActiveTaskCountsByCollection', () => {
+    it('should return empty map when no tasks exist', async () => {
+      const counts = await projection.getActiveTaskCountsByCollection();
+      
+      expect(counts.size).toBe(0);
+    });
+
+    it('should count only open tasks, not completed tasks', async () => {
+      // Create open task
+      const openTaskId = await taskHandler.handle({ title: 'Open task', collectionId: 'collection-A' });
+      
+      // Create and complete another task
+      const completedTaskId = await taskHandler.handle({ title: 'Completed task', collectionId: 'collection-A' });
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      await completeHandler.handle({ taskId: completedTaskId });
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+      
+      // Should only count the open task
+      expect(counts.get('collection-A')).toBe(1);
+    });
+
+    it('should count only tasks, not notes or events', async () => {
+      // Create mixed entry types in same collection
+      await taskHandler.handle({ title: 'Task 1', collectionId: 'collection-B' });
+      await taskHandler.handle({ title: 'Task 2', collectionId: 'collection-B' });
+      await noteHandler.handle({ content: 'Note 1', collectionId: 'collection-B' });
+      await eventHandler.handle({ content: 'Event 1', collectionId: 'collection-B' });
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+      
+      // Should only count the 2 tasks
+      expect(counts.get('collection-B')).toBe(2);
+    });
+
+    it('should group active tasks by collection ID', async () => {
+      // Create tasks in different collections
+      await taskHandler.handle({ title: 'Task A1', collectionId: 'collection-A' });
+      await taskHandler.handle({ title: 'Task A2', collectionId: 'collection-A' });
+      await taskHandler.handle({ title: 'Task A3', collectionId: 'collection-A' });
+      await taskHandler.handle({ title: 'Task B1', collectionId: 'collection-B' });
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+      
+      expect(counts.get('collection-A')).toBe(3);
+      expect(counts.get('collection-B')).toBe(1);
+    });
+
+    it('should not count migrated tasks (tasks with migratedTo set)', async () => {
+      const { MigrateTaskHandler } = await import('./task.handlers');
+      const migrateHandler = new MigrateTaskHandler(eventStore, projection);
+      
+      // Create task in collection-A
+      const originalTaskId = await taskHandler.handle({ title: 'Task to migrate', collectionId: 'collection-A' });
+      
+      // Create another task in collection-A that won't be migrated
+      await taskHandler.handle({ title: 'Task to stay', collectionId: 'collection-A' });
+      
+      // Migrate first task to collection-B
+      await migrateHandler.handle({ 
+        taskId: originalTaskId, 
+        targetCollectionId: 'collection-B' 
+      });
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+      
+      // collection-A should only have 1 task (the non-migrated one)
+      expect(counts.get('collection-A')).toBe(1);
+      // collection-B should have 1 task (the migrated copy)
+      expect(counts.get('collection-B')).toBe(1);
+    });
+
+    it('should count uncategorized tasks with null key', async () => {
+      // Create uncategorized tasks
+      await taskHandler.handle({ title: 'Uncategorized task 1' });
+      await taskHandler.handle({ title: 'Uncategorized task 2' });
+      
+      // Create task in a collection
+      await taskHandler.handle({ title: 'Task in collection', collectionId: 'collection-A' });
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+      
+      expect(counts.get(null)).toBe(2);
+      expect(counts.get('collection-A')).toBe(1);
+    });
+
+    it('should not include collections with zero active tasks', async () => {
+      // Create completed task in collection-A
+      const taskId = await taskHandler.handle({ title: 'Task to complete', collectionId: 'collection-A' });
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      await completeHandler.handle({ taskId });
+      
+      // Create note in collection-A (not a task)
+      await noteHandler.handle({ content: 'Note', collectionId: 'collection-A' });
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+      
+      // collection-A should not be in the map since it has no active tasks
+      expect(counts.has('collection-A')).toBe(false);
+    });
+
+    it('should update counts when task is completed', async () => {
+      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-X' });
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+
+      // Before completion
+      let counts = await projection.getActiveTaskCountsByCollection();
+      expect(counts.get('collection-X')).toBe(1);
+
+      // After completion
+      await completeHandler.handle({ taskId });
+      counts = await projection.getActiveTaskCountsByCollection();
+      
+      // Should no longer be counted
+      expect(counts.has('collection-X')).toBe(false);
+    });
+
+    it('should update counts when task is reopened', async () => {
+      const { ReopenTaskHandler } = await import('./task.handlers');
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      const reopenHandler = new ReopenTaskHandler(eventStore, projection);
+      
+      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-Y' });
+      
+      // Complete the task
+      await completeHandler.handle({ taskId });
+      
+      let counts = await projection.getActiveTaskCountsByCollection();
+      expect(counts.has('collection-Y')).toBe(false);
+      
+      // Reopen the task
+      await reopenHandler.handle({ taskId });
+      
+      counts = await projection.getActiveTaskCountsByCollection();
+      expect(counts.get('collection-Y')).toBe(1);
+    });
+
+    it('should update counts when task is deleted', async () => {
+      const { DeleteTaskHandler } = await import('./task.handlers');
+      const deleteHandler = new DeleteTaskHandler(eventStore, projection);
+      
+      const taskId = await taskHandler.handle({ title: 'Task to delete', collectionId: 'collection-Z' });
+      
+      // Before deletion
+      let counts = await projection.getActiveTaskCountsByCollection();
+      expect(counts.get('collection-Z')).toBe(1);
+      
+      // After deletion
+      await deleteHandler.handle({ taskId });
+      counts = await projection.getActiveTaskCountsByCollection();
+      
+      expect(counts.has('collection-Z')).toBe(false);
+    });
+  });
 });
