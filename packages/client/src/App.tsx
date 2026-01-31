@@ -12,18 +12,23 @@ import {
   CollectionListProjection
 } from '@squickr/shared';
 import { AppProvider } from './context/AppContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
+import { SignInView } from './views/SignInView';
 import { ROUTES } from './routes';
 
 /**
  * Main App Component
  * 
  * Phase 2D: Collection-first interface
- * - Collections Index at root (/)
- * - Collection Detail View for individual collections
+ * Phase 3: Authentication UI
+ * - Shows SignInView for unauthenticated users
+ * - Shows Collections for authenticated users
  */
-function App() {
+function AppContent() {
+  const { user, loading: authLoading } = useAuth();
+  
   // Initialize event sourcing infrastructure with IndexedDB persistence
   const [eventStore] = useState(() => new IndexedDBEventStore());
   const [entryProjection] = useState(() => new EntryListProjection(eventStore));
@@ -67,12 +72,18 @@ function App() {
     }
   };
 
-  if (isLoading) {
+  // Show loading while auth state or IndexedDB is initializing
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-gray-600 dark:text-gray-400">Loading...</div>
       </div>
     );
+  }
+
+  // Show sign-in view if user is not authenticated
+  if (!user) {
+    return <SignInView />;
   }
 
   // Create context value for AppProvider
@@ -88,6 +99,7 @@ function App() {
     migrateEventHandler,
   };
 
+  // Show main app for authenticated users
   return (
     <AppProvider value={contextValue}>
       <BrowserRouter>
@@ -98,6 +110,17 @@ function App() {
         </Routes>
       </BrowserRouter>
     </AppProvider>
+  );
+}
+
+/**
+ * Root App component with AuthProvider
+ */
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
