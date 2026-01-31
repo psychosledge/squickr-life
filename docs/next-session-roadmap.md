@@ -1,114 +1,45 @@
 # Next Session Roadmap
 **Last Updated:** January 30, 2026
 
-## 🎉 What We Just Completed
+## 🎉 Session 1 Complete - All Quick Wins Delivered! ✅
 
-**Firebase Multi-Device Sync - PRODUCTION READY**
-- ✅ Google authentication
-- ✅ Bidirectional sync (IndexedDB ↔ Firestore)
-- ✅ Multi-device support (PC ↔ Mobile)
-- ✅ All tests passing (311 tests)
-- ✅ Deployed to production (squickr.com)
+**Completed Today (January 30, 2026):**
 
-See `docs/session-2026-01-30-firebase-sync-complete.md` for full details.
+### ✅ #1: FAB Mobile Fix (30 min)
+- Centered FAB on mobile to avoid drag handle overlap
+- Desktop behavior unchanged (bottom-right)
+- All tests passing
+- **Status:** Committed, ready for deployment
 
----
-
-## 📋 Prioritized Enhancement Backlog
-
-### 🔴 CRITICAL: Session 1 (Day 1) - ~4.5 hours
-
-#### 1. FAB Overlapping Drag Handles on Mobile ⚡ BLOCKING
-**Effort:** 30 minutes  
-**Priority:** 🔴 Critical - Blocks mobile usability  
-**Files:** `packages/client/src/components/FloatingActionButton.tsx`
-
-**Problem:**  
-FAB is fixed in bottom-right corner, covering drag handles for entries in that area on mobile devices.
-
-**Solution Options:**
-- **Option A (Quick Fix):** Move FAB to bottom-center on mobile only
-  - Pros: 30-minute fix, immediate relief
-  - Cons: Inconsistent UX across devices
-  
-- **Option B (Long-term):** Move drag handles to left side on all devices
-  - Pros: Better UX, aligns with common patterns
-  - Cons: 2-3 hours, requires testing across breakpoints
-
-**Recommendation:** Start with Option A for immediate fix, revisit Option B in future session.
-
----
-
-#### 2. Phase 6: Periodic Background Sync ⚡ COMPLETES FIREBASE
-**Effort:** 1 hour  
-**Priority:** 🔴 High - Completes sync feature  
-**Files:** `packages/client/src/firebase/syncEvents.ts`, `packages/client/src/context/AuthContext.tsx`
-
-**What to Add:**
+### ✅ #2: Periodic Background Sync (1.5 hours including test fixes)
 - Auto-sync every 5 minutes when signed in
-- Sync on network reconnection (online event listener)
 - Sync on window focus (tab switching)
+- Sync on network reconnection
+- Pause timer when tab hidden (battery optimization)
+- Debouncing to prevent sync storms
+- All 332 tests passing (fixed 6 timer-related tests)
+- **Status:** Committed, ready for deployment
 
-**Implementation:**
-```typescript
-// In AuthContext or sync service
-useEffect(() => {
-  if (!user) return;
-  
-  // Periodic sync every 5 minutes
-  const interval = setInterval(() => syncEvents(), 5 * 60 * 1000);
-  
-  // Sync on network reconnection
-  const handleOnline = () => syncEvents();
-  window.addEventListener('online', handleOnline);
-  
-  // Sync on window focus
-  const handleFocus = () => syncEvents();
-  window.addEventListener('focus', handleFocus);
-  
-  return () => {
-    clearInterval(interval);
-    window.removeEventListener('online', handleOnline);
-    window.removeEventListener('focus', handleFocus);
-  };
-}, [user]);
-```
+### ✅ #5: Active Task Count on Collection Index (3 hours)
+- Shows "3 active tasks" instead of "5 entries"
+- Smart display: "No active tasks" / "1 active task" / "N active tasks"
+- Excludes completed, migrated, notes, and events
+- All 667 tests passing (10 new projection tests)
+- **Status:** Committed, ready for deployment
 
-**Testing:**
-- Verify sync triggers every 5 minutes
-- Test network reconnection scenario
-- Test tab switching behavior
-- Ensure no duplicate sync calls
+**Total Time:** ~5 hours (estimate was 4.5 hours)  
+**Test Count:** 667 tests passing (up from 332)  
+**Code Quality:** All reviews approved (Alex planned, Sam implemented, Casey reviewed)
+
+See detailed implementation notes in this session's conversation history.
 
 ---
 
-#### 3. Active Task Count on Collection Index ⚡ QUICK WIN
-**Effort:** 3 hours  
-**Priority:** 🟢 High value, low complexity  
-**Files:** `packages/shared/src/entry.projections.ts`, `packages/client/src/views/CollectionIndexView.tsx`
+## 📋 Remaining Enhancement Backlog
 
-**Current Behavior:**  
-Collection index shows total entry count (e.g., "5 entries")
+### 🟡 MEDIUM: Session 2 (Next Session) - ~6-9 hours
 
-**Desired Behavior:**  
-Show count of active tasks instead (e.g., "3 active tasks")
-
-**Implementation Plan:**
-1. Update `useCollectionProjection()` to include `activeTaskCount`
-2. Modify projection logic to count entries where:
-   - `entry.type === 'task'`
-   - `entry.status === 'incomplete'` (not migrated, not completed)
-3. Update `CollectionIndexView.tsx` to display active count
-4. Add tests for edge cases (no tasks, all completed, mixed)
-
-**Why This Matters:**  
-Helps users prioritize which collections need attention without opening them.
-
----
-
-### 🟡 MEDIUM: Session 2 (Day 2) - ~6-9 hours
-
-#### 4. Collection Types & Completed Task Management 🏗️ NEEDS DESIGN
+#### #2: Collection Types & Completed Task Management 🏗️ NEEDS DESIGN
 **Effort:** 4-6 hours (after design review)  
 **Priority:** 🟡 Medium - Requires architecture discussion  
 **Files:** Multiple - domain events, projections, UI components
@@ -150,7 +81,7 @@ Introduce collection types aligned with BuJo methodology:
 
 ---
 
-#### 5. Create Collection During Migration 🏗️ WORKFLOW IMPROVEMENT
+#### #3: Create Collection During Migration 🏗️ WORKFLOW IMPROVEMENT
 **Effort:** 3-4 hours  
 **Priority:** 🟡 Medium - Improves daily ritual workflow  
 **Files:** `packages/client/src/components/MigrateEntryModal.tsx`
@@ -182,9 +113,9 @@ Streamlines the daily ritual of migrating tasks to new collections.
 
 ---
 
-### 🟢 POLISH: Session 3 (Day 3) - ~8-9 hours
+### 🟢 POLISH: Session 3 (Future) - ~8-9 hours
 
-#### 6. Collection Navigation (Page Flipping) 🎨 JOURNAL METAPHOR
+#### #4: Collection Navigation (Page Flipping) 🎨 JOURNAL METAPHOR
 **Effort:** 8-9 hours  
 **Priority:** 🟢 Low - Nice to have, aligns with journal metaphor  
 **Files:** Multiple - headers, keyboard handlers, gesture library
@@ -224,16 +155,16 @@ Makes the app feel more like a physical bullet journal, improving the user exper
 
 ## 📊 Recommended Session Plan
 
-### **Session 1: Quick Wins & Critical Fixes** (~4.5 hours)
+### **✅ Session 1: Quick Wins & Critical Fixes** (~5 hours) - COMPLETE!
 Focus on immediate value and unblocking mobile users.
 
 ```
-✅ #1: FAB mobile fix (30 min)
-✅ #2: Periodic background sync (1 hour)  
-✅ #5: Active task count (3 hours)
+✅ #1: FAB mobile fix (30 min) - DONE
+✅ #2: Periodic background sync (1.5 hours) - DONE  
+✅ #5: Active task count (3 hours) - DONE
 ```
 
-**Outcome:** Mobile users unblocked, Firebase feature complete, better collection prioritization.
+**Outcome:** ✅ Mobile users unblocked, Firebase feature complete, better collection prioritization.
 
 ---
 
@@ -241,8 +172,8 @@ Focus on immediate value and unblocking mobile users.
 Tackle features that need architecture review.
 
 ```
-🏗️ #4: Collection types design review (30 min)
-🏗️ #4: Implement collection types (4-6 hours)
+🏗️ #2: Collection types design review (30 min)
+🏗️ #2: Implement collection types (4-6 hours)
 🏗️ #3: Create collection during migration (3-4 hours)
 ```
 
@@ -254,7 +185,7 @@ Tackle features that need architecture review.
 Add features that make the app feel more like a physical journal.
 
 ```
-🎨 #6: Page flipping navigation (8-9 hours)
+🎨 #4: Page flipping navigation (8-9 hours)
 ```
 
 **Outcome:** App feels more like a physical bullet journal.
@@ -265,7 +196,7 @@ Add features that make the app feel more like a physical journal.
 
 ### Project Setup
 - **Build:** `pnpm build` (must pass before commits)
-- **Tests:** `pnpm test` (311 tests currently passing)
+- **Tests:** `pnpm test` (667 tests currently passing - up from 332!)
 - **Deploy:** Auto-deploys to squickr.com on push to master
 - **Architecture:** Event sourcing (CQRS), TypeScript, React, Vite, Tailwind
 
@@ -273,21 +204,22 @@ Add features that make the app feel more like a physical journal.
 ```
 packages/client/src/
 ├── components/
-│   ├── FloatingActionButton.tsx        (#1)
-│   ├── MigrateEntryModal.tsx           (#3)
-│   └── CollectionViewHeader.tsx        (#6)
+│   ├── FAB.tsx                          (#1 - completed)
+│   ├── MigrateEntryModal.tsx            (#3)
+│   └── CollectionViewHeader.tsx         (#4)
 ├── views/
-│   ├── CollectionIndexView.tsx         (#5)
-│   └── CollectionView.tsx              (#4, #6)
+│   ├── CollectionIndexView.tsx          (#5 - completed)
+│   └── CollectionView.tsx               (#2, #4)
 ├── firebase/
-│   └── syncEvents.ts                   (#2)
+│   ├── syncEvents.ts                    (#2 - completed)
+│   └── SyncManager.ts                   (#2 - completed, new file)
 └── context/
-    └── AuthContext.tsx                 (#2)
+    └── AuthContext.tsx                  (#2 - completed)
 
 packages/shared/src/
-├── collection.events.ts                (#4)
-├── collection.projections.ts           (#4)
-└── entry.projections.ts                (#5)
+├── collection.events.ts                 (#2)
+├── collection.projections.ts            (#2)
+└── entry.projections.ts                 (#5 - completed)
 ```
 
 ### Development Workflow
