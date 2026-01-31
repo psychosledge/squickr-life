@@ -8,7 +8,7 @@ export function FAB({ onClick, className = '' }: FABProps) {
     <button
       onClick={onClick}
       className={`
-        fixed bottom-5 right-5 md:bottom-6 md:right-6
+        fixed bottom-5 left-1/2 -translate-x-1/2 md:bottom-6 md:right-6 md:left-auto md:translate-x-0
         w-14 h-14 md:w-16 md:h-16
         bg-blue-600 hover:bg-blue-700 active:bg-blue-800
         text-white
