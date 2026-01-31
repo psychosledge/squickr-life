@@ -15,6 +15,7 @@ import { CollectionList } from '../components/CollectionList';
 import { CreateCollectionModal } from '../components/CreateCollectionModal';
 import { FAB } from '../components/FAB';
 import { DarkModeToggle } from '../components/DarkModeToggle';
+import { UserProfileMenu } from '../components/UserProfileMenu';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
 export function CollectionIndexView() {
@@ -130,20 +131,7 @@ export function CollectionIndexView() {
           {/* Top-right controls */}
           <div className="flex justify-end items-center gap-3 mb-4">
             <DarkModeToggle />
-            
-            {/* User info and sign-out button */}
-            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-gray-200 dark:border-gray-700">
-              <span className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-[150px] sm:max-w-none">
-                {user?.email}
-              </span>
-              <button
-                onClick={handleSignOut}
-                className="text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors whitespace-nowrap"
-                title="Sign out"
-              >
-                Sign out
-              </button>
-            </div>
+            {user && <UserProfileMenu user={user} onSignOut={handleSignOut} />}
           </div>
           
           {/* Title */}

@@ -4,15 +4,44 @@
  * Phase 2C: Collection Detail View - Header component
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { CollectionHeader } from './CollectionHeader';
+import { AppProvider } from '../context/AppContext';
+
+// Mock useNavigate from react-router-dom
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 describe('CollectionHeader', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+
+  beforeEach(() => {
+    mockNavigate.mockClear();
+    
+    mockCollectionProjection = {
+      getCollections: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+  });
+
   const defaultProps = {
     collectionName: 'Books to Read',
+    collectionId: 'collection-1',
     onRename: vi.fn(),
     onDelete: vi.fn(),
     onSettings: vi.fn(),
@@ -21,7 +50,20 @@ describe('CollectionHeader', () => {
   function renderHeader(props = {}) {
     return render(
       <BrowserRouter>
-        <CollectionHeader {...defaultProps} {...props} />
+        <AppProvider 
+          value={{
+            eventStore: {} as any,
+            collectionProjection: mockCollectionProjection,
+            entryProjection: mockEntryProjection,
+            taskProjection: {} as any,
+            createCollectionHandler: {} as any,
+            migrateTaskHandler: {} as any,
+            migrateNoteHandler: {} as any,
+            migrateEventHandler: {} as any,
+          }}
+        >
+          <CollectionHeader {...defaultProps} {...props} />
+        </AppProvider>
       </BrowserRouter>
     );
   }
@@ -122,8 +164,26 @@ describe('CollectionHeader', () => {
 });
 
 describe('CollectionHeader - Virtual Collection Behavior', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+
+  beforeEach(() => {
+    mockNavigate.mockClear();
+    
+    mockCollectionProjection = {
+      getCollections: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+  });
+
   const defaultProps = {
     collectionName: 'Uncategorized',
+    collectionId: 'uncategorized',
     onRename: vi.fn(),
     onDelete: vi.fn(),
     onSettings: vi.fn(),
@@ -132,7 +192,20 @@ describe('CollectionHeader - Virtual Collection Behavior', () => {
   function renderHeader(props = {}) {
     return render(
       <BrowserRouter>
-        <CollectionHeader {...defaultProps} {...props} />
+        <AppProvider 
+          value={{
+            eventStore: {} as any,
+            collectionProjection: mockCollectionProjection,
+            entryProjection: mockEntryProjection,
+            taskProjection: {} as any,
+            createCollectionHandler: {} as any,
+            migrateTaskHandler: {} as any,
+            migrateNoteHandler: {} as any,
+            migrateEventHandler: {} as any,
+          }}
+        >
+          <CollectionHeader {...defaultProps} {...props} />
+        </AppProvider>
       </BrowserRouter>
     );
   }

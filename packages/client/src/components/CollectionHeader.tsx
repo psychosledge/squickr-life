@@ -8,9 +8,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../routes';
+import { useCollectionNavigation } from '../hooks/useCollectionNavigation';
+import { CollectionNavigationControls } from './CollectionNavigationControls';
 
 interface CollectionHeaderProps {
   collectionName: string;
+  collectionId: string;
   onRename: () => void;
   onDelete: () => void;
   onSettings: () => void;
@@ -19,6 +22,7 @@ interface CollectionHeaderProps {
 
 export function CollectionHeader({
   collectionName,
+  collectionId,
   onRename,
   onDelete,
   onSettings,
@@ -26,6 +30,14 @@ export function CollectionHeader({
 }: CollectionHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  
+  // Collection navigation
+  const {
+    previousCollection,
+    nextCollection,
+    navigateToPrevious,
+    navigateToNext,
+  } = useCollectionNavigation(collectionId);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -60,34 +72,44 @@ export function CollectionHeader({
   return (
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
       <div className="max-w-4xl mx-auto flex items-center justify-between">
-        {/* Left: Back button */}
-        <Link
-          to={ROUTES.index}
-          className="
-            p-2 -ml-2
-            text-gray-600 dark:text-gray-400
-            hover:text-gray-900 dark:hover:text-white
-            hover:bg-gray-100 dark:hover:bg-gray-700
-            rounded-lg
-            transition-colors
-            focus:outline-none focus:ring-2 focus:ring-blue-500
-          "
-          aria-label="Back to collections"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
+        {/* Left: Back button + Navigation controls */}
+        <div className="flex items-center gap-2">
+          <Link
+            to={ROUTES.index}
+            className="
+              p-2 -ml-2
+              text-gray-600 dark:text-gray-400
+              hover:text-gray-900 dark:hover:text-white
+              hover:bg-gray-100 dark:hover:bg-gray-700
+              rounded-lg
+              transition-colors
+              focus:outline-none focus:ring-2 focus:ring-blue-500
+            "
+            aria-label="Back to collections"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-        </Link>
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </Link>
+          
+          {/* Navigation controls */}
+          <CollectionNavigationControls
+            previousCollection={previousCollection}
+            nextCollection={nextCollection}
+            onNavigatePrevious={navigateToPrevious}
+            onNavigateNext={navigateToNext}
+          />
+        </div>
 
         {/* Center: Collection name (clickable, navigates to index) */}
         <Link

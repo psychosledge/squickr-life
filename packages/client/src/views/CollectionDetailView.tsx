@@ -335,6 +335,7 @@ export function CollectionDetailView() {
       {/* Header with back button and menu */}
       <CollectionHeader
         collectionName={collection.name}
+        collectionId={collection.id}
         onRename={handleRenameCollection}
         onDelete={handleDeleteCollection}
         onSettings={handleOpenSettings}
