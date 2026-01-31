@@ -93,6 +93,6 @@ export function EntryItem({
   }
 
   // TypeScript exhaustiveness check
-  const _exhaustiveCheck: never = entry;
-  return _exhaustiveCheck;
+  // This should never be reached if all entry types are handled
+  throw new Error(`Unknown entry type: ${(entry as Entry).type}`);
 }

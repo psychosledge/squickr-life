@@ -9,6 +9,8 @@
 import { useState, useEffect } from 'react';
 import type { Collection } from '@squickr/shared';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { signOut } from '../firebase/auth';
 import { CollectionList } from '../components/CollectionList';
 import { CreateCollectionModal } from '../components/CreateCollectionModal';
 import { FAB } from '../components/FAB';
@@ -17,6 +19,7 @@ import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
 export function CollectionIndexView() {
   const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler } = useApp();
+  const { user } = useAuth();
   
   const [collections, setCollections] = useState<Collection[]>([]);
   const [entryCountsByCollection, setEntryCountsByCollection] = useState<Map<string, number>>(new Map());
@@ -109,14 +112,38 @@ export function CollectionIndexView() {
     });
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      // Auth state change will be handled by AuthContext
+      // User will automatically be redirected to SignInView
+    } catch (error) {
+      console.error('[CollectionIndexView] Sign out failed:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 relative">
-          {/* Dark mode toggle - positioned top-right */}
-          <div className="absolute top-0 right-0">
+          {/* Top-right controls */}
+          <div className="absolute top-0 right-0 flex items-center gap-3">
             <DarkModeToggle />
+            
+            {/* User info and sign-out button */}
+            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-gray-200 dark:border-gray-700">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {user?.email}
+              </span>
+              <button
+                onClick={handleSignOut}
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                title="Sign out"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
           
           <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
