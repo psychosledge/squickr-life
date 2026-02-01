@@ -24,7 +24,6 @@ const CREATE_NEW_OPTION = '__CREATE_NEW__';
  * Features:
  * - Shows "+ Create New Collection" option at the top
  * - Shows all collections except current
- * - Includes "Uncategorized" option (null collection)
  * - Nested modal flow: Can open CreateCollectionModal from this modal
  * - Auto-selects newly created collection
  * - Prevents migration if entry already migrated
@@ -103,8 +102,7 @@ export function MigrateEntryModal({
     setError('');
 
     try {
-      const targetCollectionId = selectedOption === 'uncategorized' ? null : selectedOption;
-      await onMigrate(entry.id, targetCollectionId);
+      await onMigrate(entry.id, selectedOption);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to migrate entry');
@@ -215,26 +213,6 @@ export function MigrateEntryModal({
               <span className="text-blue-600 dark:text-blue-400 font-medium">+ Create New Collection</span>
             </label>
 
-            {/* Uncategorized option */}
-            {currentCollectionId !== undefined && (
-              <label
-                className="flex items-center w-full text-left px-4 py-3 rounded border border-gray-200 dark:border-gray-700
-                           hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer
-                           disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <input
-                  type="radio"
-                  name="collection-option"
-                  value="uncategorized"
-                  checked={selectedOption === 'uncategorized'}
-                  onChange={() => setSelectedOption('uncategorized')}
-                  disabled={isSubmitting || isAlreadyMigrated}
-                  className="mr-3"
-                />
-                <span className="text-gray-700 dark:text-gray-300">Uncategorized</span>
-              </label>
-            )}
-
             {/* Available collections */}
             {availableCollections.map(collection => (
               <label
@@ -256,7 +234,7 @@ export function MigrateEntryModal({
               </label>
             ))}
 
-            {availableCollections.length === 0 && currentCollectionId === undefined && (
+            {availableCollections.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
                 No other collections available
               </p>

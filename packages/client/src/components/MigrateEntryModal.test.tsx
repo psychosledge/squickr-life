@@ -115,18 +115,6 @@ describe('MigrateEntryModal', () => {
       expect(screen.queryByLabelText(/Work Projects/i)).not.toBeInTheDocument();
       expect(screen.getByLabelText(/Personal/i)).toBeInTheDocument();
     });
-
-    it('should show "Uncategorized" option when entry is in a collection', () => {
-      render(<MigrateEntryModal {...defaultProps} currentCollectionId="col1" />);
-      
-      expect(screen.getByLabelText(/Uncategorized/i)).toBeInTheDocument();
-    });
-
-    it('should not show "Uncategorized" option when entry is already uncategorized', () => {
-      render(<MigrateEntryModal {...defaultProps} currentCollectionId={undefined} />);
-      
-      expect(screen.queryByLabelText(/Uncategorized/i)).not.toBeInTheDocument();
-    });
   });
 
   describe('Migration Flow', () => {
@@ -140,18 +128,6 @@ describe('MigrateEntryModal', () => {
       await user.click(screen.getByRole('button', { name: /^Migrate$/i }));
       
       expect(onMigrate).toHaveBeenCalledWith('entry1', 'col1');
-    });
-
-    it('should call onMigrate with null when Uncategorized is selected', async () => {
-      const user = userEvent.setup();
-      const onMigrate = vi.fn().mockResolvedValue(undefined);
-      
-      render(<MigrateEntryModal {...defaultProps} onMigrate={onMigrate} currentCollectionId="col1" />);
-      
-      await user.click(screen.getByLabelText(/Uncategorized/i));
-      await user.click(screen.getByRole('button', { name: /^Migrate$/i }));
-      
-      expect(onMigrate).toHaveBeenCalledWith('entry1', null);
     });
 
     it('should close modal after successful migration', async () => {
