@@ -151,13 +151,6 @@ export function CollectionIndexView() {
           activeTaskCountsByCollection={activeTaskCountsByCollection}
           onReorder={handleReorder}
         />
-
-        {/* Footer */}
-        <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>Event-Sourced • CQRS • TDD • Offline-First PWA</p>
-          <p className="mt-1">✓ Data persists with IndexedDB</p>
-          <p className="mt-1">Built by the AI Agent Team</p>
-        </div>
       </div>
 
       {/* FAB for creating collections */}

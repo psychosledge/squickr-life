@@ -77,11 +77,5 @@ describe('App', () => {
     });
   });
 
-  it('should show persistence message in footer', async () => {
-    render(<App />);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/data persists with indexeddb/i)).toBeInTheDocument();
-    });
-  });
+
 });
