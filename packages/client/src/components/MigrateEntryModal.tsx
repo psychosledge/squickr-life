@@ -9,7 +9,7 @@ interface MigrateEntryModalProps {
   currentCollectionId?: string;
   collections: Collection[];
   onMigrate: (entryId: string, targetCollectionId: string | null) => Promise<void>;
-  onCreateCollection?: (name: string) => Promise<void>;
+  onCreateCollection?: (name: string) => Promise<string>;
   selectedCollectionId?: string;
   onOpenCreateCollection?: () => void;
 }
@@ -121,11 +121,17 @@ export function MigrateEntryModal({
   };
 
   const handleCreateCollection = async (name: string) => {
-    if (onCreateCollection) {
+    if (onCreateCollection && entry) {
       try {
-        await onCreateCollection(name);
+        // Create the collection and get the new collection ID
+        const newCollectionId = await onCreateCollection(name);
         setShowCreateModal(false);
-        // The parent component should update the collections list and set selectedCollectionId
+        
+        // Auto-migrate the entry to the newly created collection
+        await onMigrate(entry.id, newCollectionId);
+        
+        // Close the migrate modal
+        onClose();
       } catch (err) {
         // Error handling is done in CreateCollectionModal
         throw err;

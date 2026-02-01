@@ -13,7 +13,7 @@ interface NoteEntryItemProps {
   collections?: Collection[];
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
-  onCreateCollection?: (name: string) => Promise<void>;
+  onCreateCollection?: (name: string) => Promise<string>;
 }
 
 /**

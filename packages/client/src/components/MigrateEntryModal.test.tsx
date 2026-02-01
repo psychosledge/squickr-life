@@ -244,6 +244,45 @@ describe('MigrateEntryModal', () => {
       expect(screen.getByRole('button', { name: /^Migrate$/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /Next/i })).not.toBeInTheDocument();
     });
+
+    it('should auto-migrate entry after creating new collection via nested modal', async () => {
+      const user = userEvent.setup();
+      const onMigrate = vi.fn().mockResolvedValue(undefined);
+      const onClose = vi.fn();
+      const onCreateCollection = vi.fn().mockResolvedValue('col4'); // Returns new collection ID
+      
+      render(<MigrateEntryModal 
+        {...defaultProps} 
+        onMigrate={onMigrate}
+        onClose={onClose}
+        onCreateCollection={onCreateCollection}
+      />);
+      
+      // Select "+ Create New Collection"
+      await user.click(screen.getByLabelText(/Create New Collection/i));
+      
+      // Click Next to open create modal
+      await user.click(screen.getByRole('button', { name: /Next/i }));
+      
+      // Wait for CreateCollectionModal to appear
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /Create Collection/i })).toBeInTheDocument();
+      });
+      
+      // Enter collection name
+      const input = screen.getByLabelText(/Collection Name/i);
+      await user.type(input, 'New Collection');
+      
+      // Submit the create form (Enter key)
+      await user.keyboard('{Enter}');
+      
+      // Wait for collection creation and auto-migration
+      await waitFor(() => {
+        expect(onCreateCollection).toHaveBeenCalledWith('New Collection');
+        expect(onMigrate).toHaveBeenCalledWith('entry1', 'col4');
+        expect(onClose).toHaveBeenCalled();
+      });
+    });
   });
 
   describe('Keyboard and Accessibility', () => {

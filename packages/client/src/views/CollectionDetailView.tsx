@@ -280,8 +280,8 @@ export function CollectionDetailView() {
     }
   };
 
-  const handleCreateCollection = async (name: string) => {
-    await createCollectionHandler.handle({ name });
+  const handleCreateCollection = async (name: string): Promise<string> => {
+    return await createCollectionHandler.handle({ name });
   };
 
   // Loading state

@@ -1,5 +1,5 @@
 # Next Session Roadmap
-**Last Updated:** February 2, 2026
+**Last Updated:** February 3, 2026
 
 ## 🎉 Session 3 Complete - Polish & UX Enhancements Delivered! ✅
 
@@ -104,18 +104,55 @@ See detailed implementation notes in this session's conversation history.
 
 ---
 
+## 🎉 Session 4A Complete - Quick Fixes Delivered! ✅
+
+**Completed (February 3, 2026):**
+
+### ✅ #1: Remove Page Footer (15 min)
+- Removed footer text ("Event-Sourced • CQRS • TDD...") from CollectionIndexView
+- Footer was covered by FAB and provided no user value
+- Updated tests to remove footer checks
+- **Status:** Committed
+
+### ✅ #2: Shorten Menu Text (15 min)
+- Changed "Migrate to Collection" → "Migrate" in EntryActionsMenu
+- Cleaner, more concise menu item text
+- Modal title remains verbose for context
+- **Status:** Committed
+
+### ✅ #3: Remove Uncategorized from Migration Options (1 hour)
+- Removed "Uncategorized" from migration target options
+- Uncategorized is now purely a virtual collection for orphaned entries
+- Users must explicitly choose a collection or create one
+- **Status:** Committed
+
+### ✅ #4: Fix Modal Z-Index Bug (15 min)
+- Increased CreateCollectionModal z-index to z-70
+- Nested modal now appears above parent MigrateEntryModal (z-50)
+- Fixed blocking issue in nested modal workflow
+- **Status:** Committed
+
+**Total Time:** ~2 hours (estimate was 2 hours) ✅  
+**Test Count:** 772 tests passing (348 backend + 424 frontend)  
+**Code Quality:** All fixes verified and deployed
+
+### ✅ Bug Fix: Entry Not Migrated During Collection Creation (30 min)
+- Fixed bug where entries weren't migrated when creating new collection during migration flow
+- Changed `onCreateCollection` to return new collection ID
+- Auto-migrate entry after collection creation, then close modals
+- Added test coverage for complete flow
+- **Test Count:** 773 tests passing (348 backend + 425 frontend)
+- **Status:** Fixed and verified
+
+---
+
 ## 📝 User Feedback Summary (February 2, 2026)
 
-After using the app in production, user identified the following issues and feature requests:
+After using the app in production, user identified the following strategic feature requests:
 
-**Quick Fixes Needed:**
-1. ✂️ **Remove footer** - Covered by FAB, serves no purpose
-2. ✏️ **Shorten menu text** - "Migrate to Collection" → "Migrate" 
-3. 🚫 **Remove Uncategorized from migrations** - Should never be a migration target
-4. 🐛 **Modal z-index bug** - Create collection modal appears behind migrate modal
+**Strategic Feature Requests:**
 
-**Strategic Feature Request:**
-5. 📅 **Calendar integration & naming templates** - Big idea requiring architecture design
+1. 📅 **Calendar integration & naming templates** - Big idea requiring architecture design
    - Template-based collection naming (e.g., "Daily {MM}-{DD}-{dw}" → "Daily 02-01-Sat")
    - Collection types aligned with BuJo methodology (Daily Log, Monthly Log, Future Log)
    - Calendar navigation and date-based organization
@@ -123,116 +160,36 @@ After using the app in production, user identified the following issues and feat
    - Virtual migrations between daily logs
    - Manual creation workflow (for now)
 
-**User Preference:**
-- Quick fixes as one chunk
-- Templates as separate chunk
-- Include templates in architecture design (don't implement until we have full plan)
-- Brainstorm calendar integration before committing to approach
+2. ⭐ **Collection prioritization/favoriting** - Solve collection list growth problem
+   - **Problem:** As collection count grows, harder to navigate to relevant collections
+   - **Need:** Prioritize active/relevant collections over historical ones
+   - **Context:** Traditional BuJo has future/monthly/daily hierarchy + custom collections
+   - **Possible solutions to explore:**
+     - Simple favoriting feature (star/unstar collections)
+     - Collection types with automatic prioritization (Daily > Monthly > Custom > Historical)
+     - Pinned collections (always at top)
+     - Smart sorting (recently accessed, most active tasks)
+     - Collection filters/views (show only favorites, show only active)
+   - **Applies to:** Both collection index list AND migration modal target list
 
 ---
 
-## 📋 Session 4 Plan - Quick Fixes & Calendar Architecture
+## 📋 Session 4B Plan - Calendar Architecture Design
 
-**Status:** 🔵 PLANNED  
-**Total Estimated Time:** 4-6 hours across two sub-sessions
+**Status:** 🟢 NEXT UP  
+**Total Estimated Time:** 1-2 hours
 
----
+### **Session 4B: Calendar Architecture Design** 🎨 DESIGN SESSION
 
-### **Session 4A: Quick Fixes** (~2 hours) 🟢 NEXT UP
-
-Small UX improvements and bug fixes identified from user feedback.
-
-#### #1: Remove Page Footer 🟢 TRIVIAL
-**Effort:** 15 minutes  
-**Priority:** High - Covered by FAB, serves no purpose
-
-**Problem:**  
-Footer text ("Event-Sourced • CQRS • TDD...") is covered by the FAB and provides no user value.
-
-**Solution:**  
-- Remove footer div from `CollectionIndexView.tsx` (lines 155-160)
-- Update/remove test checking for footer persistence message
-
-**Files to Modify:**
-- `packages/client/src/views/CollectionIndexView.tsx`
-- `packages/client/src/App.test.tsx`
-
----
-
-#### #2: Shorten Menu Text: "Migrate to Collection" → "Migrate" 🟢 TRIVIAL
-**Effort:** 15 minutes  
-**Priority:** High - Better UX, cleaner menu
-
-**Problem:**  
-Menu item text "Migrate to Collection" is verbose and redundant.
-
-**Solution:**  
-- Update `EntryActionsMenu.tsx` line 138: Change text to "Migrate"
-- Modal title can remain verbose (provides context when opened)
-- Update tests to match new text
-
-**Files to Modify:**
-- `packages/client/src/components/EntryActionsMenu.tsx`
-- `packages/client/src/components/EntryActionsMenu.test.tsx`
-
----
-
-#### #3: Remove "Uncategorized" from Migration Options 🟡 MEDIUM
-**Effort:** 1 hour  
-**Priority:** High - Correctness issue
-
-**Problem:**  
-"Uncategorized" appears as migration option even when not visible on main page. Uncategorized should only exist for orphaned entries, not as a deliberate migration target.
-
-**User Decision:** NEVER show Uncategorized as migration option.
-
-**Rationale:**
-- Uncategorized is a *virtual* collection for entries without a home
-- Users should explicitly choose a collection or create one
-- Migration to "Uncategorized" defeats the purpose of organizing
-- If user wants to "un-organize" an entry, they should delete it instead
-
-**Solution:**  
-- Remove "Uncategorized" option block from `MigrateEntryModal.tsx` (lines 218-236)
-- Remove related logic checking `currentCollectionId !== undefined`
-- Update tests to remove Uncategorized migration scenarios
-
-**Files to Modify:**
-- `packages/client/src/components/MigrateEntryModal.tsx`
-- `packages/client/src/components/MigrateEntryModal.test.tsx`
-
----
-
-#### #4: Fix Modal Z-Index Bug 🔴 BUG
-**Effort:** 15 minutes  
-**Priority:** High - Blocks nested modal workflow
-
-**Problem:**  
-When creating a new collection during migration, the CreateCollectionModal appears BEHIND the MigrateEntryModal, making it unusable.
-
-**Root Cause:**
-- Both modals use `z-50`, so they're at the same z-index level
-- Nested modal should always be on top
-
-**Solution:**  
-- Increase `CreateCollectionModal` z-index to `z-60` (line 107)
-- Ensures nested modals always appear above parent modals
-
-**Files to Modify:**
-- `packages/client/src/components/CreateCollectionModal.tsx`
-
----
-
-### **Session 4B: Calendar Architecture Design** (~1-2 hours) 🎨 DESIGN SESSION
-
-Strategic planning session to design collection types, naming templates, and calendar integration before implementation.
+Strategic planning session to design collection types, naming templates, calendar integration, and collection prioritization before implementation.
 
 #### Goals:
 1. **Design collection type architecture** (Daily Log, Monthly Log, Future Log, Custom)
 2. **Define template system** for date-based collection naming
-3. **Scope Google Calendar integration** (import/export/sync?)
-4. **Plan virtual migration behavior** (auto-migrate tasks between days?)
-5. **Create detailed implementation roadmap** for Session 5+
+3. **Solve collection prioritization problem** (favoriting, pinning, smart sorting)
+4. **Scope Google Calendar integration** (import/export/sync?)
+5. **Plan virtual migration behavior** (auto-migrate tasks between days?)
+6. **Create detailed implementation roadmap** for Session 5+
 
 #### Key Questions to Answer:
 
@@ -337,16 +294,17 @@ Session 4B architecture design to plan implementation approach.
 
 ## 📊 Session Summary
 
-### **✅ Session 1: Quick Wins & Critical Fixes** (~5 hours) - COMPLETE!
-Focus on immediate value and unblocking mobile users.
+### **✅ Session 4A: Quick Fixes** (~2 hours) - COMPLETE!
+Small UX improvements and bug fixes identified from user feedback.
 
 ```
-✅ FAB mobile fix (30 min)
-✅ Periodic background sync (1.5 hours)
-✅ Active task count (3 hours)
+✅ Remove page footer (15 min)
+✅ Shorten menu text (15 min)
+✅ Remove Uncategorized from migrations (1 hour)
+✅ Fix modal z-index bug (15 min)
 ```
 
-**Outcome:** ✅ Mobile users unblocked, Firebase feature complete, better collection prioritization.
+**Outcome:** ✅ Cleaner UI, better migration UX, nested modals work correctly.
 
 ---
 
@@ -372,6 +330,20 @@ Add features that make the app feel more polished and professional.
 ```
 
 **Outcome:** ✅ Cleaner header UI, better navigation UX, app feels more like a physical bullet journal.
+
+---
+
+### **✅ Session 4A: Quick Fixes** (~2 hours) - COMPLETE!
+Small UX improvements and bug fixes identified from user feedback.
+
+```
+✅ Remove page footer (15 min)
+✅ Shorten menu text (15 min)
+✅ Remove Uncategorized from migrations (1 hour)
+✅ Fix modal z-index bug (15 min)
+```
+
+**Outcome:** ✅ Cleaner UI, better migration UX, nested modals work correctly.
 
 ---
 
@@ -433,8 +405,9 @@ packages/shared/src/
 - **Quick wins preferred:** Deliver value early, save big changes for later
 - **Flexibility over types:** Prefer per-collection settings over rigid collection types
 
-### Current State (After Session 3)
-- 776 tests passing (348 backend + 428 frontend)
+### Current State (After Session 4A)
+- 772 tests passing (348 backend + 424 frontend)
+- Quick fixes complete (footer removed, menu shortened, uncategorized fixed, modal z-index fixed)
 - User profile menu with Google photos and dropdown
 - Page flipping navigation with keyboard/swipe support
 - Collections feature fully functional
@@ -445,7 +418,6 @@ packages/shared/src/
 - Active task counts on collection index
 
 ### Next Steps
-**Session 4A:** Quick fixes (remove footer, shorten menu text, fix Uncategorized migration, fix modal z-index)  
 **Session 4B:** Calendar architecture design session with Alex  
 **Session 5+:** Implementation based on architecture design
 
