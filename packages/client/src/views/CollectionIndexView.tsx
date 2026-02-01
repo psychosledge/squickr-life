@@ -143,7 +143,7 @@ export function CollectionIndexView() {
               Get shit done quicker with Squickr!
             </p>
             <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">
-              v0.2.0
+              v{__APP_VERSION__}
             </p>
           </div>
         </div>
