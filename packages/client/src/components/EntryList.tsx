@@ -24,7 +24,7 @@ interface EntryListProps {
   // Navigation handler for migrated entries
   onNavigateToMigrated?: (collectionId: string | null) => void;
   // Collection creation handler
-  onCreateCollection?: (name: string) => Promise<void>;
+  onCreateCollection?: (name: string) => Promise<string>;
 }
 
 /**

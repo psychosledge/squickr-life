@@ -6,8 +6,14 @@ import type { DomainEvent } from './domain-event';
 
 /**
  * Collection type discriminator
+ * - 'daily': Daily log collections (e.g., "Saturday, February 1") with date "2026-02-01"
+ * - 'monthly': Monthly log collections (reserved for future use)
+ * - 'yearly': Yearly log collections (reserved for future use)
+ * - 'custom': User-defined topical collections (e.g., "App Ideas", "Home Projects")
+ * - 'log': Legacy type, treated as 'custom' by projections (for backward compatibility)
+ * - 'tracker': Legacy type, treated as 'custom' by projections (for backward compatibility)
  */
-export type CollectionType = 'log' | 'custom' | 'tracker';
+export type CollectionType = 'daily' | 'monthly' | 'yearly' | 'custom' | 'log' | 'tracker';
 
 /**
  * Collection settings - user preferences for a collection
@@ -28,11 +34,20 @@ export interface Collection {
   /** User-facing name (can duplicate) */
   readonly name: string;
   
-  /** Collection type (log/custom/tracker) */
+  /** Collection type (daily/monthly/yearly/custom/log/tracker) */
   readonly type: CollectionType;
   
   /** Fractional index for user-defined ordering */
   readonly order: string;
+  
+  /** ISO date for temporal collections (YYYY-MM-DD for daily, YYYY-MM for monthly, YYYY for yearly) */
+  readonly date?: string;
+  
+  /** Mark custom collection as favorite (pinned to top) */
+  readonly isFavorite?: boolean;
+  
+  /** Track last access time for smart sorting */
+  readonly lastAccessedAt?: string;
   
   /** When the collection was created (ISO 8601) */
   readonly createdAt: string;
@@ -59,6 +74,8 @@ export interface Collection {
  * - aggregateId must equal payload.id
  * - name must be at least 1 character (after trim)
  * - type defaults to 'log' if not provided
+ * - date is required for daily/monthly/yearly collections
+ * - date must match format for collection type (YYYY-MM-DD for daily, YYYY-MM for monthly, YYYY for yearly)
  * - createdAt must not be in the future
  * - order is a fractional index for positioning
  */
@@ -70,6 +87,7 @@ export interface CollectionCreated extends DomainEvent {
     readonly name: string;
     readonly type: CollectionType;
     readonly order: string;
+    readonly date?: string;
     readonly createdAt: string;
     readonly userId?: string;
   };
@@ -145,6 +163,55 @@ export interface CollectionSettingsUpdated extends DomainEvent {
   };
 }
 
+/**
+ * CollectionFavorited Event
+ * Emitted when a collection is marked as favorite
+ * 
+ * Invariants:
+ * - aggregateId must match an existing collection
+ * - Only custom collections can be favorited
+ */
+export interface CollectionFavorited extends DomainEvent {
+  readonly type: 'CollectionFavorited';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly collectionId: string;
+    readonly favoritedAt: string;
+  };
+}
+
+/**
+ * CollectionUnfavorited Event
+ * Emitted when a collection is unmarked as favorite
+ * 
+ * Invariants:
+ * - aggregateId must match an existing collection
+ */
+export interface CollectionUnfavorited extends DomainEvent {
+  readonly type: 'CollectionUnfavorited';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly collectionId: string;
+    readonly unfavoritedAt: string;
+  };
+}
+
+/**
+ * CollectionAccessed Event
+ * Emitted when a collection is accessed (navigated to)
+ * 
+ * Invariants:
+ * - aggregateId must match an existing collection
+ */
+export interface CollectionAccessed extends DomainEvent {
+  readonly type: 'CollectionAccessed';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly collectionId: string;
+    readonly accessedAt: string;
+  };
+}
+
 // ============================================================================
 // Collection Commands
 // ============================================================================
@@ -156,10 +223,12 @@ export interface CollectionSettingsUpdated extends DomainEvent {
  * Validation rules:
  * - name: Required, will be trimmed, minimum 1 character
  * - type: Optional, defaults to 'log'
+ * - date: Required for daily/monthly/yearly collections, must match format for type
  */
 export interface CreateCollectionCommand {
   readonly name: string;
   readonly type?: CollectionType;
+  readonly date?: string;
   readonly userId?: string;
 }
 
@@ -207,7 +276,39 @@ export interface UpdateCollectionSettingsCommand {
 }
 
 /**
+ * FavoriteCollection Command
+ * Represents the user's intent to mark a collection as favorite
+ */
+export interface FavoriteCollectionCommand {
+  readonly collectionId: string;
+}
+
+/**
+ * UnfavoriteCollection Command
+ * Represents the user's intent to remove favorite status from a collection
+ */
+export interface UnfavoriteCollectionCommand {
+  readonly collectionId: string;
+}
+
+/**
+ * AccessCollection Command
+ * Represents the user's intent to track collection access
+ */
+export interface AccessCollectionCommand {
+  readonly collectionId: string;
+}
+
+/**
  * Union type of all collection-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type CollectionEvent = CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated;
+export type CollectionEvent = 
+  | CollectionCreated 
+  | CollectionRenamed 
+  | CollectionReordered 
+  | CollectionDeleted 
+  | CollectionSettingsUpdated
+  | CollectionFavorited
+  | CollectionUnfavorited
+  | CollectionAccessed;

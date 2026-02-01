@@ -6,7 +6,10 @@ import type {
   CollectionRenamed,
   CollectionReordered,
   CollectionDeleted,
-  CollectionSettingsUpdated
+  CollectionSettingsUpdated,
+  CollectionFavorited,
+  CollectionUnfavorited,
+  CollectionAccessed
 } from './collection.types';
 
 /**
@@ -71,6 +74,17 @@ export class CollectionListProjection {
   }
 
   /**
+   * Get a daily log collection by date
+   * 
+   * @param date - The date to find (YYYY-MM-DD format)
+   * @returns The collection, or undefined if not found
+   */
+  async getDailyLogByDate(date: string): Promise<Collection | undefined> {
+    const collections = await this.getCollections();
+    return collections.find(c => c.type === 'daily' && c.date === date);
+  }
+
+  /**
    * Apply events to build collection state
    * This handles CollectionCreated, Renamed, Reordered, and Deleted events
    */
@@ -98,7 +112,7 @@ export class CollectionListProjection {
    */
   private applyCollectionEvent(
     collections: Map<string, Collection>,
-    event: CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated
+    event: CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated | CollectionFavorited | CollectionUnfavorited | CollectionAccessed
   ): void {
     switch (event.type) {
       case 'CollectionCreated': {
@@ -107,6 +121,7 @@ export class CollectionListProjection {
           name: event.payload.name,
           type: event.payload.type,
           order: event.payload.order,
+          date: event.payload.date,
           createdAt: event.payload.createdAt,
           userId: event.payload.userId,
         };
@@ -153,6 +168,36 @@ export class CollectionListProjection {
         }
         break;
       }
+      case 'CollectionFavorited': {
+        const collection = collections.get(event.payload.collectionId);
+        if (collection) {
+          collections.set(collection.id, {
+            ...collection,
+            isFavorite: true,
+          });
+        }
+        break;
+      }
+      case 'CollectionUnfavorited': {
+        const collection = collections.get(event.payload.collectionId);
+        if (collection) {
+          collections.set(collection.id, {
+            ...collection,
+            isFavorite: false,
+          });
+        }
+        break;
+      }
+      case 'CollectionAccessed': {
+        const collection = collections.get(event.payload.collectionId);
+        if (collection) {
+          collections.set(collection.id, {
+            ...collection,
+            lastAccessedAt: event.payload.accessedAt,
+          });
+        }
+        break;
+      }
     }
   }
 
@@ -161,13 +206,16 @@ export class CollectionListProjection {
    */
   private isCollectionEvent(
     event: DomainEvent
-  ): event is CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated {
+  ): event is CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated | CollectionFavorited | CollectionUnfavorited | CollectionAccessed {
     return (
       event.type === 'CollectionCreated' ||
       event.type === 'CollectionRenamed' ||
       event.type === 'CollectionReordered' ||
       event.type === 'CollectionDeleted' ||
-      event.type === 'CollectionSettingsUpdated'
+      event.type === 'CollectionSettingsUpdated' ||
+      event.type === 'CollectionFavorited' ||
+      event.type === 'CollectionUnfavorited' ||
+      event.type === 'CollectionAccessed'
     );
   }
 }

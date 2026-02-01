@@ -43,3 +43,34 @@ export function formatDate(dateString: string): string {
     return dateString;
   }
 }
+
+/**
+ * Get display name for a collection
+ * For daily logs, formats the date as "Weekday, Month Day" (e.g., "Saturday, February 1")
+ * For custom collections, returns the collection name as-is
+ */
+export function getCollectionDisplayName(collection: { 
+  name: string; 
+  type?: string; 
+  date?: string 
+}): string {
+  // For daily logs, format the date nicely
+  if (collection.type === 'daily' && collection.date) {
+    const parts = collection.date.split('-');
+    const year = parseInt(parts[0]!, 10);
+    const month = parseInt(parts[1]!, 10) - 1; // 0-indexed
+    const day = parseInt(parts[2]!, 10);
+    
+    const dateObj = new Date(year, month, day);
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    return formatter.format(dateObj);
+  }
+  
+  // For custom collections (or legacy collections without type), return name as-is
+  return collection.name;
+}

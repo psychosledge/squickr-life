@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Entry, Collection } from '@squickr/shared';
 import { CreateCollectionModal } from './CreateCollectionModal';
+import { getCollectionDisplayName } from '../utils/formatters';
 
 interface MigrateEntryModalProps {
   isOpen: boolean;
@@ -9,12 +10,81 @@ interface MigrateEntryModalProps {
   currentCollectionId?: string;
   collections: Collection[];
   onMigrate: (entryId: string, targetCollectionId: string | null) => Promise<void>;
-  onCreateCollection?: (name: string) => Promise<void>;
+  onCreateCollection?: (name: string) => Promise<string>;
   selectedCollectionId?: string;
   onOpenCreateCollection?: () => void;
 }
 
 const CREATE_NEW_OPTION = '__CREATE_NEW__';
+
+/**
+ * Get today's date in YYYY-MM-DD format
+ */
+function getTodayDate(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Get yesterday's date in YYYY-MM-DD format
+ */
+function getYesterdayDate(): string {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const year = yesterday.getFullYear();
+  const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+  const day = String(yesterday.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Get default collections to show: Today + Pinned + Yesterday
+ * Ensures no duplicates (e.g., if today's log is pinned)
+ * 
+ * For backwards compatibility: If no type field exists, treat as custom collection.
+ * If smart filtering returns empty, fall back to showing all collections.
+ */
+function getDefaultCollections(collections: Collection[]): Collection[] {
+  const today = getTodayDate();
+  const yesterday = getYesterdayDate();
+  
+  const todayLog = collections.find(c => c.type === 'daily' && c.date === today);
+  const yesterdayLog = collections.find(c => c.type === 'daily' && c.date === yesterday);
+  const pinned = collections.filter(c => c.isFavorite === true);
+  
+  // Build list: Today (if exists), Pinned, Yesterday (if exists)
+  // Use a Set to avoid duplicates (e.g., if today's log is pinned)
+  const seen = new Set<string>();
+  const defaultList: Collection[] = [];
+  
+  if (todayLog && !seen.has(todayLog.id)) {
+    defaultList.push(todayLog);
+    seen.add(todayLog.id);
+  }
+  
+  for (const p of pinned) {
+    if (!seen.has(p.id)) {
+      defaultList.push(p);
+      seen.add(p.id);
+    }
+  }
+  
+  if (yesterdayLog && !seen.has(yesterdayLog.id)) {
+    defaultList.push(yesterdayLog);
+    seen.add(yesterdayLog.id);
+  }
+  
+  // If smart filtering returns empty, fall back to showing all collections
+  // This handles legacy collections without type/date fields
+  if (defaultList.length === 0 && collections.length > 0) {
+    return collections;
+  }
+  
+  return defaultList;
+}
 
 /**
  * MigrateEntryModal Component
@@ -23,7 +93,8 @@ const CREATE_NEW_OPTION = '__CREATE_NEW__';
  * 
  * Features:
  * - Shows "+ Create New Collection" option at the top
- * - Shows all collections except current
+ * - Smart filtering: Shows Today + Pinned + Yesterday by default
+ * - "Show all collections" button expands to full list
  * - Nested modal flow: Can open CreateCollectionModal from this modal
  * - Auto-selects newly created collection
  * - Prevents migration if entry already migrated
@@ -43,6 +114,7 @@ export function MigrateEntryModal({
   const [error, setError] = useState('');
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   // Update selected option when selectedCollectionId prop changes
   useEffect(() => {
@@ -58,6 +130,7 @@ export function MigrateEntryModal({
       setError('');
       setSelectedOption(null);
       setShowCreateModal(false);
+      setShowAll(false);
     }
   }, [isOpen]);
 
@@ -121,11 +194,17 @@ export function MigrateEntryModal({
   };
 
   const handleCreateCollection = async (name: string) => {
-    if (onCreateCollection) {
+    if (onCreateCollection && entry) {
       try {
-        await onCreateCollection(name);
+        // Create the collection and get the new collection ID
+        const newCollectionId = await onCreateCollection(name);
         setShowCreateModal(false);
-        // The parent component should update the collections list and set selectedCollectionId
+        
+        // Auto-migrate the entry to the newly created collection
+        await onMigrate(entry.id, newCollectionId);
+        
+        // Close the migrate modal
+        onClose();
       } catch (err) {
         // Error handling is done in CreateCollectionModal
         throw err;
@@ -141,6 +220,11 @@ export function MigrateEntryModal({
   const availableCollections = collections.filter(
     c => c.id !== currentCollectionId
   );
+
+  // Determine which collections to display: smart filtered list or all
+  const displayedCollections = showAll 
+    ? availableCollections 
+    : getDefaultCollections(availableCollections);
 
   // Get entry type label
   const getEntryTypeLabel = () => {
@@ -214,7 +298,7 @@ export function MigrateEntryModal({
             </label>
 
             {/* Available collections */}
-            {availableCollections.map(collection => (
+            {displayedCollections.map(collection => (
               <label
                 key={collection.id}
                 className="flex items-center w-full text-left px-4 py-3 rounded border border-gray-200 dark:border-gray-700
@@ -230,16 +314,37 @@ export function MigrateEntryModal({
                   disabled={isSubmitting || isAlreadyMigrated}
                   className="mr-3"
                 />
-                <span className="text-gray-900 dark:text-white">{collection.name}</span>
+                <span className="text-gray-900 dark:text-white">{getCollectionDisplayName(collection)}</span>
               </label>
             ))}
 
-            {availableCollections.length === 0 && (
+            {displayedCollections.length === 0 && (
               <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
                 No other collections available
               </p>
             )}
           </div>
+
+          {/* Show all / Show less toggle */}
+          {availableCollections.length > displayedCollections.length && !showAll && (
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="mb-4 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              Show all collections
+            </button>
+          )}
+
+          {showAll && (
+            <button
+              type="button"
+              onClick={() => setShowAll(false)}
+              className="mb-4 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              Show less
+            </button>
+          )}
 
           <div className="flex gap-3">
             <button

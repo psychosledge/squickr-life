@@ -1,6 +1,6 @@
 {
   "name": "squickr-life",
-  "version": "0.2.4",
+  "version": "0.2.6",
   "private": true,
   "description": "Get shit done quicker with Squickr!",
   "keywords": ["task-tracker", "event-sourcing", "pwa", "offline-first"],

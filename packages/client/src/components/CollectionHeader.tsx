@@ -17,6 +17,8 @@ interface CollectionHeaderProps {
   onRename: () => void;
   onDelete: () => void;
   onSettings: () => void;
+  onToggleFavorite?: () => void;
+  isFavorite?: boolean;
   isVirtual?: boolean;
 }
 
@@ -26,6 +28,8 @@ export function CollectionHeader({
   onRename,
   onDelete,
   onSettings,
+  onToggleFavorite,
+  isFavorite = false,
   isVirtual = false,
 }: CollectionHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -67,6 +71,11 @@ export function CollectionHeader({
   const handleDelete = () => {
     setIsMenuOpen(false);
     onDelete();
+  };
+
+  const handleToggleFavorite = () => {
+    setIsMenuOpen(false);
+    onToggleFavorite?.();
   };
 
   return (
@@ -121,8 +130,10 @@ export function CollectionHeader({
             truncate mx-4 flex-1 text-center
             transition-colors
             focus:outline-none focus:ring-2 focus:ring-blue-500 rounded
+            flex items-center justify-center gap-2
           "
         >
+          {isFavorite && <span className="text-yellow-500">⭐</span>}
           {collectionName}
         </Link>
 
@@ -175,6 +186,21 @@ export function CollectionHeader({
                   z-50
                 "
               >
+                {onToggleFavorite && (
+                  <button
+                    onClick={handleToggleFavorite}
+                    className="
+                      w-full px-4 py-2
+                      text-left text-gray-700 dark:text-gray-300
+                      hover:bg-gray-100 dark:hover:bg-gray-700
+                      transition-colors
+                      focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                    "
+                    type="button"
+                  >
+                    {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                  </button>
+                )}
                 <button
                   onClick={handleSettings}
                   className="

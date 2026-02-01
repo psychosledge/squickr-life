@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { MigrateEntryModal } from './MigrateEntryModal';
 import type { Entry, Collection } from '@squickr/shared';
+import { getCollectionDisplayName } from '../utils/formatters';
 
 describe('MigrateEntryModal', () => {
   const mockCollections: Collection[] = [
@@ -244,6 +245,45 @@ describe('MigrateEntryModal', () => {
       expect(screen.getByRole('button', { name: /^Migrate$/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /Next/i })).not.toBeInTheDocument();
     });
+
+    it('should auto-migrate entry after creating new collection via nested modal', async () => {
+      const user = userEvent.setup();
+      const onMigrate = vi.fn().mockResolvedValue(undefined);
+      const onClose = vi.fn();
+      const onCreateCollection = vi.fn().mockResolvedValue('col4'); // Returns new collection ID
+      
+      render(<MigrateEntryModal 
+        {...defaultProps} 
+        onMigrate={onMigrate}
+        onClose={onClose}
+        onCreateCollection={onCreateCollection}
+      />);
+      
+      // Select "+ Create New Collection"
+      await user.click(screen.getByLabelText(/Create New Collection/i));
+      
+      // Click Next to open create modal
+      await user.click(screen.getByRole('button', { name: /Next/i }));
+      
+      // Wait for CreateCollectionModal to appear
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /Create Collection/i })).toBeInTheDocument();
+      });
+      
+      // Enter collection name
+      const input = screen.getByLabelText(/Collection Name/i);
+      await user.type(input, 'New Collection');
+      
+      // Submit the create form (Enter key)
+      await user.keyboard('{Enter}');
+      
+      // Wait for collection creation and auto-migration
+      await waitFor(() => {
+        expect(onCreateCollection).toHaveBeenCalledWith('New Collection');
+        expect(onMigrate).toHaveBeenCalledWith('entry1', 'col4');
+        expect(onClose).toHaveBeenCalled();
+      });
+    });
   });
 
   describe('Keyboard and Accessibility', () => {
@@ -344,6 +384,383 @@ describe('MigrateEntryModal', () => {
       
       // Clean up
       resolvePromise!();
+    });
+  });
+
+  describe('Smart Filtering (Phase 1D)', () => {
+    // Helper functions to get today's and yesterday's dates
+    const getTodayDate = (): string => {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const getYesterdayDate = (): string => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const year = yesterday.getFullYear();
+      const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+      const day = String(yesterday.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    it('should show today, pinned, and yesterday by default', () => {
+      const today = getTodayDate();
+      const yesterday = getYesterdayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'yesterday', 
+          userId: 'user1', 
+          name: 'Yesterday', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: yesterday,
+        },
+        { 
+          id: 'pinned', 
+          userId: 'user1', 
+          name: 'Pinned Ideas', 
+          createdAt: '2024-01-01', 
+          order: '2',
+          type: 'custom',
+          isFavorite: true,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '3',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should show today, pinned, and yesterday (using formatted display names)
+      const todayCollection = collectionsWithDates.find(c => c.id === 'today')!;
+      const yesterdayCollection = collectionsWithDates.find(c => c.id === 'yesterday')!;
+      
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(todayCollection)))).toBeInTheDocument();
+      expect(screen.getByLabelText(/Pinned Ideas/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(yesterdayCollection)))).toBeInTheDocument();
+    });
+
+    it('should NOT show other collections by default', () => {
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+        { 
+          id: 'unpinned', 
+          userId: 'user1', 
+          name: 'Unpinned', 
+          createdAt: '2024-01-01', 
+          order: '2',
+          type: 'custom',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should show today (using formatted display name)
+      const todayCollection = collectionsWithDates.find(c => c.id === 'today')!;
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(todayCollection)))).toBeInTheDocument();
+
+      // Should NOT show old or unpinned collections
+      expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Unpinned/i)).not.toBeInTheDocument();
+    });
+
+    it('should show "Show all collections" button when filtered', () => {
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      expect(screen.getByText('Show all collections')).toBeInTheDocument();
+    });
+
+    it('should expand to full list when "Show all" is clicked', async () => {
+      const user = userEvent.setup();
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Old collection should not be visible initially (using formatted display name)
+      const oldCollection = collectionsWithDates.find(c => c.id === 'old')!;
+      expect(screen.queryByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).not.toBeInTheDocument();
+
+      // Click "Show all"
+      await user.click(screen.getByText('Show all collections'));
+
+      // Old collection should now be visible
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).toBeInTheDocument();
+    });
+
+    it('should show "Show less" button when expanded', async () => {
+      const user = userEvent.setup();
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      await user.click(screen.getByText('Show all collections'));
+
+      expect(screen.getByText('Show less')).toBeInTheDocument();
+      expect(screen.queryByText('Show all collections')).not.toBeInTheDocument();
+    });
+
+    it('should collapse back to filtered view when "Show less" is clicked', async () => {
+      const user = userEvent.setup();
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Expand
+      const oldCollection = collectionsWithDates.find(c => c.id === 'old')!;
+      await user.click(screen.getByText('Show all collections'));
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).toBeInTheDocument();
+
+      // Collapse
+      await user.click(screen.getByText('Show less'));
+      expect(screen.queryByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).not.toBeInTheDocument();
+    });
+
+    it('should handle collections without today or yesterday gracefully', () => {
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'pinned', 
+          userId: 'user1', 
+          name: 'Pinned Ideas', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'custom',
+          isFavorite: true,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should show pinned collection
+      expect(screen.getByLabelText(/Pinned Ideas/i)).toBeInTheDocument();
+
+      // Should NOT show old log
+      expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
+    });
+
+    it('should not show duplicate if today log is also pinned', () => {
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today (Pinned)', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+          isFavorite: true,
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should only show once (using formatted display name, not the stored name)
+      const todayCollection = collectionsWithDates[0]!;
+      const displayName = getCollectionDisplayName(todayCollection);
+      const labels = screen.getAllByLabelText(new RegExp(displayName));
+      expect(labels).toHaveLength(1);
+    });
+
+    it('should not show "Show all" button if filtered list equals full list', () => {
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should NOT show "Show all" button since there's nothing more to show
+      expect(screen.queryByText('Show all collections')).not.toBeInTheDocument();
+    });
+
+    it('should preserve selection when toggling between filtered and full views', async () => {
+      const user = userEvent.setup();
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Select today (using formatted display name)
+      const todayCollection = collectionsWithDates.find(c => c.id === 'today')!;
+      const todayDisplayName = getCollectionDisplayName(todayCollection);
+      await user.click(screen.getByLabelText(new RegExp(todayDisplayName)));
+      expect(screen.getByLabelText(new RegExp(todayDisplayName))).toBeChecked();
+
+      // Expand to show all
+      await user.click(screen.getByText('Show all collections'));
+
+      // Selection should still be preserved
+      expect(screen.getByLabelText(new RegExp(todayDisplayName))).toBeChecked();
+
+      // Collapse back
+      await user.click(screen.getByText('Show less'));
+
+      // Selection should still be preserved
+      expect(screen.getByLabelText(new RegExp(todayDisplayName))).toBeChecked();
     });
   });
 });
