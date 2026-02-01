@@ -1,0 +1,146 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - production
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for version comparison
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+
+      - name: Check version bump
+        id: version_check
+        run: |
+          # Get version from PR branch (current checkout)
+          PR_VERSION=$(node -p "require('./package.json').version")
+          echo "PR branch version: $PR_VERSION"
+          
+          # Get version from production branch
+          git fetch origin production:production 2>/dev/null || {
+            echo "::warning::Production branch not found. Skipping version check for initial setup."
+            echo "version_bumped=true" >> $GITHUB_OUTPUT
+            exit 0
+          }
+          
+          PROD_VERSION=$(git show production:package.json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8')).version")
+          echo "Production branch version: $PROD_VERSION"
+          
+          # Compare versions
+          if [ "$PR_VERSION" == "$PROD_VERSION" ]; then
+            echo "::error::Version not bumped! Please update version in package.json"
+            echo "::error::Current production version: $PROD_VERSION"
+            echo "::error::PR version: $PR_VERSION"
+            echo "version_bumped=false" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "::notice::Version bumped from $PROD_VERSION to $PR_VERSION ✓"
+            echo "version_bumped=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment PR with version info
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const prVersion = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version;
+            
+            let prodVersion = 'N/A';
+            try {
+              const { execSync } = require('child_process');
+              prodVersion = execSync('git show production:package.json | node -p "JSON.parse(require(\'fs\').readFileSync(\'/dev/stdin\', \'utf8\)).version"', { encoding: 'utf8' }).trim();
+            } catch (e) {
+              prodVersion = 'Production branch not found';
+            }
+            
+            const versionBumped = '${{ steps.version_check.outputs.version_bumped }}' === 'true';
+            const status = versionBumped ? '✅' : '❌';
+            
+            const body = `## PR Validation Results
+            
+            ### Version Check ${status}
+            - **Production version:** \`${prodVersion}\`
+            - **PR version:** \`${prVersion}\`
+            - **Status:** ${versionBumped ? '✅ Version bumped' : '❌ Version NOT bumped - please update package.json'}
+            
+            ${versionBumped ? '' : '### ⚠️ Action Required\nPlease bump the version in `package.json` before merging this PR.'}
+            `;
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('PR Validation Results')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
