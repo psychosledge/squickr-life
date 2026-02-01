@@ -6,8 +6,14 @@ import type { DomainEvent } from './domain-event';
 
 /**
  * Collection type discriminator
+ * - 'daily': Daily log collections (e.g., "Saturday, February 1") with date "2026-02-01"
+ * - 'monthly': Monthly log collections (reserved for future use)
+ * - 'yearly': Yearly log collections (reserved for future use)
+ * - 'custom': User-defined topical collections (e.g., "App Ideas", "Home Projects")
+ * - 'log': Legacy type, treated as 'custom' by projections (for backward compatibility)
+ * - 'tracker': Legacy type, treated as 'custom' by projections (for backward compatibility)
  */
-export type CollectionType = 'log' | 'custom' | 'tracker';
+export type CollectionType = 'daily' | 'monthly' | 'yearly' | 'custom' | 'log' | 'tracker';
 
 /**
  * Collection settings - user preferences for a collection
@@ -28,11 +34,20 @@ export interface Collection {
   /** User-facing name (can duplicate) */
   readonly name: string;
   
-  /** Collection type (log/custom/tracker) */
+  /** Collection type (daily/monthly/yearly/custom/log/tracker) */
   readonly type: CollectionType;
   
   /** Fractional index for user-defined ordering */
   readonly order: string;
+  
+  /** ISO date for temporal collections (YYYY-MM-DD for daily, YYYY-MM for monthly, YYYY for yearly) */
+  readonly date?: string;
+  
+  /** Mark custom collection as favorite (pinned to top) */
+  readonly isFavorite?: boolean;
+  
+  /** Track last access time for smart sorting */
+  readonly lastAccessedAt?: string;
   
   /** When the collection was created (ISO 8601) */
   readonly createdAt: string;
@@ -59,6 +74,8 @@ export interface Collection {
  * - aggregateId must equal payload.id
  * - name must be at least 1 character (after trim)
  * - type defaults to 'log' if not provided
+ * - date is required for daily/monthly/yearly collections
+ * - date must match format for collection type (YYYY-MM-DD for daily, YYYY-MM for monthly, YYYY for yearly)
  * - createdAt must not be in the future
  * - order is a fractional index for positioning
  */
@@ -70,6 +87,7 @@ export interface CollectionCreated extends DomainEvent {
     readonly name: string;
     readonly type: CollectionType;
     readonly order: string;
+    readonly date?: string;
     readonly createdAt: string;
     readonly userId?: string;
   };
@@ -156,10 +174,12 @@ export interface CollectionSettingsUpdated extends DomainEvent {
  * Validation rules:
  * - name: Required, will be trimmed, minimum 1 character
  * - type: Optional, defaults to 'log'
+ * - date: Required for daily/monthly/yearly collections, must match format for type
  */
 export interface CreateCollectionCommand {
   readonly name: string;
   readonly type?: CollectionType;
+  readonly date?: string;
   readonly userId?: string;
 }
 

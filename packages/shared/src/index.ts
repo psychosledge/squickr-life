@@ -117,6 +117,7 @@ export { validateTaskExists, validateTaskStatus } from './task-validation';
 export { validateContent, isValidISODate, validateOptionalISODate } from './content-validation';
 export { getLocalDateKey, isoToLocalDateKey } from './date-utils';
 export { validateCollectionName } from './collection-validation';
+export { validateCollectionDate } from './collection-date-validation';
 
 // Projections (Read Models)
 export { TaskListProjection } from './task.projections';

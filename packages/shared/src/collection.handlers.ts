@@ -15,6 +15,7 @@ import type {
 import { generateEventMetadata } from './event-helpers';
 import { generateKeyBetween } from 'fractional-indexing';
 import { validateCollectionName } from './collection-validation';
+import { validateCollectionDate } from './collection-date-validation';
 
 /**
  * Command Handler for CreateCollection
@@ -41,11 +42,14 @@ export class CreateCollectionHandler {
    * - Name must not be empty after trimming
    * - Type defaults to 'log' if not provided
    * - Name can duplicate (NO uniqueness check)
+   * - Date must be provided for temporal collections (daily/monthly/yearly)
+   * - Date format must match collection type (YYYY-MM-DD for daily, YYYY-MM for monthly, YYYY for yearly)
    * 
    * Idempotency:
    * - If a collection with the same name was created within the last 5 seconds,
    *   returns the existing collection ID instead of creating a duplicate.
    *   This prevents accidental double-clicks or rapid retries from creating duplicates.
+   * - If a daily log with the same date already exists, returns the existing collection ID.
    * 
    * @param command - The CreateCollection command
    * @returns The ID of the created (or existing) collection
@@ -54,6 +58,12 @@ export class CreateCollectionHandler {
   async handle(command: CreateCollectionCommand): Promise<string> {
     // Validate and normalize name
     const name = validateCollectionName(command.name);
+
+    // Default type to 'log'
+    const type = command.type ?? 'log';
+
+    // Validate date for temporal collections
+    validateCollectionDate(command.date, type);
 
     // Idempotency check: Look for recent duplicate creation (within 5 seconds)
     const recentCollections = await this.projection.getCollections();
@@ -68,8 +78,14 @@ export class CreateCollectionHandler {
       return recentDuplicate.id;
     }
 
-    // Default type to 'log'
-    const type = command.type ?? 'log';
+    // Check for duplicate daily logs
+    if (type === 'daily' && command.date) {
+      const existingDailyLog = await this.projection.getDailyLogByDate(command.date);
+      if (existingDailyLog) {
+        // Idempotent: return existing daily log ID instead of creating duplicate
+        return existingDailyLog.id;
+      }
+    }
 
     // Get last collection to generate order after it
     const collections = await this.projection.getCollections();
@@ -90,6 +106,7 @@ export class CreateCollectionHandler {
         name,
         type,
         order,
+        date: command.date,
         createdAt: metadata.timestamp,
         userId: command.userId,
       },

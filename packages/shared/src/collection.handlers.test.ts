@@ -244,6 +244,170 @@ describe('CreateCollectionHandler', () => {
       expect(id1).toBeDefined();
     });
   });
+
+  describe('Collection Types and Dates', () => {
+    it('should create daily log with valid date (YYYY-MM-DD)', async () => {
+      const command: CreateCollectionCommand = {
+        name: 'Saturday, February 1',
+        type: 'daily',
+        date: '2026-02-01',
+      };
+
+      const collectionId = await handler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[0] as CollectionCreated;
+      expect(event.payload.type).toBe('daily');
+      expect(event.payload.date).toBe('2026-02-01');
+      expect(event.payload.name).toBe('Saturday, February 1');
+    });
+
+    it('should create monthly log with valid date (YYYY-MM)', async () => {
+      const command: CreateCollectionCommand = {
+        name: 'February 2026',
+        type: 'monthly',
+        date: '2026-02',
+      };
+
+      await handler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[0] as CollectionCreated;
+      expect(event.payload.type).toBe('monthly');
+      expect(event.payload.date).toBe('2026-02');
+    });
+
+    it('should create yearly log with valid date (YYYY)', async () => {
+      const command: CreateCollectionCommand = {
+        name: '2026',
+        type: 'yearly',
+        date: '2026',
+      };
+
+      await handler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[0] as CollectionCreated;
+      expect(event.payload.type).toBe('yearly');
+      expect(event.payload.date).toBe('2026');
+    });
+
+    it('should create custom collection without date', async () => {
+      const command: CreateCollectionCommand = {
+        name: 'My Ideas',
+        type: 'custom',
+      };
+
+      await handler.handle(command);
+
+      const events = await eventStore.getAll();
+      const event = events[0] as CollectionCreated;
+      expect(event.payload.type).toBe('custom');
+      expect(event.payload.date).toBeUndefined();
+    });
+
+    it('should reject daily log with invalid date format', async () => {
+      const command: CreateCollectionCommand = {
+        name: 'Invalid Date',
+        type: 'daily',
+        date: '2026-13-01', // Invalid month
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('Invalid date');
+    });
+
+    it('should reject daily log with monthly date format', async () => {
+      const command: CreateCollectionCommand = {
+        name: 'Wrong Format',
+        type: 'daily',
+        date: '2026-02', // Should be YYYY-MM-DD
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('Invalid date format for daily collection');
+    });
+
+    it('should reject monthly log with daily date format', async () => {
+      const command: CreateCollectionCommand = {
+        name: 'Wrong Format',
+        type: 'monthly',
+        date: '2026-02-01', // Should be YYYY-MM
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('Invalid date format for monthly collection');
+    });
+
+    it('should prevent duplicate daily logs for same date', async () => {
+      const command1: CreateCollectionCommand = {
+        name: 'Saturday, February 1',
+        type: 'daily',
+        date: '2026-02-01',
+      };
+
+      const id1 = await handler.handle(command1);
+
+      // Try to create another daily log for the same date
+      const command2: CreateCollectionCommand = {
+        name: 'Another name for same day',
+        type: 'daily',
+        date: '2026-02-01',
+      };
+
+      const id2 = await handler.handle(command2);
+
+      // Should return existing collection ID
+      expect(id1).toBe(id2);
+
+      const collections = await projection.getCollections();
+      expect(collections).toHaveLength(1);
+      
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(1); // Only one event created
+    });
+
+    it('should allow duplicate dates across different types', async () => {
+      await handler.handle({
+        name: 'February 2026',
+        type: 'monthly',
+        date: '2026-02',
+      });
+
+      await handler.handle({
+        name: 'Saturday, February 1',
+        type: 'daily',
+        date: '2026-02-01',
+      });
+
+      const collections = await projection.getCollections();
+      expect(collections).toHaveLength(2); // Both should be created
+    });
+
+    it('should require date for daily collections', async () => {
+      const command: CreateCollectionCommand = {
+        name: 'Missing Date',
+        type: 'daily',
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('Date is required for daily collections');
+    });
+
+    it('should require date for monthly collections', async () => {
+      const command: CreateCollectionCommand = {
+        name: 'Missing Date',
+        type: 'monthly',
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('Date is required for monthly collections');
+    });
+
+    it('should require date for yearly collections', async () => {
+      const command: CreateCollectionCommand = {
+        name: 'Missing Date',
+        type: 'yearly',
+      };
+
+      await expect(handler.handle(command)).rejects.toThrow('Date is required for yearly collections');
+    });
+  });
 });
 
 describe('RenameCollectionHandler', () => {

@@ -71,6 +71,17 @@ export class CollectionListProjection {
   }
 
   /**
+   * Get a daily log collection by date
+   * 
+   * @param date - The date to find (YYYY-MM-DD format)
+   * @returns The collection, or undefined if not found
+   */
+  async getDailyLogByDate(date: string): Promise<Collection | undefined> {
+    const collections = await this.getCollections();
+    return collections.find(c => c.type === 'daily' && c.date === date);
+  }
+
+  /**
    * Apply events to build collection state
    * This handles CollectionCreated, Renamed, Reordered, and Deleted events
    */
@@ -107,6 +118,7 @@ export class CollectionListProjection {
           name: event.payload.name,
           type: event.payload.type,
           order: event.payload.order,
+          date: event.payload.date,
           createdAt: event.payload.createdAt,
           userId: event.payload.userId,
         };
