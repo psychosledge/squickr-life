@@ -22,6 +22,8 @@ interface SortableEntryItemProps {
   currentCollectionId?: string;
   // Navigation handler for migrated entries
   onNavigateToMigrated?: (collectionId: string | null) => void;
+  // Collection creation handler
+  onCreateCollection?: (name: string) => Promise<void>;
 }
 
 /**
@@ -42,7 +44,8 @@ export function SortableEntryItem({
   onMigrate,
   collections,
   currentCollectionId,
-  onNavigateToMigrated
+  onNavigateToMigrated,
+  onCreateCollection
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -106,6 +109,7 @@ export function SortableEntryItem({
         collections={collections}
         currentCollectionId={currentCollectionId}
         onNavigateToMigrated={onNavigateToMigrated}
+        onCreateCollection={onCreateCollection}
       />
     </div>
   );

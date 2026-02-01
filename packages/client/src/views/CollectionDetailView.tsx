@@ -46,7 +46,7 @@ import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 export function CollectionDetailView() {
   const { id: collectionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { eventStore, collectionProjection, entryProjection, taskProjection, migrateTaskHandler, migrateNoteHandler, migrateEventHandler } = useApp();
+  const { eventStore, collectionProjection, entryProjection, taskProjection, migrateTaskHandler, migrateNoteHandler, migrateEventHandler, createCollectionHandler } = useApp();
 
   const [collection, setCollection] = useState<Collection | null>(null);
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
@@ -280,6 +280,10 @@ export function CollectionDetailView() {
     }
   };
 
+  const handleCreateCollection = async (name: string) => {
+    await createCollectionHandler.handle({ name });
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -359,6 +363,7 @@ export function CollectionDetailView() {
           collections={allCollections}
           currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
           onNavigateToMigrated={handleNavigateToMigrated}
+          onCreateCollection={handleCreateCollection}
         />
 
         {/* Collapsible completed tasks section */}
@@ -405,6 +410,7 @@ export function CollectionDetailView() {
                   collections={allCollections}
                   currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
                   onNavigateToMigrated={handleNavigateToMigrated}
+                  onCreateCollection={handleCreateCollection}
                 />
               </div>
             )}
