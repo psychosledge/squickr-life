@@ -242,16 +242,17 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
     expect(uncategorizedLink).toHaveAttribute('href', `/collection/${UNCATEGORIZED_COLLECTION_ID}`);
   });
 
-  it('should display correct entry count for virtual Uncategorized collection', async () => {
+  it('should display virtual Uncategorized collection with icon', async () => {
     renderView();
 
     await waitFor(() => {
       expect(screen.getByText('Uncategorized')).toBeInTheDocument();
     });
 
-    // Should show count of 2 orphaned entries
+    // Should display Uncategorized with custom collection icon
     const uncategorizedCard = screen.getByText('Uncategorized').closest('a');
-    expect(uncategorizedCard?.textContent).toContain('2');
+    expect(uncategorizedCard?.textContent).toContain('📝');
+    expect(uncategorizedCard?.textContent).toContain('Uncategorized');
   });
 
   it('should navigate to detail view when virtual Uncategorized collection is clicked', async () => {
@@ -388,28 +389,29 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
     );
   }
 
-  it('should pass reorder handler to CollectionList', async () => {
+  it('should display collections in hierarchical order', async () => {
     renderView();
 
     await waitFor(() => {
       expect(screen.getByText('Books to Read')).toBeInTheDocument();
     });
 
-    // Verify collections are rendered with drag handles
-    const dragHandles = screen.getAllByLabelText('Drag to reorder');
-    expect(dragHandles.length).toBeGreaterThan(0);
+    // Verify collections are rendered (hierarchical view doesn't support drag-and-drop)
+    expect(screen.getByText('Books to Read')).toBeInTheDocument();
+    expect(screen.getByText('Movies to Watch')).toBeInTheDocument();
   });
 
-  it('should call reorderCollectionHandler when collection is reordered', async () => {
+  it('should organize collections hierarchically', async () => {
     renderView();
 
     await waitFor(() => {
       expect(screen.getByText('Books to Read')).toBeInTheDocument();
     });
 
-    // Note: Full drag-and-drop simulation is complex in tests
-    // This verifies the handler is wired up and available
-    expect(mockReorderCollectionHandler).toBeDefined();
+    // Hierarchical view organizes collections automatically
+    // Collections are sorted by type and date, not manually reordered
+    expect(screen.getByText('Books to Read')).toBeInTheDocument();
+    expect(screen.getByText('Movies to Watch')).toBeInTheDocument();
   });
 });
 

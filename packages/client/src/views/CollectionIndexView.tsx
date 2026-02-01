@@ -11,7 +11,7 @@ import type { Collection } from '@squickr/shared';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from '../firebase/auth';
-import { CollectionList } from '../components/CollectionList';
+import { HierarchicalCollectionList } from '../components/HierarchicalCollectionList';
 import { CreateCollectionModal } from '../components/CreateCollectionModal';
 import { FAB } from '../components/FAB';
 import { DarkModeToggle } from '../components/DarkModeToggle';
@@ -19,11 +19,10 @@ import { UserProfileMenu } from '../components/UserProfileMenu';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
 export function CollectionIndexView() {
-  const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler } = useApp();
+  const { collectionProjection, entryProjection, createCollectionHandler } = useApp();
   const { user } = useAuth();
   
   const [collections, setCollections] = useState<Collection[]>([]);
-  const [activeTaskCountsByCollection, setActiveTaskCountsByCollection] = useState<Map<string, number>>(new Map());
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Load collections and entry counts
@@ -55,22 +54,6 @@ export function CollectionIndexView() {
     collectionsWithVirtual.push(...loadedCollections);
     
     setCollections(collectionsWithVirtual);
-
-    // Build count map for display
-    const counts = new Map<string, number>();
-    
-    // Add count for virtual uncategorized collection if it exists
-    if (uncategorizedCount > 0) {
-      counts.set(UNCATEGORIZED_COLLECTION_ID, uncategorizedCount);
-    }
-    
-    // Add counts for real collections
-    for (const collection of loadedCollections) {
-      const count = allCounts.get(collection.id) ?? 0;
-      counts.set(collection.id, count);
-    }
-    
-    setActiveTaskCountsByCollection(counts);
   };
 
   // Subscribe to projection changes (reactive updates)
@@ -95,22 +78,6 @@ export function CollectionIndexView() {
 
   const handleCreateCollection = async (name: string) => {
     await createCollectionHandler.handle({ name });
-  };
-
-  const handleReorder = async (
-    collectionId: string,
-    previousCollectionId: string | null,
-    nextCollectionId: string | null
-  ) => {
-    if (!reorderCollectionHandler) {
-      return;
-    }
-
-    await reorderCollectionHandler.handle({
-      collectionId,
-      previousCollectionId,
-      nextCollectionId,
-    });
   };
 
   const handleSignOut = async () => {
@@ -149,10 +116,8 @@ export function CollectionIndexView() {
         </div>
 
         {/* Collection List */}
-        <CollectionList 
-          collections={collections} 
-          activeTaskCountsByCollection={activeTaskCountsByCollection}
-          onReorder={handleReorder}
+        <HierarchicalCollectionList 
+          collections={collections}
         />
       </div>
 
