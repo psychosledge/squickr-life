@@ -13,6 +13,7 @@ interface NoteEntryItemProps {
   collections?: Collection[];
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
+  onCreateCollection?: (name: string) => Promise<void>;
 }
 
 /**
@@ -29,7 +30,8 @@ export function NoteEntryItem({
   onMigrate,
   collections,
   currentCollectionId,
-  onNavigateToMigrated
+  onNavigateToMigrated,
+  onCreateCollection
 }: NoteEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -173,6 +175,7 @@ export function NoteEntryItem({
           currentCollectionId={currentCollectionId}
           collections={collections}
           onMigrate={onMigrate}
+          onCreateCollection={onCreateCollection}
         />
       )}
     </div>

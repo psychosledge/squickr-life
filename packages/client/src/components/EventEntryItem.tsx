@@ -14,6 +14,7 @@ interface EventEntryItemProps {
   collections?: Collection[];
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
+  onCreateCollection?: (name: string) => Promise<void>;
 }
 
 /**
@@ -32,7 +33,8 @@ export function EventEntryItem({
   onMigrate,
   collections,
   currentCollectionId,
-  onNavigateToMigrated
+  onNavigateToMigrated,
+  onCreateCollection
 }: EventEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -205,6 +207,7 @@ export function EventEntryItem({
           currentCollectionId={currentCollectionId}
           collections={collections}
           onMigrate={onMigrate}
+          onCreateCollection={onCreateCollection}
         />
       )}
     </div>

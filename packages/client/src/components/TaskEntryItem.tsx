@@ -15,6 +15,7 @@ interface TaskEntryItemProps {
   collections?: Collection[];
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
+  onCreateCollection?: (name: string) => Promise<void>;
 }
 
 /**
@@ -35,7 +36,8 @@ export function TaskEntryItem({
   onMigrate,
   collections,
   currentCollectionId,
-  onNavigateToMigrated
+  onNavigateToMigrated,
+  onCreateCollection
 }: TaskEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -198,6 +200,7 @@ export function TaskEntryItem({
           currentCollectionId={currentCollectionId}
           collections={collections}
           onMigrate={onMigrate}
+          onCreateCollection={onCreateCollection}
         />
       )}
     </div>

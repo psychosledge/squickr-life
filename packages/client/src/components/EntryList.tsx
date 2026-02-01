@@ -23,6 +23,8 @@ interface EntryListProps {
   currentCollectionId?: string;
   // Navigation handler for migrated entries
   onNavigateToMigrated?: (collectionId: string | null) => void;
+  // Collection creation handler
+  onCreateCollection?: (name: string) => Promise<void>;
 }
 
 /**
@@ -45,7 +47,8 @@ export function EntryList({
   onMigrate,
   collections,
   currentCollectionId,
-  onNavigateToMigrated
+  onNavigateToMigrated,
+  onCreateCollection
 }: EntryListProps) {
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -133,6 +136,7 @@ export function EntryList({
                 collections={collections}
                 currentCollectionId={currentCollectionId}
                 onNavigateToMigrated={onNavigateToMigrated}
+                onCreateCollection={onCreateCollection}
               />
             ))}
           </div>

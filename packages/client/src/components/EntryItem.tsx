@@ -22,6 +22,8 @@ interface EntryItemProps {
   currentCollectionId?: string;
   // Navigation handler for migrated entries
   onNavigateToMigrated?: (collectionId: string | null) => void;
+  // Collection creation handler
+  onCreateCollection?: (name: string) => Promise<void>;
 }
 
 /**
@@ -44,7 +46,8 @@ export function EntryItem({
   onMigrate,
   collections,
   currentCollectionId,
-  onNavigateToMigrated
+  onNavigateToMigrated,
+  onCreateCollection
 }: EntryItemProps) {
   // Route to the appropriate type-specific component
   if (entry.type === 'task') {
@@ -59,6 +62,7 @@ export function EntryItem({
         collections={collections}
         currentCollectionId={currentCollectionId}
         onNavigateToMigrated={onNavigateToMigrated}
+        onCreateCollection={onCreateCollection}
       />
     );
   }
@@ -73,6 +77,7 @@ export function EntryItem({
         collections={collections}
         currentCollectionId={currentCollectionId}
         onNavigateToMigrated={onNavigateToMigrated}
+        onCreateCollection={onCreateCollection}
       />
     );
   }
@@ -88,6 +93,7 @@ export function EntryItem({
         collections={collections}
         currentCollectionId={currentCollectionId}
         onNavigateToMigrated={onNavigateToMigrated}
+        onCreateCollection={onCreateCollection}
       />
     );
   }
