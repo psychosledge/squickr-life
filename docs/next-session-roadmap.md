@@ -146,106 +146,110 @@ See detailed implementation notes in this session's conversation history.
 
 ---
 
-## 📝 User Feedback Summary (February 2, 2026)
+## 🎉 Session 4B Complete - Calendar Architecture Designed! ✅
 
-After using the app in production, user identified the following strategic feature requests:
+**Completed (February 1, 2026):**
 
-**Strategic Feature Requests:**
+### ✅ Architecture Decision: Hierarchical Collections with Virtual Hierarchy
 
-1. 📅 **Calendar integration & naming templates** - Big idea requiring architecture design
-   - Template-based collection naming (e.g., "Daily {MM}-{DD}-{dw}" → "Daily 02-01-Sat")
-   - Collection types aligned with BuJo methodology (Daily Log, Monthly Log, Future Log)
-   - Calendar navigation and date-based organization
-   - Google Calendar integration (import/export - details TBD)
-   - Virtual migrations between daily logs
-   - Manual creation workflow (for now)
+**Design decisions made:**
+- **Virtual hierarchy** approach (collections flat in data, hierarchy in UI)
+- **Collection types**: `yearly`, `monthly`, `daily`, `custom`
+- **Hierarchical presentation**: "2026 Logs / February / Saturday, February 1"
+- **Smart sorting**: Pinned customs → Current year/month (auto-expanded) → Historical → Unpinned customs
+- **Migration modal filtering**: Today + Pinned + Yesterday (default), "Show all" for full list
+- **Auto-generated names**: Daily logs named from dates (e.g., "Saturday, February 1")
+- **Immutable types**: Collection type cannot change after creation
+- **Schema migration**: Existing collections auto-interpreted as `custom` (projection-level, no events)
+- **No future log**: Year nodes replace traditional BuJo future log concept
+- **GCal integration**: Deferred until Phase 5 (after full BuJo workflow established)
 
-2. ⭐ **Collection prioritization/favoriting** - Solve collection list growth problem
-   - **Problem:** As collection count grows, harder to navigate to relevant collections
-   - **Need:** Prioritize active/relevant collections over historical ones
-   - **Context:** Traditional BuJo has future/monthly/daily hierarchy + custom collections
-   - **Possible solutions to explore:**
-     - Simple favoriting feature (star/unstar collections)
-     - Collection types with automatic prioritization (Daily > Monthly > Custom > Historical)
-     - Pinned collections (always at top)
-     - Smart sorting (recently accessed, most active tasks)
-     - Collection filters/views (show only favorites, show only active)
-   - **Applies to:** Both collection index list AND migration modal target list
+**Documented in:**
+- ADR-011: Hierarchical Collection Architecture with Virtual Hierarchy
+- 5-hour implementation plan (4 sub-phases, 4 commits)
+
+**Key insights:**
+- Dual collection nature: Temporal (date-based relevance) vs Topical (user interest-based)
+- Virtual hierarchy avoids cascade deletes and orphaned collections
+- Event sourcing friendly (collections remain independent aggregates)
+- Foundation for calendar navigation (Phase 3) and virtual migrations (Phase 4)
+
+**Total Time:** ~2 hours (design & documentation) ✅  
+**Deliverables:** ADR-011, Implementation roadmap, Data model design  
+**Status:** Architecture approved, ready for implementation
 
 ---
 
-## 📋 Session 4B Plan - Calendar Architecture Design
+## 📝 User Feedback Summary (February 1, 2026)
+
+After using the app in production, user identified strategic feature requests that were addressed in Session 4B architecture design:
+
+**Completed Architecture Design:**
+
+1. ✅ **Calendar integration & hierarchical organization**
+   - Hierarchical folder structure: Year / Month / Day
+   - Virtual hierarchy (UI presentation, not data model)
+   - Collection types: `yearly`, `monthly`, `daily`, `custom`
+   - Auto-generated daily log names from dates
+   - Smart sorting and navigation
+   - GCal integration scoped for Phase 5 (post-BuJo workflow)
+
+2. ✅ **Collection prioritization/favoriting**
+   - Favorites/pinning feature for custom collections
+   - Smart sorting: Pinned → Current temporal → Historical → Unpinned
+   - Migration modal filtering: Today + Pinned + Yesterday (default)
+   - Access tracking for recently used collections
+
+**See ADR-011 for complete architecture details.**
+
+---
+
+## 📋 Session 5 Plan - Hierarchical Collections Implementation
 
 **Status:** 🟢 NEXT UP  
-**Total Estimated Time:** 1-2 hours
+**Total Estimated Time:** ~5 hours (one session, 4 commits)
 
-### **Session 4B: Calendar Architecture Design** 🎨 DESIGN SESSION
+Based on ADR-011, implement virtual hierarchy for collection navigation.
 
-Strategic planning session to design collection types, naming templates, calendar integration, and collection prioritization before implementation.
+### **Phase 1A: Collection Types + Date Fields** (~1.5 hours)
+- Add `date`, `isFavorite`, `lastAccessedAt` fields to Collection
+- Add collection types: `yearly`, `monthly`, `daily`, `custom`
+- Update `CollectionCreated` event with date field
+- Projection schema migration (old types → `custom`)
+- Tests for date validation and type mapping
+- **Commit:** "feat: add collection types and date fields for hierarchical organization"
 
-#### Goals:
-1. **Design collection type architecture** (Daily Log, Monthly Log, Future Log, Custom)
-2. **Define template system** for date-based collection naming
-3. **Solve collection prioritization problem** (favoriting, pinning, smart sorting)
-4. **Scope Google Calendar integration** (import/export/sync?)
-5. **Plan virtual migration behavior** (auto-migrate tasks between days?)
-6. **Create detailed implementation roadmap** for Session 5+
+### **Phase 1B: Favorites + Access Tracking** (~1 hour)
+- New events: `CollectionFavorited`, `CollectionUnfavorited`, `CollectionAccessed`
+- Implement handlers for favorite/unfavorite
+- Track last access on collection navigation
+- Add "Favorite" toggle to collection menu (⋮)
+- Tests for favorites and access tracking
+- **Commit:** "feat: add collection favorites and access tracking"
 
-#### Key Questions to Answer:
+### **Phase 1C: Hierarchical UI Presentation** (~2 hours)
+- New component: `HierarchicalCollectionList.tsx`
+- New hook: `useCollectionHierarchy.ts` (builds tree from flat collections)
+- Tree node components with expand/collapse
+- Auto-expand current year + current month
+- Persist expand state in localStorage
+- Display order: Pinned customs → Temporal hierarchy → Unpinned customs
+- Tests for hierarchy building and rendering
+- **Commit:** "feat: implement hierarchical collection list view"
 
-**Collection Types:**
-- What types do we need? (Daily, Monthly, Future, Custom)
-- How do we model date-based collections in event sourcing?
-- Should collection type be immutable or changeable?
-
-**Template System:**
-- Template syntax: `Daily {MM}-{DD}-{dw}` → "Daily 02-01-Sat"
-- Preset templates vs custom template editing?
-- Where to store user's preferred templates?
-
-**Calendar Integration:**
-- **Import:** Google Calendar events → BuJo entries?
-- **Export:** BuJo tasks → Google Calendar events?
-- **Two-way sync** or read-only?
-- OAuth flow and data persistence?
-
-**Daily Workflow:**
-- Auto-create daily logs or manual creation?
-- Virtual migrations (yesterday's incomplete tasks → today)?
-- How does template creation fit into daily ritual?
-
-**Implementation Phases:**
-- Phase 1: Template-based naming (no types yet)
-- Phase 2: Collection types + date fields
-- Phase 3: Calendar UI navigation
-- Phase 4: Virtual migrations
-- Phase 5: Google Calendar integration
-
-#### Deliverables:
-- Architecture decision document
-- Data model diagrams
-- Implementation plan with effort estimates
-- Updated roadmap for Session 5+
-
-#### Participants:
-- **Alex** (Architecture decisions, system design)
-- **User** (Requirements, BuJo workflow insights)
-- **Sam** (Implementation feasibility)
+### **Phase 1D: Migration Modal Filtering** (~0.5 hours)
+- Update `MigrateEntryModal` with filtered default view
+- Show: Today + Pinned + Yesterday
+- "Show all collections" button expands to full hierarchy
+- Year/month nodes not selectable (only day/custom)
+- Tests for filtering logic
+- **Commit:** "feat: add smart collection filtering to migration modal"
 
 ---
 
-### **Session 5+: Implementation (TBD after design)**
+## 📋 Future Sessions Roadmap
 
-Will be planned after Session 4B architecture design session.
-
-Likely phases:
-1. **Template-Based Collection Creation** (~2-3 hours)
-2. **Collection Types & Date Fields** (~3-4 hours)
-3. **Calendar UI Navigation** (~4-5 hours)
-4. **Virtual Migrations** (~2-3 hours)
-5. **Google Calendar Integration** (~4-6 hours)
-
-**Total Estimated:** ~15-20 hours across multiple sessions
+### **Session 6: Date-Based Collection Creation** (~3-4 hours)
 
 ---
 
