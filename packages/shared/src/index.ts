@@ -74,11 +74,17 @@ export type {
   CollectionReordered,
   CollectionDeleted,
   CollectionSettingsUpdated,
+  CollectionFavorited,
+  CollectionUnfavorited,
+  CollectionAccessed,
   CreateCollectionCommand,
   RenameCollectionCommand,
   ReorderCollectionCommand,
   DeleteCollectionCommand,
   UpdateCollectionSettingsCommand,
+  FavoriteCollectionCommand,
+  UnfavoriteCollectionCommand,
+  AccessCollectionCommand,
   CollectionEvent,
 } from './collection.types';
 
@@ -108,7 +114,16 @@ export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, Reorder
 export { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler, ReorderEventHandler, MigrateEventHandler } from './event.handlers';
 
 // Collection Command Handlers
-export { CreateCollectionHandler, RenameCollectionHandler, ReorderCollectionHandler, DeleteCollectionHandler, UpdateCollectionSettingsHandler } from './collection.handlers';
+export { 
+  CreateCollectionHandler, 
+  RenameCollectionHandler, 
+  ReorderCollectionHandler, 
+  DeleteCollectionHandler, 
+  UpdateCollectionSettingsHandler,
+  FavoriteCollectionHandler,
+  UnfavoriteCollectionHandler,
+  AccessCollectionHandler
+} from './collection.handlers';
 
 // Helpers
 export { generateEventMetadata } from './event-helpers';

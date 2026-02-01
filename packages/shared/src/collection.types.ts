@@ -163,6 +163,55 @@ export interface CollectionSettingsUpdated extends DomainEvent {
   };
 }
 
+/**
+ * CollectionFavorited Event
+ * Emitted when a collection is marked as favorite
+ * 
+ * Invariants:
+ * - aggregateId must match an existing collection
+ * - Only custom collections can be favorited
+ */
+export interface CollectionFavorited extends DomainEvent {
+  readonly type: 'CollectionFavorited';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly collectionId: string;
+    readonly favoritedAt: string;
+  };
+}
+
+/**
+ * CollectionUnfavorited Event
+ * Emitted when a collection is unmarked as favorite
+ * 
+ * Invariants:
+ * - aggregateId must match an existing collection
+ */
+export interface CollectionUnfavorited extends DomainEvent {
+  readonly type: 'CollectionUnfavorited';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly collectionId: string;
+    readonly unfavoritedAt: string;
+  };
+}
+
+/**
+ * CollectionAccessed Event
+ * Emitted when a collection is accessed (navigated to)
+ * 
+ * Invariants:
+ * - aggregateId must match an existing collection
+ */
+export interface CollectionAccessed extends DomainEvent {
+  readonly type: 'CollectionAccessed';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly collectionId: string;
+    readonly accessedAt: string;
+  };
+}
+
 // ============================================================================
 // Collection Commands
 // ============================================================================
@@ -227,7 +276,39 @@ export interface UpdateCollectionSettingsCommand {
 }
 
 /**
+ * FavoriteCollection Command
+ * Represents the user's intent to mark a collection as favorite
+ */
+export interface FavoriteCollectionCommand {
+  readonly collectionId: string;
+}
+
+/**
+ * UnfavoriteCollection Command
+ * Represents the user's intent to remove favorite status from a collection
+ */
+export interface UnfavoriteCollectionCommand {
+  readonly collectionId: string;
+}
+
+/**
+ * AccessCollection Command
+ * Represents the user's intent to track collection access
+ */
+export interface AccessCollectionCommand {
+  readonly collectionId: string;
+}
+
+/**
  * Union type of all collection-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type CollectionEvent = CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated;
+export type CollectionEvent = 
+  | CollectionCreated 
+  | CollectionRenamed 
+  | CollectionReordered 
+  | CollectionDeleted 
+  | CollectionSettingsUpdated
+  | CollectionFavorited
+  | CollectionUnfavorited
+  | CollectionAccessed;

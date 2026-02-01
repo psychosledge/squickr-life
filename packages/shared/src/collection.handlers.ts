@@ -10,7 +10,13 @@ import type {
   DeleteCollectionCommand,
   CollectionDeleted,
   UpdateCollectionSettingsCommand,
-  CollectionSettingsUpdated
+  CollectionSettingsUpdated,
+  FavoriteCollectionCommand,
+  CollectionFavorited,
+  UnfavoriteCollectionCommand,
+  CollectionUnfavorited,
+  AccessCollectionCommand,
+  CollectionAccessed
 } from './collection.types';
 import { generateEventMetadata } from './event-helpers';
 import { generateKeyBetween } from 'fractional-indexing';
@@ -375,6 +381,176 @@ export class UpdateCollectionSettingsHandler {
         collectionId: command.collectionId,
         settings: command.settings,
         updatedAt: metadata.timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for FavoriteCollection
+ * 
+ * Responsibilities:
+ * - Validate collection exists
+ * - Create CollectionFavorited event
+ * - Persist event to EventStore
+ */
+export class FavoriteCollectionHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly projection: CollectionListProjection
+  ) {}
+
+  /**
+   * Handle FavoriteCollection command
+   * 
+   * Validation rules:
+   * - Collection must exist
+   * 
+   * Idempotency:
+   * - If the collection is already favorited, no event is emitted.
+   *   This prevents duplicate events from double-clicks or retries.
+   * 
+   * @param command - The FavoriteCollection command
+   * @throws Error if validation fails
+   */
+  async handle(command: FavoriteCollectionCommand): Promise<void> {
+    // Validate collection exists
+    const collection = await this.projection.getCollectionById(command.collectionId);
+    if (!collection) {
+      throw new Error(`Collection ${command.collectionId} not found`);
+    }
+
+    // Idempotency: if already favorited, do nothing
+    if (collection.isFavorite) {
+      return; // Already in desired state, no event needed
+    }
+
+    // Generate event metadata
+    const metadata = generateEventMetadata();
+
+    // Create CollectionFavorited event
+    const event: CollectionFavorited = {
+      ...metadata,
+      type: 'CollectionFavorited',
+      aggregateId: command.collectionId,
+      payload: {
+        collectionId: command.collectionId,
+        favoritedAt: metadata.timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for UnfavoriteCollection
+ * 
+ * Responsibilities:
+ * - Validate collection exists
+ * - Create CollectionUnfavorited event
+ * - Persist event to EventStore
+ */
+export class UnfavoriteCollectionHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly projection: CollectionListProjection
+  ) {}
+
+  /**
+   * Handle UnfavoriteCollection command
+   * 
+   * Validation rules:
+   * - Collection must exist
+   * 
+   * Idempotency:
+   * - If the collection is not favorited, no event is emitted.
+   *   This prevents duplicate events from double-clicks or retries.
+   * 
+   * @param command - The UnfavoriteCollection command
+   * @throws Error if validation fails
+   */
+  async handle(command: UnfavoriteCollectionCommand): Promise<void> {
+    // Validate collection exists
+    const collection = await this.projection.getCollectionById(command.collectionId);
+    if (!collection) {
+      throw new Error(`Collection ${command.collectionId} not found`);
+    }
+
+    // Idempotency: if not favorited, do nothing
+    if (!collection.isFavorite) {
+      return; // Already in desired state, no event needed
+    }
+
+    // Generate event metadata
+    const metadata = generateEventMetadata();
+
+    // Create CollectionUnfavorited event
+    const event: CollectionUnfavorited = {
+      ...metadata,
+      type: 'CollectionUnfavorited',
+      aggregateId: command.collectionId,
+      payload: {
+        collectionId: command.collectionId,
+        unfavoritedAt: metadata.timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for AccessCollection
+ * 
+ * Responsibilities:
+ * - Validate collection exists
+ * - Create CollectionAccessed event
+ * - Persist event to EventStore
+ * 
+ * Note: This handler is NOT idempotent - it always emits an event
+ * to track every access for smart sorting and analytics.
+ */
+export class AccessCollectionHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly projection: CollectionListProjection
+  ) {}
+
+  /**
+   * Handle AccessCollection command
+   * 
+   * Validation rules:
+   * - Collection must exist
+   * 
+   * Note: This handler always emits an event (not idempotent)
+   * 
+   * @param command - The AccessCollection command
+   * @throws Error if validation fails
+   */
+  async handle(command: AccessCollectionCommand): Promise<void> {
+    // Validate collection exists
+    const collection = await this.projection.getCollectionById(command.collectionId);
+    if (!collection) {
+      throw new Error(`Collection ${command.collectionId} not found`);
+    }
+
+    // Generate event metadata
+    const metadata = generateEventMetadata();
+
+    // Create CollectionAccessed event
+    const event: CollectionAccessed = {
+      ...metadata,
+      type: 'CollectionAccessed',
+      aggregateId: command.collectionId,
+      payload: {
+        collectionId: command.collectionId,
+        accessedAt: metadata.timestamp,
       },
     };
 

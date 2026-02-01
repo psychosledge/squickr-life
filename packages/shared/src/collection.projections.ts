@@ -6,7 +6,10 @@ import type {
   CollectionRenamed,
   CollectionReordered,
   CollectionDeleted,
-  CollectionSettingsUpdated
+  CollectionSettingsUpdated,
+  CollectionFavorited,
+  CollectionUnfavorited,
+  CollectionAccessed
 } from './collection.types';
 
 /**
@@ -109,7 +112,7 @@ export class CollectionListProjection {
    */
   private applyCollectionEvent(
     collections: Map<string, Collection>,
-    event: CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated
+    event: CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated | CollectionFavorited | CollectionUnfavorited | CollectionAccessed
   ): void {
     switch (event.type) {
       case 'CollectionCreated': {
@@ -165,6 +168,36 @@ export class CollectionListProjection {
         }
         break;
       }
+      case 'CollectionFavorited': {
+        const collection = collections.get(event.payload.collectionId);
+        if (collection) {
+          collections.set(collection.id, {
+            ...collection,
+            isFavorite: true,
+          });
+        }
+        break;
+      }
+      case 'CollectionUnfavorited': {
+        const collection = collections.get(event.payload.collectionId);
+        if (collection) {
+          collections.set(collection.id, {
+            ...collection,
+            isFavorite: false,
+          });
+        }
+        break;
+      }
+      case 'CollectionAccessed': {
+        const collection = collections.get(event.payload.collectionId);
+        if (collection) {
+          collections.set(collection.id, {
+            ...collection,
+            lastAccessedAt: event.payload.accessedAt,
+          });
+        }
+        break;
+      }
     }
   }
 
@@ -173,13 +206,16 @@ export class CollectionListProjection {
    */
   private isCollectionEvent(
     event: DomainEvent
-  ): event is CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated {
+  ): event is CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated | CollectionFavorited | CollectionUnfavorited | CollectionAccessed {
     return (
       event.type === 'CollectionCreated' ||
       event.type === 'CollectionRenamed' ||
       event.type === 'CollectionReordered' ||
       event.type === 'CollectionDeleted' ||
-      event.type === 'CollectionSettingsUpdated'
+      event.type === 'CollectionSettingsUpdated' ||
+      event.type === 'CollectionFavorited' ||
+      event.type === 'CollectionUnfavorited' ||
+      event.type === 'CollectionAccessed'
     );
   }
 }

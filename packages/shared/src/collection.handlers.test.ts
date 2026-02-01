@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CreateCollectionHandler, RenameCollectionHandler, ReorderCollectionHandler, DeleteCollectionHandler, UpdateCollectionSettingsHandler } from './collection.handlers';
+import { 
+  CreateCollectionHandler, 
+  RenameCollectionHandler, 
+  ReorderCollectionHandler, 
+  DeleteCollectionHandler, 
+  UpdateCollectionSettingsHandler,
+  FavoriteCollectionHandler,
+  UnfavoriteCollectionHandler,
+  AccessCollectionHandler
+} from './collection.handlers';
 import { EventStore } from './event-store';
 import { CollectionListProjection } from './collection.projections';
 import type { 
@@ -12,7 +21,10 @@ import type {
   DeleteCollectionCommand,
   CollectionDeleted,
   UpdateCollectionSettingsCommand,
-  CollectionSettingsUpdated
+  CollectionSettingsUpdated,
+  CollectionFavorited,
+  CollectionUnfavorited,
+  CollectionAccessed
 } from './collection.types';
 
 describe('CreateCollectionHandler', () => {
@@ -996,6 +1008,156 @@ describe('UpdateCollectionSettingsHandler', () => {
         collectionId,
         settings: { collapseCompleted: true },
       });
+
+      const eventsAfter = await eventStore.getAll();
+      expect(eventsAfter.length).toBe(countBefore + 1); // New event created
+    });
+  });
+});
+
+describe('FavoriteCollectionHandler', () => {
+  let eventStore: EventStore;
+  let projection: CollectionListProjection;
+  let createHandler: CreateCollectionHandler;
+  let favoriteHandler: FavoriteCollectionHandler;
+
+  beforeEach(() => {
+    eventStore = new EventStore();
+    projection = new CollectionListProjection(eventStore);
+    createHandler = new CreateCollectionHandler(eventStore, projection);
+    favoriteHandler = new FavoriteCollectionHandler(eventStore, projection);
+  });
+
+  describe('handle', () => {
+    it('should favorite a custom collection', async () => {
+      const collectionId = await createHandler.handle({ name: 'Ideas', type: 'custom' });
+
+      await favoriteHandler.handle({ collectionId });
+
+      const collection = await projection.getCollectionById(collectionId);
+      expect(collection?.isFavorite).toBe(true);
+    });
+
+    it('should emit CollectionFavorited event', async () => {
+      const collectionId = await createHandler.handle({ name: 'Ideas', type: 'custom' });
+
+      await favoriteHandler.handle({ collectionId });
+
+      const events = await eventStore.getAll();
+      const favoriteEvent = events[1] as CollectionFavorited;
+      expect(favoriteEvent.type).toBe('CollectionFavorited');
+      expect(favoriteEvent.payload.collectionId).toBe(collectionId);
+    });
+
+    it('should throw error if collection does not exist', async () => {
+      await expect(
+        favoriteHandler.handle({ collectionId: 'non-existent' })
+      ).rejects.toThrow('Collection non-existent not found');
+    });
+
+    it('should not emit event if already favorited (idempotent)', async () => {
+      const collectionId = await createHandler.handle({ name: 'Ideas', type: 'custom' });
+      await favoriteHandler.handle({ collectionId });
+
+      const eventsBefore = await eventStore.getAll();
+      const countBefore = eventsBefore.length;
+
+      await favoriteHandler.handle({ collectionId });
+
+      const eventsAfter = await eventStore.getAll();
+      expect(eventsAfter.length).toBe(countBefore); // No new event
+    });
+  });
+});
+
+describe('UnfavoriteCollectionHandler', () => {
+  let eventStore: EventStore;
+  let projection: CollectionListProjection;
+  let createHandler: CreateCollectionHandler;
+  let favoriteHandler: FavoriteCollectionHandler;
+  let unfavoriteHandler: UnfavoriteCollectionHandler;
+
+  beforeEach(() => {
+    eventStore = new EventStore();
+    projection = new CollectionListProjection(eventStore);
+    createHandler = new CreateCollectionHandler(eventStore, projection);
+    favoriteHandler = new FavoriteCollectionHandler(eventStore, projection);
+    unfavoriteHandler = new UnfavoriteCollectionHandler(eventStore, projection);
+  });
+
+  describe('handle', () => {
+    it('should unfavorite a collection', async () => {
+      const collectionId = await createHandler.handle({ name: 'Ideas', type: 'custom' });
+      await favoriteHandler.handle({ collectionId });
+
+      await unfavoriteHandler.handle({ collectionId });
+
+      const collection = await projection.getCollectionById(collectionId);
+      expect(collection?.isFavorite).toBe(false);
+    });
+
+    it('should not emit event if not favorited (idempotent)', async () => {
+      const collectionId = await createHandler.handle({ name: 'Ideas', type: 'custom' });
+
+      const eventsBefore = await eventStore.getAll();
+      const countBefore = eventsBefore.length;
+
+      await unfavoriteHandler.handle({ collectionId });
+
+      const eventsAfter = await eventStore.getAll();
+      expect(eventsAfter.length).toBe(countBefore); // No new event
+    });
+  });
+});
+
+describe('AccessCollectionHandler', () => {
+  let eventStore: EventStore;
+  let projection: CollectionListProjection;
+  let createHandler: CreateCollectionHandler;
+  let accessHandler: AccessCollectionHandler;
+
+  beforeEach(() => {
+    eventStore = new EventStore();
+    projection = new CollectionListProjection(eventStore);
+    createHandler = new CreateCollectionHandler(eventStore, projection);
+    accessHandler = new AccessCollectionHandler(eventStore, projection);
+  });
+
+  describe('handle', () => {
+    it('should update lastAccessedAt when collection is accessed', async () => {
+      const collectionId = await createHandler.handle({ name: 'Ideas', type: 'custom' });
+
+      await accessHandler.handle({ collectionId });
+
+      const collection = await projection.getCollectionById(collectionId);
+      expect(collection?.lastAccessedAt).toBeDefined();
+    });
+
+    it('should emit CollectionAccessed event', async () => {
+      const collectionId = await createHandler.handle({ name: 'Ideas', type: 'custom' });
+
+      await accessHandler.handle({ collectionId });
+
+      const events = await eventStore.getAll();
+      const accessEvent = events[1] as CollectionAccessed;
+      expect(accessEvent.type).toBe('CollectionAccessed');
+      expect(accessEvent.payload.collectionId).toBe(collectionId);
+    });
+
+    it('should throw error if collection does not exist', async () => {
+      await expect(
+        accessHandler.handle({ collectionId: 'non-existent' })
+      ).rejects.toThrow('Collection non-existent not found');
+    });
+
+    it('should always emit event (not idempotent)', async () => {
+      const collectionId = await createHandler.handle({ name: 'Ideas', type: 'custom' });
+      await accessHandler.handle({ collectionId });
+
+      const eventsBefore = await eventStore.getAll();
+      const countBefore = eventsBefore.length;
+
+      await accessHandler.handle({ collectionId });
 
       const eventsAfter = await eventStore.getAll();
       expect(eventsAfter.length).toBe(countBefore + 1); // New event created
