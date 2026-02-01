@@ -64,10 +64,9 @@ jobs:
           PR_VERSION=$(node -p "require('./package.json').version")
           echo "PR branch version: $PR_VERSION"
           
-          # Try to fetch production branch
-          if git fetch origin production:production 2>/dev/null && git show production:package.json >/dev/null 2>&1; then
+          # Try to get version from production branch on remote
+          if PROD_VERSION=$(git show origin/production:package.json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8')).version"); then
             # Production branch exists, check version
-            PROD_VERSION=$(git show production:package.json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8')).version")
             echo "Production branch version: $PROD_VERSION"
             echo "prod_version=$PROD_VERSION" >> $GITHUB_OUTPUT
             echo "prod_exists=true" >> $GITHUB_OUTPUT
