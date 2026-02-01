@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { MigrateEntryModal } from './MigrateEntryModal';
 import type { Entry, Collection } from '@squickr/shared';
+import { getCollectionDisplayName } from '../utils/formatters';
 
 describe('MigrateEntryModal', () => {
   const mockCollections: Collection[] = [
@@ -450,10 +451,13 @@ describe('MigrateEntryModal', () => {
 
       render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
 
-      // Should show today, pinned, and yesterday
-      expect(screen.getByLabelText(/Today/i)).toBeInTheDocument();
+      // Should show today, pinned, and yesterday (using formatted display names)
+      const todayCollection = collectionsWithDates.find(c => c.id === 'today')!;
+      const yesterdayCollection = collectionsWithDates.find(c => c.id === 'yesterday')!;
+      
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(todayCollection)))).toBeInTheDocument();
       expect(screen.getByLabelText(/Pinned Ideas/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Yesterday/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(yesterdayCollection)))).toBeInTheDocument();
     });
 
     it('should NOT show other collections by default', () => {
@@ -490,8 +494,9 @@ describe('MigrateEntryModal', () => {
 
       render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
 
-      // Should show today
-      expect(screen.getByLabelText(/Today/i)).toBeInTheDocument();
+      // Should show today (using formatted display name)
+      const todayCollection = collectionsWithDates.find(c => c.id === 'today')!;
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(todayCollection)))).toBeInTheDocument();
 
       // Should NOT show old or unpinned collections
       expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
@@ -554,14 +559,15 @@ describe('MigrateEntryModal', () => {
 
       render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
 
-      // Old collection should not be visible initially
-      expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
+      // Old collection should not be visible initially (using formatted display name)
+      const oldCollection = collectionsWithDates.find(c => c.id === 'old')!;
+      expect(screen.queryByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).not.toBeInTheDocument();
 
       // Click "Show all"
       await user.click(screen.getByText('Show all collections'));
 
       // Old collection should now be visible
-      expect(screen.getByLabelText(/Old Log/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).toBeInTheDocument();
     });
 
     it('should show "Show less" button when expanded', async () => {
@@ -625,12 +631,13 @@ describe('MigrateEntryModal', () => {
       render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
 
       // Expand
+      const oldCollection = collectionsWithDates.find(c => c.id === 'old')!;
       await user.click(screen.getByText('Show all collections'));
-      expect(screen.getByLabelText(/Old Log/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).toBeInTheDocument();
 
       // Collapse
       await user.click(screen.getByText('Show less'));
-      expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).not.toBeInTheDocument();
     });
 
     it('should handle collections without today or yesterday gracefully', () => {
@@ -682,8 +689,10 @@ describe('MigrateEntryModal', () => {
 
       render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
 
-      // Should only show once
-      const labels = screen.getAllByLabelText(/Today \(Pinned\)/i);
+      // Should only show once (using formatted display name, not the stored name)
+      const todayCollection = collectionsWithDates[0]!;
+      const displayName = getCollectionDisplayName(todayCollection);
+      const labels = screen.getAllByLabelText(new RegExp(displayName));
       expect(labels).toHaveLength(1);
     });
 
@@ -735,21 +744,23 @@ describe('MigrateEntryModal', () => {
 
       render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
 
-      // Select today
-      await user.click(screen.getByLabelText(/Today/i));
-      expect(screen.getByLabelText(/Today/i)).toBeChecked();
+      // Select today (using formatted display name)
+      const todayCollection = collectionsWithDates.find(c => c.id === 'today')!;
+      const todayDisplayName = getCollectionDisplayName(todayCollection);
+      await user.click(screen.getByLabelText(new RegExp(todayDisplayName)));
+      expect(screen.getByLabelText(new RegExp(todayDisplayName))).toBeChecked();
 
       // Expand to show all
       await user.click(screen.getByText('Show all collections'));
 
       // Selection should still be preserved
-      expect(screen.getByLabelText(/Today/i)).toBeChecked();
+      expect(screen.getByLabelText(new RegExp(todayDisplayName))).toBeChecked();
 
       // Collapse back
       await user.click(screen.getByText('Show less'));
 
       // Selection should still be preserved
-      expect(screen.getByLabelText(/Today/i)).toBeChecked();
+      expect(screen.getByLabelText(new RegExp(todayDisplayName))).toBeChecked();
     });
   });
 });

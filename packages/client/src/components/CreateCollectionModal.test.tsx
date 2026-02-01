@@ -77,7 +77,7 @@ describe('CreateCollectionModal', () => {
     await user.type(input, 'My New Collection');
     await user.click(screen.getByRole('button', { name: 'Create' }));
     
-    expect(onSubmit).toHaveBeenCalledWith('My New Collection');
+    expect(onSubmit).toHaveBeenCalledWith('My New Collection', undefined, undefined);
   });
 
   it('should disable create button when input is empty', () => {
@@ -187,7 +187,7 @@ describe('CreateCollectionModal', () => {
     const input = screen.getByLabelText('Collection Name');
     await user.type(input, 'Quick Collection{Enter}');
     
-    expect(onSubmit).toHaveBeenCalledWith('Quick Collection');
+    expect(onSubmit).toHaveBeenCalledWith('Quick Collection', undefined, undefined);
   });
 
   it('should not submit on Enter when input is empty', async () => {
@@ -270,7 +270,7 @@ describe('CreateCollectionModal', () => {
     await user.type(input, '  Trimmed Name  ');
     await user.click(screen.getByRole('button', { name: 'Create' }));
     
-    expect(onSubmit).toHaveBeenCalledWith('Trimmed Name');
+    expect(onSubmit).toHaveBeenCalledWith('Trimmed Name', undefined, undefined);
   });
 
   it('should close when Escape key is pressed', async () => {

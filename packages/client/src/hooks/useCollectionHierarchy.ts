@@ -91,12 +91,16 @@ function buildHierarchy(
   // Separate daily logs from custom collections
   const dailyLogs = collections.filter(c => c.type === 'daily' && c.date);
   const customCollections = collections.filter(c => 
-    c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
+    !c.type || c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
   );
   
   // Separate pinned from unpinned custom collections
   const pinnedCustoms = customCollections.filter(c => c.isFavorite);
   const unpinnedCustoms = customCollections.filter(c => !c.isFavorite);
+  
+  // Sort both by order field (fractional index string, lexicographic comparison)
+  pinnedCustoms.sort((a, b) => (a.order || '').localeCompare(b.order || ''));
+  unpinnedCustoms.sort((a, b) => (a.order || '').localeCompare(b.order || ''));
   
   // Add pinned custom collections first
   pinnedCustoms.forEach(collection => {

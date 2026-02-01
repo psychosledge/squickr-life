@@ -1,12 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatTimestamp, formatDate } from './formatters';
+import { formatTimestamp, formatDate, getCollectionDisplayName } from './formatters';
 
 describe('formatTimestamp', () => {
-  let originalDate: typeof Date;
   const mockNow = new Date('2026-01-25T12:00:00.000Z');
 
   beforeEach(() => {
-    originalDate = global.Date;
     vi.useFakeTimers();
     vi.setSystemTime(mockNow);
   });
@@ -104,5 +102,58 @@ describe('formatDate', () => {
   it('should handle empty string', () => {
     const result = formatDate('');
     expect(result).toBe('');
+  });
+});
+
+describe('getCollectionDisplayName', () => {
+  it('should format daily log with date as "Weekday, Month Day"', () => {
+    const collection = {
+      name: 'Some stored name',
+      type: 'daily' as const,
+      date: '2026-02-01'
+    };
+    const result = getCollectionDisplayName(collection);
+    // Should be formatted as "Sunday, February 1" (2026-02-01 is a Sunday)
+    expect(result).toMatch(/February/);
+    expect(result).toMatch(/1/);
+    expect(result).not.toBe(collection.name); // Should NOT use the stored name
+  });
+
+  it('should return name as-is for custom collection', () => {
+    const collection = {
+      name: 'My Custom Collection',
+      type: 'custom' as const
+    };
+    const result = getCollectionDisplayName(collection);
+    expect(result).toBe('My Custom Collection');
+  });
+
+  it('should return name as-is for legacy collection without type', () => {
+    const collection = {
+      name: 'Legacy Collection'
+    };
+    const result = getCollectionDisplayName(collection);
+    expect(result).toBe('Legacy Collection');
+  });
+
+  it('should handle daily log without date gracefully', () => {
+    const collection = {
+      name: 'Broken Daily Log',
+      type: 'daily' as const
+    };
+    const result = getCollectionDisplayName(collection);
+    // Should fall back to name if no date
+    expect(result).toBe('Broken Daily Log');
+  });
+
+  it('should format different dates correctly', () => {
+    const collection = {
+      name: 'Stored',
+      type: 'daily' as const,
+      date: '2026-12-25'
+    };
+    const result = getCollectionDisplayName(collection);
+    expect(result).toMatch(/December/);
+    expect(result).toMatch(/25/);
   });
 });

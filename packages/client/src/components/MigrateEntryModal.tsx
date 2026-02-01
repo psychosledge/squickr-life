@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Entry, Collection } from '@squickr/shared';
 import { CreateCollectionModal } from './CreateCollectionModal';
+import { getCollectionDisplayName } from '../utils/formatters';
 
 interface MigrateEntryModalProps {
   isOpen: boolean;
@@ -313,7 +314,7 @@ export function MigrateEntryModal({
                   disabled={isSubmitting || isAlreadyMigrated}
                   className="mr-3"
                 />
-                <span className="text-gray-900 dark:text-white">{collection.name}</span>
+                <span className="text-gray-900 dark:text-white">{getCollectionDisplayName(collection)}</span>
               </label>
             ))}
 

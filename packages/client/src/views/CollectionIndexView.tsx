@@ -19,7 +19,7 @@ import { UserProfileMenu } from '../components/UserProfileMenu';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
 export function CollectionIndexView() {
-  const { collectionProjection, entryProjection, createCollectionHandler } = useApp();
+  const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler } = useApp();
   const { user } = useAuth();
   
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -76,8 +76,25 @@ export function CollectionIndexView() {
     };
   }, [collectionProjection, entryProjection]);
 
-  const handleCreateCollection = async (name: string) => {
-    await createCollectionHandler.handle({ name });
+  const handleCreateCollection = async (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => {
+    await createCollectionHandler.handle({ name, type, date });
+  };
+
+  const handleReorderCollection = async (
+    collectionId: string, 
+    previousCollectionId: string | null, 
+    nextCollectionId: string | null
+  ) => {
+    if (!reorderCollectionHandler) {
+      console.warn('[CollectionIndexView] Reorder handler not available');
+      return;
+    }
+    
+    await reorderCollectionHandler.handle({
+      collectionId,
+      previousCollectionId,
+      nextCollectionId,
+    });
   };
 
   const handleSignOut = async () => {
@@ -118,6 +135,7 @@ export function CollectionIndexView() {
         {/* Collection List */}
         <HierarchicalCollectionList 
           collections={collections}
+          onReorder={handleReorderCollection}
         />
       </div>
 

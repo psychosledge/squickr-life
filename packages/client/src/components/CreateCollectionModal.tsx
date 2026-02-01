@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
+import type { CollectionType } from '@squickr/shared';
 
 interface CreateCollectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (name: string) => Promise<void>;
+  onSubmit: (name: string, type?: CollectionType, date?: string) => Promise<void>;
 }
 
 /**
@@ -21,6 +22,15 @@ interface CreateCollectionModalProps {
  */
 export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateCollectionModalProps) {
   const [name, setName] = useState('');
+  const [type, setType] = useState<CollectionType>('custom');
+  const [date, setDate] = useState(() => {
+    // Default to today's date in YYYY-MM-DD format
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -60,18 +70,46 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
   const handleSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
 
-    const trimmedName = name.trim();
-
-    // Don't submit if empty
-    if (trimmedName.length === 0) {
-      return;
+    // For daily logs, generate name from date; for custom, use user input
+    let finalName: string;
+    if (type === 'daily') {
+      // Auto-generate name from date (e.g., "2026-02-01" -> "Saturday, February 1")
+      const parts = date.split('-');
+      const year = parseInt(parts[0]!, 10);
+      const month = parseInt(parts[1]!, 10) - 1; // 0-indexed
+      const day = parseInt(parts[2]!, 10);
+      
+      const dateObj = new Date(year, month, day);
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      finalName = formatter.format(dateObj);
+    } else {
+      // For custom collections, use trimmed name
+      const trimmedName = name.trim();
+      
+      // Don't submit if empty (only applies to custom collections)
+      if (trimmedName.length === 0) {
+        return;
+      }
+      
+      finalName = trimmedName;
     }
 
     try {
-      await onSubmit(trimmedName);
+      // For daily collections, pass the date; for custom, type and date are undefined
+      await onSubmit(
+        finalName,
+        type === 'custom' ? undefined : type,
+        type === 'daily' ? date : undefined
+      );
       
       // Clear input and close modal on success
       setName('');
+      setType('custom');
       setError('');
       onClose();
     } catch (err) {
@@ -100,7 +138,9 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
     return null;
   }
 
-  const isCreateDisabled = name.trim().length === 0;
+  // For daily logs, disable is always false (date is always set)
+  // For custom collections, disable if name is empty
+  const isCreateDisabled = type === 'custom' ? name.trim().length === 0 : false;
 
   return (
     <div 
@@ -118,34 +158,88 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
         </h2>
 
         <form onSubmit={handleSubmit}>
+          {type === 'custom' && (
+            <div className="mb-4">
+              <label 
+                htmlFor="collection-name" 
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Collection Name
+              </label>
+              <input
+                ref={inputRef}
+                id="collection-name"
+                type="text"
+                value={name}
+                onChange={(e) => handleChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="e.g., Work Projects, Reading List"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                           placeholder-gray-400 dark:placeholder-gray-500
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                aria-invalid={error ? 'true' : 'false'}
+                aria-describedby={error ? 'name-error' : undefined}
+              />
+              {error && (
+                <div id="name-error" className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="mb-4">
-            <label 
-              htmlFor="collection-name" 
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
-              Collection Name
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Collection Type
             </label>
-            <input
-              ref={inputRef}
-              id="collection-name"
-              type="text"
-              value={name}
-              onChange={(e) => handleChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="e.g., Work Projects, Reading List"
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                         placeholder-gray-400 dark:placeholder-gray-500
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              aria-invalid={error ? 'true' : 'false'}
-              aria-describedby={error ? 'name-error' : undefined}
-            />
-            {error && (
-              <div id="name-error" className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
-                {error}
-              </div>
-            )}
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="collection-type"
+                  value="custom"
+                  checked={type === 'custom'}
+                  onChange={(e) => setType(e.target.value as CollectionType)}
+                  className="mr-2 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 dark:text-gray-300">Custom Collection</span>
+                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">(topical, e.g., Work, Reading)</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="collection-type"
+                  value="daily"
+                  checked={type === 'daily'}
+                  onChange={(e) => setType(e.target.value as CollectionType)}
+                  className="mr-2 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 dark:text-gray-300">Daily Log</span>
+                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">(date-based)</span>
+              </label>
+            </div>
           </div>
+
+          {type === 'daily' && (
+            <div className="mb-4">
+              <label 
+                htmlFor="collection-date" 
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Date
+              </label>
+              <input
+                id="collection-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          )}
 
           <div className="flex gap-3 justify-end">
             <button

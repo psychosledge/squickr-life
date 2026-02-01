@@ -8,6 +8,9 @@
  * - Reorder entries within the collection
  * 
  * Phase 2C: Full implementation with entry list
+ * 
+ * TODO: Refactor - This file is 476 lines and approaching the 500-line threshold.
+ * Consider extracting handler initialization, modal state, and entry operations into separate hooks.
  */
 
 import { useState, useEffect } from 'react';
@@ -32,6 +35,8 @@ import {
   RenameCollectionHandler,
   DeleteCollectionHandler,
   UpdateCollectionSettingsHandler,
+  FavoriteCollectionHandler,
+  UnfavoriteCollectionHandler,
 } from '@squickr/shared';
 import { useApp } from '../context/AppContext';
 import { CollectionHeader } from '../components/CollectionHeader';
@@ -77,6 +82,8 @@ export function CollectionDetailView() {
   const renameCollectionHandler = new RenameCollectionHandler(eventStore, collectionProjection);
   const deleteCollectionHandler = new DeleteCollectionHandler(eventStore, collectionProjection);
   const updateSettingsHandler = new UpdateCollectionSettingsHandler(eventStore, collectionProjection);
+  const favoriteCollectionHandler = new FavoriteCollectionHandler(eventStore, collectionProjection);
+  const unfavoriteCollectionHandler = new UnfavoriteCollectionHandler(eventStore, collectionProjection);
 
   // Load collection and entries
   const loadData = async () => {
@@ -284,6 +291,16 @@ export function CollectionDetailView() {
     return await createCollectionHandler.handle({ name });
   };
 
+  const handleToggleFavorite = async () => {
+    if (!collection) return;
+    
+    if (collection.isFavorite) {
+      await unfavoriteCollectionHandler.handle({ collectionId: collection.id });
+    } else {
+      await favoriteCollectionHandler.handle({ collectionId: collection.id });
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -343,6 +360,8 @@ export function CollectionDetailView() {
         onRename={handleRenameCollection}
         onDelete={handleDeleteCollection}
         onSettings={handleOpenSettings}
+        onToggleFavorite={collection.id === UNCATEGORIZED_COLLECTION_ID ? undefined : handleToggleFavorite}
+        isFavorite={collection.isFavorite}
         isVirtual={collection.id === UNCATEGORIZED_COLLECTION_ID}
       />
 
