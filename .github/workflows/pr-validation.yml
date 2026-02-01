@@ -64,25 +64,30 @@ jobs:
           PR_VERSION=$(node -p "require('./package.json').version")
           echo "PR branch version: $PR_VERSION"
           
-          # Get version from production branch
-          git fetch origin production:production 2>/dev/null || {
-            echo "::warning::Production branch not found. Skipping version check for initial setup."
-            echo "version_bumped=true" >> $GITHUB_OUTPUT
-            exit 0
-          }
-          
-          PROD_VERSION=$(git show production:package.json | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8')).version")
-          echo "Production branch version: $PROD_VERSION"
-          
-          # Compare versions
-          if [ "$PR_VERSION" == "$PROD_VERSION" ]; then
-            echo "::error::Version not bumped! Please update version in package.json"
-            echo "::error::Current production version: $PROD_VERSION"
-            echo "::error::PR version: $PR_VERSION"
-            echo "version_bumped=false" >> $GITHUB_OUTPUT
-            exit 1
+          # Try to get version from production branch on remote
+          if PROD_VERSION=$(git show origin/production:package.json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8')).version"); then
+            # Production branch exists, check version
+            echo "Production branch version: $PROD_VERSION"
+            echo "prod_version=$PROD_VERSION" >> $GITHUB_OUTPUT
+            echo "prod_exists=true" >> $GITHUB_OUTPUT
+            
+            # Compare versions
+            if [ "$PR_VERSION" == "$PROD_VERSION" ]; then
+              echo "::error::Version not bumped! Please update version in package.json"
+              echo "::error::Current production version: $PROD_VERSION"
+              echo "::error::PR version: $PR_VERSION"
+              echo "version_bumped=false" >> $GITHUB_OUTPUT
+              exit 1
+            else
+              echo "::notice::Version bumped from $PROD_VERSION to $PR_VERSION ✓"
+              echo "version_bumped=true" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "::notice::Version bumped from $PROD_VERSION to $PR_VERSION ✓"
+            # Production branch doesn't exist - initial setup
+            echo "::warning::Production branch not found. This appears to be initial setup."
+            echo "::warning::Allowing PR to proceed. Version check will apply on future PRs."
+            echo "prod_version=N/A" >> $GITHUB_OUTPUT
+            echo "prod_exists=false" >> $GITHUB_OUTPUT
             echo "version_bumped=true" >> $GITHUB_OUTPUT
           fi
 
@@ -94,18 +99,30 @@ jobs:
             const fs = require('fs');
             const prVersion = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version;
             
-            let prodVersion = 'N/A';
-            try {
-              const { execSync } = require('child_process');
-              prodVersion = execSync('git show production:package.json | node -p "JSON.parse(require(\'fs\').readFileSync(\'/dev/stdin\', \'utf8\)).version"', { encoding: 'utf8' }).trim();
-            } catch (e) {
-              prodVersion = 'Production branch not found';
-            }
-            
+            const prodVersion = '${{ steps.version_check.outputs.prod_version }}' || 'N/A';
+            const prodExists = '${{ steps.version_check.outputs.prod_exists }}' === 'true';
             const versionBumped = '${{ steps.version_check.outputs.version_bumped }}' === 'true';
             const status = versionBumped ? '✅' : '❌';
             
-            const body = `## PR Validation Results
+            let body;
+            
+            if (!prodExists) {
+              // Initial setup case
+              body = `## PR Validation Results
+            
+            ### Version Check ⚠️ (Initial Setup)
+            - **Production version:** \`N/A\` (production branch not found)
+            - **PR version:** \`${prVersion}\`
+            - **Status:** ✅ **Allowed** - This appears to be the initial setup
+            
+            ### ℹ️ Note
+            This is the first PR to the production branch. Version validation will apply on future PRs.
+            
+            After this PR is merged, all future PRs must bump the version in \`package.json\`.
+            `;
+            } else {
+              // Normal case
+              body = `## PR Validation Results
             
             ### Version Check ${status}
             - **Production version:** \`${prodVersion}\`
@@ -114,6 +131,7 @@ jobs:
             
             ${versionBumped ? '' : '### ⚠️ Action Required\nPlease bump the version in `package.json` before merging this PR.'}
             `;
+            }
             
             // Find existing comment
             const { data: comments } = await github.rest.issues.listComments({
