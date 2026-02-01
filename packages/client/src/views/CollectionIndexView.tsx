@@ -142,6 +142,9 @@ export function CollectionIndexView() {
             <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400">
               Get shit done quicker with Squickr!
             </p>
+            <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">
+              v0.2.0
+            </p>
           </div>
         </div>
 

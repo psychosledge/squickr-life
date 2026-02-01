@@ -6,7 +6,12 @@ export default {
     './src/**/*.{ts,tsx,js,jsx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      zIndex: {
+        '60': '60',
+        '70': '70',
+      },
+    },
   },
   plugins: [],
 }
