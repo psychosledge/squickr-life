@@ -385,4 +385,371 @@ describe('MigrateEntryModal', () => {
       resolvePromise!();
     });
   });
+
+  describe('Smart Filtering (Phase 1D)', () => {
+    // Helper functions to get today's and yesterday's dates
+    const getTodayDate = (): string => {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const getYesterdayDate = (): string => {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const year = yesterday.getFullYear();
+      const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+      const day = String(yesterday.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    it('should show today, pinned, and yesterday by default', () => {
+      const today = getTodayDate();
+      const yesterday = getYesterdayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'yesterday', 
+          userId: 'user1', 
+          name: 'Yesterday', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: yesterday,
+        },
+        { 
+          id: 'pinned', 
+          userId: 'user1', 
+          name: 'Pinned Ideas', 
+          createdAt: '2024-01-01', 
+          order: '2',
+          type: 'custom',
+          isFavorite: true,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '3',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should show today, pinned, and yesterday
+      expect(screen.getByLabelText(/Today/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Pinned Ideas/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Yesterday/i)).toBeInTheDocument();
+    });
+
+    it('should NOT show other collections by default', () => {
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+        { 
+          id: 'unpinned', 
+          userId: 'user1', 
+          name: 'Unpinned', 
+          createdAt: '2024-01-01', 
+          order: '2',
+          type: 'custom',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should show today
+      expect(screen.getByLabelText(/Today/i)).toBeInTheDocument();
+
+      // Should NOT show old or unpinned collections
+      expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Unpinned/i)).not.toBeInTheDocument();
+    });
+
+    it('should show "Show all collections" button when filtered', () => {
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      expect(screen.getByText('Show all collections')).toBeInTheDocument();
+    });
+
+    it('should expand to full list when "Show all" is clicked', async () => {
+      const user = userEvent.setup();
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Old collection should not be visible initially
+      expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
+
+      // Click "Show all"
+      await user.click(screen.getByText('Show all collections'));
+
+      // Old collection should now be visible
+      expect(screen.getByLabelText(/Old Log/i)).toBeInTheDocument();
+    });
+
+    it('should show "Show less" button when expanded', async () => {
+      const user = userEvent.setup();
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      await user.click(screen.getByText('Show all collections'));
+
+      expect(screen.getByText('Show less')).toBeInTheDocument();
+      expect(screen.queryByText('Show all collections')).not.toBeInTheDocument();
+    });
+
+    it('should collapse back to filtered view when "Show less" is clicked', async () => {
+      const user = userEvent.setup();
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Expand
+      await user.click(screen.getByText('Show all collections'));
+      expect(screen.getByLabelText(/Old Log/i)).toBeInTheDocument();
+
+      // Collapse
+      await user.click(screen.getByText('Show less'));
+      expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
+    });
+
+    it('should handle collections without today or yesterday gracefully', () => {
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'pinned', 
+          userId: 'user1', 
+          name: 'Pinned Ideas', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'custom',
+          isFavorite: true,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should show pinned collection
+      expect(screen.getByLabelText(/Pinned Ideas/i)).toBeInTheDocument();
+
+      // Should NOT show old log
+      expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
+    });
+
+    it('should not show duplicate if today log is also pinned', () => {
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today (Pinned)', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+          isFavorite: true,
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should only show once
+      const labels = screen.getAllByLabelText(/Today \(Pinned\)/i);
+      expect(labels).toHaveLength(1);
+    });
+
+    it('should not show "Show all" button if filtered list equals full list', () => {
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should NOT show "Show all" button since there's nothing more to show
+      expect(screen.queryByText('Show all collections')).not.toBeInTheDocument();
+    });
+
+    it('should preserve selection when toggling between filtered and full views', async () => {
+      const user = userEvent.setup();
+      const today = getTodayDate();
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Select today
+      await user.click(screen.getByLabelText(/Today/i));
+      expect(screen.getByLabelText(/Today/i)).toBeChecked();
+
+      // Expand to show all
+      await user.click(screen.getByText('Show all collections'));
+
+      // Selection should still be preserved
+      expect(screen.getByLabelText(/Today/i)).toBeChecked();
+
+      // Collapse back
+      await user.click(screen.getByText('Show less'));
+
+      // Selection should still be preserved
+      expect(screen.getByLabelText(/Today/i)).toBeChecked();
+    });
+  });
 });
