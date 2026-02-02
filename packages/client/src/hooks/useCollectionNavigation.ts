@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Collection } from '@squickr/shared';
 import { useApp } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
+import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 
 const SWIPE_THRESHOLD = 50; // Minimum pixels for swipe detection
 
@@ -35,6 +36,7 @@ export function useCollectionNavigation(
     // Check if there are orphaned entries (for virtual uncategorized collection)
     const orphanedEntries = await entryProjection.getEntriesByCollection(null);
     
+    let allCollections: Collection[];
     if (orphanedEntries.length > 0) {
       // Add virtual uncategorized collection at the start
       const virtualUncategorized: Collection = {
@@ -44,10 +46,15 @@ export function useCollectionNavigation(
         order: '!', // Comes before all other collections
         createdAt: new Date().toISOString(),
       };
-      setCollections([virtualUncategorized, ...realCollections]);
+      allCollections = [virtualUncategorized, ...realCollections];
     } else {
-      setCollections(realCollections);
+      allCollections = realCollections;
     }
+    
+    // Sort collections hierarchically to match index page order
+    // Order: 1) Favorited customs, 2) Daily logs (newest first), 3) Other customs
+    const sortedCollections = sortCollectionsHierarchically(allCollections);
+    setCollections(sortedCollections);
   }, [collectionProjection, entryProjection]);
 
   // Load collections on mount and when they change
