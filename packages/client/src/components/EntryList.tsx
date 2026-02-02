@@ -1,4 +1,5 @@
 import type { Entry, Collection } from '@squickr/shared';
+import { useMemo } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableEntryItem } from './SortableEntryItem';
@@ -50,19 +51,24 @@ export function EntryList({
   onNavigateToMigrated,
   onCreateCollection
 }: EntryListProps) {
+  // Memoize sensor configuration to prevent recreation on every render
+  const mouseSensor = useMemo(() => MouseSensor, []);
+  const touchSensor = useMemo(() => TouchSensor, []);
+  const keyboardSensor = useMemo(() => KeyboardSensor, []);
+  
   const sensors = useSensors(
-    useSensor(MouseSensor, {
+    useSensor(mouseSensor, {
       activationConstraint: {
         distance: 8, // Require 8px movement before drag starts
       },
     }),
-    useSensor(TouchSensor, {
+    useSensor(touchSensor, {
       activationConstraint: {
         delay: 250, // 250ms delay for touch devices
         tolerance: 5, // Allow 5px of movement during delay
       },
     }),
-    useSensor(KeyboardSensor, {
+    useSensor(keyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );

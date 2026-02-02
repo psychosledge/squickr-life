@@ -15,6 +15,7 @@
 
 import type { IEventStore } from '@squickr/shared';
 import { uploadLocalEvents, downloadRemoteEvents } from './syncEvents';
+import { logger } from '../utils/logger';
 
 export class SyncManager {
   private intervalId: number | null = null;
@@ -82,7 +83,7 @@ export class SyncManager {
       
       this.lastSyncTime = Date.now();
     } catch (error) {
-      console.error('[SyncManager] Sync failed:', error);
+      logger.error('[SyncManager] Sync failed:', error);
     } finally {
       this.isSyncing = false;
       this.onSyncStateChange?.(false);

@@ -13,7 +13,7 @@
  * Consider extracting handler initialization, modal state, and entry operations into separate hooks.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Collection, Entry, CollectionSettings } from '@squickr/shared';
 import {
@@ -63,27 +63,27 @@ export function CollectionDetailView() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
 
-  // Initialize handlers with required projections
-  const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
-  const createNoteHandler = new CreateNoteHandler(eventStore, entryProjection);
-  const createEventHandler = new CreateEventHandler(eventStore, entryProjection);
-  const completeTaskHandler = new CompleteTaskHandler(eventStore, entryProjection);
-  const reopenTaskHandler = new ReopenTaskHandler(eventStore, entryProjection);
-  const updateTaskTitleHandler = new UpdateTaskTitleHandler(eventStore, entryProjection);
-  const updateNoteContentHandler = new UpdateNoteContentHandler(eventStore, entryProjection);
-  const updateEventContentHandler = new UpdateEventContentHandler(eventStore, entryProjection);
-  const updateEventDateHandler = new UpdateEventDateHandler(eventStore, entryProjection);
-  const deleteTaskHandler = new DeleteTaskHandler(eventStore, entryProjection);
-  const deleteNoteHandler = new DeleteNoteHandler(eventStore, entryProjection);
-  const deleteEventHandler = new DeleteEventHandler(eventStore, entryProjection);
-  const reorderTaskHandler = new ReorderTaskHandler(eventStore, entryProjection);
-  const reorderNoteHandler = new ReorderNoteHandler(eventStore, entryProjection, entryProjection);
-  const reorderEventHandler = new ReorderEventHandler(eventStore, entryProjection, entryProjection);
-  const renameCollectionHandler = new RenameCollectionHandler(eventStore, collectionProjection);
-  const deleteCollectionHandler = new DeleteCollectionHandler(eventStore, collectionProjection);
-  const updateSettingsHandler = new UpdateCollectionSettingsHandler(eventStore, collectionProjection);
-  const favoriteCollectionHandler = new FavoriteCollectionHandler(eventStore, collectionProjection);
-  const unfavoriteCollectionHandler = new UnfavoriteCollectionHandler(eventStore, collectionProjection);
+  // Initialize handlers with required projections (memoized to prevent recreation on every render)
+  const createTaskHandler = useMemo(() => new CreateTaskHandler(eventStore, taskProjection, entryProjection), [eventStore, taskProjection, entryProjection]);
+  const createNoteHandler = useMemo(() => new CreateNoteHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const createEventHandler = useMemo(() => new CreateEventHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const completeTaskHandler = useMemo(() => new CompleteTaskHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const reopenTaskHandler = useMemo(() => new ReopenTaskHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const updateTaskTitleHandler = useMemo(() => new UpdateTaskTitleHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const updateNoteContentHandler = useMemo(() => new UpdateNoteContentHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const updateEventContentHandler = useMemo(() => new UpdateEventContentHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const updateEventDateHandler = useMemo(() => new UpdateEventDateHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const deleteTaskHandler = useMemo(() => new DeleteTaskHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const deleteNoteHandler = useMemo(() => new DeleteNoteHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const deleteEventHandler = useMemo(() => new DeleteEventHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const reorderTaskHandler = useMemo(() => new ReorderTaskHandler(eventStore, entryProjection), [eventStore, entryProjection]);
+  const reorderNoteHandler = useMemo(() => new ReorderNoteHandler(eventStore, entryProjection, entryProjection), [eventStore, entryProjection]);
+  const reorderEventHandler = useMemo(() => new ReorderEventHandler(eventStore, entryProjection, entryProjection), [eventStore, entryProjection]);
+  const renameCollectionHandler = useMemo(() => new RenameCollectionHandler(eventStore, collectionProjection), [eventStore, collectionProjection]);
+  const deleteCollectionHandler = useMemo(() => new DeleteCollectionHandler(eventStore, collectionProjection), [eventStore, collectionProjection]);
+  const updateSettingsHandler = useMemo(() => new UpdateCollectionSettingsHandler(eventStore, collectionProjection), [eventStore, collectionProjection]);
+  const favoriteCollectionHandler = useMemo(() => new FavoriteCollectionHandler(eventStore, collectionProjection), [eventStore, collectionProjection]);
+  const unfavoriteCollectionHandler = useMemo(() => new UnfavoriteCollectionHandler(eventStore, collectionProjection), [eventStore, collectionProjection]);
 
   // Load collection and entries
   const loadData = async () => {
