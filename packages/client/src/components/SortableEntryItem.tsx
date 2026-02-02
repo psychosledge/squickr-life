@@ -68,7 +68,7 @@ export function SortableEntryItem({
       <div
         {...attributes}
         {...listeners}
-        className="absolute right-2 top-1/2 -translate-y-1/2
+        className="absolute right-0 top-1/2 -translate-y-1/2
                    md:right-auto md:left-0 md:-translate-x-8
                    w-12 h-12 md:w-8 md:h-8 
                    flex items-center justify-center

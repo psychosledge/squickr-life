@@ -213,8 +213,8 @@ describe('SortableEntryItem', () => {
     const dragHandle = screen.getByLabelText('Drag to reorder');
     
     expect(dragHandle).toHaveClass('absolute');
-    // Mobile: inside container at right-2
-    expect(dragHandle).toHaveClass('right-2');
+    // Mobile: flush with right edge at right-0 for better reach
+    expect(dragHandle).toHaveClass('right-0');
     // Desktop: outside container at left-0 with offset
     expect(dragHandle).toHaveClass('md:left-0');
     expect(dragHandle).toHaveClass('md:-translate-x-8');
