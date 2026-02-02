@@ -12,6 +12,7 @@ import { collection, doc, writeBatch, getDocs, query, where, orderBy } from 'fir
 import { firestore } from './config';
 import type { DomainEvent, IEventStore } from '@squickr/shared';
 import { logger } from '../utils/logger';
+import { SYNC_CONFIG } from '../utils/constants';
 
 /**
  * Upload local events from IndexedDB to Firestore
@@ -200,7 +201,7 @@ async function batchUploadToFirestore(
   userId: string,
   events: DomainEvent[]
 ): Promise<void> {
-  const BATCH_SIZE = 500;
+  const BATCH_SIZE = SYNC_CONFIG.FIRESTORE_BATCH_SIZE;
   
   // Split into batches
   for (let i = 0; i < events.length; i += BATCH_SIZE) {

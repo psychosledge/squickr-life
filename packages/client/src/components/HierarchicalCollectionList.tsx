@@ -4,6 +4,7 @@ import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useCollectionHierarchy } from '../hooks/useCollectionHierarchy';
 import { CollectionTreeNode } from './CollectionTreeNode';
+import { DRAG_SENSOR_CONFIG } from '../utils/constants';
 
 interface HierarchicalCollectionListProps {
   collections: Collection[];
@@ -46,13 +47,13 @@ export function HierarchicalCollectionList({
   const sensors = useSensors(
     useSensor(mouseSensor, {
       activationConstraint: {
-        distance: 8, // Require 8px movement before drag starts
+        distance: DRAG_SENSOR_CONFIG.MOUSE_DRAG_DISTANCE,
       },
     }),
     useSensor(touchSensor, {
       activationConstraint: {
-        delay: 250, // 250ms delay for touch devices
-        tolerance: 5, // Allow 5px of movement during delay
+        delay: DRAG_SENSOR_CONFIG.TOUCH_DRAG_DELAY,
+        tolerance: DRAG_SENSOR_CONFIG.TOUCH_DRAG_TOLERANCE,
       },
     }),
     useSensor(keyboardSensor, {

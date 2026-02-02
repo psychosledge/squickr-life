@@ -47,6 +47,7 @@ import { DeleteCollectionModal } from '../components/DeleteCollectionModal';
 import { CollectionSettingsModal } from '../components/CollectionSettingsModal';
 import { FAB } from '../components/FAB';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
+import { DEBOUNCE } from '../utils/constants';
 
 export function CollectionDetailView() {
   const { id: collectionId } = useParams<{ id: string }>();
@@ -124,19 +125,27 @@ export function CollectionDetailView() {
     setIsLoading(false);
   };
 
-  // Subscribe to projection changes (reactive updates)
+  // Subscribe to projection changes (reactive updates with debouncing to prevent memory leaks)
   useEffect(() => {
     loadData();
 
-    const unsubscribeCollection = collectionProjection.subscribe(() => {
-      loadData();
-    });
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const debouncedLoadData = () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      debounceTimer = setTimeout(() => {
+        loadData();
+      }, DEBOUNCE.UI_UPDATE);
+    };
 
-    const unsubscribeEntry = entryProjection.subscribe(() => {
-      loadData();
-    });
+    const unsubscribeCollection = collectionProjection.subscribe(debouncedLoadData);
+    const unsubscribeEntry = entryProjection.subscribe(debouncedLoadData);
 
     return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
       unsubscribeCollection();
       unsubscribeEntry();
     };
