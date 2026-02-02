@@ -287,8 +287,8 @@ export function CollectionDetailView() {
     }
   };
 
-  const handleCreateCollection = async (name: string): Promise<string> => {
-    return await createCollectionHandler.handle({ name });
+  const handleCreateCollection = async (name: string, type?: import('@squickr/shared').CollectionType, date?: string): Promise<string> => {
+    return await createCollectionHandler.handle({ name, type, date });
   };
 
   const handleToggleFavorite = async () => {
