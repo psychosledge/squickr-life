@@ -29,42 +29,48 @@ describe('CollectionSettingsModal', () => {
     expect(screen.getByText(/collection settings/i)).toBeInTheDocument();
   });
 
-  it('should show "Collapse completed tasks" checkbox', () => {
+  it('should show "Completed Tasks" dropdown', () => {
     renderModal();
-    expect(screen.getByRole('checkbox')).toBeInTheDocument();
-    expect(screen.getByText(/collapse completed tasks/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/completed tasks/i)).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
-  it('should initialize checkbox as unchecked when no settings provided', () => {
+  it('should initialize dropdown to "Keep in place" when no settings provided', () => {
     renderModal({ currentSettings: undefined });
-    const checkbox = screen.getByRole('checkbox') as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(dropdown.value).toBe('keep-in-place');
   });
 
-  it('should initialize checkbox as unchecked when collapseCompleted is false', () => {
+  it('should initialize dropdown to "Keep in place" when collapseCompleted is false (migration)', () => {
     renderModal({ currentSettings: { collapseCompleted: false } });
-    const checkbox = screen.getByRole('checkbox') as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(dropdown.value).toBe('keep-in-place');
   });
 
-  it('should initialize checkbox as checked when collapseCompleted is true', () => {
+  it('should initialize dropdown to "Collapse" when collapseCompleted is true (migration)', () => {
     renderModal({ currentSettings: { collapseCompleted: true } });
-    const checkbox = screen.getByRole('checkbox') as HTMLInputElement;
-    expect(checkbox.checked).toBe(true);
+    const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(dropdown.value).toBe('collapse');
   });
 
-  it('should toggle checkbox when clicked', async () => {
+  it('should initialize dropdown to "Move to bottom" when completedTaskBehavior is set', () => {
+    renderModal({ currentSettings: { completedTaskBehavior: 'move-to-bottom' } });
+    const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(dropdown.value).toBe('move-to-bottom');
+  });
+
+  it('should change dropdown value when option is selected', async () => {
     const user = userEvent.setup();
     renderModal();
     
-    const checkbox = screen.getByRole('checkbox') as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(dropdown.value).toBe('keep-in-place');
     
-    await user.click(checkbox);
-    expect(checkbox.checked).toBe(true);
+    await user.selectOptions(dropdown, 'move-to-bottom');
+    expect(dropdown.value).toBe('move-to-bottom');
     
-    await user.click(checkbox);
-    expect(checkbox.checked).toBe(false);
+    await user.selectOptions(dropdown, 'collapse');
+    expect(dropdown.value).toBe('collapse');
   });
 
   it('should call onSubmit with correct settings when save is clicked', async () => {
@@ -72,13 +78,13 @@ describe('CollectionSettingsModal', () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     renderModal({ onSubmit });
     
-    const checkbox = screen.getByRole('checkbox');
-    await user.click(checkbox); // Set to true
+    const dropdown = screen.getByRole('combobox');
+    await user.selectOptions(dropdown, 'collapse');
     
     const saveButton = screen.getByRole('button', { name: /save/i });
     await user.click(saveButton);
     
-    expect(onSubmit).toHaveBeenCalledWith({ collapseCompleted: true });
+    expect(onSubmit).toHaveBeenCalledWith({ completedTaskBehavior: 'collapse' });
   });
 
   it('should call onClose after successful submit', async () => {
@@ -163,19 +169,52 @@ describe('CollectionSettingsModal', () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     renderModal({ onSubmit });
     
-    const checkbox = screen.getByRole('checkbox');
-    await user.click(checkbox);
+    const dropdown = screen.getByRole('combobox');
+    await user.selectOptions(dropdown, 'move-to-bottom');
     
-    // Press Enter to submit
+    // Focus on the save button and press Enter
+    const saveButton = screen.getByRole('button', { name: /save/i });
+    saveButton.focus();
     await user.keyboard('{Enter}');
     
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ collapseCompleted: true });
+      expect(onSubmit).toHaveBeenCalledWith({ completedTaskBehavior: 'move-to-bottom' });
     });
   });
 
-  it('should show description text for checkbox', () => {
+  it('should show description text for "Keep in place" mode', () => {
     renderModal();
-    expect(screen.getByText(/move completed tasks to a collapsible section/i)).toBeInTheDocument();
+    expect(screen.getByText(/completed tasks stay where they are/i)).toBeInTheDocument();
+  });
+
+  it('should show description text for "Move to bottom" mode', async () => {
+    const user = userEvent.setup();
+    renderModal();
+    
+    const dropdown = screen.getByRole('combobox');
+    await user.selectOptions(dropdown, 'move-to-bottom');
+    
+    expect(screen.getByText(/completed tasks move below a separator/i)).toBeInTheDocument();
+  });
+
+  it('should show description text for "Collapse" mode', async () => {
+    const user = userEvent.setup();
+    renderModal();
+    
+    const dropdown = screen.getByRole('combobox');
+    await user.selectOptions(dropdown, 'collapse');
+    
+    expect(screen.getByText(/completed tasks hidden in expandable section/i)).toBeInTheDocument();
+  });
+
+  it('should prefer completedTaskBehavior over collapseCompleted when both present', () => {
+    renderModal({ 
+      currentSettings: { 
+        collapseCompleted: true, // Would be 'collapse'
+        completedTaskBehavior: 'move-to-bottom' // But this takes precedence
+      } 
+    });
+    const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(dropdown.value).toBe('move-to-bottom');
   });
 });

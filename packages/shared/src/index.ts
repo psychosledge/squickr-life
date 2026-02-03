@@ -67,6 +67,7 @@ export type {
 // Collection domain types
 export type {
   CollectionType,
+  CompletedTaskBehavior,
   Collection,
   CollectionSettings,
   CollectionCreated,

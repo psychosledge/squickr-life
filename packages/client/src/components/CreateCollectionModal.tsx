@@ -1,10 +1,24 @@
 import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
 import type { CollectionType } from '@squickr/shared';
+import { formatMonthlyLogName } from '../utils/formatters';
 
 interface CreateCollectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (name: string, type?: CollectionType, date?: string) => Promise<void>;
+}
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+/**
+ * Generate year range (±5 years from current year)
+ */
+function generateYearRange(): number[] {
+  const currentYear = new Date().getFullYear();
+  return Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 }
 
 /**
@@ -31,6 +45,8 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   });
+  const [monthlyMonth, setMonthlyMonth] = useState(() => new Date().getMonth());
+  const [monthlyYear, setMonthlyYear] = useState(() => new Date().getFullYear());
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -70,8 +86,10 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
   const handleSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
 
-    // For daily logs, generate name from date; for custom, use user input
+    // For daily logs, generate name from date; for monthly logs, generate from month/year; for custom, use user input
     let finalName: string;
+    let finalDate: string | undefined;
+    
     if (type === 'daily') {
       // Auto-generate name from date (e.g., "2026-02-01" -> "Saturday, February 1")
       const parts = date.split('-');
@@ -87,6 +105,12 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
       });
       
       finalName = formatter.format(dateObj);
+      finalDate = date;
+    } else if (type === 'monthly') {
+      // Auto-generate name and date for monthly log (e.g., "February 2026")
+      const monthStr = String(monthlyMonth + 1).padStart(2, '0');
+      finalDate = `${monthlyYear}-${monthStr}`;
+      finalName = formatMonthlyLogName(finalDate);
     } else {
       // For custom collections, use trimmed name
       const trimmedName = name.trim();
@@ -97,14 +121,15 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
       }
       
       finalName = trimmedName;
+      finalDate = undefined;
     }
 
     try {
-      // For daily collections, pass the date; for custom, type and date are undefined
+      // Pass type and date appropriately
       await onSubmit(
         finalName,
         type === 'custom' ? undefined : type,
-        type === 'daily' ? date : undefined
+        finalDate
       );
       
       // Clear input and close modal on success
@@ -138,7 +163,7 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
     return null;
   }
 
-  // For daily logs, disable is always false (date is always set)
+  // For daily/monthly logs, disable is always false (date is always set)
   // For custom collections, disable if name is empty
   const isCreateDisabled = type === 'custom' ? name.trim().length === 0 : false;
 
@@ -158,6 +183,14 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
         </h2>
 
         <form onSubmit={handleSubmit}>
+          {error && type !== 'custom' && (
+            <div className="mb-4">
+              <div className="text-sm text-red-600 dark:text-red-400" role="alert">
+                {error}
+              </div>
+            </div>
+          )}
+
           {type === 'custom' && (
             <div className="mb-4">
               <label 
@@ -210,6 +243,18 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
                 <input
                   type="radio"
                   name="collection-type"
+                  value="monthly"
+                  checked={type === 'monthly'}
+                  onChange={(e) => setType(e.target.value as CollectionType)}
+                  className="mr-2 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-700 dark:text-gray-300">Monthly Log</span>
+                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">(month-based)</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="collection-type"
                   value="daily"
                   checked={type === 'daily'}
                   onChange={(e) => setType(e.target.value as CollectionType)}
@@ -238,6 +283,39 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
                            bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+            </div>
+          )}
+
+          {type === 'monthly' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Month and Year
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <select
+                  value={monthlyMonth}
+                  onChange={(e) => setMonthlyMonth(parseInt(e.target.value))}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {MONTHS.map((month, idx) => (
+                    <option key={idx} value={idx}>{month}</option>
+                  ))}
+                </select>
+                
+                <select
+                  value={monthlyYear}
+                  onChange={(e) => setMonthlyYear(parseInt(e.target.value))}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {generateYearRange().map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Preview: {formatMonthlyLogName(`${monthlyYear}-${String(monthlyMonth + 1).padStart(2, '0')}`)}
+              </div>
             </div>
           )}
 

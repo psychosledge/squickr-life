@@ -9,8 +9,48 @@ import type {
   CollectionSettingsUpdated,
   CollectionFavorited,
   CollectionUnfavorited,
-  CollectionAccessed
+  CollectionAccessed,
+  CollectionSettings,
+  CompletedTaskBehavior
 } from './collection.types';
+
+/**
+ * Migrate legacy collapseCompleted boolean to completedTaskBehavior enum
+ * This is called on-read to transform old settings to the new format
+ * 
+ * Migration rules (from design spec):
+ * - collapseCompleted: true  → 'collapse'
+ * - collapseCompleted: false → 'keep-in-place'
+ * - undefined → undefined (use global default when implemented)
+ * 
+ * @param settings - The settings from an event (may have legacy format)
+ * @returns Migrated settings with completedTaskBehavior
+ */
+function migrateCollectionSettings(settings?: CollectionSettings): CollectionSettings | undefined {
+  if (!settings) {
+    return undefined;
+  }
+
+  // If already using new format, return as-is
+  if ('completedTaskBehavior' in settings && settings.completedTaskBehavior !== undefined) {
+    return settings;
+  }
+
+  // Migrate from old boolean format
+  if ('collapseCompleted' in settings) {
+    const behavior: CompletedTaskBehavior | undefined = 
+      settings.collapseCompleted === true ? 'collapse' :
+      settings.collapseCompleted === false ? 'keep-in-place' :
+      undefined;
+
+    return {
+      ...settings,
+      completedTaskBehavior: behavior,
+    };
+  }
+
+  return settings;
+}
 
 /**
  * CollectionListProjection - Read Model for Collections
@@ -82,6 +122,17 @@ export class CollectionListProjection {
   async getDailyLogByDate(date: string): Promise<Collection | undefined> {
     const collections = await this.getCollections();
     return collections.find(c => c.type === 'daily' && c.date === date);
+  }
+
+  /**
+   * Get a monthly log collection by date
+   * 
+   * @param date - The date to find (YYYY-MM format)
+   * @returns The collection, or undefined if not found
+   */
+  async getMonthlyLogByDate(date: string): Promise<Collection | undefined> {
+    const collections = await this.getCollections();
+    return collections.find(c => c.type === 'monthly' && c.date === date);
   }
 
   /**
@@ -161,9 +212,11 @@ export class CollectionListProjection {
       case 'CollectionSettingsUpdated': {
         const collection = collections.get(event.payload.collectionId);
         if (collection) {
+          // Apply migration from collapseCompleted to completedTaskBehavior on read
+          const migratedSettings = migrateCollectionSettings(event.payload.settings);
           collections.set(collection.id, {
             ...collection,
-            settings: event.payload.settings,
+            settings: migratedSettings,
           });
         }
         break;

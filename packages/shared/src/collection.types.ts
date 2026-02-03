@@ -7,7 +7,7 @@ import type { DomainEvent } from './domain-event';
 /**
  * Collection type discriminator
  * - 'daily': Daily log collections (e.g., "Saturday, February 1") with date "2026-02-01"
- * - 'monthly': Monthly log collections (reserved for future use)
+ * - 'monthly': Monthly log collections (e.g., "February 2026") with date "2026-02"
  * - 'yearly': Yearly log collections (reserved for future use)
  * - 'custom': User-defined topical collections (e.g., "App Ideas", "Home Projects")
  * - 'log': Legacy type, treated as 'custom' by projections (for backward compatibility)
@@ -16,11 +16,22 @@ import type { DomainEvent } from './domain-event';
 export type CollectionType = 'daily' | 'monthly' | 'yearly' | 'custom' | 'log' | 'tracker';
 
 /**
+ * How to display completed tasks in a collection
+ * - 'keep-in-place': Completed tasks stay where they are (default for migration)
+ * - 'move-to-bottom': Completed tasks move below a separator
+ * - 'collapse': Completed tasks hidden in expandable section
+ */
+export type CompletedTaskBehavior = 'keep-in-place' | 'move-to-bottom' | 'collapse';
+
+/**
  * Collection settings - user preferences for a collection
  */
 export interface CollectionSettings {
-  /** Whether to collapse completed tasks into a collapsible section */
+  /** @deprecated Use completedTaskBehavior instead. Migrated on read. */
   readonly collapseCompleted?: boolean;
+  
+  /** How to display completed tasks (null = use global user default) */
+  readonly completedTaskBehavior?: CompletedTaskBehavior | null;
 }
 
 /**

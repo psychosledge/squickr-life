@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { Collection } from '@squickr/shared';
+import type { Collection, Entry } from '@squickr/shared';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from '../firebase/auth';
@@ -24,15 +24,28 @@ export function CollectionIndexView() {
   const { user } = useAuth();
   
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [entriesByCollection, setEntriesByCollection] = useState<Map<string | null, Entry[]>>(new Map());
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Load collections and entry counts
+  // Load collections and entries
   const loadData = async () => {
     // Load real collections
     const loadedCollections = await collectionProjection.getCollections();
     
     // Get active task counts for all collections in a single query (avoids N+1 pattern)
     const allCounts = await entryProjection.getActiveTaskCountsByCollection();
+    
+    // Get all entries grouped by collection for stats
+    const allEntries = await entryProjection.getEntries('all');
+    const entriesMap = new Map<string | null, Entry[]>();
+    for (const entry of allEntries) {
+      const collectionId = entry.collectionId ?? null;
+      if (!entriesMap.has(collectionId)) {
+        entriesMap.set(collectionId, []);
+      }
+      entriesMap.get(collectionId)!.push(entry);
+    }
+    setEntriesByCollection(entriesMap);
     
     // Check if uncategorized entries exist
     const uncategorizedCount = allCounts.get(null) ?? 0;
@@ -137,6 +150,7 @@ export function CollectionIndexView() {
         <HierarchicalCollectionList 
           collections={collections}
           onReorder={handleReorderCollection}
+          entriesByCollection={entriesByCollection}
         />
       </div>
 

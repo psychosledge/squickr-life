@@ -175,12 +175,24 @@ export function CollectionDetailView() {
   }
 
   // Success state - show collection and entries
-  // Filter entries based on collapse settings
-  const collapseCompleted = collection.settings?.collapseCompleted ?? false;
-  const activeTasks = collapseCompleted
+  // Determine effective completed task behavior (with migration from boolean)
+  const settings = collection.settings;
+  
+  // Migration: convert old collapseCompleted boolean to new behavior enum
+  const completedTaskBehavior = settings?.completedTaskBehavior !== undefined 
+    ? settings.completedTaskBehavior 
+    : settings?.collapseCompleted === true 
+      ? 'collapse' 
+      : settings?.collapseCompleted === false 
+        ? 'keep-in-place' 
+        : 'keep-in-place'; // Default for undefined
+  
+  // Partition entries based on behavior mode
+  const shouldPartition = completedTaskBehavior === 'move-to-bottom' || completedTaskBehavior === 'collapse';
+  const activeTasks = shouldPartition
     ? entries.filter(e => !(e.type === 'task' && e.status === 'completed'))
     : entries;
-  const completedTasks = collapseCompleted
+  const completedTasks = shouldPartition
     ? entries.filter(e => e.type === 'task' && e.status === 'completed')
     : [];
 
@@ -218,8 +230,33 @@ export function CollectionDetailView() {
           onCreateCollection={operations.handleCreateCollection}
         />
 
-        {/* Collapsible completed tasks section */}
-        {collapseCompleted && completedTasks.length > 0 && (
+        {/* Completed tasks section - Mode 2: Move to bottom */}
+        {completedTaskBehavior === 'move-to-bottom' && completedTasks.length > 0 && (
+          <div className="mt-8 max-w-4xl mx-auto">
+            {/* Separator */}
+            <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
+            
+            <EntryList
+              entries={completedTasks}
+              onCompleteTask={operations.handleCompleteTask}
+              onReopenTask={operations.handleReopenTask}
+              onUpdateTaskTitle={operations.handleUpdateTaskTitle}
+              onUpdateNoteContent={operations.handleUpdateNoteContent}
+              onUpdateEventContent={operations.handleUpdateEventContent}
+              onUpdateEventDate={operations.handleUpdateEventDate}
+              onDelete={operations.handleDelete}
+              onReorder={operations.handleReorder}
+              onMigrate={operations.handleMigrate}
+              collections={allCollections}
+              currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
+              onNavigateToMigrated={operations.handleNavigateToMigrated}
+              onCreateCollection={operations.handleCreateCollection}
+            />
+          </div>
+        )}
+
+        {/* Completed tasks section - Mode 3: Collapse */}
+        {completedTaskBehavior === 'collapse' && completedTasks.length > 0 && (
           <div className="mt-8 max-w-4xl mx-auto">
             <button
               onClick={modals.toggleCompletedExpanded}

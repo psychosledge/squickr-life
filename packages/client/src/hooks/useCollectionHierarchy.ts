@@ -1,12 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Collection } from '@squickr/shared';
+import { formatMonthlyLogName } from '../utils/formatters';
 
 export interface HierarchyNode {
-  type: 'year' | 'month' | 'day' | 'custom';
+  type: 'year' | 'month' | 'monthly' | 'day' | 'custom';
   id: string; // Unique ID for React keys (e.g., "year-2026", "month-2026-02", collection.id)
   label: string; // Display name (e.g., "2026 Logs", "February", "Saturday, February 1")
   date?: string; // Original date for temporal nodes
-  collection?: Collection; // Only for leaf nodes (day/custom)
+  collection?: Collection; // Only for leaf nodes (monthly/day/custom)
   children: HierarchyNode[];
   isExpanded: boolean;
   count?: number; // For collapsed nodes: "January (31 logs)"
@@ -88,8 +89,9 @@ function buildHierarchy(
 ): HierarchyNode[] {
   const nodes: HierarchyNode[] = [];
   
-  // Separate daily logs from custom collections
+  // Separate daily logs, monthly logs, and custom collections
   const dailyLogs = collections.filter(c => c.type === 'daily' && c.date);
+  const monthlyLogs = collections.filter(c => c.type === 'monthly' && c.date);
   const customCollections = collections.filter(c => 
     !c.type || c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
   );
@@ -135,17 +137,41 @@ function buildHierarchy(
     monthMap.get(yearMonth)!.push(log);
   });
   
+  // Group monthly logs by year
+  const monthlyLogsByYear = new Map<string, Collection[]>();
+  
+  monthlyLogs.forEach(log => {
+    if (!log.date) return;
+    
+    const year = log.date.substring(0, 4); // "2026" from "2026-02"
+    
+    if (!monthlyLogsByYear.has(year)) {
+      monthlyLogsByYear.set(year, []);
+    }
+    
+    monthlyLogsByYear.get(year)!.push(log);
+  });
+  
+  // Get all years from both daily and monthly logs
+  const allYears = new Set([
+    ...Array.from(yearMap.keys()),
+    ...Array.from(monthlyLogsByYear.keys())
+  ]);
+  
   // Build year nodes (sorted newest first)
-  const years = Array.from(yearMap.keys()).sort((a, b) => b.localeCompare(a));
+  const years = Array.from(allYears).sort((a, b) => b.localeCompare(a));
   
   years.forEach(year => {
-    const monthMap = yearMap.get(year)!;
+    const monthMap = yearMap.get(year);
+    const monthlyLogsForYear = monthlyLogsByYear.get(year) || [];
     const yearId = `year-${year}`;
     const isYearExpanded = expandedSet.has(yearId);
     
-    // Count total logs in this year
-    let totalLogs = 0;
-    monthMap.forEach(logs => totalLogs += logs.length);
+    // Count total logs in this year (daily + monthly)
+    let totalLogs = monthlyLogsForYear.length;
+    if (monthMap) {
+      monthMap.forEach(logs => totalLogs += logs.length);
+    }
     
     const yearNode: HierarchyNode = {
       type: 'year',
@@ -157,45 +183,64 @@ function buildHierarchy(
     };
     
     if (isYearExpanded) {
-      // Build month nodes (sorted newest first)
-      const yearMonths = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
+      // Add monthly logs FIRST (sorted newest first by date)
+      const sortedMonthlyLogs = [...monthlyLogsForYear].sort((a, b) => 
+        (b.date || '').localeCompare(a.date || '')
+      );
       
-      yearMonths.forEach(yearMonth => {
-        const logs = monthMap.get(yearMonth)!;
-        const monthId = `month-${yearMonth}`;
-        const isMonthExpanded = expandedSet.has(monthId);
-        
-        const monthNode: HierarchyNode = {
-          type: 'month',
-          id: monthId,
-          label: formatMonthLabel(yearMonth),
-          date: yearMonth,
+      sortedMonthlyLogs.forEach(log => {
+        yearNode.children.push({
+          type: 'monthly',
+          id: log.id,
+          label: formatMonthlyLogName(log.date!),
+          date: log.date,
+          collection: log,
           children: [],
-          isExpanded: isMonthExpanded,
-          count: isMonthExpanded ? undefined : logs.length,
-        };
-        
-        if (isMonthExpanded) {
-          // Add day nodes (sorted newest first)
-          const sortedLogs = [...logs].sort((a, b) => 
-            (b.date || '').localeCompare(a.date || '')
-          );
-          
-          sortedLogs.forEach(log => {
-            monthNode.children.push({
-              type: 'day',
-              id: log.id,
-              label: formatDayLabel(log.date!),
-              date: log.date,
-              collection: log,
-              children: [],
-              isExpanded: false, // Leaf nodes don't expand
-            });
-          });
-        }
-        
-        yearNode.children.push(monthNode);
+          isExpanded: false, // Leaf nodes don't expand
+        });
       });
+      
+      // Then build month nodes for daily logs (sorted newest first)
+      if (monthMap) {
+        const yearMonths = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
+        
+        yearMonths.forEach(yearMonth => {
+          const logs = monthMap.get(yearMonth)!;
+          const monthId = `month-${yearMonth}`;
+          const isMonthExpanded = expandedSet.has(monthId);
+          
+          const monthNode: HierarchyNode = {
+            type: 'month',
+            id: monthId,
+            label: formatMonthLabel(yearMonth),
+            date: yearMonth,
+            children: [],
+            isExpanded: isMonthExpanded,
+            count: isMonthExpanded ? undefined : logs.length,
+          };
+          
+          if (isMonthExpanded) {
+            // Add day nodes (sorted newest first)
+            const sortedLogs = [...logs].sort((a, b) => 
+              (b.date || '').localeCompare(a.date || '')
+            );
+            
+            sortedLogs.forEach(log => {
+              monthNode.children.push({
+                type: 'day',
+                id: log.id,
+                label: formatDayLabel(log.date!),
+                date: log.date,
+                collection: log,
+                children: [],
+                isExpanded: false, // Leaf nodes don't expand
+              });
+            });
+          }
+          
+          yearNode.children.push(monthNode);
+        });
+      }
     }
     
     nodes.push(yearNode);

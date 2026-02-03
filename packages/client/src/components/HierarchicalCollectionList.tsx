@@ -1,4 +1,4 @@
-import type { Collection } from '@squickr/shared';
+import type { Collection, Entry } from '@squickr/shared';
 import { useMemo } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -11,6 +11,7 @@ interface HierarchicalCollectionListProps {
   selectedCollectionId?: string;
   onNavigate?: (collectionId: string) => void;
   onReorder?: (collectionId: string, previousCollectionId: string | null, nextCollectionId: string | null) => void;
+  entriesByCollection?: Map<string | null, Entry[]>;
 }
 
 /**
@@ -35,6 +36,7 @@ export function HierarchicalCollectionList({
   selectedCollectionId,
   onNavigate,
   onReorder,
+  entriesByCollection,
 }: HierarchicalCollectionListProps) {
   const { nodes, toggleExpand } = useCollectionHierarchy(collections);
   
@@ -147,6 +149,7 @@ export function HierarchicalCollectionList({
                   onNavigate={onNavigate}
                   selectedCollectionId={selectedCollectionId}
                   isDraggable={true}
+                  entriesByCollection={entriesByCollection}
                 />
               ))}
             </SortableContext>
@@ -163,6 +166,7 @@ export function HierarchicalCollectionList({
             onNavigate={onNavigate}
             selectedCollectionId={selectedCollectionId}
             isDraggable={false}
+            entriesByCollection={entriesByCollection}
           />
         ))}
         
@@ -181,6 +185,7 @@ export function HierarchicalCollectionList({
             onNavigate={onNavigate}
             selectedCollectionId={selectedCollectionId}
             isDraggable={false}
+            entriesByCollection={entriesByCollection}
           />
         ))}
         
@@ -211,6 +216,7 @@ export function HierarchicalCollectionList({
                   onNavigate={onNavigate}
                   selectedCollectionId={selectedCollectionId}
                   isDraggable={true}
+                  entriesByCollection={entriesByCollection}
                 />
               ))}
             </SortableContext>
@@ -227,6 +233,7 @@ export function HierarchicalCollectionList({
             onNavigate={onNavigate}
             selectedCollectionId={selectedCollectionId}
             isDraggable={false}
+            entriesByCollection={entriesByCollection}
           />
         ))}
       </div>

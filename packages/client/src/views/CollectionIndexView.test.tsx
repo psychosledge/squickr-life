@@ -29,6 +29,7 @@ describe('CollectionIndexView - Header Branding', () => {
 
     mockEntryProjection = {
       getActiveTaskCountsByCollection: vi.fn(() => Promise.resolve(new Map())),
+      getEntries: vi.fn(() => Promise.resolve([])),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -137,6 +138,10 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
         }
         // Return empty for real collections in these tests
         return Promise.resolve([]);
+      }),
+      getEntries: vi.fn(() => {
+        // Return all entries for stats calculation
+        return Promise.resolve(mockOrphanedEntries);
       }),
       getActiveTaskCountsByCollection: vi.fn(() => {
         // Return counts for all collections
@@ -335,6 +340,7 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
         counts.set('col-2', 3);
         return Promise.resolve(counts);
       }),
+      getEntries: vi.fn(() => Promise.resolve([])),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
