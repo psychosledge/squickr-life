@@ -45,8 +45,22 @@ export function formatDate(dateString: string): string {
 }
 
 /**
+ * Format monthly log date string (YYYY-MM) as "Month Year"
+ * e.g., "2026-02" -> "February 2026"
+ */
+export function formatMonthlyLogName(dateStr: string): string {
+  const [year, month] = dateStr.split('-');
+  const date = new Date(parseInt(year!), parseInt(month!) - 1, 1);
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric'
+  });
+}
+
+/**
  * Get display name for a collection
  * For daily logs, formats the date as "Weekday, Month Day" (e.g., "Saturday, February 1")
+ * For monthly logs, formats the date as "Month Year" (e.g., "February 2026")
  * For custom collections, returns the collection name as-is
  */
 export function getCollectionDisplayName(collection: { 
@@ -69,6 +83,11 @@ export function getCollectionDisplayName(collection: {
     });
     
     return formatter.format(dateObj);
+  }
+  
+  // For monthly logs, format the date as "Month Year"
+  if (collection.type === 'monthly' && collection.date) {
+    return formatMonthlyLogName(collection.date);
   }
   
   // For custom collections (or legacy collections without type), return name as-is

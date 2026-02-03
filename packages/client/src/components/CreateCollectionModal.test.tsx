@@ -332,4 +332,164 @@ describe('CreateCollectionModal', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     }
   });
+
+  describe('Monthly Logs', () => {
+    it('should show month/year selectors when Monthly Log type is selected', async () => {
+      const user = userEvent.setup();
+      
+      render(
+        <CreateCollectionModal 
+          isOpen={true} 
+          onClose={vi.fn()} 
+          onSubmit={vi.fn()} 
+        />
+      );
+
+      // Click monthly log radio button
+      const monthlyRadio = screen.getByLabelText(/Monthly Log/);
+      await user.click(monthlyRadio);
+
+      // Verify month/year selectors appear
+      expect(screen.getByText('Month and Year')).toBeInTheDocument();
+      expect(screen.getByText(/Preview:/)).toBeInTheDocument();
+    });
+
+    it('should show preview of monthly log name', async () => {
+      const user = userEvent.setup();
+      
+      render(
+        <CreateCollectionModal 
+          isOpen={true} 
+          onClose={vi.fn()} 
+          onSubmit={vi.fn()} 
+        />
+      );
+
+      // Switch to monthly log
+      await user.click(screen.getByLabelText(/Monthly Log/));
+
+      // Preview should show current month/year by default
+      const preview = screen.getByText(/Preview:/);
+      expect(preview).toBeInTheDocument();
+      expect(preview.textContent).toMatch(/Preview: \w+ \d{4}/);
+    });
+
+    it('should create monthly log with correct name and date format', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn().mockResolvedValue(undefined);
+      
+      render(
+        <CreateCollectionModal 
+          isOpen={true} 
+          onClose={vi.fn()} 
+          onSubmit={onSubmit} 
+        />
+      );
+
+      // Switch to monthly log
+      await user.click(screen.getByLabelText(/Monthly Log/));
+
+      // Select February 2026
+      const monthSelect = screen.getAllByRole('combobox')[0];
+      const yearSelect = screen.getAllByRole('combobox')[1];
+      
+      await user.selectOptions(monthSelect, '1'); // February (0-indexed)
+      await user.selectOptions(yearSelect, '2026');
+
+      // Submit
+      await user.click(screen.getByRole('button', { name: 'Create' }));
+
+      // Verify onSubmit called with correct parameters
+      expect(onSubmit).toHaveBeenCalledWith('February 2026', 'monthly', '2026-02');
+    });
+
+    it('should enable create button for monthly logs without custom name', async () => {
+      const user = userEvent.setup();
+      
+      render(
+        <CreateCollectionModal 
+          isOpen={true} 
+          onClose={vi.fn()} 
+          onSubmit={vi.fn()} 
+        />
+      );
+
+      // Switch to monthly log
+      await user.click(screen.getByLabelText(/Monthly Log/));
+
+      // Create button should be enabled (no name input required)
+      const createButton = screen.getByRole('button', { name: 'Create' });
+      expect(createButton).toBeEnabled();
+    });
+
+    it('should hide collection name input when monthly log type is selected', async () => {
+      const user = userEvent.setup();
+      
+      render(
+        <CreateCollectionModal 
+          isOpen={true} 
+          onClose={vi.fn()} 
+          onSubmit={vi.fn()} 
+        />
+      );
+
+      // Initially custom is selected, input should be visible
+      expect(screen.getByLabelText('Collection Name')).toBeInTheDocument();
+
+      // Switch to monthly log
+      await user.click(screen.getByLabelText(/Monthly Log/));
+
+      // Name input should be hidden
+      expect(screen.queryByLabelText('Collection Name')).not.toBeInTheDocument();
+    });
+
+    it('should update preview when month/year changes', async () => {
+      const user = userEvent.setup();
+      
+      render(
+        <CreateCollectionModal 
+          isOpen={true} 
+          onClose={vi.fn()} 
+          onSubmit={vi.fn()} 
+        />
+      );
+
+      // Switch to monthly log
+      await user.click(screen.getByLabelText(/Monthly Log/));
+
+      // Change to December 2025
+      const monthSelect = screen.getAllByRole('combobox')[0];
+      const yearSelect = screen.getAllByRole('combobox')[1];
+      
+      await user.selectOptions(monthSelect, '11'); // December
+      await user.selectOptions(yearSelect, '2025');
+
+      // Preview should update
+      expect(screen.getByText('Preview: December 2025')).toBeInTheDocument();
+    });
+
+    it('should display error when monthly log creation fails', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn().mockRejectedValue(new Error('Monthly log for 2026-02 already exists'));
+      
+      render(
+        <CreateCollectionModal 
+          isOpen={true} 
+          onClose={vi.fn()} 
+          onSubmit={onSubmit} 
+        />
+      );
+
+      // Switch to monthly log
+      await user.click(screen.getByLabelText(/Monthly Log/));
+
+      // Submit
+      await user.click(screen.getByRole('button', { name: 'Create' }));
+
+      // Error should be displayed
+      await waitFor(() => {
+        expect(screen.getByText('Monthly log for 2026-02 already exists')).toBeInTheDocument();
+      });
+    });
+  });
 });

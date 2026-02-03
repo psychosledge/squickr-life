@@ -2,7 +2,9 @@ import { Link } from 'react-router-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { HierarchyNode } from '../hooks/useCollectionHierarchy';
+import type { Entry } from '@squickr/shared';
 import { buildCollectionPath } from '../routes';
+import { CollectionStats } from './CollectionStats';
 
 interface CollectionTreeNodeProps {
   node: HierarchyNode;
@@ -11,6 +13,7 @@ interface CollectionTreeNodeProps {
   onNavigate?: (collectionId: string) => void;
   selectedCollectionId?: string;
   isDraggable: boolean;
+  entriesByCollection?: Map<string | null, Entry[]>;
 }
 
 /**
@@ -25,6 +28,7 @@ export function CollectionTreeNode({
   onToggleExpand,
   selectedCollectionId,
   isDraggable,
+  entriesByCollection,
 }: CollectionTreeNodeProps) {
   const isSelected = node.collection?.id === selectedCollectionId;
   const isContainer = node.type === 'year' || node.type === 'month';
@@ -56,6 +60,8 @@ export function CollectionTreeNode({
   let icon = '';
   if (node.type === 'year' || node.type === 'month') {
     icon = node.isExpanded ? '▼' : '▶';
+  } else if (node.type === 'monthly') {
+    icon = '🗓️';
   } else if (node.type === 'day') {
     icon = '📅';
   } else if (node.collection?.isFavorite) {
@@ -93,6 +99,7 @@ export function CollectionTreeNode({
             onToggleExpand={onToggleExpand}
             selectedCollectionId={selectedCollectionId}
             isDraggable={false}
+            entriesByCollection={entriesByCollection}
           />
         ))}
       </>
@@ -103,6 +110,9 @@ export function CollectionTreeNode({
   if (!node.collection) {
     return null; // Should not happen, but guard against it
   }
+  
+  // Get entries for this collection (if available)
+  const collectionEntries = entriesByCollection?.get(node.collection.id) || [];
   
   return (
     <div ref={shouldUseDrag ? setNodeRef : undefined} style={style} className="relative group">
@@ -139,20 +149,25 @@ export function CollectionTreeNode({
         </div>
       )}
       
-      <Link
-        to={buildCollectionPath(node.collection.id)}
-        className={`
-          block px-4 py-2 transition-colors duration-150 flex items-center gap-2
-          ${isSelected 
-            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
-            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-          }
-        `}
-        style={{ paddingLeft }}
-      >
-        <span className="text-sm w-5 flex-shrink-0">{icon}</span>
-        <span>{label}</span>
-      </Link>
+      <div>
+        <Link
+          to={buildCollectionPath(node.collection.id)}
+          className={`
+            block px-4 py-2 transition-colors duration-150 flex items-center gap-2
+            ${isSelected 
+              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }
+          `}
+          style={{ paddingLeft }}
+        >
+          <span className="text-sm w-5 flex-shrink-0">{icon}</span>
+          <span>{label}</span>
+        </Link>
+        
+        {/* Collection Stats - show below collection name */}
+        <CollectionStats entries={collectionEntries} />
+      </div>
     </div>
   );
 }

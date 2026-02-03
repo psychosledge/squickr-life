@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatTimestamp, formatDate, getCollectionDisplayName } from './formatters';
+import { formatTimestamp, formatDate, getCollectionDisplayName, formatMonthlyLogName } from './formatters';
 
 describe('formatTimestamp', () => {
   const mockNow = new Date('2026-01-25T12:00:00.000Z');
@@ -155,5 +155,55 @@ describe('getCollectionDisplayName', () => {
     const result = getCollectionDisplayName(collection);
     expect(result).toMatch(/December/);
     expect(result).toMatch(/25/);
+  });
+
+  it('should format monthly log with date as "Month Year"', () => {
+    const collection = {
+      name: 'Some stored name',
+      type: 'monthly' as const,
+      date: '2026-02'
+    };
+    const result = getCollectionDisplayName(collection);
+    // Should be formatted as "February 2026"
+    expect(result).toBe('February 2026');
+    expect(result).not.toBe(collection.name); // Should NOT use the stored name
+  });
+
+  it('should handle monthly log without date gracefully', () => {
+    const collection = {
+      name: 'Broken Monthly Log',
+      type: 'monthly' as const
+    };
+    const result = getCollectionDisplayName(collection);
+    // Should fall back to name if no date
+    expect(result).toBe('Broken Monthly Log');
+  });
+});
+
+describe('formatMonthlyLogName', () => {
+  it('should format YYYY-MM to "Month Year"', () => {
+    expect(formatMonthlyLogName('2026-02')).toBe('February 2026');
+    expect(formatMonthlyLogName('2025-12')).toBe('December 2025');
+    expect(formatMonthlyLogName('2026-01')).toBe('January 2026');
+  });
+
+  it('should handle all months correctly', () => {
+    expect(formatMonthlyLogName('2026-01')).toBe('January 2026');
+    expect(formatMonthlyLogName('2026-02')).toBe('February 2026');
+    expect(formatMonthlyLogName('2026-03')).toBe('March 2026');
+    expect(formatMonthlyLogName('2026-04')).toBe('April 2026');
+    expect(formatMonthlyLogName('2026-05')).toBe('May 2026');
+    expect(formatMonthlyLogName('2026-06')).toBe('June 2026');
+    expect(formatMonthlyLogName('2026-07')).toBe('July 2026');
+    expect(formatMonthlyLogName('2026-08')).toBe('August 2026');
+    expect(formatMonthlyLogName('2026-09')).toBe('September 2026');
+    expect(formatMonthlyLogName('2026-10')).toBe('October 2026');
+    expect(formatMonthlyLogName('2026-11')).toBe('November 2026');
+    expect(formatMonthlyLogName('2026-12')).toBe('December 2026');
+  });
+
+  it('should handle different years', () => {
+    expect(formatMonthlyLogName('2020-06')).toBe('June 2020');
+    expect(formatMonthlyLogName('2030-06')).toBe('June 2030');
   });
 });

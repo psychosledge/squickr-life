@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { EventStore } from './event-store';
 import { EntryListProjection } from './entry.projections';
 import { TaskListProjection } from './task.projections';
-import { CreateTaskHandler, CompleteTaskHandler, DeleteTaskHandler } from './task.handlers';
+import { CreateTaskHandler, CompleteTaskHandler, DeleteTaskHandler, MigrateTaskHandler } from './task.handlers';
 import { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler } from './note.handlers';
 import { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler } from './event.handlers';
 import type { CreateTaskCommand, CreateNoteCommand, CreateEventCommand } from './task.types';
@@ -1271,4 +1271,96 @@ describe('EntryListProjection', () => {
       expect(counts.has('collection-Z')).toBe(false);
     });
   });
+
+  describe('getEntryStatsByCollection', () => {
+    it('should return empty map when no entries exist', async () => {
+      const stats = await projection.getEntryStatsByCollection();
+      
+      expect(stats.size).toBe(0);
+    });
+
+    it('should count all entry types separately', async () => {
+      // Create mixed entry types
+      await taskHandler.handle({ title: 'Open task', collectionId: 'collection-A' });
+      const completedTaskId = await taskHandler.handle({ title: 'Completed task', collectionId: 'collection-A' });
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      await completeHandler.handle({ taskId: completedTaskId });
+      await noteHandler.handle({ content: 'Note 1', collectionId: 'collection-A' });
+      await eventHandler.handle({ content: 'Event 1', collectionId: 'collection-A' });
+
+      const stats = await projection.getEntryStatsByCollection();
+      
+      const collectionAStats = stats.get('collection-A')!;
+      expect(collectionAStats.openTasks).toBe(1);
+      expect(collectionAStats.completedTasks).toBe(1);
+      expect(collectionAStats.notes).toBe(1);
+      expect(collectionAStats.events).toBe(1);
+    });
+
+    it('should group stats by collection ID', async () => {
+      // Create entries in different collections
+      await taskHandler.handle({ title: 'Task A', collectionId: 'collection-A' });
+      await noteHandler.handle({ content: 'Note A', collectionId: 'collection-A' });
+      
+      await taskHandler.handle({ title: 'Task B', collectionId: 'collection-B' });
+      await eventHandler.handle({ content: 'Event B', collectionId: 'collection-B' });
+
+      const stats = await projection.getEntryStatsByCollection();
+      
+      expect(stats.get('collection-A')!.openTasks).toBe(1);
+      expect(stats.get('collection-A')!.notes).toBe(1);
+      expect(stats.get('collection-A')!.completedTasks).toBe(0);
+      expect(stats.get('collection-A')!.events).toBe(0);
+      
+      expect(stats.get('collection-B')!.openTasks).toBe(1);
+      expect(stats.get('collection-B')!.events).toBe(1);
+      expect(stats.get('collection-B')!.completedTasks).toBe(0);
+      expect(stats.get('collection-B')!.notes).toBe(0);
+    });
+
+    it('should handle uncategorized entries with null key', async () => {
+      await taskHandler.handle({ title: 'Uncategorized task' }); // No collectionId
+      await noteHandler.handle({ content: 'Uncategorized note' });
+
+      const stats = await projection.getEntryStatsByCollection();
+      
+      const uncategorizedStats = stats.get(null)!;
+      expect(uncategorizedStats.openTasks).toBe(1);
+      expect(uncategorizedStats.notes).toBe(1);
+    });
+
+    it('should exclude migrated entries from stats', async () => {
+      // Create task
+      const taskId = await taskHandler.handle({ title: 'Task to migrate', collectionId: 'collection-A' });
+      
+      // Migrate it
+      const migrateHandler = new MigrateTaskHandler(eventStore, projection);
+      await migrateHandler.handle({ taskId, targetCollectionId: 'collection-B' });
+
+      const stats = await projection.getEntryStatsByCollection();
+      
+      // Original collection should not count the migrated task
+      expect(stats.get('collection-A')).toBeUndefined();
+      
+      // Target collection should count the new task
+      expect(stats.get('collection-B')!.openTasks).toBe(1);
+    });
+
+    it('should update stats when entries are modified', async () => {
+      const taskId = await taskHandler.handle({ title: 'Task 1', collectionId: 'collection-A' });
+      
+      let stats = await projection.getEntryStatsByCollection();
+      expect(stats.get('collection-A')!.openTasks).toBe(1);
+      expect(stats.get('collection-A')!.completedTasks).toBe(0);
+      
+      // Complete the task
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      await completeHandler.handle({ taskId });
+      
+      stats = await projection.getEntryStatsByCollection();
+      expect(stats.get('collection-A')!.openTasks).toBe(0);
+      expect(stats.get('collection-A')!.completedTasks).toBe(1);
+    });
+  });
 });
+

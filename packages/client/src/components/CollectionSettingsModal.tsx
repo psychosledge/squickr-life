@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import type { CollectionSettings } from '@squickr/shared';
+import type { CollectionSettings, CompletedTaskBehavior } from '@squickr/shared';
 
 interface CollectionSettingsModalProps {
   isOpen: boolean;
@@ -14,10 +14,11 @@ interface CollectionSettingsModalProps {
  * Modal for updating collection settings.
  * 
  * Features:
- * - Checkbox for "Collapse completed tasks"
+ * - Dropdown for completed task behavior (keep-in-place, move-to-bottom, collapse)
  * - Escape key to close
  * - Displays validation errors
  * - Closes modal after successful save
+ * - Migrates legacy collapseCompleted boolean to new enum
  */
 export function CollectionSettingsModal({ 
   isOpen, 
@@ -25,13 +26,23 @@ export function CollectionSettingsModal({
   onClose, 
   onSubmit 
 }: CollectionSettingsModalProps) {
-  const [collapseCompleted, setCollapseCompleted] = useState(false);
+  const [completedTaskBehavior, setCompletedTaskBehavior] = useState<CompletedTaskBehavior>('keep-in-place');
   const [error, setError] = useState('');
 
-  // Initialize settings when modal opens
+  // Initialize settings when modal opens (with migration from legacy format)
   useEffect(() => {
     if (isOpen) {
-      setCollapseCompleted(currentSettings?.collapseCompleted ?? false);
+      // Migrate from old collapseCompleted boolean to new enum
+      const behavior: CompletedTaskBehavior = 
+        currentSettings?.completedTaskBehavior !== undefined
+          ? currentSettings.completedTaskBehavior as CompletedTaskBehavior // Already using new format
+          : currentSettings?.collapseCompleted === true
+            ? 'collapse'
+            : currentSettings?.collapseCompleted === false
+              ? 'keep-in-place'
+              : 'keep-in-place'; // Default
+      
+      setCompletedTaskBehavior(behavior);
       setError('');
     }
   }, [isOpen, currentSettings]);
@@ -66,7 +77,7 @@ export function CollectionSettingsModal({
     e?.preventDefault();
 
     try {
-      await onSubmit({ collapseCompleted });
+      await onSubmit({ completedTaskBehavior });
       
       // Clear error and close modal on success
       setError('');
@@ -98,30 +109,32 @@ export function CollectionSettingsModal({
 
         <form onSubmit={handleSubmit}>
           <div className="mb-6">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={collapseCompleted}
-                onChange={(e) => setCollapseCompleted(e.target.checked)}
-                className="
-                  w-5 h-5 
-                  text-blue-600 
-                  bg-gray-100 dark:bg-gray-700
-                  border-gray-300 dark:border-gray-600
-                  rounded
-                  focus:ring-2 focus:ring-blue-500
-                  cursor-pointer
-                "
-              />
-              <div>
-                <div className="text-sm font-medium text-gray-900 dark:text-white">
-                  Collapse completed tasks
-                </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Move completed tasks to a collapsible section at the bottom
-                </div>
-              </div>
+            <label htmlFor="completed-task-behavior" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+              Completed Tasks
             </label>
+            <select
+              id="completed-task-behavior"
+              value={completedTaskBehavior}
+              onChange={(e) => setCompletedTaskBehavior(e.target.value as CompletedTaskBehavior)}
+              className="
+                w-full px-3 py-2
+                bg-white dark:bg-gray-700
+                border border-gray-300 dark:border-gray-600
+                rounded-lg
+                text-gray-900 dark:text-white
+                focus:outline-none focus:ring-2 focus:ring-blue-500
+                cursor-pointer
+              "
+            >
+              <option value="keep-in-place">Keep in place</option>
+              <option value="move-to-bottom">Move to bottom</option>
+              <option value="collapse">Collapse</option>
+            </select>
+            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {completedTaskBehavior === 'keep-in-place' && 'Completed tasks stay where they are'}
+              {completedTaskBehavior === 'move-to-bottom' && 'Completed tasks move below a separator'}
+              {completedTaskBehavior === 'collapse' && 'Completed tasks hidden in expandable section'}
+            </div>
             {error && (
               <div className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
                 {error}

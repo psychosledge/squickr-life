@@ -360,4 +360,346 @@ describe('useCollectionHierarchy', () => {
       expect(yearNode?.isExpanded).toBe(true);
     });
   });
+
+  describe('monthly log integration', () => {
+    it('should place monthly logs at year level (not in month groups)', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          order: 'a',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see children
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      expect(yearNode).toBeDefined();
+      expect(yearNode?.children).toHaveLength(2); // 1 monthly log + 1 month node
+
+      // First child should be monthly log (appears before month groups)
+      expect(yearNode?.children[0]?.type).toBe('monthly');
+      expect(yearNode?.children[0]?.label).toBe('February 2026');
+      
+      // Second child should be month node
+      expect(yearNode?.children[1]?.type).toBe('month');
+    });
+
+    it('should sort monthly logs newest first within year', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'January 2026',
+          type: 'monthly',
+          date: '2026-01',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'monthly-2',
+          name: 'March 2026',
+          type: 'monthly',
+          date: '2026-03',
+          order: 'b',
+          createdAt: '2026-03-01T00:00:00Z',
+        },
+        {
+          id: 'monthly-3',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          order: 'c',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see children
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      expect(yearNode?.children).toHaveLength(3);
+
+      // Should be sorted newest first: March, February, January
+      expect(yearNode?.children[0]?.date).toBe('2026-03');
+      expect(yearNode?.children[1]?.date).toBe('2026-02');
+      expect(yearNode?.children[2]?.date).toBe('2026-01');
+    });
+
+    it('should handle multiple monthly logs in same year', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'December 2026',
+          type: 'monthly',
+          date: '2026-12',
+          order: 'a',
+          createdAt: '2026-12-01T00:00:00Z',
+        },
+        {
+          id: 'monthly-2',
+          name: 'January 2026',
+          type: 'monthly',
+          date: '2026-01',
+          order: 'b',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'monthly-3',
+          name: 'June 2026',
+          type: 'monthly',
+          date: '2026-06',
+          order: 'c',
+          createdAt: '2026-06-01T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see children
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // All 3 monthly logs should appear as direct children
+      const monthlyNodes = yearNode?.children.filter(n => n.type === 'monthly');
+      expect(monthlyNodes).toHaveLength(3);
+      
+      // Verify all are monthly type
+      monthlyNodes?.forEach(node => {
+        expect(node.type).toBe('monthly');
+        expect(node.collection?.type).toBe('monthly');
+      });
+    });
+
+    it('should handle mixed daily and monthly logs in same year', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          order: 'a',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'monthly-2',
+          name: 'January 2026',
+          type: 'monthly',
+          date: '2026-01',
+          order: 'b',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'c',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-2',
+          name: 'Saturday, January 31',
+          type: 'daily',
+          date: '2026-01-31',
+          order: 'd',
+          createdAt: '2026-01-31T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see structure
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02', 'month-2026-01']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // Should have 2 monthly logs + 2 month groups = 4 children
+      expect(yearNode?.children).toHaveLength(4);
+      
+      // First 2 should be monthly logs (newest first)
+      expect(yearNode?.children[0]?.type).toBe('monthly');
+      expect(yearNode?.children[0]?.date).toBe('2026-02');
+      expect(yearNode?.children[1]?.type).toBe('monthly');
+      expect(yearNode?.children[1]?.date).toBe('2026-01');
+      
+      // Next 2 should be month groups
+      expect(yearNode?.children[2]?.type).toBe('month');
+      expect(yearNode?.children[3]?.type).toBe('month');
+    });
+
+    it('should handle year with only monthly logs (no daily logs)', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'December 2025',
+          type: 'monthly',
+          date: '2025-12',
+          order: 'a',
+          createdAt: '2025-12-01T00:00:00Z',
+        },
+        {
+          id: 'monthly-2',
+          name: 'January 2025',
+          type: 'monthly',
+          date: '2025-01',
+          order: 'b',
+          createdAt: '2025-01-01T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see children
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2025']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // Should have only monthly logs, no month groups
+      expect(yearNode?.children).toHaveLength(2);
+      expect(yearNode?.children.every(n => n.type === 'monthly')).toBe(true);
+      
+      // Sorted newest first
+      expect(yearNode?.children[0]?.date).toBe('2025-12');
+      expect(yearNode?.children[1]?.date).toBe('2025-01');
+    });
+
+    it('should include monthly logs in year count when collapsed', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          order: 'a',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-2',
+          name: 'Saturday, January 31',
+          type: 'daily',
+          date: '2026-01-31',
+          order: 'c',
+          createdAt: '2026-01-31T00:00:00Z',
+        },
+      ];
+
+      // Don't expand year - should show count
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // Count should include 1 monthly log + 2 daily logs = 3 total
+      expect(yearNode?.count).toBe(3);
+      expect(yearNode?.isExpanded).toBe(false);
+    });
+
+    it('should format monthly log labels correctly', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          order: 'a',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'monthly-2',
+          name: 'December 2025',
+          type: 'monthly',
+          date: '2025-12',
+          order: 'b',
+          createdAt: '2025-12-01T00:00:00Z',
+        },
+      ];
+
+      // Expand years to see children
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'year-2025']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections));
+
+      const year2026 = result.current.nodes.find(n => n.id === 'year-2026');
+      const year2025 = result.current.nodes.find(n => n.id === 'year-2025');
+      
+      // Check formatted labels
+      expect(year2026?.children[0]?.label).toBe('February 2026');
+      expect(year2025?.children[0]?.label).toBe('December 2025');
+    });
+
+    it('should handle monthly logs across multiple years', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'March 2026',
+          type: 'monthly',
+          date: '2026-03',
+          order: 'a',
+          createdAt: '2026-03-01T00:00:00Z',
+        },
+        {
+          id: 'monthly-2',
+          name: 'December 2025',
+          type: 'monthly',
+          date: '2025-12',
+          order: 'b',
+          createdAt: '2025-12-01T00:00:00Z',
+        },
+        {
+          id: 'monthly-3',
+          name: 'January 2024',
+          type: 'monthly',
+          date: '2024-01',
+          order: 'c',
+          createdAt: '2024-01-01T00:00:00Z',
+        },
+      ];
+
+      // Expand all years
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'year-2025', 'year-2024']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections));
+
+      const yearNodes = result.current.nodes.filter(n => n.type === 'year');
+      
+      // Should have 3 year nodes
+      expect(yearNodes).toHaveLength(3);
+      
+      // Each year should have 1 monthly log child
+      expect(yearNodes[0]?.children).toHaveLength(1); // 2026
+      expect(yearNodes[1]?.children).toHaveLength(1); // 2025
+      expect(yearNodes[2]?.children).toHaveLength(1); // 2024
+      
+      // Verify correct monthly log in each year
+      expect(yearNodes[0]?.children[0]?.date).toBe('2026-03');
+      expect(yearNodes[1]?.children[0]?.date).toBe('2025-12');
+      expect(yearNodes[2]?.children[0]?.date).toBe('2024-01');
+    });
+  });
 });

@@ -93,6 +93,15 @@ export class CreateCollectionHandler {
       }
     }
 
+    // Check for duplicate monthly logs
+    if (type === 'monthly' && command.date) {
+      const existingMonthlyLog = await this.projection.getMonthlyLogByDate(command.date);
+      if (existingMonthlyLog) {
+        // Idempotent: return existing monthly log ID instead of creating duplicate
+        return existingMonthlyLog.id;
+      }
+    }
+
     // Get last collection to generate order after it
     const collections = await this.projection.getCollections();
     const lastCollection = collections[collections.length - 1];
@@ -349,6 +358,7 @@ export class UpdateCollectionSettingsHandler {
    * - If the collection already has the target settings, no event is emitted.
    *   This prevents duplicate events from double-clicks or retries.
    * - Treats undefined as false for boolean settings
+   * - Compares completedTaskBehavior if present in command
    * 
    * @param command - The UpdateCollectionSettings command
    * @throws Error if validation fails
@@ -360,12 +370,27 @@ export class UpdateCollectionSettingsHandler {
       throw new Error(`Collection ${command.collectionId} not found`);
     }
 
-    // Normalize settings for comparison (treat undefined as false)
+    // Normalize settings for comparison (treat undefined as false for legacy boolean)
     const currentCollapseCompleted = collection.settings?.collapseCompleted ?? false;
     const newCollapseCompleted = command.settings.collapseCompleted ?? false;
-
+    
+    // Check if completedTaskBehavior is changing
+    const currentBehavior = collection.settings?.completedTaskBehavior;
+    const newBehavior = command.settings.completedTaskBehavior;
+    
     // Idempotency: if settings unchanged, do nothing
-    if (currentCollapseCompleted === newCollapseCompleted) {
+    // Only check fields that are present in the command
+    let isChanged = false;
+    
+    if ('collapseCompleted' in command.settings && currentCollapseCompleted !== newCollapseCompleted) {
+      isChanged = true;
+    }
+    
+    if ('completedTaskBehavior' in command.settings && currentBehavior !== newBehavior) {
+      isChanged = true;
+    }
+    
+    if (!isChanged) {
       return; // Already in desired state, no event needed
     }
 

@@ -483,6 +483,219 @@ describe('CollectionListProjection', () => {
     });
   });
 
+  describe('CollectionSettings migration (collapseCompleted → completedTaskBehavior)', () => {
+    it('should migrate collapseCompleted: true to completedTaskBehavior: collapse', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Test',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+
+      const settingsUpdated: CollectionSettingsUpdated = {
+        ...generateEventMetadata(),
+        type: 'CollectionSettingsUpdated',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          settings: {
+            collapseCompleted: true, // Legacy format
+          },
+          updatedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+
+      await eventStore.append(created);
+      await eventStore.append(settingsUpdated);
+
+      const collection = await projection.getCollectionById('col-1');
+      
+      // Migration should convert to new format
+      expect(collection?.settings?.completedTaskBehavior).toBe('collapse');
+      // Legacy field should still be present for backward compat
+      expect(collection?.settings?.collapseCompleted).toBe(true);
+    });
+
+    it('should migrate collapseCompleted: false to completedTaskBehavior: keep-in-place', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Test',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+
+      const settingsUpdated: CollectionSettingsUpdated = {
+        ...generateEventMetadata(),
+        type: 'CollectionSettingsUpdated',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          settings: {
+            collapseCompleted: false, // Legacy format
+          },
+          updatedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+
+      await eventStore.append(created);
+      await eventStore.append(settingsUpdated);
+
+      const collection = await projection.getCollectionById('col-1');
+      
+      // Migration should convert to new format
+      expect(collection?.settings?.completedTaskBehavior).toBe('keep-in-place');
+      expect(collection?.settings?.collapseCompleted).toBe(false);
+    });
+
+    it('should not migrate if completedTaskBehavior is already set', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Test',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+
+      const settingsUpdated: CollectionSettingsUpdated = {
+        ...generateEventMetadata(),
+        type: 'CollectionSettingsUpdated',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          settings: {
+            collapseCompleted: true, // Legacy field present
+            completedTaskBehavior: 'move-to-bottom', // But new field takes precedence
+          },
+          updatedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+
+      await eventStore.append(created);
+      await eventStore.append(settingsUpdated);
+
+      const collection = await projection.getCollectionById('col-1');
+      
+      // Should use explicitly set completedTaskBehavior, not migrate from boolean
+      expect(collection?.settings?.completedTaskBehavior).toBe('move-to-bottom');
+    });
+
+    it('should handle completedTaskBehavior: null (use global default)', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Test',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+
+      const settingsUpdated: CollectionSettingsUpdated = {
+        ...generateEventMetadata(),
+        type: 'CollectionSettingsUpdated',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          settings: {
+            completedTaskBehavior: null, // Explicitly use global default
+          },
+          updatedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+
+      await eventStore.append(created);
+      await eventStore.append(settingsUpdated);
+
+      const collection = await projection.getCollectionById('col-1');
+      
+      // null means "use global user default"
+      expect(collection?.settings?.completedTaskBehavior).toBe(null);
+    });
+
+    it('should handle all three new behavior modes', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Test',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+
+      await eventStore.append(created);
+
+      // Test 'keep-in-place'
+      await eventStore.append({
+        ...generateEventMetadata(),
+        type: 'CollectionSettingsUpdated',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          settings: { completedTaskBehavior: 'keep-in-place' },
+          updatedAt: '2026-01-26T00:01:00.000Z',
+        },
+      } as CollectionSettingsUpdated);
+
+      let collection = await projection.getCollectionById('col-1');
+      expect(collection?.settings?.completedTaskBehavior).toBe('keep-in-place');
+
+      // Test 'move-to-bottom'
+      await eventStore.append({
+        ...generateEventMetadata(),
+        type: 'CollectionSettingsUpdated',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          settings: { completedTaskBehavior: 'move-to-bottom' },
+          updatedAt: '2026-01-26T00:02:00.000Z',
+        },
+      } as CollectionSettingsUpdated);
+
+      collection = await projection.getCollectionById('col-1');
+      expect(collection?.settings?.completedTaskBehavior).toBe('move-to-bottom');
+
+      // Test 'collapse'
+      await eventStore.append({
+        ...generateEventMetadata(),
+        type: 'CollectionSettingsUpdated',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          settings: { completedTaskBehavior: 'collapse' },
+          updatedAt: '2026-01-26T00:03:00.000Z',
+        },
+      } as CollectionSettingsUpdated);
+
+      collection = await projection.getCollectionById('col-1');
+      expect(collection?.settings?.completedTaskBehavior).toBe('collapse');
+    });
+  });
+
+
   describe('reactive updates', () => {
     it('should notify subscribers when events are appended', async () => {
       let notifyCount = 0;

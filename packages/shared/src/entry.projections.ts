@@ -286,6 +286,70 @@ export class EntryListProjection {
   }
 
   /**
+   * Get entry statistics (counts) grouped by collection ID
+   * 
+   * Returns a map of collection ID to stats object containing:
+   * - openTasks: count of open tasks (not migrated)
+   * - completedTasks: count of completed tasks (not migrated)
+   * - notes: count of notes (not migrated)
+   * - events: count of events (not migrated)
+   * 
+   * @returns Map of collection ID to stats (null key = uncategorized entries)
+   */
+  async getEntryStatsByCollection(): Promise<Map<string | null, {
+    openTasks: number;
+    completedTasks: number;
+    notes: number;
+    events: number;
+  }>> {
+    const allEntries = await this.getEntries('all');
+    const statsMap = new Map<string | null, {
+      openTasks: number;
+      completedTasks: number;
+      notes: number;
+      events: number;
+    }>();
+    
+    for (const entry of allEntries) {
+      // Skip migrated entries (they shouldn't count in stats)
+      if (entry.migratedTo) continue;
+      
+      const collectionId = entry.collectionId ?? null;
+      
+      // Initialize stats for this collection if not exists
+      if (!statsMap.has(collectionId)) {
+        statsMap.set(collectionId, {
+          openTasks: 0,
+          completedTasks: 0,
+          notes: 0,
+          events: 0
+        });
+      }
+      
+      const stats = statsMap.get(collectionId)!;
+      
+      // Count by entry type
+      switch (entry.type) {
+        case 'task':
+          if (entry.status === 'completed') {
+            stats.completedTasks++;
+          } else {
+            stats.openTasks++;
+          }
+          break;
+        case 'note':
+          stats.notes++;
+          break;
+        case 'event':
+          stats.events++;
+          break;
+      }
+    }
+    
+    return statsMap;
+  }
+
+  /**
    * Apply events to build entry state
    * This handles Task, Note, and Event events polymorphically
    */

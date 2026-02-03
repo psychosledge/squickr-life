@@ -376,6 +376,34 @@ describe('CreateCollectionHandler', () => {
       expect(events).toHaveLength(1); // Only one event created
     });
 
+    it('should prevent duplicate monthly logs for same date', async () => {
+      const command1: CreateCollectionCommand = {
+        name: 'February 2026',
+        type: 'monthly',
+        date: '2026-02',
+      };
+
+      const id1 = await handler.handle(command1);
+
+      // Try to create another monthly log for the same date
+      const command2: CreateCollectionCommand = {
+        name: 'Another name for same month',
+        type: 'monthly',
+        date: '2026-02',
+      };
+
+      const id2 = await handler.handle(command2);
+
+      // Should return existing collection ID
+      expect(id1).toBe(id2);
+
+      const collections = await projection.getCollections();
+      expect(collections).toHaveLength(1);
+      
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(1); // Only one event created
+    });
+
     it('should allow duplicate dates across different types', async () => {
       await handler.handle({
         name: 'February 2026',
@@ -1011,6 +1039,113 @@ describe('UpdateCollectionSettingsHandler', () => {
 
       const eventsAfter = await eventStore.getAll();
       expect(eventsAfter.length).toBe(countBefore + 1); // New event created
+    });
+  });
+
+  describe('completedTaskBehavior setting', () => {
+    it('should set completedTaskBehavior to keep-in-place', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      await settingsHandler.handle({
+        collectionId,
+        settings: { completedTaskBehavior: 'keep-in-place' },
+      });
+
+      const events = await eventStore.getAll();
+      const settingsEvent = events[1] as CollectionSettingsUpdated;
+      expect(settingsEvent.payload.settings.completedTaskBehavior).toBe('keep-in-place');
+    });
+
+    it('should set completedTaskBehavior to move-to-bottom', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      await settingsHandler.handle({
+        collectionId,
+        settings: { completedTaskBehavior: 'move-to-bottom' },
+      });
+
+      const collection = await projection.getCollectionById(collectionId);
+      expect(collection?.settings?.completedTaskBehavior).toBe('move-to-bottom');
+    });
+
+    it('should set completedTaskBehavior to collapse', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      await settingsHandler.handle({
+        collectionId,
+        settings: { completedTaskBehavior: 'collapse' },
+      });
+
+      const collection = await projection.getCollectionById(collectionId);
+      expect(collection?.settings?.completedTaskBehavior).toBe('collapse');
+    });
+
+    it('should set completedTaskBehavior to null (use global default)', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      // First set to a value
+      await settingsHandler.handle({
+        collectionId,
+        settings: { completedTaskBehavior: 'collapse' },
+      });
+
+      // Then set to null (use global default)
+      await settingsHandler.handle({
+        collectionId,
+        settings: { completedTaskBehavior: null },
+      });
+
+      const collection = await projection.getCollectionById(collectionId);
+      expect(collection?.settings?.completedTaskBehavior).toBe(null);
+    });
+
+    it('should allow changing between different behaviors', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      await settingsHandler.handle({
+        collectionId,
+        settings: { completedTaskBehavior: 'keep-in-place' },
+      });
+
+      let collection = await projection.getCollectionById(collectionId);
+      expect(collection?.settings?.completedTaskBehavior).toBe('keep-in-place');
+
+      await settingsHandler.handle({
+        collectionId,
+        settings: { completedTaskBehavior: 'move-to-bottom' },
+      });
+
+      collection = await projection.getCollectionById(collectionId);
+      expect(collection?.settings?.completedTaskBehavior).toBe('move-to-bottom');
+
+      await settingsHandler.handle({
+        collectionId,
+        settings: { completedTaskBehavior: 'collapse' },
+      });
+
+      collection = await projection.getCollectionById(collectionId);
+      expect(collection?.settings?.completedTaskBehavior).toBe('collapse');
+    });
+
+    it('should be idempotent when setting same behavior', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test' });
+
+      await settingsHandler.handle({
+        collectionId,
+        settings: { completedTaskBehavior: 'collapse' },
+      });
+
+      const eventsBefore = await eventStore.getAll();
+      const countBefore = eventsBefore.length;
+
+      // Try to set same behavior again (idempotent)
+      await settingsHandler.handle({
+        collectionId,
+        settings: { completedTaskBehavior: 'collapse' },
+      });
+
+      const eventsAfter = await eventStore.getAll();
+      expect(eventsAfter.length).toBe(countBefore); // No new event
     });
   });
 });
