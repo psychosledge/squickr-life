@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import { signInWithGoogle } from '../firebase/auth';
+import { logger } from '../utils/logger';
 
 export function SignInView() {
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -23,7 +24,7 @@ export function SignInView() {
       // Auth state change will be handled by AuthContext
       // User will automatically be redirected by App.tsx routing
     } catch (error) {
-      console.error('[SignInView] Sign in failed:', error);
+      logger.error('[SignInView] Sign in failed:', error);
       setError('Failed to sign in. Please try again.');
       setIsSigningIn(false);
     }

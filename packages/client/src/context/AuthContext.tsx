@@ -10,6 +10,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { subscribeToAuthState } from '../firebase/auth';
+import { logger } from '../utils/logger';
 
 interface AuthContextValue {
   user: User | null;
@@ -39,9 +40,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setLoading(false);
       
       if (user) {
-        console.log('[AuthContext] User signed in:', user.email);
+        logger.info('[AuthContext] User signed in:', user.email);
       } else {
-        console.log('[AuthContext] User signed out');
+        logger.info('[AuthContext] User signed out');
       }
     });
 

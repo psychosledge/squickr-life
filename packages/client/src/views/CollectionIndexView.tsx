@@ -17,6 +17,7 @@ import { FAB } from '../components/FAB';
 import { DarkModeToggle } from '../components/DarkModeToggle';
 import { UserProfileMenu } from '../components/UserProfileMenu';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
+import { logger } from '../utils/logger';
 
 export function CollectionIndexView() {
   const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler } = useApp();
@@ -86,7 +87,7 @@ export function CollectionIndexView() {
     nextCollectionId: string | null
   ) => {
     if (!reorderCollectionHandler) {
-      console.warn('[CollectionIndexView] Reorder handler not available');
+      logger.warn('[CollectionIndexView] Reorder handler not available');
       return;
     }
     
@@ -103,7 +104,7 @@ export function CollectionIndexView() {
       // Auth state change will be handled by AuthContext
       // User will automatically be redirected to SignInView
     } catch (error) {
-      console.error('[CollectionIndexView] Sign out failed:', error);
+      logger.error('[CollectionIndexView] Sign out failed:', error);
     }
   };
 
