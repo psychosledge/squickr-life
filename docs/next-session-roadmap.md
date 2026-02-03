@@ -314,37 +314,98 @@ See detailed implementation notes in this session's conversation history.
 
 ---
 
-## 🎯 Next Session Goals
+## 🎯 Next Session Goals (APPROVED)
 
-**Priority:** Address technical debt from Session 6 before adding new features
+### Session 7: Bug Fixes + Code Quality ✅ APPROVED
+**Agent Team:** Sam (implement) → Casey (review)  
+**Estimated Time:** 10-15 hours  
+**Status:** Ready to start
 
-### Session 7 Focus: Code Quality & Test Coverage
-1. **Refactor CollectionDetailView** (2-3 hours)
-   - Extract handler initialization into `useCollectionHandlers.ts`
-   - Extract modal state into `useCollectionModals.ts`
-   - Extract entry operations into `useEntryOperations.ts`
-   - Goal: Reduce from 476 lines to ~200 lines
+#### Part A: Critical Bug Fixes (2-3 hours)
+1. **Fix daily log creation via migration** (0.5-1 hr)
+   - Bug: Creates `type: 'custom'` instead of `type: 'daily'`
+   - Fix: Pass correct type/date from CreateCollectionModal
+   
+2. **Fix page navigation ordering** (1-2 hrs)
+   - Bug: Navigation doesn't match collection index order
+   - Fix: Use same hierarchical ordering as useCollectionHierarchy
+   
+3. **Fix drag handle position on mobile** (0.5 hr)
+   - UX: Drag handles too far from edge (right-2 → right-0 or right-1)
 
-2. **Add Drag-and-Drop Tests** (2-3 hours)
-   - Create `HierarchicalCollectionList.test.tsx`
-   - Test reordering within sections
-   - Test section constraints (cannot drag between sections)
-   - Test that temporal nodes are not draggable
-   - Test activation constraints (8px mouse, 250ms touch)
+#### Part B: Code Quality Improvements (8-12 hours)
 
-3. **Keyboard Accessibility for Drag-and-Drop** (1-2 hours)
-   - Add "Move Up/Move Down" buttons in context menu
-   - Add keyboard shortcuts (Ctrl+Up/Down?)
-   - Add ARIA live regions announcing reorder success
-   - Ensure screen readers work properly
+**Phase 1: Quick Wins** (1-2 hours)
+- Extract handler initialization with useMemo
+- Optimize drag sensor creation
+- Replace console statements with logger utility
+- Extract duplicate drag handle component
 
-4. **Consolidate Date Formatting** (30 minutes)
-   - Extract `formatDailyLogDate()` utility
-   - Use in both `formatters.ts` and `useCollectionHierarchy.ts`
-   - Remove duplication
+**Phase 2: Refactoring** (2-3 hours)
+- Refactor CollectionDetailView (479 → ~200 lines)
+- Extract to 3 hooks: useCollectionHandlers, useCollectionModals, useEntryOperations
 
+**Phase 3: Test Coverage** (2-3 hours)
+- Add comprehensive drag-and-drop tests (13+ new tests)
+- Cover EntryList and HierarchicalCollectionList
+
+**Phase 4: Accessibility** (2-3 hours)
+- Add keyboard navigation to dropdown menus
+- Fix subscription memory leak & performance
+
+**Phase 5: Code Quality** (1 hour)
+- Extract magic numbers to constants
+- Add error boundaries
+
+**Success Criteria:**
+- All 3 bugs fixed
+- All 12 code quality tasks complete
+- 820+ tests passing (up from 772)
+- Casey final rating: 9+/10
+- User manual testing passed
+
+**Detailed Plan:** See `session-2026-02-03-code-quality-review.md`
+
+---
+
+### Session 8: UX Enhancements 📅 PLANNED
+**Agent Team:** Alex (design) → Sam (implement) → Casey (review)  
 **Estimated Time:** 6-9 hours  
-**Goal:** Improve code quality to 9.5/10 before adding new features
+
+**Scope:**
+1. Collection stats in collection list (2-3 hrs)
+2. Completed task sorting behavior (2-3 hrs)
+3. Monthly log collection type - Phase 1 (2-3 hrs)
+
+**Design Questions for Alex:**
+- Collection stats: Icon layout and positioning
+- Completed task behavior: Setting UI design
+- Monthly log: Display format in hierarchy
+
+**Detailed Requirements:** See `user-feedback-2026-02-03.md`
+
+---
+
+### Session 9: Advanced Features 📅 PLANNED
+**Agent Team:** Alex (design) → Sam (implement) → Casey (review)  
+**Estimated Time:** 4-6 hours + design session  
+
+**Scope:**
+1. Bulk entry migration (4-6 hrs)
+
+**Design Questions for Alex:**
+- Selection UX and action bar design
+- Entry type filtering options
+
+**Detailed Requirements:** See `user-feedback-2026-02-03.md`
+
+---
+
+### Future Sessions: Advanced Features
+**Sub-tasks + Monthly Log Advanced Features**
+- Requires dedicated architecture design session with Alex
+- Estimated: 10-15 hours total
+- Scope: Hierarchical tasks, event visibility, smart migration
 
 ---
 
@@ -352,9 +413,14 @@ See detailed implementation notes in this session's conversation history.
 
 ### Work Loop (MUST FOLLOW)
 1. Get user approval before implementation
-2. User manual testing
-3. Casey code review
-4. User approval to deploy
+2. Sam implements (TDD approach)
+3. User manual testing
+4. Casey code review
+5. User approval to deploy
+
+### Agent Team Workflow
+- **Session 7:** Sam → Casey (no design needed)
+- **Session 8+:** Alex → Sam → Casey (design first)
 
 ### Testing Philosophy
 - Write tests first (TDD)
@@ -370,6 +436,6 @@ See detailed implementation notes in this session's conversation history.
 
 ---
 
-**Last Updated:** February 1, 2026  
-**Current Status:** Session 6 complete, ready to push to production  
-**Next Session:** Address technical debt before new features
+**Last Updated:** February 3, 2026  
+**Current Status:** Session 7 approved and ready to start  
+**Next Action:** Hand off to Sam for implementation

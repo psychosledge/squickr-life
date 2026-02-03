@@ -15,12 +15,14 @@
 
 import type { IEventStore } from '@squickr/shared';
 import { uploadLocalEvents, downloadRemoteEvents } from './syncEvents';
+import { logger } from '../utils/logger';
+import { DEBOUNCE, SYNC_CONFIG } from '../utils/constants';
 
 export class SyncManager {
   private intervalId: number | null = null;
   private isSyncing = false;
   private lastSyncTime: number = 0;
-  private syncDebounceMs = 5000;
+  private syncDebounceMs = DEBOUNCE.SYNC_OPERATION;
   
   // Event handler references (for cleanup)
   private handleVisibilityChange?: () => void;
@@ -82,7 +84,7 @@ export class SyncManager {
       
       this.lastSyncTime = Date.now();
     } catch (error) {
-      console.error('[SyncManager] Sync failed:', error);
+      logger.error('[SyncManager] Sync failed:', error);
     } finally {
       this.isSyncing = false;
       this.onSyncStateChange?.(false);
@@ -95,7 +97,7 @@ export class SyncManager {
   private startInterval(): void {
     this.intervalId = window.setInterval(() => {
       this.syncNow();
-    }, 5 * 60 * 1000); // 5 minutes
+    }, SYNC_CONFIG.SYNC_INTERVAL);
   }
   
   /**

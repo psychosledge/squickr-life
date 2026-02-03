@@ -279,7 +279,59 @@ describe('MigrateEntryModal', () => {
       
       // Wait for collection creation and auto-migration
       await waitFor(() => {
-        expect(onCreateCollection).toHaveBeenCalledWith('New Collection');
+        expect(onCreateCollection).toHaveBeenCalledWith('New Collection', undefined, undefined);
+        expect(onMigrate).toHaveBeenCalledWith('entry1', 'col4');
+        expect(onClose).toHaveBeenCalled();
+      });
+    });
+
+    it('should pass type and date when creating daily log via migration', async () => {
+      const user = userEvent.setup();
+      const onMigrate = vi.fn().mockResolvedValue(undefined);
+      const onClose = vi.fn();
+      const onCreateCollection = vi.fn().mockResolvedValue('col4'); // Returns new collection ID
+      
+      render(<MigrateEntryModal 
+        {...defaultProps} 
+        onMigrate={onMigrate}
+        onClose={onClose}
+        onCreateCollection={onCreateCollection}
+      />);
+      
+      // Select "+ Create New Collection"
+      await user.click(screen.getByLabelText(/Create New Collection/i));
+      
+      // Click Next to open create modal
+      await user.click(screen.getByRole('button', { name: /Next/i }));
+      
+      // Wait for CreateCollectionModal to appear
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: /Create Collection/i })).toBeInTheDocument();
+      });
+      
+      // Select "Daily Log" type by finding the radio input with value "daily"
+      const dailyRadio = screen.getByRole('radio', { name: /Daily Log \(date-based\)/i });
+      await user.click(dailyRadio);
+      
+      // Select a date (should already have today's date as default)
+      // Use getBy ID since there might be multiple date-related elements
+      await waitFor(() => {
+        expect(screen.getByDisplayValue(/2026-02-/)).toBeInTheDocument();
+      });
+      const dateInput = screen.getByDisplayValue(/2026-02-/) as HTMLInputElement;
+      const selectedDate = dateInput.value; // Use the default date
+      
+      // Submit the create form
+      await user.click(screen.getByRole('button', { name: /Create/i }));
+      
+      // Wait for collection creation and auto-migration
+      await waitFor(() => {
+        // Should pass type='daily' and the selected date
+        expect(onCreateCollection).toHaveBeenCalledWith(
+          expect.any(String), // Auto-generated name from date
+          'daily',
+          selectedDate
+        );
         expect(onMigrate).toHaveBeenCalledWith('entry1', 'col4');
         expect(onClose).toHaveBeenCalled();
       });

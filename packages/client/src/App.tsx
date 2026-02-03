@@ -18,6 +18,7 @@ import { CollectionDetailView } from './views/CollectionDetailView';
 import { SignInView } from './views/SignInView';
 import { SyncManager } from './firebase/SyncManager';
 import { ROUTES } from './routes';
+import { logger } from './utils/logger';
 
 /**
  * Main App Component
@@ -82,11 +83,11 @@ function AppContent() {
     manager.start();
     syncManagerRef.current = manager;
     
-    console.log('[App] Background sync started');
+    logger.info('[App] Background sync started');
     
     return () => {
       manager.stop();
-      console.log('[App] Background sync stopped');
+      logger.info('[App] Background sync stopped');
     };
   }, [user, isLoading, eventStore]);
 
@@ -95,7 +96,7 @@ function AppContent() {
       // Initialize IndexedDB connection
       await eventStore.initialize();
     } catch (error) {
-      console.error('Failed to initialize app:', error);
+      logger.error('Failed to initialize app:', error);
     } finally {
       setIsLoading(false);
     }

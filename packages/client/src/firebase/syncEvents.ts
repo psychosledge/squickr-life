@@ -11,6 +11,8 @@
 import { collection, doc, writeBatch, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { firestore } from './config';
 import type { DomainEvent, IEventStore } from '@squickr/shared';
+import { logger } from '../utils/logger';
+import { SYNC_CONFIG } from '../utils/constants';
 
 /**
  * Upload local events from IndexedDB to Firestore
@@ -28,17 +30,17 @@ export async function uploadLocalEvents(
   userId: string,
   eventStore: IEventStore
 ): Promise<number> {
-  console.log('[Sync] Starting upload...');
+  logger.info('[Sync] Starting upload...');
   
   // Get all local events
   const localEvents = await eventStore.getAll();
   
   if (localEvents.length === 0) {
-    console.log('[Sync] No local events to upload');
+    logger.info('[Sync] No local events to upload');
     return 0;
   }
   
-  console.log(`[Sync] Found ${localEvents.length} local events`);
+  logger.info('[Sync]', `Found ${localEvents.length} local events`);
   
   // Get IDs of events that already exist in Firestore (duplicate detection)
   const remoteEventIds = await getRemoteEventIds(userId);
@@ -49,11 +51,11 @@ export async function uploadLocalEvents(
   );
   
   if (eventsToUpload.length === 0) {
-    console.log('[Sync] All events already synced');
+    logger.info('[Sync] All events already synced');
     return 0;
   }
   
-  console.log(`[Sync] Uploading ${eventsToUpload.length} new events...`);
+  logger.info('[Sync]', `Uploading ${eventsToUpload.length} new events...`);
   
   // Upload in batches (Firestore allows max 500 writes per batch)
   await batchUploadToFirestore(userId, eventsToUpload);
@@ -61,7 +63,7 @@ export async function uploadLocalEvents(
   // Update last sync timestamp
   localStorage.setItem('last_sync_timestamp', new Date().toISOString());
   
-  console.log(`[Sync] Upload complete: ${eventsToUpload.length} events uploaded ✓`);
+  logger.info('[Sync]', `Upload complete: ${eventsToUpload.length} events uploaded ✓`);
   
   return eventsToUpload.length;
 }
@@ -80,7 +82,7 @@ async function getRemoteEventIds(userId: string): Promise<Set<string>> {
   // Document IDs are event IDs
   const eventIds = new Set(snapshot.docs.map((doc) => doc.id));
   
-  console.log(`[Sync] Found ${eventIds.size} remote events`);
+  logger.info('[Sync]', `Found ${eventIds.size} remote events`);
   
   return eventIds;
 }
@@ -134,7 +136,7 @@ export async function downloadRemoteEvents(
   userId: string,
   eventStore: IEventStore
 ): Promise<number> {
-  console.log('[Sync] Starting download...');
+  logger.info('[Sync] Starting download...');
   
   // Get last sync timestamp (default to epoch if never synced)
   const lastSync = localStorage.getItem('last_sync_timestamp') || '1970-01-01T00:00:00.000Z';
@@ -150,11 +152,11 @@ export async function downloadRemoteEvents(
   const snapshot = await getDocs(q);
   
   if (snapshot.empty) {
-    console.log('[Sync] No new remote events');
+    logger.info('[Sync] No new remote events');
     return 0;
   }
   
-  console.log(`[Sync] Downloaded ${snapshot.docs.length} events from Firestore`);
+  logger.info('[Sync]', `Downloaded ${snapshot.docs.length} events from Firestore`);
   
   // Get IDs of events already in IndexedDB
   const localEvents = await eventStore.getAll();
@@ -171,11 +173,11 @@ export async function downloadRemoteEvents(
   }
   
   if (newEvents.length === 0) {
-    console.log('[Sync] All remote events already in IndexedDB');
+    logger.info('[Sync] All remote events already in IndexedDB');
     return 0;
   }
   
-  console.log(`[Sync] Appending ${newEvents.length} new events to IndexedDB...`);
+  logger.info('[Sync]', `Appending ${newEvents.length} new events to IndexedDB...`);
   
   // Append new events to IndexedDB
   for (const event of newEvents) {
@@ -190,7 +192,7 @@ export async function downloadRemoteEvents(
     }
   }
   
-  console.log(`[Sync] Download complete: ${newEvents.length} events downloaded ✓`);
+  logger.info('[Sync]', `Download complete: ${newEvents.length} events downloaded ✓`);
   
   return newEvents.length;
 }
@@ -199,7 +201,7 @@ async function batchUploadToFirestore(
   userId: string,
   events: DomainEvent[]
 ): Promise<void> {
-  const BATCH_SIZE = 500;
+  const BATCH_SIZE = SYNC_CONFIG.FIRESTORE_BATCH_SIZE;
   
   // Split into batches
   for (let i = 0; i < events.length; i += BATCH_SIZE) {
@@ -218,6 +220,6 @@ async function batchUploadToFirestore(
     }
     
     await batch.commit();
-    console.log(`[Sync] Uploaded batch ${i / BATCH_SIZE + 1}: ${batchEvents.length} events`);
+    logger.debug('[Sync]', `Uploaded batch ${i / BATCH_SIZE + 1}: ${batchEvents.length} events`);
   }
 }

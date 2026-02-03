@@ -6,6 +6,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth } from './config';
+import { logger } from '../utils/logger';
 
 /**
  * Sign in with Google using popup
@@ -15,10 +16,10 @@ export async function signInWithGoogle(): Promise<User> {
   
   try {
     const result = await signInWithPopup(auth, provider);
-    console.log('[Auth] Sign in successful:', result.user.email);
+    logger.info('[Auth] Sign in successful:', result.user.email);
     return result.user;
   } catch (error) {
-    console.error('[Auth] Sign in failed:', error);
+    logger.error('[Auth] Sign in failed:', error);
     throw error;
   }
 }
@@ -29,9 +30,9 @@ export async function signInWithGoogle(): Promise<User> {
 export async function signOut(): Promise<void> {
   try {
     await firebaseSignOut(auth);
-    console.log('[Auth] Sign out successful');
+    logger.info('[Auth] Sign out successful');
   } catch (error) {
-    console.error('[Auth] Sign out failed:', error);
+    logger.error('[Auth] Sign out failed:', error);
     throw error;
   }
 }

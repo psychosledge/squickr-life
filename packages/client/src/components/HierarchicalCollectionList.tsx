@@ -1,8 +1,10 @@
 import type { Collection } from '@squickr/shared';
+import { useMemo } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useCollectionHierarchy } from '../hooks/useCollectionHierarchy';
 import { CollectionTreeNode } from './CollectionTreeNode';
+import { DRAG_SENSOR_CONFIG } from '../utils/constants';
 
 interface HierarchicalCollectionListProps {
   collections: Collection[];
@@ -36,20 +38,25 @@ export function HierarchicalCollectionList({
 }: HierarchicalCollectionListProps) {
   const { nodes, toggleExpand } = useCollectionHierarchy(collections);
   
+  // Memoize sensor configuration to prevent recreation on every render
+  const mouseSensor = useMemo(() => MouseSensor, []);
+  const touchSensor = useMemo(() => TouchSensor, []);
+  const keyboardSensor = useMemo(() => KeyboardSensor, []);
+  
   // Setup drag-and-drop sensors
   const sensors = useSensors(
-    useSensor(MouseSensor, {
+    useSensor(mouseSensor, {
       activationConstraint: {
-        distance: 8, // Require 8px movement before drag starts
+        distance: DRAG_SENSOR_CONFIG.MOUSE_DRAG_DISTANCE,
       },
     }),
-    useSensor(TouchSensor, {
+    useSensor(touchSensor, {
       activationConstraint: {
-        delay: 250, // 250ms delay for touch devices
-        tolerance: 5, // Allow 5px of movement during delay
+        delay: DRAG_SENSOR_CONFIG.TOUCH_DRAG_DELAY,
+        tolerance: DRAG_SENSOR_CONFIG.TOUCH_DRAG_TOLERANCE,
       },
     }),
-    useSensor(KeyboardSensor, {
+    useSensor(keyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );

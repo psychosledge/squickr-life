@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { logger } from '../utils/logger';
 
 export type ThemeMode = 'light' | 'dark' | 'auto';
 
@@ -11,7 +12,7 @@ export function useDarkMode() {
         return stored;
       }
     } catch (e) {
-      console.warn('Failed to read theme from localStorage:', e);
+      logger.warn('Failed to read theme from localStorage:', e);
     }
     return 'auto';
   });
@@ -61,7 +62,7 @@ export function useDarkMode() {
       try {
         localStorage.setItem('squickr-theme-mode', next);
       } catch (e) {
-        console.warn('Failed to save theme to localStorage:', e);
+        logger.warn('Failed to save theme to localStorage:', e);
       }
       
       return next;

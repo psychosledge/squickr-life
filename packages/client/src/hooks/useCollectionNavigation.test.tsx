@@ -217,4 +217,101 @@ describe('useCollectionNavigation', () => {
     await new Promise(resolve => setTimeout(resolve, 100));
     expect(mockNavigate).not.toHaveBeenCalled();
   });
+
+  it('should match hierarchical ordering: favorited customs, daily logs (newest first), other customs', async () => {
+    // Bug #2: Navigation order should match the collection index order
+    // Expected order: 1) Favorited customs (by order), 2) Daily logs (newest first), 3) Other customs (by order)
+    
+    collectionsData = [
+      // Favorited customs (should appear first)
+      { id: 'fav1', name: 'Favorite 1', type: 'custom', order: 'a0', isFavorite: true, createdAt: '2024-01-01T00:00:00Z' },
+      { id: 'fav2', name: 'Favorite 2', type: 'custom', order: 'a1', isFavorite: true, createdAt: '2024-01-02T00:00:00Z' },
+      
+      // Daily logs (should appear in date order, newest first)
+      { id: 'daily1', name: 'Feb 1', type: 'daily', date: '2026-02-01', createdAt: '2024-01-03T00:00:00Z' },
+      { id: 'daily2', name: 'Feb 2', type: 'daily', date: '2026-02-02', createdAt: '2024-01-04T00:00:00Z' },
+      { id: 'daily3', name: 'Jan 31', type: 'daily', date: '2026-01-31', createdAt: '2024-01-05T00:00:00Z' },
+      
+      // Other customs (should appear last)
+      { id: 'custom1', name: 'Custom 1', type: 'custom', order: 'b0', isFavorite: false, createdAt: '2024-01-06T00:00:00Z' },
+      { id: 'custom2', name: 'Custom 2', type: 'custom', order: 'b1', isFavorite: false, createdAt: '2024-01-07T00:00:00Z' },
+    ];
+
+    // Test navigation from fav1 (first favorited custom)
+    const { result: result1 } = renderHook(
+      () => useCollectionNavigation('fav1'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result1.current.previousCollection).toBeNull(); // First collection
+      expect(result1.current.nextCollection?.id).toBe('fav2'); // Next is fav2
+    });
+
+    // Test navigation from fav2 (second favorited custom)
+    const { result: result2 } = renderHook(
+      () => useCollectionNavigation('fav2'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result2.current.previousCollection?.id).toBe('fav1'); // Previous is fav1
+      expect(result2.current.nextCollection?.id).toBe('daily2'); // Next is daily2 (newest daily log)
+    });
+
+    // Test navigation from daily2 (newest daily log)
+    const { result: result3 } = renderHook(
+      () => useCollectionNavigation('daily2'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result3.current.previousCollection?.id).toBe('fav2'); // Previous is fav2
+      expect(result3.current.nextCollection?.id).toBe('daily1'); // Next is daily1 (second newest)
+    });
+
+    // Test navigation from daily1 (second newest daily log)
+    const { result: result4 } = renderHook(
+      () => useCollectionNavigation('daily1'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result4.current.previousCollection?.id).toBe('daily2'); // Previous is daily2
+      expect(result4.current.nextCollection?.id).toBe('daily3'); // Next is daily3 (third newest)
+    });
+
+    // Test navigation from daily3 (third newest daily log)
+    const { result: result5 } = renderHook(
+      () => useCollectionNavigation('daily3'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result5.current.previousCollection?.id).toBe('daily1'); // Previous is daily1
+      expect(result5.current.nextCollection?.id).toBe('custom1'); // Next is custom1 (first other custom)
+    });
+
+    // Test navigation from custom1 (first other custom)
+    const { result: result6 } = renderHook(
+      () => useCollectionNavigation('custom1'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result6.current.previousCollection?.id).toBe('daily3'); // Previous is daily3
+      expect(result6.current.nextCollection?.id).toBe('custom2'); // Next is custom2
+    });
+
+    // Test navigation from custom2 (last collection)
+    const { result: result7 } = renderHook(
+      () => useCollectionNavigation('custom2'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result7.current.previousCollection?.id).toBe('custom1'); // Previous is custom1
+      expect(result7.current.nextCollection).toBeNull(); // Last collection
+    });
+  });
 });

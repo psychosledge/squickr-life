@@ -3,6 +3,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { type Firestore, initializeFirestore, persistentLocalCache } from 'firebase/firestore';
+import { logger } from '../utils/logger';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -56,9 +57,9 @@ try {
     localCache: persistentLocalCache(),
   });
   
-  console.log('[Firebase] Initialized successfully');
+  logger.info('[Firebase] Initialized successfully');
 } catch (error) {
-  console.error('[Firebase] Initialization failed:', error);
+  logger.error('[Firebase] Initialization failed:', error);
   throw error;
 }
 

@@ -10,7 +10,7 @@ interface MigrateEntryModalProps {
   currentCollectionId?: string;
   collections: Collection[];
   onMigrate: (entryId: string, targetCollectionId: string | null) => Promise<void>;
-  onCreateCollection?: (name: string) => Promise<string>;
+  onCreateCollection?: (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => Promise<string>;
   selectedCollectionId?: string;
   onOpenCreateCollection?: () => void;
 }
@@ -193,11 +193,11 @@ export function MigrateEntryModal({
     }
   };
 
-  const handleCreateCollection = async (name: string) => {
+  const handleCreateCollection = async (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => {
     if (onCreateCollection && entry) {
       try {
         // Create the collection and get the new collection ID
-        const newCollectionId = await onCreateCollection(name);
+        const newCollectionId = await onCreateCollection(name, type, date);
         setShowCreateModal(false);
         
         // Auto-migrate the entry to the newly created collection
