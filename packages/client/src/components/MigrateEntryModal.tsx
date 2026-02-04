@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Entry, Collection } from '@squickr/shared';
 import { CreateCollectionModal } from './CreateCollectionModal';
 import { getCollectionDisplayName } from '../utils/formatters';
@@ -179,6 +179,14 @@ export function MigrateEntryModal({
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  
+  // Ref to track if nested modal is open (for back button handler)
+  const showCreateModalRef = useRef(false);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    showCreateModalRef.current = showCreateModal;
+  }, [showCreateModal]);
 
   // Update selected option when selectedCollectionId prop changes
   useEffect(() => {
@@ -220,7 +228,7 @@ export function MigrateEntryModal({
 
   // Handle back button to close modal (only when open and no nested modal)
   useEffect(() => {
-    if (!isOpen || showCreateModal) {
+    if (!isOpen) {
       return;
     }
 
@@ -228,19 +236,23 @@ export function MigrateEntryModal({
     window.history.pushState({ modal: true }, '');
 
     const handlePopState = () => {
-      onClose();
+      // Only close migration modal if nested create modal is not open
+      // Use ref to get current value without adding to dependency array
+      if (!showCreateModalRef.current) {
+        onClose();
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      // Clean up state if still there
+      // Clean up state when modal closes
       if (window.history.state?.modal) {
         window.history.back();
       }
     };
-  }, [isOpen, showCreateModal, onClose]);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !entry) {
     return null;
