@@ -110,7 +110,7 @@ describe('SortableEntryItem', () => {
 
     // Should render task content (verifying props passed through)
     expect(screen.getByText('Test task')).toBeInTheDocument();
-    expect(screen.getByText('•')).toBeInTheDocument(); // Task bullet
+    expect(screen.getByText('☐')).toBeInTheDocument(); // Task bullet
     
     // Should have Complete button (verifying handler passed through)
     expect(screen.getByRole('button', { name: /open task.*complete/i })).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe('SortableEntryItem', () => {
 
     // Should render note content
     expect(screen.getByText('Test note')).toBeInTheDocument();
-    expect(screen.getByText('–')).toBeInTheDocument(); // Note bullet
+    expect(screen.getByText('📝')).toBeInTheDocument(); // Note bullet
   });
 
   it('should pass through event props to EntryItem', () => {
@@ -142,7 +142,7 @@ describe('SortableEntryItem', () => {
 
     // Should render event content
     expect(screen.getByText('Test event')).toBeInTheDocument();
-    expect(screen.getByText('○')).toBeInTheDocument(); // Event bullet
+    expect(screen.getByText('📅')).toBeInTheDocument(); // Event bullet
     expect(screen.getByText(/February 15, 2026/i)).toBeInTheDocument(); // Event date
   });
 

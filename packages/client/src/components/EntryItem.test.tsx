@@ -28,7 +28,7 @@ describe('EntryItem', () => {
       );
       
       // Task-specific elements
-      expect(screen.getByText('•')).toBeInTheDocument();
+      expect(screen.getByText('☐')).toBeInTheDocument();
       expect(screen.getByText('Buy milk')).toBeInTheDocument();
     });
 
@@ -48,7 +48,7 @@ describe('EntryItem', () => {
       );
       
       // Note-specific elements
-      expect(screen.getByText('–')).toBeInTheDocument();
+      expect(screen.getByText('📝')).toBeInTheDocument();
       expect(screen.getByText('Important meeting notes')).toBeInTheDocument();
     });
 
@@ -69,9 +69,8 @@ describe('EntryItem', () => {
       );
       
       // Event-specific elements
-      expect(screen.getByText('○')).toBeInTheDocument();
+      expect(screen.getByText('📅')).toBeInTheDocument();
       expect(screen.getByText('Team meeting')).toBeInTheDocument();
-      expect(screen.getByText(/📅/)).toBeInTheDocument();
     });
   });
 

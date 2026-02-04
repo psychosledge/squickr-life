@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
 import type { EntryType } from '@squickr/shared';
+import { ENTRY_ICONS } from '../utils/constants';
 
 interface EntryInputProps {
   onSubmitTask: (title: string) => Promise<void>;
@@ -167,7 +168,7 @@ export function EntryInput({
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
             aria-pressed={entryType === 'task'}
           >
-            <span className="text-lg mr-2">✓</span>
+            <span className="text-lg mr-2">{ENTRY_ICONS.TASK_COMPLETED}</span>
             Task
           </button>
           

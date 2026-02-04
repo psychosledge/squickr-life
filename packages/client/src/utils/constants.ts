@@ -66,3 +66,32 @@ export const SYNC_CONFIG = {
   /** Interval between background syncs (milliseconds) */
   SYNC_INTERVAL: 5 * 60 * 1000, // 5 minutes
 } as const;
+
+/**
+ * Entry Type Icons
+ * 
+ * Consistent icon representations for entry types and states
+ * across the application. Used in stats, tree nodes, and entry items.
+ */
+export const ENTRY_ICONS = {
+  /** Open task icon (unchecked box) */
+  TASK_OPEN: '☐',
+  
+  /** Completed task icon (check mark) */
+  TASK_COMPLETED: '✓',
+  
+  /** Note icon */
+  NOTE: '📝',
+  
+  /** Event icon */
+  EVENT: '📅',
+  
+  /** Migrated entry icon */
+  MIGRATED: '>',
+  
+  /** Favorite/starred collection icon */
+  FAVORITE: '⭐',
+  
+  /** Calendar collection icon */
+  CALENDAR: '🗓️',
+} as const;

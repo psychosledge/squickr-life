@@ -26,7 +26,7 @@ describe('NoteEntryItem', () => {
       />
     );
     
-    expect(screen.getByText('–')).toBeInTheDocument();
+    expect(screen.getByText('📝')).toBeInTheDocument();
     expect(screen.getByText('Important meeting notes')).toBeInTheDocument();
   });
 

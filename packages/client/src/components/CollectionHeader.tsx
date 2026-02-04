@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { ROUTES } from '../routes';
 import { useCollectionNavigation } from '../hooks/useCollectionNavigation';
 import { CollectionNavigationControls } from './CollectionNavigationControls';
+import { ENTRY_ICONS } from '../utils/constants';
 
 interface CollectionHeaderProps {
   collectionName: string;
@@ -133,7 +134,7 @@ export function CollectionHeader({
             flex items-center justify-center gap-2
           "
         >
-          {isFavorite && <span className="text-yellow-500">⭐</span>}
+          {isFavorite && <span className="text-yellow-500">{ENTRY_ICONS.FAVORITE}</span>}
           {collectionName}
         </Link>
 

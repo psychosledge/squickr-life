@@ -35,7 +35,7 @@ describe('EventEntryItem', () => {
       />
     );
     
-    expect(screen.getByText('○')).toBeInTheDocument();
+    expect(screen.getByText('📅')).toBeInTheDocument();
     expect(screen.getByText('Team meeting')).toBeInTheDocument();
   });
 
@@ -47,7 +47,7 @@ describe('EventEntryItem', () => {
       />
     );
     
-    expect(screen.getByText(/📅/)).toBeInTheDocument();
+    // Look for the date specifically in the date display (not the bullet)
     expect(screen.getByText(/February 15, 2026/i)).toBeInTheDocument();
   });
 
@@ -59,7 +59,11 @@ describe('EventEntryItem', () => {
       />
     );
     
-    expect(screen.queryByText(/📅/)).not.toBeInTheDocument();
+    // Should still show the bullet emoji
+    expect(screen.getByText('📅')).toBeInTheDocument();
+    
+    // But should NOT show a formatted date
+    expect(screen.queryByText(/February/i)).not.toBeInTheDocument();
   });
 
   it('should call onDelete when Delete is clicked from menu', () => {

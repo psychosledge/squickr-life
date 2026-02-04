@@ -1,4 +1,5 @@
 import type { Entry } from '@squickr/shared';
+import { ENTRY_ICONS } from '../utils/constants';
 
 interface BulletIconProps {
   entry: Entry;
@@ -19,7 +20,7 @@ function getBulletStyle(entry: Entry): BulletStyle {
     if (entry.migratedTo) {
       // Migrated task (migration takes precedence)
       return {
-        icon: '>',
+        icon: ENTRY_ICONS.MIGRATED,
         color: 'text-blue-500 dark:text-blue-400',
         isInteractive: false,
         ariaLabel: 'Migrated task',
@@ -29,7 +30,7 @@ function getBulletStyle(entry: Entry): BulletStyle {
     if (entry.status === 'completed') {
       // Completed task
       return {
-        icon: '×',
+        icon: ENTRY_ICONS.TASK_COMPLETED,
         color: 'text-gray-500 dark:text-gray-400', // Fixed contrast: gray-500 has better AA compliance
         isInteractive: true,
         ariaLabel: 'Completed task - click to reopen',
@@ -38,7 +39,7 @@ function getBulletStyle(entry: Entry): BulletStyle {
 
     // Open task
     return {
-      icon: '•',
+      icon: ENTRY_ICONS.TASK_OPEN,
       color: 'text-gray-600 dark:text-gray-400',
       isInteractive: true,
       ariaLabel: 'Open task - click to complete',
@@ -49,7 +50,7 @@ function getBulletStyle(entry: Entry): BulletStyle {
   if (entry.type === 'note') {
     if (entry.migratedTo) {
       return {
-        icon: '>',
+        icon: ENTRY_ICONS.MIGRATED,
         color: 'text-blue-500 dark:text-blue-400',
         isInteractive: false,
         ariaLabel: 'Migrated note',
@@ -57,7 +58,7 @@ function getBulletStyle(entry: Entry): BulletStyle {
     }
 
     return {
-      icon: '–',
+      icon: ENTRY_ICONS.NOTE,
       color: 'text-gray-600 dark:text-gray-400',
       isInteractive: false,
       ariaLabel: 'Note',
@@ -68,7 +69,7 @@ function getBulletStyle(entry: Entry): BulletStyle {
   if (entry.type === 'event') {
     if (entry.migratedTo) {
       return {
-        icon: '>',
+        icon: ENTRY_ICONS.MIGRATED,
         color: 'text-blue-500 dark:text-blue-400',
         isInteractive: false,
         ariaLabel: 'Migrated event',
@@ -76,7 +77,7 @@ function getBulletStyle(entry: Entry): BulletStyle {
     }
 
     return {
-      icon: '○',
+      icon: ENTRY_ICONS.EVENT,
       color: 'text-gray-600 dark:text-gray-400',
       isInteractive: false,
       ariaLabel: 'Event',
@@ -85,7 +86,7 @@ function getBulletStyle(entry: Entry): BulletStyle {
 
   // Fallback (should never happen)
   return {
-    icon: '•',
+    icon: ENTRY_ICONS.TASK_OPEN,
     color: 'text-gray-600 dark:text-gray-400',
     isInteractive: false,
     ariaLabel: 'Entry',

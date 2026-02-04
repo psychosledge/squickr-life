@@ -5,6 +5,7 @@ import type { HierarchyNode } from '../hooks/useCollectionHierarchy';
 import type { Entry } from '@squickr/shared';
 import { buildCollectionPath } from '../routes';
 import { CollectionStats } from './CollectionStats';
+import { ENTRY_ICONS } from '../utils/constants';
 
 interface CollectionTreeNodeProps {
   node: HierarchyNode;
@@ -61,13 +62,13 @@ export function CollectionTreeNode({
   if (node.type === 'year' || node.type === 'month') {
     icon = node.isExpanded ? '▼' : '▶';
   } else if (node.type === 'monthly') {
-    icon = '🗓️';
+    icon = ENTRY_ICONS.CALENDAR;
   } else if (node.type === 'day') {
-    icon = '📅';
+    icon = ENTRY_ICONS.EVENT;
   } else if (node.collection?.isFavorite) {
-    icon = '⭐';
+    icon = ENTRY_ICONS.FAVORITE;
   } else {
-    icon = '📝';
+    icon = ENTRY_ICONS.NOTE;
   }
   
   // Label with count if collapsed
