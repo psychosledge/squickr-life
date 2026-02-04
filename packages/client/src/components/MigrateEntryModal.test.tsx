@@ -506,10 +506,11 @@ describe('MigrateEntryModal', () => {
       // Should show today, pinned, and yesterday (using formatted display names)
       const todayCollection = collectionsWithDates.find(c => c.id === 'today')!;
       const yesterdayCollection = collectionsWithDates.find(c => c.id === 'yesterday')!;
+      const now = new Date();
       
-      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(todayCollection)))).toBeInTheDocument();
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(todayCollection, now)))).toBeInTheDocument();
       expect(screen.getByLabelText(/Pinned Ideas/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(yesterdayCollection)))).toBeInTheDocument();
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(yesterdayCollection, now)))).toBeInTheDocument();
     });
 
     it('should NOT show other collections by default', () => {
@@ -548,7 +549,7 @@ describe('MigrateEntryModal', () => {
 
       // Should show today (using formatted display name)
       const todayCollection = collectionsWithDates.find(c => c.id === 'today')!;
-      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(todayCollection)))).toBeInTheDocument();
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(todayCollection, new Date())))).toBeInTheDocument();
 
       // Should NOT show old or unpinned collections
       expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
@@ -613,13 +614,13 @@ describe('MigrateEntryModal', () => {
 
       // Old collection should not be visible initially (using formatted display name)
       const oldCollection = collectionsWithDates.find(c => c.id === 'old')!;
-      expect(screen.queryByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(new RegExp(getCollectionDisplayName(oldCollection, new Date())))).not.toBeInTheDocument();
 
       // Click "Show all"
       await user.click(screen.getByText('Show all collections'));
 
       // Old collection should now be visible
-      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).toBeInTheDocument();
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(oldCollection, new Date())))).toBeInTheDocument();
     });
 
     it('should show "Show less" button when expanded', async () => {
@@ -685,11 +686,11 @@ describe('MigrateEntryModal', () => {
       // Expand
       const oldCollection = collectionsWithDates.find(c => c.id === 'old')!;
       await user.click(screen.getByText('Show all collections'));
-      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).toBeInTheDocument();
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(oldCollection, new Date())))).toBeInTheDocument();
 
       // Collapse
       await user.click(screen.getByText('Show less'));
-      expect(screen.queryByLabelText(new RegExp(getCollectionDisplayName(oldCollection)))).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(new RegExp(getCollectionDisplayName(oldCollection, new Date())))).not.toBeInTheDocument();
     });
 
     it('should handle collections without today or yesterday gracefully', () => {
@@ -743,7 +744,7 @@ describe('MigrateEntryModal', () => {
 
       // Should only show once (using formatted display name, not the stored name)
       const todayCollection = collectionsWithDates[0]!;
-      const displayName = getCollectionDisplayName(todayCollection);
+      const displayName = getCollectionDisplayName(todayCollection, new Date());
       const labels = screen.getAllByLabelText(new RegExp(displayName));
       expect(labels).toHaveLength(1);
     });
@@ -798,7 +799,7 @@ describe('MigrateEntryModal', () => {
 
       // Select today (using formatted display name)
       const todayCollection = collectionsWithDates.find(c => c.id === 'today')!;
-      const todayDisplayName = getCollectionDisplayName(todayCollection);
+      const todayDisplayName = getCollectionDisplayName(todayCollection, new Date());
       await user.click(screen.getByLabelText(new RegExp(todayDisplayName)));
       expect(screen.getByLabelText(new RegExp(todayDisplayName))).toBeChecked();
 
@@ -813,6 +814,232 @@ describe('MigrateEntryModal', () => {
 
       // Selection should still be preserved
       expect(screen.getByLabelText(new RegExp(todayDisplayName))).toBeChecked();
+    });
+
+    it('should show tomorrow in smart filtering', () => {
+      const today = getTodayDate();
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'tomorrow', 
+          userId: 'user1', 
+          name: 'Tomorrow', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: tomorrowDate,
+        },
+        { 
+          id: 'old', 
+          userId: 'user1', 
+          name: 'Old Log', 
+          createdAt: '2024-01-01', 
+          order: '2',
+          type: 'daily',
+          date: '2025-01-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should show tomorrow
+      const tomorrowCollection = collectionsWithDates.find(c => c.id === 'tomorrow')!;
+      expect(screen.getByLabelText(new RegExp(getCollectionDisplayName(tomorrowCollection, new Date())))).toBeInTheDocument();
+      
+      // Should NOT show old log
+      expect(screen.queryByLabelText(/Old Log/i)).not.toBeInTheDocument();
+    });
+
+    it('should show current monthly log in smart filtering', () => {
+      const today = getTodayDate();
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'current-month', 
+          userId: 'user1', 
+          name: 'February 2026', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'monthly',
+          date: currentMonth,
+        },
+        { 
+          id: 'old-month', 
+          userId: 'user1', 
+          name: 'January 2025', 
+          createdAt: '2024-01-01', 
+          order: '2',
+          type: 'monthly',
+          date: '2025-01',
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Should show current monthly log
+      expect(screen.getByLabelText(/February 2026/i)).toBeInTheDocument();
+      
+      // Should NOT show old monthly log
+      expect(screen.queryByLabelText(/January 2025/i)).not.toBeInTheDocument();
+    });
+
+    it('should show next monthly log when near end of month', () => {
+      // Mock the date to be near the end of the month
+      const today = getTodayDate();
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      
+      const nextMonthDate = new Date(now);
+      nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+      const nextMonth = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'current-month', 
+          userId: 'user1', 
+          name: 'February 2026', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'monthly',
+          date: currentMonth,
+        },
+        { 
+          id: 'next-month', 
+          userId: 'user1', 
+          name: 'March 2026', 
+          createdAt: '2024-01-01', 
+          order: '2',
+          type: 'monthly',
+          date: nextMonth,
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Note: This test might show next month depending on current date
+      // Since we're on Feb 3, 2026, we're NOT near end of month (need >23rd)
+      // So next month should NOT appear
+      const isNearEndOfMonth = now.getDate() > 23;
+      
+      if (isNearEndOfMonth) {
+        expect(screen.getByLabelText(/March 2026/i)).toBeInTheDocument();
+      } else {
+        expect(screen.queryByLabelText(/March 2026/i)).not.toBeInTheDocument();
+      }
+    });
+
+    it('should maintain correct order: today, tomorrow, current month, pinned, yesterday', () => {
+      const today = getTodayDate();
+      const yesterday = getYesterdayDate();
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowDate = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+      
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      const collectionsWithDates: Collection[] = [
+        { 
+          id: 'yesterday', 
+          userId: 'user1', 
+          name: 'Yesterday', 
+          createdAt: '2024-01-01', 
+          order: '0',
+          type: 'daily',
+          date: yesterday,
+        },
+        { 
+          id: 'today', 
+          userId: 'user1', 
+          name: 'Today', 
+          createdAt: '2024-01-01', 
+          order: '1',
+          type: 'daily',
+          date: today,
+        },
+        { 
+          id: 'tomorrow', 
+          userId: 'user1', 
+          name: 'Tomorrow', 
+          createdAt: '2024-01-01', 
+          order: '2',
+          type: 'daily',
+          date: tomorrowDate,
+        },
+        { 
+          id: 'current-month', 
+          userId: 'user1', 
+          name: 'February 2026', 
+          createdAt: '2024-01-01', 
+          order: '3',
+          type: 'monthly',
+          date: currentMonth,
+        },
+        { 
+          id: 'pinned', 
+          userId: 'user1', 
+          name: 'Pinned Ideas', 
+          createdAt: '2024-01-01', 
+          order: '4',
+          type: 'custom',
+          isFavorite: true,
+        },
+      ];
+
+      render(<MigrateEntryModal {...defaultProps} collections={collectionsWithDates} />);
+
+      // Get all labels
+      const labels = screen.getAllByRole('radio').map(radio => {
+        // Get the parent label element and its text content
+        const label = radio.closest('label');
+        return label ? label.textContent : '';
+      });
+
+      // Expected order: "+ Create New Collection", Today, Tomorrow, Current Month, Pinned, Yesterday
+      expect(labels[0]).toContain('+ Create New Collection');
+      
+      const todayCollection = collectionsWithDates.find(c => c.id === 'today')!;
+      const tomorrowCollection = collectionsWithDates.find(c => c.id === 'tomorrow')!;
+      const yesterdayCollection = collectionsWithDates.find(c => c.id === 'yesterday')!;
+      const refDate = new Date();
+
+      expect(labels[1]).toContain(getCollectionDisplayName(todayCollection, refDate));
+      expect(labels[2]).toContain(getCollectionDisplayName(tomorrowCollection, refDate));
+      expect(labels[3]).toContain('February 2026');
+      expect(labels[4]).toContain('Pinned Ideas');
+      expect(labels[5]).toContain(getCollectionDisplayName(yesterdayCollection, refDate));
     });
   });
 });

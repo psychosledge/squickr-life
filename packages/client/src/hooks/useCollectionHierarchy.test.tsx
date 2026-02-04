@@ -22,9 +22,11 @@ describe('useCollectionHierarchy', () => {
   });
 
   describe('formatDayLabel', () => {
-    it('should format YYYY-MM-DD as "Weekday, Month Day"', () => {
-      expect(formatDayLabel('2026-02-01')).toBe('Sunday, February 1');
-      expect(formatDayLabel('2026-12-25')).toBe('Friday, December 25');
+    it('should format YYYY-MM-DD as "Weekday, Month Day, Year" (with today/yesterday/tomorrow detection)', () => {
+      // Note: formatDayLabel now includes year and today/yesterday/tomorrow detection
+      // These tests use dates that are not today/yesterday/tomorrow (relative to test execution time)
+      expect(formatDayLabel('2026-02-01')).toBe('Sunday, February 1, 2026');
+      expect(formatDayLabel('2026-12-25')).toBe('Friday, December 25, 2026');
     });
 
     it('should handle undefined gracefully', () => {

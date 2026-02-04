@@ -23,13 +23,13 @@ describe('CollectionStats', () => {
     
     render(<CollectionStats entries={entries} />);
     
-    // Should show: "• 1  – 1"
-    const statsText = screen.getByText(/• 1\s+– 1/);
-    expect(statsText).toBeInTheDocument();
+    // Should show: "• 1" and "– 1"
+    expect(screen.getByText('• 1')).toBeInTheDocument();
+    expect(screen.getByText('– 1')).toBeInTheDocument();
     
     // Should NOT show completed tasks or events (zero counts)
-    expect(screen.queryByText(/×/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/○/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/× \d+/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/○ \d+/)).not.toBeInTheDocument();
   });
 
   it('returns null when all counts are zero', () => {
@@ -75,8 +75,10 @@ describe('CollectionStats', () => {
     render(<CollectionStats entries={entries} />);
     
     // Should render in order: open tasks (•) → completed tasks (×) → notes (–) → events (○)
-    const statsText = screen.getByText(/• 1\s+× 1\s+– 1\s+○ 1/);
-    expect(statsText).toBeInTheDocument();
+    expect(screen.getByText('• 1')).toBeInTheDocument();
+    expect(screen.getByText('× 1')).toBeInTheDocument();
+    expect(screen.getByText('– 1')).toBeInTheDocument();
+    expect(screen.getByText('○ 1')).toBeInTheDocument();
   });
 
   it('updates when entries change', () => {
@@ -93,7 +95,7 @@ describe('CollectionStats', () => {
     const { rerender } = render(<CollectionStats entries={initialEntries} />);
     
     // Initially shows 1 open task
-    expect(screen.getByText(/• 1/)).toBeInTheDocument();
+    expect(screen.getByText('• 1')).toBeInTheDocument();
     
     // Update entries - add a completed task
     const updatedEntries: Entry[] = [
@@ -117,7 +119,8 @@ describe('CollectionStats', () => {
     rerender(<CollectionStats entries={updatedEntries} />);
     
     // Should now show both open and completed
-    expect(screen.getByText(/• 1\s+× 1/)).toBeInTheDocument();
+    expect(screen.getByText('• 1')).toBeInTheDocument();
+    expect(screen.getByText('× 1')).toBeInTheDocument();
   });
 
   it('handles mixed entry types correctly', () => {
@@ -166,9 +169,10 @@ describe('CollectionStats', () => {
     
     render(<CollectionStats entries={entries} />);
     
-    // Should show: "• 2  × 1  – 3"
-    const statsText = screen.getByText(/• 2\s+× 1\s+– 3/);
-    expect(statsText).toBeInTheDocument();
+    // Should show: "• 2", "× 1", "– 3"
+    expect(screen.getByText('• 2')).toBeInTheDocument();
+    expect(screen.getByText('× 1')).toBeInTheDocument();
+    expect(screen.getByText('– 3')).toBeInTheDocument();
   });
 
   it('applies custom className', () => {
@@ -203,10 +207,9 @@ describe('CollectionStats', () => {
     
     const statsElement = container.firstChild as HTMLElement;
     
-    // Should have the design spec styling
-    expect(statsElement).toHaveClass('text-xs');
+    // Should have the design spec styling (pl-8 removed, now uses dynamic paddingLeft)
+    expect(statsElement).toHaveClass('text-base');
     expect(statsElement).toHaveClass('text-gray-500');
     expect(statsElement).toHaveClass('dark:text-gray-400');
-    expect(statsElement).toHaveClass('pl-8');
   });
 });

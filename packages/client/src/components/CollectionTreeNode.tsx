@@ -165,8 +165,13 @@ export function CollectionTreeNode({
           <span>{label}</span>
         </Link>
         
-        {/* Collection Stats - show below collection name */}
-        <CollectionStats entries={collectionEntries} />
+        {/* Collection Stats - show below collection name, aligned with text */}
+        <CollectionStats 
+          entries={collectionEntries} 
+          style={{ 
+            paddingLeft: `calc(${paddingLeft} + 1.25rem + 0.5rem)` // paddingLeft + icon width (w-5 = 1.25rem) + gap (gap-2 = 0.5rem)
+          }} 
+        />
       </div>
     </div>
   );

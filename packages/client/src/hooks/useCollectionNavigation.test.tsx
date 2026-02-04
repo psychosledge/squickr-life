@@ -314,4 +314,123 @@ describe('useCollectionNavigation', () => {
       expect(result7.current.nextCollection).toBeNull(); // Last collection
     });
   });
+
+  describe('Swipe Gesture Sensitivity', () => {
+    beforeEach(() => {
+      collectionsData = [
+        { id: 'c1', name: 'First', type: 'custom', order: 'a', createdAt: '2024-01-01T00:00:00Z' },
+        { id: 'c2', name: 'Second', type: 'custom', order: 'b', createdAt: '2024-01-02T00:00:00Z' },
+        { id: 'c3', name: 'Third', type: 'custom', order: 'c', createdAt: '2024-01-03T00:00:00Z' },
+      ];
+    });
+
+    it('should not navigate when vertical scroll dominates horizontal movement', async () => {
+      // Bug #1: Vertical scrolling triggers horizontal navigation
+      // Expected: If vertical movement > horizontal movement, don't navigate
+      
+      const { result } = renderHook(
+        () => useCollectionNavigation('c2'),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => {
+        expect(result.current.nextCollection).toBeDefined();
+      });
+
+      // Simulate vertical scroll with slight horizontal drift (150px vertical, 30px horizontal)
+      const touchStart = new TouchEvent('touchstart', {
+        touches: [{ clientX: 100, clientY: 100 } as Touch],
+      });
+      window.dispatchEvent(touchStart);
+
+      const touchEnd = new TouchEvent('touchend', {
+        changedTouches: [{ clientX: 70, clientY: 250 } as Touch], // 30px left, 150px down
+      });
+      window.dispatchEvent(touchEnd);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('should navigate when horizontal swipe clearly exceeds threshold', async () => {
+      // Horizontal swipe (120px) should navigate when vertical movement is minimal
+      
+      const { result } = renderHook(
+        () => useCollectionNavigation('c2'),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => {
+        expect(result.current.nextCollection).toBeDefined();
+      });
+
+      // Simulate horizontal swipe left (120px horizontal, 10px vertical)
+      const touchStart = new TouchEvent('touchstart', {
+        touches: [{ clientX: 200, clientY: 100 } as Touch],
+      });
+      window.dispatchEvent(touchStart);
+
+      const touchEnd = new TouchEvent('touchend', {
+        changedTouches: [{ clientX: 80, clientY: 110 } as Touch], // 120px left, 10px down
+      });
+      window.dispatchEvent(touchEnd);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(mockNavigate).toHaveBeenCalledWith('/collection/c3');
+    });
+
+    it('should not navigate when horizontal movement is below threshold', async () => {
+      // Small horizontal movement (60px) below new threshold should not navigate
+      
+      const { result } = renderHook(
+        () => useCollectionNavigation('c2'),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => {
+        expect(result.current.previousCollection).toBeDefined();
+      });
+
+      // Simulate small horizontal swipe (60px horizontal, 5px vertical)
+      const touchStart = new TouchEvent('touchstart', {
+        touches: [{ clientX: 100, clientY: 100 } as Touch],
+      });
+      window.dispatchEvent(touchStart);
+
+      const touchEnd = new TouchEvent('touchend', {
+        changedTouches: [{ clientX: 160, clientY: 105 } as Touch], // 60px right, 5px down
+      });
+      window.dispatchEvent(touchEnd);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('should navigate when horizontal swipe is clearly intentional (diagonal)', async () => {
+      // Diagonal swipe where horizontal > vertical should navigate
+      
+      const { result } = renderHook(
+        () => useCollectionNavigation('c2'),
+        { wrapper: createWrapper() }
+      );
+
+      await waitFor(() => {
+        expect(result.current.previousCollection).toBeDefined();
+      });
+
+      // Simulate diagonal swipe (150px right, 50px down) - horizontal dominates
+      const touchStart = new TouchEvent('touchstart', {
+        touches: [{ clientX: 100, clientY: 100 } as Touch],
+      });
+      window.dispatchEvent(touchStart);
+
+      const touchEnd = new TouchEvent('touchend', {
+        changedTouches: [{ clientX: 250, clientY: 150 } as Touch], // 150px right, 50px down
+      });
+      window.dispatchEvent(touchEnd);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(mockNavigate).toHaveBeenCalledWith('/collection/c1');
+    });
+  });
 });

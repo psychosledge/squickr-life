@@ -73,6 +73,30 @@ export function CollectionSettingsModal({
     return undefined;
   }, [isOpen]);
 
+  // Handle back button to close modal
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    // Push state when modal opens
+    window.history.pushState({ modal: true }, '');
+
+    const handlePopState = () => {
+      onClose();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // Clean up state if still there
+      if (window.history.state?.modal) {
+        window.history.back();
+      }
+    };
+  }, [isOpen, onClose]);
+
   const handleSubmit = async (e?: FormEvent) => {
     e?.preventDefault();
 

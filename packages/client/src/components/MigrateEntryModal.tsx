@@ -41,7 +41,49 @@ function getYesterdayDate(): string {
 }
 
 /**
- * Get default collections to show: Today + Pinned + Yesterday
+ * Get tomorrow's date in YYYY-MM-DD format
+ */
+function getTomorrowDate(): string {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const year = tomorrow.getFullYear();
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const day = String(tomorrow.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Get current month in YYYY-MM format
+ */
+function getCurrentMonth(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+/**
+ * Get next month in YYYY-MM format
+ */
+function getNextMonth(): string {
+  const now = new Date();
+  const next = new Date(now);
+  next.setMonth(next.getMonth() + 1);
+  const year = next.getFullYear();
+  const month = String(next.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+/**
+ * Check if we're near the end of the month (last 7 days)
+ */
+function isNearEndOfMonth(): boolean {
+  const now = new Date();
+  return now.getDate() > 23;
+}
+
+/**
+ * Get default collections to show: Today + Tomorrow + Current Month + Pinned + Yesterday + Next Month (conditional)
  * Ensures no duplicates (e.g., if today's log is pinned)
  * 
  * For backwards compatibility: If no type field exists, treat as custom collection.
@@ -50,12 +92,19 @@ function getYesterdayDate(): string {
 function getDefaultCollections(collections: Collection[]): Collection[] {
   const today = getTodayDate();
   const yesterday = getYesterdayDate();
+  const tomorrow = getTomorrowDate();
+  const currentMonth = getCurrentMonth();
+  const nextMonth = getNextMonth();
+  const showNextMonth = isNearEndOfMonth();
   
   const todayLog = collections.find(c => c.type === 'daily' && c.date === today);
   const yesterdayLog = collections.find(c => c.type === 'daily' && c.date === yesterday);
+  const tomorrowLog = collections.find(c => c.type === 'daily' && c.date === tomorrow);
+  const currentMonthLog = collections.find(c => c.type === 'monthly' && c.date === currentMonth);
+  const nextMonthLog = collections.find(c => c.type === 'monthly' && c.date === nextMonth);
   const pinned = collections.filter(c => c.isFavorite === true);
   
-  // Build list: Today (if exists), Pinned, Yesterday (if exists)
+  // Build list: Today, Tomorrow, Current Month, Pinned, Yesterday, Next Month (if near end of month)
   // Use a Set to avoid duplicates (e.g., if today's log is pinned)
   const seen = new Set<string>();
   const defaultList: Collection[] = [];
@@ -63,6 +112,16 @@ function getDefaultCollections(collections: Collection[]): Collection[] {
   if (todayLog && !seen.has(todayLog.id)) {
     defaultList.push(todayLog);
     seen.add(todayLog.id);
+  }
+  
+  if (tomorrowLog && !seen.has(tomorrowLog.id)) {
+    defaultList.push(tomorrowLog);
+    seen.add(tomorrowLog.id);
+  }
+  
+  if (currentMonthLog && !seen.has(currentMonthLog.id)) {
+    defaultList.push(currentMonthLog);
+    seen.add(currentMonthLog.id);
   }
   
   for (const p of pinned) {
@@ -75,6 +134,11 @@ function getDefaultCollections(collections: Collection[]): Collection[] {
   if (yesterdayLog && !seen.has(yesterdayLog.id)) {
     defaultList.push(yesterdayLog);
     seen.add(yesterdayLog.id);
+  }
+  
+  if (showNextMonth && nextMonthLog && !seen.has(nextMonthLog.id)) {
+    defaultList.push(nextMonthLog);
+    seen.add(nextMonthLog.id);
   }
   
   // If smart filtering returns empty, fall back to showing all collections
@@ -93,7 +157,7 @@ function getDefaultCollections(collections: Collection[]): Collection[] {
  * 
  * Features:
  * - Shows "+ Create New Collection" option at the top
- * - Smart filtering: Shows Today + Pinned + Yesterday by default
+ * - Smart filtering: Shows Today + Tomorrow + Current Month + Pinned + Yesterday + Next Month (if near end of month) by default
  * - "Show all collections" button expands to full list
  * - Nested modal flow: Can open CreateCollectionModal from this modal
  * - Auto-selects newly created collection
@@ -151,6 +215,30 @@ export function MigrateEntryModal({
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
+    };
+  }, [isOpen, showCreateModal, onClose]);
+
+  // Handle back button to close modal (only when open and no nested modal)
+  useEffect(() => {
+    if (!isOpen || showCreateModal) {
+      return;
+    }
+
+    // Push state when modal opens
+    window.history.pushState({ modal: true }, '');
+
+    const handlePopState = () => {
+      onClose();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      // Clean up state if still there
+      if (window.history.state?.modal) {
+        window.history.back();
+      }
     };
   }, [isOpen, showCreateModal, onClose]);
 
@@ -314,7 +402,7 @@ export function MigrateEntryModal({
                   disabled={isSubmitting || isAlreadyMigrated}
                   className="mr-3"
                 />
-                <span className="text-gray-900 dark:text-white">{getCollectionDisplayName(collection)}</span>
+                <span className="text-gray-900 dark:text-white">{getCollectionDisplayName(collection, new Date())}</span>
               </label>
             ))}
 

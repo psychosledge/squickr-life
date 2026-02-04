@@ -207,3 +207,102 @@ describe('formatMonthlyLogName', () => {
     expect(formatMonthlyLogName('2030-06')).toBe('June 2030');
   });
 });
+
+describe('getCollectionDisplayName - Today/Yesterday/Tomorrow', () => {
+  const mockToday = new Date('2026-02-03T12:00:00'); // Tuesday, February 3, 2026
+
+  it('should prefix daily log with "Today" when date matches reference date', () => {
+    const collection = {
+      name: 'Stored name',
+      type: 'daily' as const,
+      date: '2026-02-03'
+    };
+    const result = getCollectionDisplayName(collection, mockToday);
+    expect(result).toBe('Today, February 3, 2026');
+  });
+
+  it('should prefix daily log with "Yesterday" when date is one day before reference date', () => {
+    const collection = {
+      name: 'Stored name',
+      type: 'daily' as const,
+      date: '2026-02-02'
+    };
+    const result = getCollectionDisplayName(collection, mockToday);
+    expect(result).toBe('Yesterday, February 2, 2026');
+  });
+
+  it('should prefix daily log with "Tomorrow" when date is one day after reference date', () => {
+    const collection = {
+      name: 'Stored name',
+      type: 'daily' as const,
+      date: '2026-02-04'
+    };
+    const result = getCollectionDisplayName(collection, mockToday);
+    expect(result).toBe('Tomorrow, February 4, 2026');
+  });
+
+  it('should use regular format for daily log that is not today/yesterday/tomorrow', () => {
+    const collection = {
+      name: 'Stored name',
+      type: 'daily' as const,
+      date: '2026-02-01' // Sunday, 2 days ago
+    };
+    const result = getCollectionDisplayName(collection, mockToday);
+    expect(result).toBe('Sunday, February 1, 2026');
+  });
+
+  it('should not modify custom collection names when reference date is provided', () => {
+    const collection = {
+      name: 'My Custom Collection',
+      type: 'custom' as const
+    };
+    const result = getCollectionDisplayName(collection, mockToday);
+    expect(result).toBe('My Custom Collection');
+  });
+
+  it('should not modify monthly log names when reference date is provided', () => {
+    const collection = {
+      name: 'Stored name',
+      type: 'monthly' as const,
+      date: '2026-02'
+    };
+    const result = getCollectionDisplayName(collection, mockToday);
+    expect(result).toBe('February 2026');
+  });
+
+  it('should use regular format when no reference date is provided (backward compatibility)', () => {
+    const collection = {
+      name: 'Stored name',
+      type: 'daily' as const,
+      date: '2026-02-03'
+    };
+    const result = getCollectionDisplayName(collection); // No reference date
+    // Should use regular format: "Tuesday, February 3"
+    expect(result).toMatch(/Tuesday/);
+    expect(result).toMatch(/February/);
+    expect(result).toMatch(/3/);
+    expect(result).not.toMatch(/Today/);
+  });
+
+  it('should handle yesterday across month boundary', () => {
+    const marchFirst = new Date('2026-03-01T12:00:00'); // March 1, 2026
+    const collection = {
+      name: 'Stored name',
+      type: 'daily' as const,
+      date: '2026-02-28' // Last day of February
+    };
+    const result = getCollectionDisplayName(collection, marchFirst);
+    expect(result).toBe('Yesterday, February 28, 2026');
+  });
+
+  it('should handle tomorrow across month boundary', () => {
+    const febLast = new Date('2026-02-28T12:00:00'); // February 28, 2026
+    const collection = {
+      name: 'Stored name',
+      type: 'daily' as const,
+      date: '2026-03-01' // First day of March
+    };
+    const result = getCollectionDisplayName(collection, febLast);
+    expect(result).toBe('Tomorrow, March 1, 2026');
+  });
+});

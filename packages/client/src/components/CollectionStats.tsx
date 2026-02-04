@@ -4,6 +4,7 @@ import type { Entry } from '@squickr/shared';
 interface CollectionStatsProps {
   entries: Entry[];
   className?: string;
+  style?: React.CSSProperties;
 }
 
 interface CollectionStats {
@@ -55,9 +56,9 @@ function calculateStats(entries: Entry[]): CollectionStats {
  * - – = Notes
  * - ○ = Events
  * 
- * Example: "• 3  × 12  – 5  ○ 2"
+ * Example: "• 3    × 12    – 5    ○ 2"
  */
-export function CollectionStats({ entries, className }: CollectionStatsProps) {
+export function CollectionStats({ entries, className, style }: CollectionStatsProps) {
   const stats = useMemo(() => calculateStats(entries), [entries]);
   const parts: string[] = [];
   
@@ -71,8 +72,12 @@ export function CollectionStats({ entries, className }: CollectionStatsProps) {
   if (parts.length === 0) return null;
   
   return (
-    <div className={`text-xs text-gray-500 dark:text-gray-400 pl-8 ${className || ''}`}>
-      {parts.join('  ')}
+    <div className={`text-base text-gray-500 dark:text-gray-400 ${className || ''}`} style={style}>
+      <span className="inline-flex gap-4">
+        {parts.map((part, index) => (
+          <span key={index}>{part}</span>
+        ))}
+      </span>
     </div>
   );
 }

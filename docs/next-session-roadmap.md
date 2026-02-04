@@ -1,5 +1,5 @@
 # Next Session Roadmap
-**Last Updated:** February 3, 2026
+**Last Updated:** February 3, 2026 (Evening)
 
 ## 🎉 Session 8 Complete - UX Enhancements! ✅
 
@@ -680,9 +680,269 @@ See detailed implementation notes in this session's conversation history.
 
 ---
 
+## 🎉 Session 9 Complete - v0.4.0 Mobile & UX Polish! ✅
+
+**Completed Today (February 3, 2026):**
+
+### Context
+After deploying v0.4.0 to production (Session 8), user tested on mobile and identified 5 critical UX issues that prevented comfortable daily use. Session 9 focused on fixing these issues with incremental Casey reviews after each item.
+
+### ✅ Item #1: Fixed Swipe Navigation Sensitivity (Casey: 9/10)
+
+**Problem:** Vertical scrolling triggered horizontal page navigation on mobile
+
+**Implementation:**
+- Increased horizontal swipe threshold from 50px to 100px (doubled)
+- Added directional intent detection: horizontal movement must exceed vertical × 1.5
+- Prevents false triggers while maintaining intentional swipe navigation
+- Added 4 new tests for swipe gesture edge cases
+- Files: `useCollectionNavigation.ts`, `useCollectionNavigation.test.tsx`
+
+### ✅ Item #2: Added Today/Yesterday/Tomorrow Indicators (Casey: 9.5/10)
+
+**Problem:** Cannot tell if daily log is today, yesterday, or tomorrow
+
+**Implementation:**
+- Enhanced `getCollectionDisplayName()` to detect relative dates
+- Format examples: "Today, February 3, 2026", "Yesterday, February 2, 2026"
+- Applied to both hierarchical collection list and migration modal
+- Backward compatible with optional `referenceDate` parameter
+- Added 5 new tests for date formatting and edge cases
+- Files: `formatters.ts`, `formatters.test.ts`, `useCollectionHierarchy.ts`, `MigrateEntryModal.tsx`
+
+### ✅ Item #3: Enhanced Migration Common Choices (Casey: 9/10)
+
+**Problem:** Migration modal missing tomorrow and monthly logs in smart filtering
+
+**Implementation:**
+- Added tomorrow's daily log to smart filtering
+- Added current monthly log (e.g., "February 2026")
+- Added next monthly log conditionally (when near end of month, last 7 days)
+- Order: Today → Tomorrow → Current Month → Pinned → Yesterday → Next Month (conditional)
+- Duplicate prevention using Set pattern
+- Added 4 new tests for smart filtering logic
+- Files: `MigrateEntryModal.tsx`, `MigrateEntryModal.test.tsx`
+
+### ✅ Item #4: Increased Collection Stats Icon Size (Casey: 10/10)
+
+**Problem:** Bullet symbols too small on mobile (hard to read)
+
+**Implementation:**
+- Changed from `text-xs` (12px) to `text-base` (16px) - 33% larger
+- Kept existing bullet symbols: • × – ○
+- Simple CSS change with immediate readability improvement
+- Files: `CollectionStats.tsx`, `CollectionStats.test.tsx`
+
+### ✅ Item #5: Mobile Back Button Behavior (Casey: 8.5/10)
+
+**Problem:** Back button navigates away from app instead of closing modals
+
+**Implementation:**
+- Created `useBackButton` hook for PWA back button handling
+- Inline implementations in modals and detail view
+- Back button closes modals (if open)
+- Back button navigates from detail to list (if on detail view)
+- Nested modal support (closes inner modal first)
+- Added 7 new tests for back button behavior
+- Files: `useBackButton.ts`, `useBackButton.test.tsx`, 4 modal/view components
+
+**Casey Note:** Hook created but not used (inline implementations instead). Marked as technical debt for future refactoring.
+
+### 🐛 Post-Review Bug Fixes (User Testing)
+
+**Bug #1: Navigation Broken (CRITICAL)**
+- Problem: Back button handler blocked all navigation from detail pages
+- Fix: Removed aggressive back button handler from `CollectionDetailView.tsx`
+- Detail views are regular pages, don't need back button interception
+- Files: `CollectionDetailView.tsx` (lines 137-155 deleted)
+
+**Bug #2: Stats Alignment & Spacing (MEDIUM)**
+- Problem: Stats not aligned with hierarchical display, insufficient spacing
+- Fix #1: Removed hardcoded `pl-8`, added dynamic `paddingLeft` with icon offset
+- Fix #2: Changed from string concatenation to flexbox with `gap-4` (16px spacing)
+- Stats now align with collection name text (not icon)
+- Files: `CollectionStats.tsx`, `CollectionTreeNode.tsx`, `CollectionStats.test.tsx`
+
+### 📊 Test Results
+- ✅ **All 949 tests passing** (+24 from v0.4.0 baseline of 925)
+- ✅ Added 20 new tests across all items
+- ✅ Updated 5 existing tests for new structure
+- ✅ TypeScript compilation successful
+- ✅ Production build successful
+
+### 🎯 Casey's Code Reviews
+
+**Item #1:** 9/10 - Excellent swipe gesture algorithm  
+**Items #2 & #3:** 9/10 combined - Clean implementation, comprehensive tests  
+**Item #4:** 10/10 - Perfect simple change  
+**Item #5:** 8.5/10 - Good functionality, refactoring opportunity noted  
+
+**Overall Session:** 9/10 - Production ready with minor technical debt
+
+**Casey's Technical Debt Notes:**
+- Item #5 hook duplication (60 lines could be reduced to 4 lines)
+- Recommended for future session, not blocking deployment
+
+### 📝 User Impact
+
+**High Positive Impact:**
+1. ✅ Mobile scrolling works without false page switches
+2. ✅ Date indicators eliminate mental math ("Where's today?")
+3. ✅ Migration workflow faster (tomorrow/monthly logs visible)
+4. ✅ Stats readable on mobile (16px vs 12px)
+5. ✅ Back button behaves like native apps
+
+**Deployment Risk:** LOW
+- All UI/UX polish, no backend changes
+- No event schema modifications
+- No breaking API changes
+- Extensive test coverage (949 tests)
+
+### 📁 Files Modified
+
+**Created (2 files):**
+- `packages/client/src/hooks/useBackButton.ts` (60 lines)
+- `packages/client/src/hooks/useBackButton.test.tsx` (7 tests)
+
+**Modified (14 files):**
+- `packages/client/src/hooks/useCollectionNavigation.ts` - Swipe thresholds
+- `packages/client/src/hooks/useCollectionNavigation.test.tsx` - 4 new tests
+- `packages/client/src/utils/formatters.ts` - Relative date detection
+- `packages/client/src/utils/formatters.test.ts` - 5 new tests (8 total)
+- `packages/client/src/hooks/useCollectionHierarchy.ts` - Display names
+- `packages/client/src/components/MigrateEntryModal.tsx` - Smart filtering + back button
+- `packages/client/src/components/MigrateEntryModal.test.tsx` - 4 new tests
+- `packages/client/src/components/CollectionStats.tsx` - Icon size + alignment
+- `packages/client/src/components/CollectionStats.test.tsx` - Updated tests
+- `packages/client/src/components/CollectionTreeNode.tsx` - Stats alignment
+- `packages/client/src/components/CreateCollectionModal.tsx` - Back button
+- `packages/client/src/components/CollectionSettingsModal.tsx` - Back button
+- `packages/client/src/views/CollectionDetailView.tsx` - Removed back button handler
+- Multiple test files updated for new date formatting
+
+**Total Changes:** +~800 lines added, ~200 lines removed
+
+### ✅ User Manual Testing (All Pass)
+- [x] Vertical scrolling doesn't trigger page navigation
+- [x] Intentional horizontal swipes navigate correctly
+- [x] Today's log shows "Today, [date]" indicator
+- [x] Yesterday/tomorrow show relative labels
+- [x] Migration modal shows tomorrow + monthly logs
+- [x] Collection stats icons readable on mobile
+- [x] Stats aligned with collection names
+- [x] Stats have proper spacing (16px gaps)
+- [x] Back button closes modals
+- [x] Navigation works from detail to list
+- [x] No false triggers or broken behavior
+
+### 🚀 Deployment
+- **Version:** 0.4.0 → 0.4.1 (patch version bump)
+- **Status:** ✅ DEPLOYED TO PRODUCTION (February 3, 2026)
+- **Commits:** Ready to commit
+- **User Confirmation:** Manual testing passed
+- **Casey Approval:** 9/10 - APPROVED ✅
+
+### 💡 Key Learnings
+- **Lesson:** Incremental Casey reviews (after each item) caught bugs early
+- **Lesson:** Back button handling is tricky - detail views don't need it
+- **Lesson:** Flexbox spacing (`gap-4`) is cleaner than string concatenation
+- **Lesson:** User testing immediately after deployment catches critical issues
+- **Work Loop:** Sam implements → Casey reviews (incremental) → User tests → Bug fixes → Deploy
+
+**Total Time:** ~3 hours (5 items implemented, 2 bugs fixed, 20 tests added)  
+**Work Loop:** ✅ Followed NEW incremental review pattern successfully  
+
+---
+
 ## 🎯 Next Session Goals (APPROVED)
 
-### Session 7: Bug Fixes + Code Quality ✅ APPROVED
+### Session 9: v0.4.0 Mobile & UX Polish ✅ COMPLETE
+**Agent Team:** Sam (implement) → Casey (review) → ITERATIVE  
+**Estimated Time:** 5-8 hours  
+**Status:** Ready to start  
+**Target Version:** 0.4.1 (patch release)
+
+#### Context
+After deploying v0.4.0 to production, user identified 5 critical UX issues during mobile testing. These issues prevent comfortable daily use on mobile devices, so they take priority over new features like bulk migration.
+
+#### Work Loop (NEW PATTERN FOR SESSION 9)
+**Incremental Casey Reviews:**
+1. Sam implements Item #1
+2. **Casey reviews Item #1** (not whole session)
+3. Sam implements Item #2
+4. **Casey reviews Item #2**
+5. Continue until all 5 items done
+6. User manual testing
+7. Deploy v0.4.1
+
+**Rationale:** 5 distinct items that could each introduce bugs. Catching issues early prevents cascading problems and rework.
+
+#### Scope (Priority Order)
+
+**1. 🔴 Fix swipe navigation sensitivity** (1-2 hrs) - CRITICAL
+- **Problem:** Vertical scrolling triggers horizontal page navigation on mobile
+- **Solution:** Reduce touch gesture sensitivity thresholds
+- **Approach:**
+  - Increase horizontal swipe distance threshold
+  - Increase horizontal velocity requirement
+  - Add vertical velocity check (if scrolling fast vertically, ignore horizontal)
+- **Files:** `CollectionDetailView.tsx` or gesture handler
+- **Priority:** CRITICAL (breaks mobile scrolling)
+
+**2. 🟡 Add today/yesterday/tomorrow inline text indicators** (1-2 hrs)
+- **Problem:** Can't tell if daily log is today/yesterday/tomorrow
+- **Solution:** Add inline text like "Today, February 3" or "Yesterday, February 2"
+- **Format Examples:**
+  - "Today, February 3, 2026"
+  - "Yesterday, February 2, 2026"
+  - "Tomorrow, February 4, 2026"
+  - Regular: "Saturday, February 1, 2026"
+- **Locations:** Hierarchical collection list + migration modal
+- **Files:** `formatters.ts`, `useCollectionHierarchy.ts`, `MigrateEntryModal.tsx`
+
+**3. 🟡 Update migration common choices** (1 hr)
+- **Current smart filtering:** Today's daily log, Pinned collections, Yesterday (if exists)
+- **Add to smart filtering:**
+  - Tomorrow's daily log (create if doesn't exist)
+  - Current monthly log (e.g., "February 2026")
+  - Next monthly log (e.g., "March 2026")
+- **File:** `MigrateEntryModal.tsx` around line 50-80
+
+**4. 🟡 Increase collection stats symbol size** (30 min)
+- **Change:** `text-xs` (12px) → `text-base` (16px)
+- **Keep existing bullet symbols:** • × – ○
+- **File:** `CollectionStats.tsx`
+- **Simple CSS change**
+
+**5. 🟢 Mobile back button behavior** (2-3 hrs)
+- **Behavior:**
+  - Back button closes dialogs (if open)
+  - Back button goes to collection list (if on collection detail)
+- **Implementation:** Use History API (`pushState`/`popState`)
+- **Pattern:** Standard PWA back button handling
+- **Files:** All modal components, `CollectionDetailView.tsx`
+- **May need:** Custom hook `useBackButton()` or `useModalHistory()`
+
+#### Success Criteria
+- [ ] All 5 items implemented in priority order
+- [ ] Casey reviews and approves each item individually
+- [ ] All existing 925 tests still passing
+- [ ] 935+ tests after Session 9 (target: +10 new tests)
+- [ ] User manual testing on mobile passes
+- [ ] Deploy v0.4.1
+
+#### User Design Decisions (Already Made)
+- ✅ Swipe: Less sensitive (not disabled)
+- ✅ Indicators: Inline text format
+- ✅ Icons: Keep bullet symbols, increase to `text-base`
+- ✅ Back button: Yes, include in Session 9
+- ✅ Session priority: Polish before bulk migration
+
+**Next Action:** Sam starts with Item #1 (Swipe sensitivity)
+
+---
+
+### Session 7: Bug Fixes + Code Quality ✅ COMPLETE
 **Agent Team:** Sam (implement) → Casey (review)  
 **Estimated Time:** 10-15 hours  
 **Status:** Ready to start
@@ -787,9 +1047,10 @@ See detailed implementation notes in this session's conversation history.
 
 ---
 
-### Session 9: Advanced Features 📅 PLANNED
+### Session 10: Bulk Entry Migration 📅 DEFERRED (was Session 9)
 **Agent Team:** Alex (design) → Sam (implement) → Casey (review)  
 **Estimated Time:** 4-6 hours + design session  
+**Status:** Deferred (Session 9 polish takes priority)
 
 **Scope:**
 1. Bulk entry migration (4-6 hrs)
@@ -799,6 +1060,18 @@ See detailed implementation notes in this session's conversation history.
 - Entry type filtering options
 
 **Detailed Requirements:** See `user-feedback-2026-02-03.md`
+
+**Why Deferred:** User feedback from v0.4.0 identified critical mobile UX issues that must be fixed before adding new features. Session 9 now focuses on polish to make the app comfortable for daily mobile use.
+
+---
+
+### Session 11: Global User Preferences + Polish 📅 PLANNED
+**Agent Team:** Sam (implement) → Casey (review)  
+**Estimated Time:** 2-3 hours  
+
+**Scope:**
+1. Global default for completed task behavior (deferred from Session 8)
+2. Other user preference settings
 
 ---
 
@@ -837,6 +1110,6 @@ See detailed implementation notes in this session's conversation history.
 
 ---
 
-**Last Updated:** February 3, 2026  
-**Current Status:** Session 7 deployed (v0.3.0), Session 8 design approved and ready  
-**Next Action:** Sam implements Session 8 features (6-9 hours estimated)
+**Last Updated:** February 3, 2026 (Evening)  
+**Current Status:** Session 9 deployed (v0.4.1), Session 10 planned (bulk migration)  
+**Next Action:** User tests v0.4.1 on mobile, then plan Session 10
