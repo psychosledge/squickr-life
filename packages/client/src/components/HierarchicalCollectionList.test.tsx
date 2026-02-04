@@ -53,8 +53,8 @@ describe('HierarchicalCollectionList', () => {
     // Should show month node
     expect(screen.getByText('February')).toBeInTheDocument();
     
-    // Should show day node
-    expect(screen.getByText('Sunday, February 1')).toBeInTheDocument();
+    // Should show day node (with year now included)
+    expect(screen.getByText('Sunday, February 1, 2026')).toBeInTheDocument();
   });
 
   it('should show star icon for favorited collections', () => {

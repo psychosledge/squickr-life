@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Collection } from '@squickr/shared';
-import { formatMonthlyLogName } from '../utils/formatters';
+import { formatMonthlyLogName, getCollectionDisplayName } from '../utils/formatters';
 
 export interface HierarchyNode {
   type: 'year' | 'month' | 'monthly' | 'day' | 'custom';
@@ -16,27 +16,21 @@ export interface HierarchyNode {
 const STORAGE_KEY = 'collection-hierarchy-expanded';
 
 /**
- * Format a daily log date as "Weekday, Month Day"
- * e.g., "2026-02-01" -> "Saturday, February 1"
+ * Format a daily log date with today/yesterday/tomorrow detection
+ * e.g., "2026-02-03" -> "Today, February 3, 2026" (if today)
+ * e.g., "2026-02-01" -> "Sunday, February 1, 2026" (if not today/yesterday/tomorrow)
  */
 export function formatDayLabel(date: string | undefined): string {
   if (!date) return 'Unknown Date';
   
-  const parts = date.split('-');
-  const year = parseInt(parts[0]!, 10);
-  const month = parseInt(parts[1]!, 10) - 1; // 0-indexed
-  const day = parseInt(parts[2]!, 10);
+  // Use getCollectionDisplayName with current date as reference
+  const collection = {
+    name: '',
+    type: 'daily' as const,
+    date
+  };
   
-  const dateObj = new Date(year, month, day);
-  
-  // Format: "Weekday, Month Day"
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric'
-  });
-  
-  return formatter.format(dateObj);
+  return getCollectionDisplayName(collection, new Date());
 }
 
 /**

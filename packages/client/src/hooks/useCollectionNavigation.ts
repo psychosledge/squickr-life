@@ -12,7 +12,8 @@ import { useApp } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 
-const SWIPE_THRESHOLD = 50; // Minimum pixels for swipe detection
+const SWIPE_THRESHOLD = 100; // Minimum pixels for horizontal swipe detection
+const VERTICAL_PRIORITY_RATIO = 1.5; // If vertical movement > horizontal * ratio, treat as scroll
 
 export interface UseCollectionNavigationResult {
   previousCollection: Collection | null;
@@ -28,6 +29,7 @@ export function useCollectionNavigation(
   const navigate = useNavigate();
   const [collections, setCollections] = useState<Collection[]>([]);
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   // Load collections including virtual uncategorized if needed
   const loadCollections = useCallback(async () => {
@@ -130,29 +132,43 @@ export function useCollectionNavigation(
     const handleTouchStart = (event: TouchEvent) => {
       if (event.touches.length === 1) {
         touchStartX.current = event.touches[0]?.clientX ?? null;
+        touchStartY.current = event.touches[0]?.clientY ?? null;
       }
     };
 
     const handleTouchEnd = (event: TouchEvent) => {
-      if (touchStartX.current === null || event.changedTouches.length === 0) {
+      if (touchStartX.current === null || touchStartY.current === null || event.changedTouches.length === 0) {
         return;
       }
 
       const touchEndX = event.changedTouches[0]?.clientX;
-      if (touchEndX === undefined) return;
+      const touchEndY = event.changedTouches[0]?.clientY;
+      if (touchEndX === undefined || touchEndY === undefined) return;
       
       const deltaX = touchEndX - touchStartX.current;
+      const deltaY = touchEndY - touchStartY.current;
+      
+      const absDeltaX = Math.abs(deltaX);
+      const absDeltaY = Math.abs(deltaY);
 
-      // Swipe left = next (moving finger to the left)
-      if (deltaX < -SWIPE_THRESHOLD) {
-        navigateToNext();
-      }
-      // Swipe right = previous (moving finger to the right)
-      else if (deltaX > SWIPE_THRESHOLD) {
-        navigateToPrevious();
+      // Only navigate if:
+      // 1. Horizontal movement exceeds threshold
+      // 2. Horizontal movement dominates vertical movement (not a scroll gesture)
+      const isHorizontalSwipe = absDeltaX > SWIPE_THRESHOLD && absDeltaX > absDeltaY * VERTICAL_PRIORITY_RATIO;
+
+      if (isHorizontalSwipe) {
+        // Swipe left = next (moving finger to the left)
+        if (deltaX < 0) {
+          navigateToNext();
+        }
+        // Swipe right = previous (moving finger to the right)
+        else {
+          navigateToPrevious();
+        }
       }
 
       touchStartX.current = null;
+      touchStartY.current = null;
     };
 
     window.addEventListener('touchstart', handleTouchStart);

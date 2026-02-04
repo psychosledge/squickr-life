@@ -59,15 +59,21 @@ export function formatMonthlyLogName(dateStr: string): string {
 
 /**
  * Get display name for a collection
- * For daily logs, formats the date as "Weekday, Month Day" (e.g., "Saturday, February 1")
+ * For daily logs, formats the date with optional today/yesterday/tomorrow prefix
  * For monthly logs, formats the date as "Month Year" (e.g., "February 2026")
  * For custom collections, returns the collection name as-is
+ * 
+ * @param collection - Collection object with name, type, and optional date
+ * @param referenceDate - Optional reference date to determine if a daily log is today/yesterday/tomorrow
  */
-export function getCollectionDisplayName(collection: { 
-  name: string; 
-  type?: string; 
-  date?: string 
-}): string {
+export function getCollectionDisplayName(
+  collection: { 
+    name: string; 
+    type?: string; 
+    date?: string 
+  },
+  referenceDate?: Date
+): string {
   // For daily logs, format the date nicely
   if (collection.type === 'daily' && collection.date) {
     const parts = collection.date.split('-');
@@ -76,13 +82,54 @@ export function getCollectionDisplayName(collection: {
     const day = parseInt(parts[2]!, 10);
     
     const dateObj = new Date(year, month, day);
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric'
-    });
     
-    return formatter.format(dateObj);
+    // If reference date is provided, check for today/yesterday/tomorrow
+    if (referenceDate) {
+      const refYear = referenceDate.getFullYear();
+      const refMonth = referenceDate.getMonth();
+      const refDay = referenceDate.getDate();
+      const refDateObj = new Date(refYear, refMonth, refDay); // Normalize to midnight
+      
+      const collectionDateObj = new Date(year, month, day);
+      
+      // Calculate difference in days
+      const timeDiff = collectionDateObj.getTime() - refDateObj.getTime();
+      const dayDiff = Math.round(timeDiff / (1000 * 60 * 60 * 24));
+      
+      // Format with year
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+      const formattedDate = formatter.format(dateObj);
+      
+      if (dayDiff === 0) {
+        return `Today, ${formattedDate}`;
+      } else if (dayDiff === -1) {
+        return `Yesterday, ${formattedDate}`;
+      } else if (dayDiff === 1) {
+        return `Tomorrow, ${formattedDate}`;
+      } else {
+        // For other dates, use weekday + date + year
+        const fullFormatter = new Intl.DateTimeFormat('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
+        });
+        return fullFormatter.format(dateObj);
+      }
+    } else {
+      // No reference date - use original behavior (weekday + month + day, no year)
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      return formatter.format(dateObj);
+    }
   }
   
   // For monthly logs, format the date as "Month Year"
