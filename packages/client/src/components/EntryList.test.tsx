@@ -179,9 +179,9 @@ describe('EntryList', () => {
     );
     
     // Check for different bullets
-    expect(screen.getByText('•')).toBeInTheDocument(); // Task
-    expect(screen.getByText('–')).toBeInTheDocument(); // Note
-    expect(screen.getByText('○')).toBeInTheDocument(); // Event
+    expect(screen.getByText('☐')).toBeInTheDocument(); // Task
+    expect(screen.getByText('📝')).toBeInTheDocument(); // Note
+    expect(screen.getByText('📅')).toBeInTheDocument(); // Event
   });
 
   describe('Drag and drop', () => {

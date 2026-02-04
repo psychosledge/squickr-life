@@ -38,7 +38,7 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    expect(screen.getByText('•')).toBeInTheDocument();
+    expect(screen.getByText('☐')).toBeInTheDocument();
     expect(screen.getByText('Buy milk')).toBeInTheDocument();
   });
 
@@ -50,7 +50,7 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    expect(screen.getByText('×')).toBeInTheDocument();
+    expect(screen.getByText('✓')).toBeInTheDocument();
   });
 
   it('should show bullet for open tasks', () => {
@@ -64,7 +64,7 @@ describe('TaskEntryItem', () => {
     
     const bullet = screen.getByRole('button', { name: /open task.*complete/i });
     expect(bullet).toBeInTheDocument();
-    expect(bullet).toHaveTextContent('•');
+    expect(bullet).toHaveTextContent('☐');
   });
 
   it('should show X bullet for completed tasks', () => {
@@ -78,7 +78,7 @@ describe('TaskEntryItem', () => {
     
     const bullet = screen.getByRole('button', { name: /completed task.*reopen/i });
     expect(bullet).toBeInTheDocument();
-    expect(bullet).toHaveTextContent('×');
+    expect(bullet).toHaveTextContent('✓');
   });
 
   it('should call onCompleteTask when bullet is clicked for open task', () => {
@@ -210,10 +210,11 @@ describe('TaskEntryItem', () => {
       />
     );
     
-    // Status badge should not be present
-    expect(screen.queryByText('open')).not.toBeInTheDocument();
+    // Task should use bullet icon (☐) not a status badge
+    expect(screen.getByText('☐')).toBeInTheDocument();
     
-    // But bullet should still be visible
-    expect(screen.getByText('•')).toBeInTheDocument();
+    // Should not have a separate status badge element
+    expect(screen.queryByText('Open')).not.toBeInTheDocument();
+    expect(screen.queryByText('Completed')).not.toBeInTheDocument();
   });
 });

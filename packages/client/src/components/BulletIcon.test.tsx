@@ -17,7 +17,7 @@ describe('BulletIcon', () => {
       render(<BulletIcon entry={entry} onClick={vi.fn()} />);
       
       const bullet = screen.getByRole('button', { name: /open task.*complete/i });
-      expect(bullet).toHaveTextContent('•');
+      expect(bullet).toHaveTextContent('☐');
       expect(bullet).toHaveAttribute('tabindex', '0');
     });
 
@@ -34,7 +34,7 @@ describe('BulletIcon', () => {
       render(<BulletIcon entry={entry} onClick={vi.fn()} />);
       
       const bullet = screen.getByRole('button', { name: /completed task.*reopen/i });
-      expect(bullet).toHaveTextContent('×');
+      expect(bullet).toHaveTextContent('✓');
     });
 
     it('should render migrated task with > and no button role', () => {
@@ -69,7 +69,7 @@ describe('BulletIcon', () => {
       
       // Should show migration icon, not completion
       expect(screen.getByText('>')).toBeInTheDocument();
-      expect(screen.queryByText('×')).not.toBeInTheDocument();
+      expect(screen.queryByText('✓')).not.toBeInTheDocument();
     });
   });
 
@@ -84,7 +84,7 @@ describe('BulletIcon', () => {
       
       render(<BulletIcon entry={entry} />);
       
-      expect(screen.getByText('–')).toBeInTheDocument();
+      expect(screen.getByText('📝')).toBeInTheDocument();
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
       expect(screen.getByLabelText('Note')).toBeInTheDocument();
     });
@@ -116,7 +116,7 @@ describe('BulletIcon', () => {
       
       render(<BulletIcon entry={entry} />);
       
-      expect(screen.getByText('○')).toBeInTheDocument();
+      expect(screen.getByText('📅')).toBeInTheDocument();
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
       expect(screen.getByLabelText('Event')).toBeInTheDocument();
     });
@@ -185,7 +185,7 @@ describe('BulletIcon', () => {
       
       render(<BulletIcon entry={entry} onClick={onClick} />);
       
-      const bullet = screen.getByText('–');
+      const bullet = screen.getByText('📝');
       fireEvent.keyDown(bullet, { key: 'Enter' });
       
       expect(onClick).not.toHaveBeenCalled();
@@ -295,7 +295,7 @@ describe('BulletIcon', () => {
       
       render(<BulletIcon entry={entry} />);
       
-      const bullet = screen.getByText('–');
+      const bullet = screen.getByText('📝');
       expect(bullet).not.toHaveAttribute('tabindex');
     });
 
@@ -324,7 +324,7 @@ describe('BulletIcon', () => {
       
       render(<BulletIcon entry={entry} />);
       
-      const bullet = screen.getByText('–');
+      const bullet = screen.getByText('📝');
       expect(bullet).toHaveClass('cursor-default');
     });
   });
