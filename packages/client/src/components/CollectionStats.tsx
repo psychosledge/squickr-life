@@ -17,9 +17,15 @@ interface CollectionStats {
 /**
  * Calculate statistics for a collection's entries
  * Counts open tasks, completed tasks, notes, and events
+ * Excludes entries that have been migrated (migratedTo field is set)
  */
 function calculateStats(entries: Entry[]): CollectionStats {
   return entries.reduce((stats, entry) => {
+    // Skip migrated entries - they shouldn't count in the source collection
+    if (entry.migratedTo) {
+      return stats;
+    }
+
     switch (entry.type) {
       case 'task':
         if (entry.status === 'completed') {

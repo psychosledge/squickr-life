@@ -212,4 +212,133 @@ describe('CollectionStats', () => {
     expect(statsElement).toHaveClass('text-gray-500');
     expect(statsElement).toHaveClass('dark:text-gray-400');
   });
+
+  describe('Migrated Entries', () => {
+    it('should exclude migrated open tasks from stats', () => {
+      const entries: Entry[] = [
+        { 
+          type: 'task', 
+          id: '1', 
+          title: 'Normal task',
+          status: 'open',
+          createdAt: '2026-02-03T12:00:00Z'
+        },
+        { 
+          type: 'task', 
+          id: '2', 
+          title: 'Migrated task',
+          status: 'open',
+          createdAt: '2026-02-03T12:00:00Z',
+          migratedTo: 'new-task-id'
+        }
+      ];
+      
+      render(<CollectionStats entries={entries} />);
+      
+      // Should only show 1 open task (the non-migrated one)
+      expect(screen.getByText(/• 1/)).toBeInTheDocument();
+      expect(screen.queryByText(/• 2/)).not.toBeInTheDocument();
+    });
+
+    it('should exclude migrated completed tasks from stats', () => {
+      const entries: Entry[] = [
+        { 
+          type: 'task', 
+          id: '1', 
+          title: 'Normal completed task',
+          status: 'completed',
+          createdAt: '2026-02-03T12:00:00Z',
+          completedAt: '2026-02-03T13:00:00Z'
+        },
+        { 
+          type: 'task', 
+          id: '2', 
+          title: 'Migrated completed task',
+          status: 'completed',
+          createdAt: '2026-02-03T12:00:00Z',
+          completedAt: '2026-02-03T13:00:00Z',
+          migratedTo: 'new-task-id'
+        }
+      ];
+      
+      render(<CollectionStats entries={entries} />);
+      
+      // Should only show 1 completed task
+      expect(screen.getByText(/× 1/)).toBeInTheDocument();
+      expect(screen.queryByText(/× 2/)).not.toBeInTheDocument();
+    });
+
+    it('should exclude migrated notes from stats', () => {
+      const entries: Entry[] = [
+        { 
+          type: 'note', 
+          id: '1', 
+          content: 'Normal note',
+          createdAt: '2026-02-03T12:00:00Z'
+        },
+        { 
+          type: 'note', 
+          id: '2', 
+          content: 'Migrated note',
+          createdAt: '2026-02-03T12:00:00Z',
+          migratedTo: 'new-note-id'
+        }
+      ];
+      
+      render(<CollectionStats entries={entries} />);
+      
+      // Should only show 1 note
+      expect(screen.getByText(/– 1/)).toBeInTheDocument();
+      expect(screen.queryByText(/– 2/)).not.toBeInTheDocument();
+    });
+
+    it('should exclude migrated events from stats', () => {
+      const entries: Entry[] = [
+        { 
+          type: 'event', 
+          id: '1', 
+          content: 'Normal event',
+          createdAt: '2026-02-03T12:00:00Z'
+        },
+        { 
+          type: 'event', 
+          id: '2', 
+          content: 'Migrated event',
+          createdAt: '2026-02-03T12:00:00Z',
+          migratedTo: 'new-event-id'
+        }
+      ];
+      
+      render(<CollectionStats entries={entries} />);
+      
+      // Should only show 1 event
+      expect(screen.getByText(/○ 1/)).toBeInTheDocument();
+      expect(screen.queryByText(/○ 2/)).not.toBeInTheDocument();
+    });
+
+    it('should return null when all entries are migrated', () => {
+      const entries: Entry[] = [
+        { 
+          type: 'task', 
+          id: '1', 
+          title: 'Migrated task',
+          status: 'open',
+          createdAt: '2026-02-03T12:00:00Z',
+          migratedTo: 'new-task-id'
+        },
+        { 
+          type: 'note', 
+          id: '2', 
+          content: 'Migrated note',
+          createdAt: '2026-02-03T12:00:00Z',
+          migratedTo: 'new-note-id'
+        }
+      ];
+      
+      const { container } = render(<CollectionStats entries={entries} />);
+      
+      // Component should render nothing
+      expect(container.firstChild).toBeNull();
+    });
+  });
 });
