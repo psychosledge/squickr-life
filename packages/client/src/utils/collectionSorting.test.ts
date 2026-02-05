@@ -150,4 +150,96 @@ describe('sortCollectionsHierarchically', () => {
 
     expect(collections).toEqual(original);
   });
+
+  // Bug #1: Monthly logs navigation tests
+  it('should include monthly logs between favorited customs and daily logs', () => {
+    const collections: Collection[] = [
+      // Favorited customs (should appear first)
+      { id: 'fav1', name: 'Favorite 1', type: 'custom', order: 'a0', isFavorite: true, createdAt: '2024-01-01T00:00:00Z' },
+      
+      // Monthly logs (should appear between favorited customs and daily logs)
+      { id: 'monthly1', name: 'February 2026', type: 'monthly', date: '2026-02', createdAt: '2024-01-02T00:00:00Z' },
+      { id: 'monthly2', name: 'January 2026', type: 'monthly', date: '2026-01', createdAt: '2024-01-03T00:00:00Z' },
+      
+      // Daily logs (should appear after monthly logs)
+      { id: 'daily1', name: 'Feb 2', type: 'daily', date: '2026-02-02', createdAt: '2024-01-04T00:00:00Z' },
+      { id: 'daily2', name: 'Feb 1', type: 'daily', date: '2026-02-01', createdAt: '2024-01-05T00:00:00Z' },
+      
+      // Other customs (should appear last)
+      { id: 'custom1', name: 'Custom 1', type: 'custom', order: 'b0', isFavorite: false, createdAt: '2024-01-06T00:00:00Z' },
+    ];
+
+    const sorted = sortCollectionsHierarchically(collections);
+
+    // Expected order: fav1, monthly1, monthly2, daily1, daily2, custom1
+    expect(sorted.map(c => c.id)).toEqual([
+      'fav1',     // Favorited custom
+      'monthly1', // Monthly log (Feb 2026, newest)
+      'monthly2', // Monthly log (Jan 2026)
+      'daily1',   // Daily log (Feb 2, newest)
+      'daily2',   // Daily log (Feb 1)
+      'custom1',  // Other custom
+    ]);
+  });
+
+  it('should sort monthly logs by date in descending order (newest first)', () => {
+    const collections: Collection[] = [
+      { id: 'monthly1', name: 'January 2026', type: 'monthly', date: '2026-01', createdAt: '2024-01-01T00:00:00Z' },
+      { id: 'monthly3', name: 'March 2026', type: 'monthly', date: '2026-03', createdAt: '2024-01-03T00:00:00Z' },
+      { id: 'monthly2', name: 'February 2026', type: 'monthly', date: '2026-02', createdAt: '2024-01-02T00:00:00Z' },
+    ];
+
+    const sorted = sortCollectionsHierarchically(collections);
+
+    expect(sorted.map(c => c.id)).toEqual(['monthly3', 'monthly2', 'monthly1']);
+  });
+
+  it('should handle only monthly logs', () => {
+    const collections: Collection[] = [
+      { id: 'monthly1', name: 'February 2026', type: 'monthly', date: '2026-02', createdAt: '2024-01-02T00:00:00Z' },
+      { id: 'monthly2', name: 'January 2026', type: 'monthly', date: '2026-01', createdAt: '2024-01-01T00:00:00Z' },
+    ];
+
+    const sorted = sortCollectionsHierarchically(collections);
+    expect(sorted.map(c => c.id)).toEqual(['monthly1', 'monthly2']);
+  });
+
+  it('should handle mix of all collection types including monthly', () => {
+    const collections: Collection[] = [
+      { id: 'custom2', name: 'Custom 2', type: 'custom', order: 'b1', isFavorite: false, createdAt: '2024-01-08T00:00:00Z' },
+      { id: 'monthly1', name: 'March 2026', type: 'monthly', date: '2026-03', createdAt: '2024-01-03T00:00:00Z' },
+      { id: 'fav2', name: 'Favorite 2', type: 'custom', order: 'a1', isFavorite: true, createdAt: '2024-01-02T00:00:00Z' },
+      { id: 'daily1', name: 'Feb 5', type: 'daily', date: '2026-02-05', createdAt: '2024-01-05T00:00:00Z' },
+      { id: 'monthly2', name: 'February 2026', type: 'monthly', date: '2026-02', createdAt: '2024-01-04T00:00:00Z' },
+      { id: 'fav1', name: 'Favorite 1', type: 'custom', order: 'a0', isFavorite: true, createdAt: '2024-01-01T00:00:00Z' },
+      { id: 'custom1', name: 'Custom 1', type: 'custom', order: 'b0', isFavorite: false, createdAt: '2024-01-07T00:00:00Z' },
+      { id: 'daily2', name: 'Feb 4', type: 'daily', date: '2026-02-04', createdAt: '2024-01-06T00:00:00Z' },
+    ];
+
+    const sorted = sortCollectionsHierarchically(collections);
+
+    // Expected order: fav1, fav2, monthly1, monthly2, daily1, daily2, custom1, custom2
+    expect(sorted.map(c => c.id)).toEqual([
+      'fav1',     // Favorited customs (by order)
+      'fav2',
+      'monthly1', // Monthly logs (by date, newest first)
+      'monthly2',
+      'daily1',   // Daily logs (by date, newest first)
+      'daily2',
+      'custom1',  // Other customs (by order)
+      'custom2',
+    ]);
+  });
+
+  it('should handle monthly logs without date field', () => {
+    const collections: Collection[] = [
+      { id: 'monthly1', name: 'February 2026', type: 'monthly', date: '2026-02', createdAt: '2024-01-02T00:00:00Z' },
+      { id: 'monthly2', name: 'No Date', type: 'monthly', createdAt: '2024-01-01T00:00:00Z' },
+    ];
+
+    const sorted = sortCollectionsHierarchically(collections);
+    
+    // Monthly without date should sort before those with dates (empty string < '2026-02')
+    expect(sorted.map(c => c.id)).toEqual(['monthly1', 'monthly2']);
+  });
 });
