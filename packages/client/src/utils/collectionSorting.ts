@@ -6,8 +6,9 @@
  * 
  * Ordering Rules:
  * 1. Favorited customs (by order field, lexicographic)
- * 2. Daily logs (by date, descending - newest first)
- * 3. Other customs (by order field, lexicographic)
+ * 2. Monthly logs (by date, descending - newest first)
+ * 3. Daily logs (by date, descending - newest first)
+ * 4. Other customs (by order field, lexicographic)
  */
 
 import type { Collection } from '@squickr/shared';
@@ -17,14 +18,16 @@ import type { Collection } from '@squickr/shared';
  * 
  * This function ensures that navigation order matches the collection index:
  * - Favorited custom collections first (sorted by order)
- * - Daily logs second (sorted by date, newest first)
+ * - Monthly logs second (sorted by date, newest first)
+ * - Daily logs third (sorted by date, newest first)
  * - Other custom collections last (sorted by order)
  * 
  * @param collections - Array of collections to sort
  * @returns Sorted array of collections (does not mutate input)
  */
 export function sortCollectionsHierarchically(collections: Collection[]): Collection[] {
-  // Separate daily logs from custom collections
+  // Separate monthly logs, daily logs, and custom collections
+  const monthlyLogs = collections.filter(c => c.type === 'monthly');
   const dailyLogs = collections.filter(c => c.type === 'daily' && c.date);
   const customCollections = collections.filter(c => 
     !c.type || c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
@@ -38,9 +41,12 @@ export function sortCollectionsHierarchically(collections: Collection[]): Collec
   pinnedCustoms.sort((a, b) => (a.order || '').localeCompare(b.order || ''));
   unpinnedCustoms.sort((a, b) => (a.order || '').localeCompare(b.order || ''));
   
+  // Sort monthly logs by date (newest first = descending)
+  monthlyLogs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  
   // Sort daily logs by date (newest first = descending)
   dailyLogs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   
-  // Return in hierarchical order: pinned customs, daily logs, unpinned customs
-  return [...pinnedCustoms, ...dailyLogs, ...unpinnedCustoms];
+  // Return in hierarchical order: pinned customs, monthly logs, daily logs, unpinned customs
+  return [...pinnedCustoms, ...monthlyLogs, ...dailyLogs, ...unpinnedCustoms];
 }

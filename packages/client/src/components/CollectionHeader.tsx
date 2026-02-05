@@ -128,7 +128,7 @@ export function CollectionHeader({
             text-xl font-semibold 
             text-gray-900 dark:text-white 
             hover:text-blue-600 dark:hover:text-blue-400
-            truncate mx-4 flex-1 text-center
+            mx-4 flex-1 text-center
             transition-colors
             focus:outline-none focus:ring-2 focus:ring-blue-500 rounded
             flex items-center justify-center gap-2
