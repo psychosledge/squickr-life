@@ -6,10 +6,12 @@ import { getCollectionDisplayName } from '../utils/formatters';
 interface MigrateEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  entry: Entry | null;
+  entry?: Entry | null;
+  entries?: Entry[];
   currentCollectionId?: string;
   collections: Collection[];
   onMigrate: (entryId: string, targetCollectionId: string | null) => Promise<void>;
+  onBulkMigrate?: (entryIds: string[], targetCollectionId: string | null) => Promise<void>;
   onCreateCollection?: (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => Promise<string>;
   selectedCollectionId?: string;
   onOpenCreateCollection?: () => void;
@@ -167,9 +169,11 @@ export function MigrateEntryModal({
   isOpen,
   onClose,
   entry,
+  entries,
   currentCollectionId,
   collections,
   onMigrate,
+  onBulkMigrate,
   onCreateCollection,
   selectedCollectionId,
   onOpenCreateCollection,
@@ -254,12 +258,17 @@ export function MigrateEntryModal({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !entry) {
+  if (!isOpen || (!entry && (!entries || entries.length === 0))) {
     return null;
   }
 
-  // Check if entry is already migrated
-  const isAlreadyMigrated = !!(entry.migratedTo);
+  // Determine if we're in bulk mode
+  const isBulkMode = !!entries && entries.length > 0;
+  const entryCount = isBulkMode ? entries.length : 1;
+  const singleEntry = isBulkMode ? entries[0] : entry;
+
+  // Check if entry is already migrated (only for single mode)
+  const isAlreadyMigrated = !isBulkMode && singleEntry ? !!(singleEntry.migratedTo) : false;
 
   const handleMigrate = async () => {
     if (isAlreadyMigrated) {
@@ -275,7 +284,14 @@ export function MigrateEntryModal({
     setError('');
 
     try {
-      await onMigrate(entry.id, selectedOption);
+      if (isBulkMode && onBulkMigrate && entries) {
+        // Bulk migration
+        const entryIds = entries.map(e => e.id);
+        await onBulkMigrate(entryIds, selectedOption);
+      } else if (!isBulkMode && singleEntry) {
+        // Single migration
+        await onMigrate(singleEntry.id, selectedOption);
+      }
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to migrate entry');
@@ -294,14 +310,19 @@ export function MigrateEntryModal({
   };
 
   const handleCreateCollection = async (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => {
-    if (onCreateCollection && entry) {
+    if (onCreateCollection) {
       try {
         // Create the collection and get the new collection ID
         const newCollectionId = await onCreateCollection(name, type, date);
         setShowCreateModal(false);
         
-        // Auto-migrate the entry to the newly created collection
-        await onMigrate(entry.id, newCollectionId);
+        // Auto-migrate the entry/entries to the newly created collection
+        if (isBulkMode && onBulkMigrate && entries) {
+          const entryIds = entries.map(e => e.id);
+          await onBulkMigrate(entryIds, newCollectionId);
+        } else if (!isBulkMode && singleEntry) {
+          await onMigrate(singleEntry.id, newCollectionId);
+        }
         
         // Close the migrate modal
         onClose();
@@ -328,7 +349,11 @@ export function MigrateEntryModal({
 
   // Get entry type label
   const getEntryTypeLabel = () => {
-    switch (entry.type) {
+    if (isBulkMode) {
+      return entryCount === 1 ? 'entry' : 'entries';
+    }
+    if (!singleEntry) return 'entry';
+    switch (singleEntry.type) {
       case 'task':
         return 'task';
       case 'note':
@@ -338,6 +363,14 @@ export function MigrateEntryModal({
       default:
         return 'entry';
     }
+  };
+
+  // Get modal title
+  const getModalTitle = () => {
+    if (isBulkMode) {
+      return `Migrate ${entryCount} ${entryCount === 1 ? 'entry' : 'entries'} to collection`;
+    }
+    return `Migrate ${getEntryTypeLabel()} to collection`;
   };
 
   // Determine button state
@@ -361,7 +394,7 @@ export function MigrateEntryModal({
           onClick={(e) => e.stopPropagation()}
         >
           <h2 id="modal-title" className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-            Migrate {getEntryTypeLabel()} to collection
+            {getModalTitle()}
           </h2>
 
           {isAlreadyMigrated && (

@@ -27,6 +27,10 @@ interface EntryListProps {
   onNavigateToMigrated?: (collectionId: string | null) => void;
   // Collection creation handler
   onCreateCollection?: (name: string) => Promise<string>;
+  // Selection mode
+  isSelectionMode?: boolean;
+  selectedEntryIds?: Set<string>;
+  onToggleSelection?: (entryId: string) => void;
 }
 
 /**
@@ -50,7 +54,10 @@ export function EntryList({
   collections,
   currentCollectionId,
   onNavigateToMigrated,
-  onCreateCollection
+  onCreateCollection,
+  isSelectionMode = false,
+  selectedEntryIds = new Set(),
+  onToggleSelection,
 }: EntryListProps) {
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -144,6 +151,9 @@ export function EntryList({
                 currentCollectionId={currentCollectionId}
                 onNavigateToMigrated={onNavigateToMigrated}
                 onCreateCollection={onCreateCollection}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedEntryIds.has(entry.id)}
+                onToggleSelection={onToggleSelection}
               />
             ))}
           </div>
