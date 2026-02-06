@@ -154,8 +154,8 @@ describe('CollectionDetailView', () => {
     const fab = screen.getByRole('button', { name: /add new entry/i });
     await user.click(fab);
     
-    // Modal should open with context-aware title
-    expect(screen.getByText(/add to:/i)).toBeInTheDocument();
+    // Modal should open with generic title
+    expect(screen.getByText(/add entry/i)).toBeInTheDocument();
   });
 
   it('should show back button to navigate to collection index', async () => {
@@ -363,7 +363,7 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
     // const actualCollectionId = collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId;
     
     // We can verify this behavior exists by checking the view rendered correctly
-    expect(screen.getByText(/add to:/i)).toBeInTheDocument();
+    expect(screen.getByText(/add entry/i)).toBeInTheDocument();
   });
 });
 

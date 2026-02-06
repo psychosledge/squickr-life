@@ -1,39 +1,50 @@
 # Next Session Roadmap
-**Last Updated:** February 5, 2026 (Session 10 - v0.5.0 Complete)  
-**Current Status:** v0.5.0 implemented and committed, awaiting user mobile testing  
-**Next Action:** 
-1. Deploy v0.5.0 to Firebase Hosting
-2. User tests Bulk Entry Migration on mobile device
-3. User provides testing feedback in next session
-4. Plan Session 11 based on feedback
+**Last Updated:** February 6, 2026 (Session 11A - v0.5.1 Complete)  
+**Current Status:** v0.5.1 implemented and ready for deployment  
+**Next Action:** User chooses next session focus
 
 ---
 
-## ⚠️ IMPORTANT REMINDER FOR NEXT SESSION
+## Session 11A Completed ✅
 
-**User needs to provide testing feedback for v0.5.0 Bulk Entry Migration feature!**
+**v0.5.1 Quick Fixes:**
+- ✅ Fixed FAB covering bulk migrate UI (mobile UX issue)
+- ✅ Changed "Add to Today" → "Add Entry" (clarity improvement)
+- ✅ All 996 tests passing
+- ✅ Code reviewed by Casey (9/10 approval)
+- ✅ Documentation updated
+- ✅ Ready for deployment
 
-### Testing Checklist:
-- [ ] Test selection mode on mobile device
-- [ ] Verify checkboxes are easy to tap (48x48px touch targets)
-- [ ] Test quick filters (All, Incomplete, Notes, Clear)
-- [ ] Migrate 10+ entries at once
-- [ ] Verify entries appear in target collection in correct order
-- [ ] Test in dark mode
-- [ ] Report any bugs or UX issues
-
-### Reference Documents:
-- Testing guide: `BULK_MIGRATION_TESTING_GUIDE.md`
-- Session summary: `docs/session-2026-02-05-session10-complete.md`
+**User Feedback Captured:**
+- Intro guide/walkthrough for new users (design completed by Alex)
 
 ---
 
-## Potential Session 11 Topics
+## Next Session Options
 
-### Option A: Bug Fixes (if issues found in v0.5.0 testing)
-- Fix critical bugs from mobile testing
-- Polish UX based on feedback
-- Quick patch release: v0.5.1
+User will choose between the following options:
+
+### Option A: Intro Guide/Walkthrough (v0.6.0)
+**From user feedback on Feb 6, 2026:**
+
+**Feature:** First-time user experience (FTUX) walkthrough
+- 7-step interactive tutorial with spotlight overlays
+- Explains app purpose, bullet journal concepts, key features
+- Help menu (?) for accessing guide later
+- Bullet Journal primer reference
+- Keyboard shortcuts guide
+- Auto-triggers for first-time users, accessible later
+
+**Design Status:** ✅ Complete (by Alex)  
+**Design Document:** `docs/session-2026-02-06-intro-guide-design.md`  
+**Estimated Time:** 8-12 hours (4 phases)  
+**Implementation:** 12 new files, 3 modified files
+
+**Value Proposition:**
+- Faster onboarding for new users
+- Reduced confusion about app purpose
+- Increased feature discovery
+- Better understanding of bullet journal methodology
 
 ### Option B: User Preferences Enhancements
 **From user feedback on Feb 5, 2026:**
@@ -50,5 +61,5 @@
 
 **Estimated time:** 4-5 hours combined
 
-### Option C: New Feature (User-Driven)
-- Pending user priorities after testing v0.5.0
+### Option C: Other Features (User-Driven)
+- User can propose new priorities based on current needs
