@@ -97,7 +97,7 @@ export function EntryInputModal({
             id="modal-title"
             className="text-lg font-semibold text-gray-900 dark:text-white"
           >
-            Add to: Today
+            Add Entry
           </h2>
           <button
             onClick={onClose}

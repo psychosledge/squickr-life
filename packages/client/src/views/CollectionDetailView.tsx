@@ -371,8 +371,8 @@ export function CollectionDetailView() {
         )}
       </div>
 
-      {/* FAB for adding entries to this collection */}
-      <FAB onClick={modals.openModal} />
+      {/* FAB for adding entries to this collection (hidden in selection mode) */}
+      {!selection.isSelectionMode && <FAB onClick={modals.openModal} />}
 
       {/* Entry input modal - context-aware (adds to this collection) */}
       <EntryInputModal
