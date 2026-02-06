@@ -53,6 +53,7 @@ export interface EntryOperations {
   
   // Entry migration operations
   handleMigrate: (entryId: string, targetCollectionId: string | null) => Promise<void>;
+  handleBulkMigrate: (entryIds: string[], targetCollectionId: string | null) => Promise<void>;
   handleNavigateToMigrated: (targetCollectionId: string | null) => void;
   handleCreateCollection: (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => Promise<string>;
   
@@ -199,6 +200,27 @@ export function useEntryOperations(
     }
   }, [entries, migrateTaskHandler, migrateNoteHandler, migrateEventHandler]);
 
+  const handleBulkMigrate = useCallback(async (entryIds: string[], targetCollectionId: string | null) => {
+    // Migrate all entries sequentially
+    // Note: This could be optimized with batch operations in the future
+    for (const entryId of entryIds) {
+      const entry = entries.find(e => e.id === entryId);
+      if (!entry) continue;
+
+      switch (entry.type) {
+        case 'task':
+          await migrateTaskHandler.handle({ taskId: entryId, targetCollectionId });
+          break;
+        case 'note':
+          await migrateNoteHandler.handle({ noteId: entryId, targetCollectionId });
+          break;
+        case 'event':
+          await migrateEventHandler.handle({ eventId: entryId, targetCollectionId });
+          break;
+      }
+    }
+  }, [entries, migrateTaskHandler, migrateNoteHandler, migrateEventHandler]);
+
   const handleNavigateToMigrated = useCallback((targetCollectionId: string | null) => {
     if (targetCollectionId) {
       navigate(`/collection/${targetCollectionId}`);
@@ -270,6 +292,7 @@ export function useEntryOperations(
     handleDelete,
     handleReorder,
     handleMigrate,
+    handleBulkMigrate,
     handleNavigateToMigrated,
     handleCreateCollection,
     handleRenameCollection,

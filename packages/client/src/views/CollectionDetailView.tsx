@@ -18,12 +18,15 @@ import { useApp } from '../context/AppContext';
 import { useCollectionHandlers } from '../hooks/useCollectionHandlers';
 import { useCollectionModals } from '../hooks/useCollectionModals';
 import { useEntryOperations } from '../hooks/useEntryOperations';
+import { useSelectionMode } from '../hooks/useSelectionMode';
 import { CollectionHeader } from '../components/CollectionHeader';
 import { EntryList } from '../components/EntryList';
 import { EntryInputModal } from '../components/EntryInputModal';
 import { RenameCollectionModal } from '../components/RenameCollectionModal';
 import { DeleteCollectionModal } from '../components/DeleteCollectionModal';
 import { CollectionSettingsModal } from '../components/CollectionSettingsModal';
+import { MigrateEntryModal } from '../components/MigrateEntryModal';
+import { SelectionToolbar } from '../components/SelectionToolbar';
 import { FAB } from '../components/FAB';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { DEBOUNCE } from '../utils/constants';
@@ -37,6 +40,12 @@ export function CollectionDetailView() {
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Selection mode state
+  const selection = useSelectionMode();
+
+  // Migration modal state for bulk migration
+  const [isBulkMigrateModalOpen, setIsBulkMigrateModalOpen] = useState(false);
 
   // Initialize all handlers (memoized to prevent recreation on every render)
   const handlers = useCollectionHandlers({
@@ -134,6 +143,51 @@ export function CollectionDetailView() {
     };
   }, [collectionId, collectionProjection, entryProjection]);
 
+  // Clear selection when navigating to different collection
+  useEffect(() => {
+    return () => {
+      if (selection.isSelectionMode) {
+        selection.exitSelectionMode();
+      }
+    };
+  }, [collectionId]);
+
+  // Selection mode handlers
+  const handleSelectAll = () => {
+    selection.selectAll(entries.map(e => e.id));
+  };
+
+  const handleSelectIncomplete = () => {
+    const incompleteTasks = entries
+      .filter(e => e.type === 'task' && e.status !== 'completed')
+      .map(e => e.id);
+    selection.selectAll(incompleteTasks);
+  };
+
+  const handleSelectNotes = () => {
+    const notes = entries
+      .filter(e => e.type === 'note')
+      .map(e => e.id);
+    selection.selectAll(notes);
+  };
+
+  const handleBulkMigrate = () => {
+    // Open the migration modal with selected entries
+    if (selection.selectedCount > 0) {
+      setIsBulkMigrateModalOpen(true);
+    }
+  };
+
+  const handleBulkMigrateSubmit = async (entryIds: string[], targetCollectionId: string | null) => {
+    await operations.handleBulkMigrate(entryIds, targetCollectionId);
+    setIsBulkMigrateModalOpen(false);
+    selection.exitSelectionMode();
+  };
+
+  const handleCloseBulkMigrateModal = () => {
+    setIsBulkMigrateModalOpen(false);
+  };
+
   // Success state - show collection and entries
   if (isLoading) {
     return (
@@ -208,6 +262,7 @@ export function CollectionDetailView() {
         onToggleFavorite={collection.id === UNCATEGORIZED_COLLECTION_ID ? undefined : operations.handleToggleFavorite}
         isFavorite={collection.isFavorite}
         isVirtual={collection.id === UNCATEGORIZED_COLLECTION_ID}
+        onEnterSelectionMode={selection.enterSelectionMode}
       />
 
       {/* Entry list */}
@@ -228,6 +283,9 @@ export function CollectionDetailView() {
           currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
           onNavigateToMigrated={operations.handleNavigateToMigrated}
           onCreateCollection={operations.handleCreateCollection}
+          isSelectionMode={selection.isSelectionMode}
+          selectedEntryIds={selection.selectedEntryIds}
+          onToggleSelection={selection.toggleSelection}
         />
 
         {/* Completed tasks section - Mode 2: Move to bottom */}
@@ -251,6 +309,9 @@ export function CollectionDetailView() {
               currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
               onNavigateToMigrated={operations.handleNavigateToMigrated}
               onCreateCollection={operations.handleCreateCollection}
+              isSelectionMode={selection.isSelectionMode}
+              selectedEntryIds={selection.selectedEntryIds}
+              onToggleSelection={selection.toggleSelection}
             />
           </div>
         )}
@@ -300,6 +361,9 @@ export function CollectionDetailView() {
                   currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
                   onNavigateToMigrated={operations.handleNavigateToMigrated}
                   onCreateCollection={operations.handleCreateCollection}
+                  isSelectionMode={selection.isSelectionMode}
+                  selectedEntryIds={selection.selectedEntryIds}
+                  onToggleSelection={selection.toggleSelection}
                 />
               </div>
             )}
@@ -343,6 +407,33 @@ export function CollectionDetailView() {
         onClose={modals.closeSettingsModal}
         onSubmit={operations.handleSettingsSubmit}
       />
+
+      {/* Bulk migration modal */}
+      {selection.isSelectionMode && selection.selectedCount > 0 && (
+        <MigrateEntryModal
+          isOpen={isBulkMigrateModalOpen}
+          onClose={handleCloseBulkMigrateModal}
+          entries={entries.filter(e => selection.selectedEntryIds.has(e.id))}
+          currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
+          collections={allCollections}
+          onMigrate={operations.handleMigrate}
+          onBulkMigrate={handleBulkMigrateSubmit}
+          onCreateCollection={operations.handleCreateCollection}
+        />
+      )}
+
+      {/* Selection toolbar (appears when in selection mode) */}
+      {selection.isSelectionMode && (
+        <SelectionToolbar
+          selectedCount={selection.selectedCount}
+          onSelectAll={handleSelectAll}
+          onSelectIncomplete={handleSelectIncomplete}
+          onSelectNotes={handleSelectNotes}
+          onClear={selection.clearSelection}
+          onMigrate={handleBulkMigrate}
+          onCancel={selection.exitSelectionMode}
+        />
+      )}
     </div>
   );
 }

@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-05
+
+### Added
+- **Bulk Entry Migration:** Select and migrate multiple entries at once
+  - Selection mode toggle in collection header menu
+  - Checkboxes for individual entry selection
+  - Quick filters: Select all, incomplete tasks, notes, and deselect all
+  - Bulk migration modal shows accurate count (e.g., "Migrate 12 entries")
+  - Unlimited selection support with smooth performance
+  - Entries maintain relative order in target collection
+  - Selection clears automatically after migration or navigation
+- New components: SelectionModeToggle, SelectionToolbar, SelectableEntryItem
+- New hook: useSelectionMode for managing selection state
+
+### Changed
+- MigrateEntryModal now supports both single entry and bulk entry arrays
+- CollectionDetailView integrates selection mode functionality
+- Entry operations support batch migration handlers
+
+### Tests
+- Added 33 new test cases for bulk migration feature
+- All 996 tests passing (+33 from v0.4.4)
+
 ## [0.4.4] - 2026-02-05
 
 ### Fixed

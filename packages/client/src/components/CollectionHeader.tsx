@@ -21,6 +21,7 @@ interface CollectionHeaderProps {
   onToggleFavorite?: () => void;
   isFavorite?: boolean;
   isVirtual?: boolean;
+  onEnterSelectionMode?: () => void;
 }
 
 export function CollectionHeader({
@@ -32,6 +33,7 @@ export function CollectionHeader({
   onToggleFavorite,
   isFavorite = false,
   isVirtual = false,
+  onEnterSelectionMode,
 }: CollectionHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -77,6 +79,11 @@ export function CollectionHeader({
   const handleToggleFavorite = () => {
     setIsMenuOpen(false);
     onToggleFavorite?.();
+  };
+
+  const handleEnterSelectionMode = () => {
+    setIsMenuOpen(false);
+    onEnterSelectionMode?.();
   };
 
   return (
@@ -187,6 +194,21 @@ export function CollectionHeader({
                   z-50
                 "
               >
+                {onEnterSelectionMode && (
+                  <button
+                    onClick={handleEnterSelectionMode}
+                    className="
+                      w-full px-4 py-2
+                      text-left text-gray-700 dark:text-gray-300
+                      hover:bg-gray-100 dark:hover:bg-gray-700
+                      transition-colors
+                      focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                    "
+                    type="button"
+                  >
+                    Select Entries
+                  </button>
+                )}
                 {onToggleFavorite && (
                   <button
                     onClick={handleToggleFavorite}

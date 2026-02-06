@@ -2,6 +2,7 @@ import type { Entry, Collection } from '@squickr/shared';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { EntryItem } from './EntryItem';
+import { SelectableEntryItem } from './SelectableEntryItem';
 
 interface SortableEntryItemProps {
   entry: Entry;
@@ -24,6 +25,10 @@ interface SortableEntryItemProps {
   onNavigateToMigrated?: (collectionId: string | null) => void;
   // Collection creation handler
   onCreateCollection?: (name: string) => Promise<string>;
+  // Selection mode
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: (entryId: string) => void;
 }
 
 /**
@@ -45,7 +50,10 @@ export function SortableEntryItem({
   collections,
   currentCollectionId,
   onNavigateToMigrated,
-  onCreateCollection
+  onCreateCollection,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelection,
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -95,22 +103,29 @@ export function SortableEntryItem({
         </svg>
       </div>
 
-      {/* The actual entry item */}
-      <EntryItem
+      {/* The actual entry item (wrapped with SelectableEntryItem for selection mode) */}
+      <SelectableEntryItem
         entry={entry}
-        onCompleteTask={onCompleteTask}
-        onReopenTask={onReopenTask}
-        onUpdateTaskTitle={onUpdateTaskTitle}
-        onUpdateNoteContent={onUpdateNoteContent}
-        onUpdateEventContent={onUpdateEventContent}
-        onUpdateEventDate={onUpdateEventDate}
-        onDelete={onDelete}
-        onMigrate={onMigrate}
-        collections={collections}
-        currentCollectionId={currentCollectionId}
-        onNavigateToMigrated={onNavigateToMigrated}
-        onCreateCollection={onCreateCollection}
-      />
+        isSelectionMode={isSelectionMode}
+        isSelected={isSelected}
+        onToggleSelection={onToggleSelection || (() => {})}
+      >
+        <EntryItem
+          entry={entry}
+          onCompleteTask={onCompleteTask}
+          onReopenTask={onReopenTask}
+          onUpdateTaskTitle={onUpdateTaskTitle}
+          onUpdateNoteContent={onUpdateNoteContent}
+          onUpdateEventContent={onUpdateEventContent}
+          onUpdateEventDate={onUpdateEventDate}
+          onDelete={onDelete}
+          onMigrate={onMigrate}
+          collections={collections}
+          currentCollectionId={currentCollectionId}
+          onNavigateToMigrated={onNavigateToMigrated}
+          onCreateCollection={onCreateCollection}
+        />
+      </SelectableEntryItem>
     </div>
   );
 }
