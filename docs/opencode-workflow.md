@@ -171,8 +171,9 @@ This is our **primary workflow** for all development:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  User: "Add feature X"                                  │
+│  User: "Add feature X for version Y.Z.W"               │
 │  OpenCode: *Creates todo list, evaluates complexity*   │
+│  OpenCode: *Agrees on target version number*           │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
@@ -209,8 +210,14 @@ This is our **primary workflow** for all development:
 │  → Back to review step                                 │
 │                                                         │
 │  IF everything looks good:                             │
+│  OpenCode: *Runs FULL test suite (pnpm test --run)*   │
+│  - Verifies ALL tests pass (not just new ones)        │
+│  - Catches integration issues across packages          │
+│                                                         │
+│  IF tests pass:                                         │
 │  User: "commit"                                         │
-│  OpenCode: *Creates git commit*                        │
+│  OpenCode: *Updates version in package.json*           │
+│  OpenCode: *Creates git commit with version*           │
 └─────────────────────────────────────────────────────────┘
 ```
 

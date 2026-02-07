@@ -2,10 +2,17 @@
  * CollectionSettingsModal Tests
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { CollectionSettingsModal } from './CollectionSettingsModal';
+
+// Mock useUserPreferences hook
+vi.mock('../hooks/useUserPreferences', () => ({
+  useUserPreferences: vi.fn(),
+}));
+
+import { useUserPreferences } from '../hooks/useUserPreferences';
 
 describe('CollectionSettingsModal', () => {
   const defaultProps = {
@@ -14,6 +21,14 @@ describe('CollectionSettingsModal', () => {
     onClose: vi.fn(),
     onSubmit: vi.fn(),
   };
+
+  beforeEach(() => {
+    // Mock useUserPreferences to return default preferences
+    vi.mocked(useUserPreferences).mockReturnValue({
+      defaultCompletedTaskBehavior: 'move-to-bottom',
+      autoFavoriteRecentDailyLogs: false,
+    });
+  });
 
   function renderModal(props = {}) {
     return render(<CollectionSettingsModal {...defaultProps} {...props} />);
@@ -35,10 +50,10 @@ describe('CollectionSettingsModal', () => {
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
-  it('should initialize dropdown to "Keep in place" when no settings provided', () => {
+  it('should initialize dropdown to "Use default" when no settings provided', () => {
     renderModal({ currentSettings: undefined });
     const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
-    expect(dropdown.value).toBe('keep-in-place');
+    expect(dropdown.value).toBe('use-default');
   });
 
   it('should initialize dropdown to "Keep in place" when collapseCompleted is false (migration)', () => {
@@ -64,7 +79,7 @@ describe('CollectionSettingsModal', () => {
     renderModal();
     
     const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
-    expect(dropdown.value).toBe('keep-in-place');
+    expect(dropdown.value).toBe('use-default');
     
     await user.selectOptions(dropdown, 'move-to-bottom');
     expect(dropdown.value).toBe('move-to-bottom');
@@ -182,8 +197,18 @@ describe('CollectionSettingsModal', () => {
     });
   });
 
-  it('should show description text for "Keep in place" mode', () => {
+  it('should show description text for "Use default" mode', () => {
     renderModal();
+    expect(screen.getByText(/uses global default: move to bottom/i)).toBeInTheDocument();
+  });
+
+  it('should show description text for "Keep in place" mode', async () => {
+    const user = userEvent.setup();
+    renderModal();
+    
+    const dropdown = screen.getByRole('combobox');
+    await user.selectOptions(dropdown, 'keep-in-place');
+    
     expect(screen.getByText(/completed tasks stay where they are/i)).toBeInTheDocument();
   });
 
@@ -216,5 +241,55 @@ describe('CollectionSettingsModal', () => {
     });
     const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
     expect(dropdown.value).toBe('move-to-bottom');
+  });
+
+  it('should show "Use default" option with global preference label', () => {
+    renderModal();
+    const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
+    const useDefaultOption = Array.from(dropdown.options).find(opt => opt.value === 'use-default');
+    
+    expect(useDefaultOption).toBeDefined();
+    expect(useDefaultOption?.textContent).toContain('Use default');
+    expect(useDefaultOption?.textContent).toContain('Move to bottom'); // From mocked preference
+  });
+
+  it('should call onSubmit with undefined when "Use default" is selected', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    renderModal({ onSubmit, currentSettings: { completedTaskBehavior: 'collapse' } });
+    
+    const dropdown = screen.getByRole('combobox');
+    
+    // Select "Use default"
+    await user.selectOptions(dropdown, 'use-default');
+    
+    const saveButton = screen.getByRole('button', { name: /save/i });
+    await user.click(saveButton);
+    
+    // Should save with completedTaskBehavior as undefined
+    expect(onSubmit).toHaveBeenCalledWith({ completedTaskBehavior: undefined });
+  });
+
+  it('should display global default description when "Use default" is selected', async () => {
+    const user = userEvent.setup();
+    renderModal();
+    
+    const dropdown = screen.getByRole('combobox');
+    await user.selectOptions(dropdown, 'use-default');
+    
+    expect(screen.getByText(/uses global default: move to bottom/i)).toBeInTheDocument();
+  });
+
+  it('should update "Use default" label when global preference changes', () => {
+    vi.mocked(useUserPreferences).mockReturnValue({
+      defaultCompletedTaskBehavior: 'collapse',
+      autoFavoriteRecentDailyLogs: false,
+    });
+
+    renderModal();
+    const dropdown = screen.getByRole('combobox') as HTMLSelectElement;
+    const useDefaultOption = Array.from(dropdown.options).find(opt => opt.value === 'use-default');
+    
+    expect(useDefaultOption?.textContent).toContain('Collapse'); // Updated preference
   });
 });

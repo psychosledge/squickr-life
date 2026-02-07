@@ -66,6 +66,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    strictPort: true, // Don't auto-increment port if 3000 is in use
     open: true,
   },
 });

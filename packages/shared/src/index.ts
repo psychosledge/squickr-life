@@ -89,6 +89,15 @@ export type {
   CollectionEvent,
 } from './collection.types';
 
+// User preferences domain types
+export type {
+  UserPreferences,
+  UserPreferencesUpdated,
+  UpdateUserPreferencesCommand,
+  UserPreferencesEvent,
+} from './user-preferences.types';
+export { DEFAULT_USER_PREFERENCES } from './user-preferences.types';
+
 // Unified entry types
 export type {
   EntryType,
@@ -126,6 +135,9 @@ export {
   AccessCollectionHandler
 } from './collection.handlers';
 
+// User Preferences Command Handlers
+export { UpdateUserPreferencesHandler } from './user-preferences.handlers';
+
 // Helpers
 export { generateEventMetadata } from './event-helpers';
 export type { EventMetadata } from './event-helpers';
@@ -139,3 +151,5 @@ export { validateCollectionDate } from './collection-date-validation';
 export { TaskListProjection } from './task.projections';
 export { EntryListProjection } from './entry.projections';
 export { CollectionListProjection } from './collection.projections';
+export { UserPreferencesProjection } from './user-preferences.projections';
+

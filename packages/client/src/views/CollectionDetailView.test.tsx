@@ -63,6 +63,7 @@ describe('CollectionDetailView', () => {
     mockEventStore = {
       append: vi.fn(),
       getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -261,6 +262,7 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
     mockEventStore = {
       append: vi.fn(),
       getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
   });
@@ -437,6 +439,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
     mockEventStore = {
       append: vi.fn(),
       getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
   });

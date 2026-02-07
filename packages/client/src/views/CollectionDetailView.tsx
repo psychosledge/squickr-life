@@ -15,6 +15,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Collection, Entry } from '@squickr/shared';
 import { useApp } from '../context/AppContext';
+import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useCollectionHandlers } from '../hooks/useCollectionHandlers';
 import { useCollectionModals } from '../hooks/useCollectionModals';
 import { useEntryOperations } from '../hooks/useEntryOperations';
@@ -35,6 +36,7 @@ export function CollectionDetailView() {
   const { id: collectionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { eventStore, collectionProjection, entryProjection, taskProjection, migrateTaskHandler, migrateNoteHandler, migrateEventHandler, createCollectionHandler } = useApp();
+  const userPreferences = useUserPreferences();
 
   const [collection, setCollection] = useState<Collection | null>(null);
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
@@ -233,13 +235,14 @@ export function CollectionDetailView() {
   const settings = collection.settings;
   
   // Migration: convert old collapseCompleted boolean to new behavior enum
+  // If undefined, use global default preference
   const completedTaskBehavior = settings?.completedTaskBehavior !== undefined 
     ? settings.completedTaskBehavior 
     : settings?.collapseCompleted === true 
       ? 'collapse' 
       : settings?.collapseCompleted === false 
         ? 'keep-in-place' 
-        : 'keep-in-place'; // Default for undefined
+        : userPreferences.defaultCompletedTaskBehavior; // Use global default
   
   // Partition entries based on behavior mode
   const shouldPartition = completedTaskBehavior === 'move-to-bottom' || completedTaskBehavior === 'collapse';
