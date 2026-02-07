@@ -30,16 +30,6 @@ export interface UseEntryOperationsParams {
   entryProjection: EntryListProjection; // Phase 4: Need projection for sub-task queries
 }
 
-export interface UseEntryOperationsParams {
-  handlers: CollectionHandlers;
-  entries: Entry[];
-  collection: Collection | null;
-  migrateTaskHandler: MigrateTaskHandler;
-  migrateNoteHandler: MigrateNoteHandler;
-  migrateEventHandler: MigrateEventHandler;
-  createCollectionHandler: CreateCollectionHandler;
-}
-
 export interface EntryOperations {
   // Entry creation operations
   handleCreateTask: (title: string) => Promise<void>;
@@ -150,8 +140,16 @@ export function useEntryOperations(
             taskId,
             incompleteCount,
             async () => {
-              // User confirmed - cascade complete using CompleteParentTaskHandler
-              await handlers.completeParentTaskHandler.handle({ taskId, confirmed: true });
+              // Re-check status in case children completed while dialog was open
+              const currentStatus = await entryProjection.getParentCompletionStatus(taskId);
+              
+              if (currentStatus.allComplete) {
+                // All children now complete → use standard completion
+                await handlers.completeTaskHandler.handle({ taskId });
+              } else {
+                // Still have incomplete children → cascade complete
+                await handlers.completeParentTaskHandler.handle({ taskId, confirmed: true });
+              }
             }
           );
           return; // Exit early, confirmation dialog will handle completion
