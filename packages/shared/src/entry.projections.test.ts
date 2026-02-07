@@ -1362,5 +1362,147 @@ describe('EntryListProjection', () => {
       expect(stats.get('collection-A')!.completedTasks).toBe(1);
     });
   });
+
+  describe('migration pointer sanitization', () => {
+    it('should preserve valid migration pointers when target exists', async () => {
+      // Create task in collection-A
+      const taskId = await taskHandler.handle({ title: 'Original task', collectionId: 'collection-A' });
+      
+      // Migrate task to collection-B
+      const migrateHandler = new MigrateTaskHandler(eventStore, projection);
+      const newTaskId = await migrateHandler.handle({ taskId, targetCollectionId: 'collection-B' });
+      
+      // Original task should still have migratedTo pointer
+      const originalTask = await projection.getTaskById(taskId);
+      expect(originalTask).toBeDefined();
+      expect(originalTask!.migratedTo).toBe(newTaskId);
+      expect(originalTask!.migratedToCollectionId).toBe('collection-B');
+      
+      // New task should exist
+      const newTask = await projection.getTaskById(newTaskId);
+      expect(newTask).toBeDefined();
+      expect(newTask!.migratedFrom).toBe(taskId);
+    });
+
+    it('should clear invalid migration pointer when migrated target is deleted', async () => {
+      // Create task in collection-A
+      const taskId = await taskHandler.handle({ title: 'Original task', collectionId: 'collection-A' });
+      
+      // Migrate task to collection-B
+      const migrateHandler = new MigrateTaskHandler(eventStore, projection);
+      const newTaskId = await migrateHandler.handle({ taskId, targetCollectionId: 'collection-B' });
+      
+      // Delete the migrated target
+      const deleteHandler = new DeleteTaskHandler(eventStore, projection);
+      await deleteHandler.handle({ taskId: newTaskId });
+      
+      // Original task should have migration pointer cleared
+      const originalTask = await projection.getTaskById(taskId);
+      expect(originalTask).toBeDefined();
+      expect(originalTask!.migratedTo).toBeUndefined();
+      expect(originalTask!.migratedToCollectionId).toBeUndefined();
+    });
+
+    it('should clear invalid migration pointer for notes when target is deleted', async () => {
+      // Create note in collection-A
+      const noteId = await noteHandler.handle({ content: 'Original note', collectionId: 'collection-A' });
+      
+      // Migrate note to collection-B
+      const { MigrateNoteHandler } = await import('./note.handlers');
+      const migrateHandler = new MigrateNoteHandler(eventStore, projection);
+      const newNoteId = await migrateHandler.handle({ noteId, targetCollectionId: 'collection-B' });
+      
+      // Delete the migrated target
+      const deleteHandler = new DeleteNoteHandler(eventStore, projection);
+      await deleteHandler.handle({ noteId: newNoteId });
+      
+      // Original note should have migration pointer cleared
+      const originalNote = await projection.getNoteById(noteId);
+      expect(originalNote).toBeDefined();
+      expect(originalNote!.migratedTo).toBeUndefined();
+      expect(originalNote!.migratedToCollectionId).toBeUndefined();
+    });
+
+    it('should clear invalid migration pointer for events when target is deleted', async () => {
+      // Create event in collection-A
+      const eventId = await eventHandler.handle({ content: 'Original event', collectionId: 'collection-A' });
+      
+      // Migrate event to collection-B
+      const { MigrateEventHandler } = await import('./event.handlers');
+      const migrateHandler = new MigrateEventHandler(eventStore, projection);
+      const newEventId = await migrateHandler.handle({ eventId, targetCollectionId: 'collection-B' });
+      
+      // Delete the migrated target
+      const deleteHandler = new DeleteEventHandler(eventStore, projection);
+      await deleteHandler.handle({ eventId: newEventId });
+      
+      // Original event should have migration pointer cleared
+      const originalEvent = await projection.getEventById(eventId);
+      expect(originalEvent).toBeDefined();
+      expect(originalEvent!.migratedTo).toBeUndefined();
+      expect(originalEvent!.migratedToCollectionId).toBeUndefined();
+    });
+
+    it('should sanitize migration pointers in getEntriesByCollection', async () => {
+      // Create and migrate a task
+      const taskId = await taskHandler.handle({ title: 'Task to migrate', collectionId: 'collection-A' });
+      const migrateHandler = new MigrateTaskHandler(eventStore, projection);
+      const newTaskId = await migrateHandler.handle({ taskId, targetCollectionId: 'collection-B' });
+      
+      // Delete migrated target
+      const deleteHandler = new DeleteTaskHandler(eventStore, projection);
+      await deleteHandler.handle({ taskId: newTaskId });
+      
+      // Get entries by collection
+      const entriesInA = await projection.getEntriesByCollection('collection-A');
+      expect(entriesInA).toHaveLength(1);
+      
+      const originalTask = entriesInA[0];
+      expect(originalTask.type).toBe('task');
+      if (originalTask.type === 'task') {
+        expect(originalTask.migratedTo).toBeUndefined();
+        expect(originalTask.migratedToCollectionId).toBeUndefined();
+      }
+    });
+
+    it('should handle cross-type migration pointer validation', async () => {
+      // Test that we check all three maps (tasks, notes, events) when validating pointers
+      // Create task, note, and event
+      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      const noteId = await noteHandler.handle({ content: 'Note', collectionId: 'collection-A' });
+      const eventId = await eventHandler.handle({ content: 'Event', collectionId: 'collection-A' });
+      
+      // Migrate all three
+      const migrateTaskHandler = new MigrateTaskHandler(eventStore, projection);
+      const newTaskId = await migrateTaskHandler.handle({ taskId, targetCollectionId: 'collection-B' });
+      
+      const { MigrateNoteHandler } = await import('./note.handlers');
+      const migrateNoteHandler = new MigrateNoteHandler(eventStore, projection);
+      const newNoteId = await migrateNoteHandler.handle({ noteId, targetCollectionId: 'collection-B' });
+      
+      const { MigrateEventHandler } = await import('./event.handlers');
+      const migrateEventHandler = new MigrateEventHandler(eventStore, projection);
+      const newEventId = await migrateEventHandler.handle({ eventId, targetCollectionId: 'collection-B' });
+      
+      // Delete all migrated targets
+      const deleteTaskHandler = new DeleteTaskHandler(eventStore, projection);
+      await deleteTaskHandler.handle({ taskId: newTaskId });
+      
+      const deleteNoteHandler = new DeleteNoteHandler(eventStore, projection);
+      await deleteNoteHandler.handle({ noteId: newNoteId });
+      
+      const deleteEventHandler = new DeleteEventHandler(eventStore, projection);
+      await deleteEventHandler.handle({ eventId: newEventId });
+      
+      // All originals should have migration pointers cleared
+      const entries = await projection.getEntriesByCollection('collection-A');
+      expect(entries).toHaveLength(3);
+      
+      entries.forEach(entry => {
+        expect(entry.migratedTo).toBeUndefined();
+        expect(entry.migratedToCollectionId).toBeUndefined();
+      });
+    });
+  });
 });
 

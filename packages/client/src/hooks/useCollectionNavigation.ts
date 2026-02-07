@@ -12,6 +12,7 @@ import { useApp } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 import { useUserPreferences } from './useUserPreferences';
+import { useSwipeProgress } from './useSwipeProgress';
 
 const SWIPE_THRESHOLD = 100; // Minimum pixels for horizontal swipe detection
 const VERTICAL_PRIORITY_RATIO = 1.5; // If vertical movement > horizontal * ratio, treat as scroll
@@ -21,6 +22,9 @@ export interface UseCollectionNavigationResult {
   nextCollection: Collection | null;
   navigateToPrevious: () => void;
   navigateToNext: () => void;
+  // Swipe progress state for visual feedback
+  isSwipeActive: boolean;
+  swipeProgress: number;
 }
 
 export function useCollectionNavigation(
@@ -32,6 +36,9 @@ export function useCollectionNavigation(
   const [collections, setCollections] = useState<Collection[]>([]);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+
+  // Swipe progress hook for visual feedback
+  const swipeProgress = useSwipeProgress();
 
   // Load collections including virtual uncategorized if needed
   const loadCollections = useCallback(async () => {
@@ -135,17 +142,29 @@ export function useCollectionNavigation(
       if (event.touches.length === 1) {
         touchStartX.current = event.touches[0]?.clientX ?? null;
         touchStartY.current = event.touches[0]?.clientY ?? null;
+        // Delegate to swipe progress hook
+        swipeProgress.handleTouchStart(event);
       }
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      // Delegate to swipe progress hook for visual feedback
+      swipeProgress.handleTouchMove(event);
     };
 
     const handleTouchEnd = (event: TouchEvent) => {
       if (touchStartX.current === null || touchStartY.current === null || event.changedTouches.length === 0) {
+        // Delegate to swipe progress hook to reset state
+        swipeProgress.handleTouchEnd(event);
         return;
       }
 
       const touchEndX = event.changedTouches[0]?.clientX;
       const touchEndY = event.changedTouches[0]?.clientY;
-      if (touchEndX === undefined || touchEndY === undefined) return;
+      if (touchEndX === undefined || touchEndY === undefined) {
+        swipeProgress.handleTouchEnd(event);
+        return;
+      }
       
       const deltaX = touchEndX - touchStartX.current;
       const deltaY = touchEndY - touchStartY.current;
@@ -171,21 +190,29 @@ export function useCollectionNavigation(
 
       touchStartX.current = null;
       touchStartY.current = null;
+      
+      // Delegate to swipe progress hook to reset state
+      swipeProgress.handleTouchEnd(event);
     };
 
     window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchmove', handleTouchMove); // Add touchmove listener
     window.addEventListener('touchend', handleTouchEnd);
 
     return () => {
       window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove); // Clean up touchmove
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [navigateToPrevious, navigateToNext]);
+  }, [navigateToPrevious, navigateToNext, swipeProgress]);
 
   return {
     previousCollection,
     nextCollection,
     navigateToPrevious,
     navigateToNext,
+    // Expose swipe progress state for visual feedback
+    isSwipeActive: swipeProgress.isSwipeActive,
+    swipeProgress: swipeProgress.swipeProgress,
   };
 }

@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-02-07
+
+### Fixed
+- **Data Integrity:** Invalid migration indicators now automatically cleared when migrated entry is deleted (projection-level filtering)
+- **Visual:** Eliminated large gap (89% reduction: 144px → 16px) between active and completed tasks sections by moving FAB clearance padding to parent container
+- **UX:** Auto-favorited daily logs (Today/Yesterday/Tomorrow) now persist in Favorites section even when year/month hierarchy is collapsed
+- **Mobile:** Added swipe feedback indicators with arrows, collection names, and progress bar for clearer navigation
+
+### Changed
+- **Collection Modal:** Reordered "Create Collection" modal fields - type selector now appears first for better decision flow
+- **Collection List:** Removed star icons from sidebar and added clear section headers ("Favorites", "Daily Logs", "Collections") for improved visual hierarchy
+- **Architecture:** Moved bottom padding responsibility from EntryList component to parent views for proper separation of concerns
+
+### Added
+- New hook: `useSwipeProgress` for tracking swipe gestures and progress
+- New component: `SwipeIndicator` for visual swipe feedback with dark mode support
+- Section headers in hierarchical collection list for better visual organization
+- Projection filtering for invalid migration pointers with comprehensive test coverage
+
+### Developer
+- Added 6 regression tests for migration pointer sanitization
+- Added 1 regression test for auto-favorites persistence  
+- Added 25 new tests for swipe feedback feature (11 hook + 14 component)
+- Improved component reusability by removing layout assumptions from EntryList
+- All 682 tests passing (shared + client)
+- No breaking changes to existing APIs
+
 ## [0.5.1] - 2026-02-06
 
 ### Fixed

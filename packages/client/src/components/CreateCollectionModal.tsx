@@ -49,11 +49,12 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
   const [monthlyYear, setMonthlyYear] = useState(() => new Date().getFullYear());
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const typeRadioRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus input when modal opens
+  // Auto-focus type selector when modal opens
   useEffect(() => {
     if (isOpen) {
-      inputRef.current?.focus();
+      typeRadioRef.current?.focus();
     }
   }, [isOpen]);
 
@@ -207,52 +208,15 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
         </h2>
 
         <form onSubmit={handleSubmit}>
-          {error && type !== 'custom' && (
-            <div className="mb-4">
-              <div className="text-sm text-red-600 dark:text-red-400" role="alert">
-                {error}
-              </div>
-            </div>
-          )}
-
-          {type === 'custom' && (
-            <div className="mb-4">
-              <label 
-                htmlFor="collection-name" 
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Collection Name
-              </label>
-              <input
-                ref={inputRef}
-                id="collection-name"
-                type="text"
-                value={name}
-                onChange={(e) => handleChange(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="e.g., Work Projects, Reading List"
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                           placeholder-gray-400 dark:placeholder-gray-500
-                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                aria-invalid={error ? 'true' : 'false'}
-                aria-describedby={error ? 'name-error' : undefined}
-              />
-              {error && (
-                <div id="name-error" className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
-                  {error}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="mb-4">
+          {/* Collection Type - FIRST field */}
+          <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Collection Type
             </label>
             <div className="space-y-2">
               <label className="flex items-center">
                 <input
+                  ref={typeRadioRef}
                   type="radio"
                   name="collection-type"
                   value="custom"
@@ -289,6 +253,38 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
               </label>
             </div>
           </div>
+
+          {/* Collection Name - only for custom type */}
+          {type === 'custom' && (
+            <div className="mb-4">
+              <label 
+                htmlFor="collection-name" 
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Collection Name
+              </label>
+              <input
+                ref={inputRef}
+                id="collection-name"
+                type="text"
+                value={name}
+                onChange={(e) => handleChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="e.g., Work Projects, Reading List"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+                           bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                           placeholder-gray-400 dark:placeholder-gray-500
+                           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                aria-invalid={error ? 'true' : 'false'}
+                aria-describedby={error ? 'name-error' : undefined}
+              />
+              {error && (
+                <div id="name-error" className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
+                  {error}
+                </div>
+              )}
+            </div>
+          )}
 
           {type === 'daily' && (
             <div className="mb-4">
@@ -339,6 +335,15 @@ export function CreateCollectionModal({ isOpen, onClose, onSubmit }: CreateColle
               
               <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                 Preview: {formatMonthlyLogName(`${monthlyYear}-${String(monthlyMonth + 1).padStart(2, '0')}`)}
+              </div>
+            </div>
+          )}
+
+          {/* Error message for non-custom types */}
+          {error && type !== 'custom' && (
+            <div className="mb-4">
+              <div className="text-sm text-red-600 dark:text-red-400" role="alert">
+                {error}
               </div>
             </div>
           )}

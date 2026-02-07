@@ -20,6 +20,7 @@ import { useCollectionHandlers } from '../hooks/useCollectionHandlers';
 import { useCollectionModals } from '../hooks/useCollectionModals';
 import { useEntryOperations } from '../hooks/useEntryOperations';
 import { useSelectionMode } from '../hooks/useSelectionMode';
+import { useCollectionNavigation } from '../hooks/useCollectionNavigation';
 import { CollectionHeader } from '../components/CollectionHeader';
 import { EntryList } from '../components/EntryList';
 import { EntryInputModal } from '../components/EntryInputModal';
@@ -28,6 +29,7 @@ import { DeleteCollectionModal } from '../components/DeleteCollectionModal';
 import { CollectionSettingsModal } from '../components/CollectionSettingsModal';
 import { MigrateEntryModal } from '../components/MigrateEntryModal';
 import { SelectionToolbar } from '../components/SelectionToolbar';
+import { SwipeIndicator } from '../components/SwipeIndicator';
 import { FAB } from '../components/FAB';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { DEBOUNCE } from '../utils/constants';
@@ -45,6 +47,9 @@ export function CollectionDetailView() {
 
   // Selection mode state
   const selection = useSelectionMode();
+
+  // Collection navigation with swipe feedback
+  const navigation = useCollectionNavigation(collectionId || '');
 
   // Migration modal state for bulk migration
   const [isBulkMigrateModalOpen, setIsBulkMigrateModalOpen] = useState(false);
@@ -269,7 +274,7 @@ export function CollectionDetailView() {
       />
 
       {/* Entry list */}
-      <div className="py-8 px-4">
+      <div className="py-8 px-4 pb-20">
         {/* Active entries (or all entries if not collapsed) */}
         <EntryList
           entries={activeTasks}
@@ -293,9 +298,9 @@ export function CollectionDetailView() {
 
         {/* Completed tasks section - Mode 2: Move to bottom */}
         {completedTaskBehavior === 'move-to-bottom' && completedTasks.length > 0 && (
-          <div className="mt-8 max-w-4xl mx-auto">
+          <div className="mt-4 max-w-2xl mx-auto">
             {/* Separator */}
-            <div className="border-t border-gray-200 dark:border-gray-700 my-4" />
+            <div className="border-t border-gray-200 dark:border-gray-700" />
             
             <EntryList
               entries={completedTasks}
@@ -321,7 +326,7 @@ export function CollectionDetailView() {
 
         {/* Completed tasks section - Mode 3: Collapse */}
         {completedTaskBehavior === 'collapse' && completedTasks.length > 0 && (
-          <div className="mt-8 max-w-4xl mx-auto">
+          <div className="mt-4 max-w-2xl mx-auto">
             <button
               onClick={modals.toggleCompletedExpanded}
               className="
@@ -437,6 +442,14 @@ export function CollectionDetailView() {
           onCancel={selection.exitSelectionMode}
         />
       )}
+
+      {/* Swipe feedback indicator */}
+      <SwipeIndicator
+        isSwipeActive={navigation.isSwipeActive}
+        swipeProgress={navigation.swipeProgress}
+        previousCollectionName={navigation.previousCollection?.name ?? null}
+        nextCollectionName={navigation.nextCollection?.name ?? null}
+      />
     </div>
   );
 }

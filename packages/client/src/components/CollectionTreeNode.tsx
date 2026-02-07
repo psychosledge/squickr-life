@@ -6,7 +6,6 @@ import type { Entry, UserPreferences } from '@squickr/shared';
 import { buildCollectionPath } from '../routes';
 import { CollectionStats } from './CollectionStats';
 import { ENTRY_ICONS } from '../utils/constants';
-import { isAutoFavorited } from '../utils/collectionUtils';
 
 interface CollectionTreeNodeProps {
   node: HierarchyNode;
@@ -59,21 +58,16 @@ export function CollectionTreeNode({
   // Indentation based on depth
   const paddingLeft = `${depth * 1.5}rem`;
   
-  // Icon selection with auto-favorite support
+  // Icon selection
   let icon = '';
   if (node.type === 'year' || node.type === 'month') {
     icon = node.isExpanded ? '▼' : '▶';
-  } else if (node.collection?.isFavorite) {
-    // Manually favorited - show filled star (for any collection type)
-    icon = ENTRY_ICONS.FAVORITE;
-  } else if (node.collection && isAutoFavorited(node.collection, userPreferences)) {
-    // Auto-favorited - show hollow star (only for daily logs when enabled)
-    icon = ENTRY_ICONS.AUTO_FAVORITE;
   } else if (node.type === 'monthly') {
     icon = ENTRY_ICONS.CALENDAR;
   } else if (node.type === 'day') {
     icon = ENTRY_ICONS.EVENT;
   } else {
+    // Custom collections - use note icon (no star)
     icon = ENTRY_ICONS.NOTE;
   }
   

@@ -94,9 +94,6 @@ export const ENTRY_ICONS = {
   /** Favorite/starred collection icon (manually favorited) */
   FAVORITE: '⭐',
   
-  /** Auto-favorited collection icon (hollow star) */
-  AUTO_FAVORITE: '✦',
-  
   /** Calendar collection icon */
   CALENDAR: '🗓️',
 } as const;
