@@ -6,6 +6,7 @@ interface EntryActionsMenuProps {
   onEdit: () => void;
   onMove: () => void;
   onDelete: () => void;
+  onAddSubTask?: () => void; // Phase 1: Sub-Tasks
   collections?: Collection[];
   onNavigateToMigrated?: (collectionId: string | null) => void;
 }
@@ -28,6 +29,7 @@ export function EntryActionsMenu({
   onEdit,
   onMove,
   onDelete,
+  onAddSubTask,
   collections,
   onNavigateToMigrated,
 }: EntryActionsMenuProps) {
@@ -40,6 +42,12 @@ export function EntryActionsMenu({
   const targetCollection = collections?.find(c => c.id === targetCollectionId);
   const targetCollectionName = targetCollection?.name || 'Unknown Collection';
   const showGoTo = isMigrated && collections && onNavigateToMigrated;
+
+  // Phase 1: Sub-Tasks - Check if "Add Sub-Task" should be available
+  // Only show for tasks that are NOT already sub-tasks (enforce 2-level limit)
+  const isTask = entry.type === 'task';
+  const isSubTask = isTask && !!entry.parentTaskId;
+  const canAddSubTask = isTask && !isSubTask && onAddSubTask;
 
   // Close menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -92,6 +100,13 @@ export function EntryActionsMenu({
     }
   };
 
+  const handleAddSubTask = () => {
+    if (onAddSubTask) {
+      onAddSubTask();
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div className="relative" ref={menuRef}>
       {/* Trigger Button */}
@@ -137,6 +152,16 @@ export function EntryActionsMenu({
           >
             Migrate
           </button>
+          {/* Phase 1: Sub-Tasks - Add Sub-Task option */}
+          {canAddSubTask && (
+            <button
+              role="menuitem"
+              onClick={handleAddSubTask}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              Add Sub-Task
+            </button>
+          )}
           <button
             role="menuitem"
             onClick={handleDelete}
