@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - In Progress
+
+### Added
+- **Sub-Tasks Feature (In Development):** Break down large tasks into actionable sub-tasks
+  - Phase 1: Core sub-task creation and display under parent tasks
+  - Phase 2: Migration symlink behavior (sub-tasks appear in both parent and migrated locations)
+  - Phase 3: Parent migration cascade (unmigrated children follow parent)
+  - Phase 4: Completion cascade with confirmation (complete parent → complete all children)
+  - Phase 5: Deletion cascade with confirmation (delete parent → delete all children)
+  - Two-level hierarchy for MVP (parent → sub-task, expandable to unlimited later)
+  - Symlink behavior: migrated sub-tasks visible in both daily log and parent's collection
+  - Context menu: "Add Sub-Task", "Go to Parent", "Go to [Collection]"
+  - Visual indicators: 🔗 icon for migrated sub-tasks, completion badge on parents (e.g., "2/4")
+
+### Design
+- Comprehensive sub-tasks design specification (`docs/sub-tasks-design.md`)
+- No orphaning allowed: parent completion/deletion cascades to all children
+- Clean Architecture maintained: domain events, projections, handlers pattern
+- Event sourcing: `TaskCreated` extended with optional `parentTaskId` field
+- Estimated implementation: 30-38 hours across 6 phases
+
+### Developer
+- Iterative delivery: ship each phase after code review
+- Casey reviews each phase before moving to next
+- All phases follow TDD workflow (tests first, then implementation)
+
 ## [0.6.1] - 2026-02-07
 
 ### Fixed
