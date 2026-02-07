@@ -60,8 +60,15 @@ export async function uploadLocalEvents(
   // Upload in batches (Firestore allows max 500 writes per batch)
   await batchUploadToFirestore(userId, eventsToUpload);
   
-  // Update last sync timestamp
-  localStorage.setItem('last_sync_timestamp', new Date().toISOString());
+  // Update last sync timestamp to the latest uploaded event's timestamp
+  // (not current time, to avoid skipping events created between syncs)
+  const sortedEvents = [...eventsToUpload].sort((a, b) => 
+    a.timestamp.localeCompare(b.timestamp)
+  );
+  const latestEvent = sortedEvents[sortedEvents.length - 1];
+  if (latestEvent) {
+    localStorage.setItem('last_sync_timestamp', latestEvent.timestamp);
+  }
   
   logger.info('[Sync]', `Upload complete: ${eventsToUpload.length} events uploaded ✓`);
   
