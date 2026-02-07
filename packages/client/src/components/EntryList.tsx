@@ -3,7 +3,9 @@ import { useMemo, useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableEntryItem } from './SortableEntryItem';
+import { EntryItem } from './EntryItem';
 import { DRAG_SENSOR_CONFIG } from '../utils/constants';
+import type { Task } from '@squickr/domain';
 
 interface EntryListProps {
   entries: Entry[];
@@ -39,6 +41,8 @@ interface EntryListProps {
     completed: number;
     allComplete: boolean;
   }>;
+  // Phase 3: Optional sub-task fetcher (for rendering sub-tasks under parents)
+  getSubTasks?: (parentTaskId: string) => Promise<Task[]>;
 }
 
 /**
@@ -68,6 +72,7 @@ export function EntryList({
   onToggleSelection,
   onAddSubTask,
   getCompletionStatus,
+  getSubTasks,
 }: EntryListProps) {
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -110,51 +115,74 @@ export function EntryList({
     allComplete: boolean;
   }>>(new Map());
   
-  // Recalculate completion status when entries change
+  // Phase 3: Store sub-tasks for each parent task
+  // This map stores sub-task arrays by parent task ID
+  const [subTasksMap, setSubTasksMap] = useState<Map<string, Task[]>>(new Map());
+  
+  // Recalculate completion status and fetch sub-tasks when entries change
   useEffect(() => {
-    // Skip if getCompletionStatus is not provided (e.g., in tests)
-    if (!getCompletionStatus) return;
-    
     // Race condition guard: prevent state updates after unmount/re-render
     let isCancelled = false;
     
-    const calculateCompletionStatus = async () => {
+    const calculateStatusAndFetchSubTasks = async () => {
       const statusMap = new Map<string, {
         total: number;
         completed: number;
         allComplete: boolean;
       }>();
+      const subTasksMapTemp = new Map<string, Task[]>();
       
-      // Calculate status for all task entries in parallel
-      const statusPromises = topLevelEntries
-        .filter(entry => entry.type === 'task')
-        .map(async (entry) => {
+      // Get all task entries
+      const taskEntries = topLevelEntries.filter(entry => entry.type === 'task');
+      
+      // Calculate status for all task entries in parallel (if getCompletionStatus provided)
+      if (getCompletionStatus) {
+        const statusPromises = taskEntries.map(async (entry) => {
           const status = await getCompletionStatus(entry.id);
           return { entryId: entry.id, status };
         });
+        
+        const results = await Promise.all(statusPromises);
+        
+        // Only store status for tasks with children
+        results.forEach(({ entryId, status }) => {
+          if (status.total > 0) {
+            statusMap.set(entryId, status);
+          }
+        });
+      }
       
-      const results = await Promise.all(statusPromises);
+      // Fetch sub-tasks for all task entries in parallel (if getSubTasks provided)
+      if (getSubTasks) {
+        const subTaskPromises = taskEntries.map(async (entry) => {
+          const subTasks = await getSubTasks(entry.id);
+          return { parentId: entry.id, subTasks };
+        });
+        
+        const subTaskResults = await Promise.all(subTaskPromises);
+        
+        // Store sub-tasks for each parent
+        subTaskResults.forEach(({ parentId, subTasks }) => {
+          if (subTasks.length > 0) {
+            subTasksMapTemp.set(parentId, subTasks);
+          }
+        });
+      }
       
       // Check if component unmounted or effect re-triggered
       if (isCancelled) return;
       
-      // Only store status for tasks with children
-      results.forEach(({ entryId, status }) => {
-        if (status.total > 0) {
-          statusMap.set(entryId, status);
-        }
-      });
-      
       setCompletionStatusMap(statusMap);
+      setSubTasksMap(subTasksMapTemp);
     };
     
-    calculateCompletionStatus();
+    calculateStatusAndFetchSubTasks();
     
     // Cleanup: mark this effect as cancelled on unmount/re-render
     return () => {
       isCancelled = true;
     };
-  }, [topLevelEntries, getCompletionStatus]);
+  }, [topLevelEntries, getCompletionStatus, getSubTasks]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -210,29 +238,61 @@ export function EntryList({
       >
         <SortableContext items={topLevelEntries.map(e => e.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
-            {topLevelEntries.map((entry) => (
-              <SortableEntryItem
-                key={entry.id}
-                entry={entry}
-                onCompleteTask={onCompleteTask}
-                onReopenTask={onReopenTask}
-                onUpdateTaskTitle={onUpdateTaskTitle}
-                onUpdateNoteContent={onUpdateNoteContent}
-                onUpdateEventContent={onUpdateEventContent}
-                onUpdateEventDate={onUpdateEventDate}
-                onDelete={onDelete}
-                onMigrate={onMigrate}
-                collections={collections}
-                currentCollectionId={currentCollectionId}
-                onNavigateToMigrated={onNavigateToMigrated}
-                onCreateCollection={onCreateCollection}
-                onAddSubTask={onAddSubTask}
-                isSelectionMode={isSelectionMode}
-                isSelected={selectedEntryIds.has(entry.id)}
-                onToggleSelection={onToggleSelection}
-                completionStatus={completionStatusMap.get(entry.id)}
-              />
-            ))}
+            {topLevelEntries.map((entry) => {
+              // Get sub-tasks for this entry (if it's a task)
+              const subTasks = entry.type === 'task' ? (subTasksMap.get(entry.id) || []) : [];
+              
+              return (
+                <div key={entry.id}>
+                  {/* Render parent entry (draggable) */}
+                  <SortableEntryItem
+                    entry={entry}
+                    onCompleteTask={onCompleteTask}
+                    onReopenTask={onReopenTask}
+                    onUpdateTaskTitle={onUpdateTaskTitle}
+                    onUpdateNoteContent={onUpdateNoteContent}
+                    onUpdateEventContent={onUpdateEventContent}
+                    onUpdateEventDate={onUpdateEventDate}
+                    onDelete={onDelete}
+                    onMigrate={onMigrate}
+                    collections={collections}
+                    currentCollectionId={currentCollectionId}
+                    onNavigateToMigrated={onNavigateToMigrated}
+                    onCreateCollection={onCreateCollection}
+                    onAddSubTask={onAddSubTask}
+                    isSelectionMode={isSelectionMode}
+                    isSelected={selectedEntryIds.has(entry.id)}
+                    onToggleSelection={onToggleSelection}
+                    completionStatus={completionStatusMap.get(entry.id)}
+                  />
+                  
+                  {/* Render sub-tasks indented (non-draggable) - Phase 3 */}
+                  {subTasks.length > 0 && (
+                    <div className="pl-8 space-y-2 mt-2">
+                      {subTasks.map((subTask) => (
+                        <EntryItem
+                          key={subTask.id}
+                          entry={{ ...subTask, type: 'task' as const }}
+                          onCompleteTask={onCompleteTask}
+                          onReopenTask={onReopenTask}
+                          onUpdateTaskTitle={onUpdateTaskTitle}
+                          onUpdateNoteContent={onUpdateNoteContent}
+                          onUpdateEventContent={onUpdateEventContent}
+                          onUpdateEventDate={onUpdateEventDate}
+                          onDelete={onDelete}
+                          onMigrate={onMigrate}
+                          collections={collections}
+                          currentCollectionId={currentCollectionId}
+                          onNavigateToMigrated={onNavigateToMigrated}
+                          onCreateCollection={onCreateCollection}
+                          onAddSubTask={onAddSubTask}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </SortableContext>
       </DndContext>
