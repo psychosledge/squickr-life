@@ -19,6 +19,7 @@ import {
   CreateNoteHandler,
   CreateEventHandler,
   CompleteTaskHandler,
+  CompleteParentTaskHandler,
   ReopenTaskHandler,
   UpdateTaskTitleHandler,
   UpdateNoteContentHandler,
@@ -46,6 +47,7 @@ export interface CollectionHandlers {
   
   // Task state handlers
   completeTaskHandler: CompleteTaskHandler;
+  completeParentTaskHandler: CompleteParentTaskHandler; // Phase 4: Completion cascade
   reopenTaskHandler: ReopenTaskHandler;
   
   // Entry update handlers
@@ -113,6 +115,12 @@ export function useCollectionHandlers({
   // Task state handlers
   const completeTaskHandler = useMemo(
     () => new CompleteTaskHandler(eventStore, entryProjection),
+    [eventStore, entryProjection]
+  );
+  
+  // Phase 4: Completion cascade handler
+  const completeParentTaskHandler = useMemo(
+    () => new CompleteParentTaskHandler(eventStore, entryProjection),
     [eventStore, entryProjection]
   );
   
@@ -206,6 +214,7 @@ export function useCollectionHandlers({
     createNoteHandler,
     createEventHandler,
     completeTaskHandler,
+    completeParentTaskHandler,
     reopenTaskHandler,
     updateTaskTitleHandler,
     updateNoteContentHandler,

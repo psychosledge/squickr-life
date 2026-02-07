@@ -15,9 +15,20 @@
 
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Entry, Collection, CollectionSettings, MigrateTaskHandler, MigrateNoteHandler, MigrateEventHandler, CreateCollectionHandler } from '@squickr/domain';
+import type { Entry, Collection, CollectionSettings, MigrateTaskHandler, MigrateNoteHandler, MigrateEventHandler, CreateCollectionHandler, EntryListProjection } from '@squickr/domain';
 import type { CollectionHandlers } from './useCollectionHandlers';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
+
+export interface UseEntryOperationsParams {
+  handlers: CollectionHandlers;
+  entries: Entry[];
+  collection: Collection | null;
+  migrateTaskHandler: MigrateTaskHandler;
+  migrateNoteHandler: MigrateNoteHandler;
+  migrateEventHandler: MigrateEventHandler;
+  createCollectionHandler: CreateCollectionHandler;
+  entryProjection: EntryListProjection; // Phase 4: Need projection for sub-task queries
+}
 
 export interface UseEntryOperationsParams {
   handlers: CollectionHandlers;
@@ -74,6 +85,7 @@ export interface UseEntryOperationsConfig {
   onCloseDeleteModal: () => void;
   onOpenDeleteModal: () => void;
   onOpenSettingsModal: () => void;
+  onShowConfirmCompleteParent?: (taskId: string, incompleteCount: number, onConfirm: () => void) => void; // Phase 4: Completion cascade
 }
 
 /**
@@ -88,6 +100,7 @@ export function useEntryOperations(
     migrateNoteHandler,
     migrateEventHandler,
     createCollectionHandler,
+    entryProjection, // Phase 4: Need for sub-task queries
   }: UseEntryOperationsParams,
   config: UseEntryOperationsConfig
 ): EntryOperations {
@@ -119,9 +132,41 @@ export function useEntryOperations(
   }, [handlers.createEventHandler, collectionId]);
 
   // Task state operations
+  // Phase 4: Completion Cascade - Check for sub-tasks before completing
   const handleCompleteTask = useCallback(async (taskId: string) => {
+    // Check if task has sub-tasks
+    const isParent = await entryProjection.isParentTask(taskId);
+    
+    if (isParent) {
+      // Task has sub-tasks - check completion status
+      const status = await entryProjection.getParentCompletionStatus(taskId);
+      
+      if (!status.allComplete) {
+        // Has incomplete sub-tasks - show confirmation dialog
+        const incompleteCount = status.total - status.completed;
+        
+        if (config.onShowConfirmCompleteParent) {
+          config.onShowConfirmCompleteParent(
+            taskId,
+            incompleteCount,
+            async () => {
+              // User confirmed - cascade complete using CompleteParentTaskHandler
+              await handlers.completeParentTaskHandler.handle({ taskId, confirmed: true });
+            }
+          );
+          return; // Exit early, confirmation dialog will handle completion
+        } else {
+          // No confirmation dialog configured, use standard error message
+          throw new Error(
+            `This will complete the parent task AND all ${incompleteCount} sub-task(s). Are you sure?`
+          );
+        }
+      }
+    }
+    
+    // No sub-tasks or all sub-tasks complete - use standard complete handler
     await handlers.completeTaskHandler.handle({ taskId });
-  }, [handlers.completeTaskHandler]);
+  }, [handlers.completeTaskHandler, handlers.completeParentTaskHandler, entryProjection, config]);
 
   const handleReopenTask = useCallback(async (taskId: string) => {
     await handlers.reopenTaskHandler.handle({ taskId });

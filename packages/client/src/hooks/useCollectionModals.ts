@@ -8,6 +8,7 @@
  * - Delete collection modal
  * - Collection settings modal
  * - Completed tasks expansion state
+ * - Confirm complete parent modal (Phase 4)
  */
 
 import { useState } from 'react';
@@ -19,6 +20,12 @@ export interface CollectionModalsState {
   isDeleteModalOpen: boolean;
   isSettingsModalOpen: boolean;
   isCompletedExpanded: boolean;
+  isConfirmCompleteParentOpen: boolean; // Phase 4
+  confirmCompleteParentData: { // Phase 4
+    taskId: string;
+    incompleteCount: number;
+    onConfirm: () => void;
+  } | null;
   
   // Modal control functions
   openModal: () => void;
@@ -30,6 +37,8 @@ export interface CollectionModalsState {
   openSettingsModal: () => void;
   closeSettingsModal: () => void;
   toggleCompletedExpanded: () => void;
+  openConfirmCompleteParent: (taskId: string, incompleteCount: number, onConfirm: () => void) => void; // Phase 4
+  closeConfirmCompleteParent: () => void; // Phase 4
 }
 
 /**
@@ -41,6 +50,14 @@ export function useCollectionModals(): CollectionModalsState {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
+  
+  // Phase 4: Confirm complete parent modal state
+  const [isConfirmCompleteParentOpen, setIsConfirmCompleteParentOpen] = useState(false);
+  const [confirmCompleteParentData, setConfirmCompleteParentData] = useState<{
+    taskId: string;
+    incompleteCount: number;
+    onConfirm: () => void;
+  } | null>(null);
 
   return {
     // States
@@ -49,6 +66,8 @@ export function useCollectionModals(): CollectionModalsState {
     isDeleteModalOpen,
     isSettingsModalOpen,
     isCompletedExpanded,
+    isConfirmCompleteParentOpen,
+    confirmCompleteParentData,
     
     // Entry input modal controls
     openModal: () => setIsModalOpen(true),
@@ -68,5 +87,15 @@ export function useCollectionModals(): CollectionModalsState {
     
     // Completed tasks expansion controls
     toggleCompletedExpanded: () => setIsCompletedExpanded(prev => !prev),
+    
+    // Phase 4: Confirm complete parent controls
+    openConfirmCompleteParent: (taskId: string, incompleteCount: number, onConfirm: () => void) => {
+      setConfirmCompleteParentData({ taskId, incompleteCount, onConfirm });
+      setIsConfirmCompleteParentOpen(true);
+    },
+    closeConfirmCompleteParent: () => {
+      setIsConfirmCompleteParentOpen(false);
+      setConfirmCompleteParentData(null);
+    },
   };
 }

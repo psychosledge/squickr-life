@@ -29,6 +29,7 @@ import { DeleteCollectionModal } from '../components/DeleteCollectionModal';
 import { CollectionSettingsModal } from '../components/CollectionSettingsModal';
 import { MigrateEntryModal } from '../components/MigrateEntryModal';
 import { CreateSubTaskModal } from '../components/CreateSubTaskModal';
+import { ConfirmCompleteParentModal } from '../components/ConfirmCompleteParentModal';
 import { SelectionToolbar } from '../components/SelectionToolbar';
 import { SwipeIndicator } from '../components/SwipeIndicator';
 import { FAB } from '../components/FAB';
@@ -80,6 +81,7 @@ export function CollectionDetailView() {
       migrateNoteHandler,
       migrateEventHandler,
       createCollectionHandler,
+      entryProjection, // Phase 4: Pass entryProjection for sub-task queries
     },
     {
       collectionId,
@@ -87,6 +89,10 @@ export function CollectionDetailView() {
       onCloseDeleteModal: modals.closeDeleteModal,
       onOpenDeleteModal: modals.openDeleteModal,
       onOpenSettingsModal: modals.openSettingsModal,
+      // Phase 4: Completion cascade confirmation dialog
+      onShowConfirmCompleteParent: (taskId, incompleteCount, onConfirm) => {
+        modals.openConfirmCompleteParent(taskId, incompleteCount, onConfirm);
+      },
     }
   );
 
@@ -454,6 +460,16 @@ export function CollectionDetailView() {
         onClose={handleCloseSubTaskModal}
         onSubmit={handleCreateSubTask}
       />
+
+      {/* Confirm complete parent modal (Phase 4: Completion Cascade) */}
+      {modals.confirmCompleteParentData && (
+        <ConfirmCompleteParentModal
+          isOpen={modals.isConfirmCompleteParentOpen}
+          incompleteCount={modals.confirmCompleteParentData.incompleteCount}
+          onConfirm={modals.confirmCompleteParentData.onConfirm}
+          onClose={modals.closeConfirmCompleteParent}
+        />
+      )}
 
       {/* Bulk migration modal */}
       {selection.isSelectionMode && selection.selectedCount > 0 && (
