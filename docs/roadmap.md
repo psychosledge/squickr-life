@@ -1,38 +1,45 @@
 # Product Roadmap
 **Last Updated:** February 6, 2026  
-**Current Version:** v0.5.1  
+**Current Version:** v0.6.0  
 **Status:** Roadmap finalized through v1.0.0
 
 ---
 
 ## Version Plan
 
-### v0.6.0 - User Preferences Enhancements
-**Target:** Next session  
-**Estimated Time:** 4-6 hours  
-**Status:** Ready to implement
+### ✅ v0.6.0 - User Preferences Enhancements (COMPLETED)
+**Released:** February 6, 2026  
+**Actual Time:** ~7 hours (including bug fixes)  
+**Status:** Deployed to production
 
-**Features:**
-1. Global default for completed task behavior
-   - Set global preference for task completion behavior
-   - Per-collection settings override global default
-   - Better UX for users with many collections
-   - **Time:** 2-3 hours
+**Features Delivered:**
+1. ✅ Global default for completed task behavior
+   - Event-sourced user preferences system
+   - Settings modal with dropdown for default behavior
+   - Per-collection "Use default" option
+   - Proper fallback chain (collection → legacy → global default)
 
-2. Auto-favorite Today/Yesterday/Tomorrow daily logs
-   - Global toggle to auto-treat recent daily logs as favorited
-   - UI-only treatment (doesn't modify isFavorite in DB)
-   - Recent logs always accessible at top
-   - **Time:** 2-3 hours
+2. ✅ Auto-favorite Today/Yesterday/Tomorrow daily logs
+   - Global toggle in Settings modal
+   - UI-only treatment (doesn't modify isFavorite)
+   - Hollow star (✦) for auto-favorited, filled star (⭐) for manual
+   - Favorites section includes auto-favorited daily logs
 
-**Value Proposition:**
-- Quality of life improvements for daily use
-- Better defaults for power users
-- Reduces repetitive configuration
+**Bug Fixes:**
+- Fixed critical sync timestamp bug (events were being skipped)
+- Fixed hollow star icon not appearing
+- Fixed React hooks violation causing page crashes
+- Fixed global default not being applied
 
-**Prerequisites:**
-- Verify what was already implemented in Session 8
-- Check if `defaultCompletedTaskBehavior` exists in user preferences types
+**Test Coverage:**
+- 656/656 client tests passing
+- 411/419 shared tests passing (8 IndexedDB skipped)
+- All eventStore mocks updated for user preferences
+
+**Infrastructure Improvements:**
+- Auto-kill port 3000 before dev server starts
+- Updated workflow documentation (version agreement, full test suite)
+- Branch protection rules configured on production branch
 
 ---
 
