@@ -138,6 +138,20 @@ export interface CompleteTaskCommand {
 }
 
 /**
+ * CompleteParentTask Command (Phase 4: Completion Cascade)
+ * Represents the user's intent to complete a parent task
+ * 
+ * Behavior:
+ * - If all children complete: Complete parent (TaskCompleted event)
+ * - If some children incomplete and confirmed=false: Throw error with warning message
+ * - If some children incomplete and confirmed=true: Complete all incomplete children + parent
+ */
+export interface CompleteParentTaskCommand {
+  readonly taskId: string;
+  readonly confirmed: boolean; // If true, cascade complete all incomplete children
+}
+
+/**
  * TaskReopened Event
  * Emitted when a completed task is reopened
  * 

@@ -21,6 +21,7 @@ export type {
   CreateTaskCommand,
   CreateSubTaskCommand,
   CompleteTaskCommand,
+  CompleteParentTaskCommand,
   ReopenTaskCommand,
   DeleteTaskCommand,
   ReorderTaskCommand,
@@ -119,6 +120,9 @@ export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHa
 
 // Sub-Task Command Handlers (Phase 1: Sub-Tasks)
 export { CreateSubTaskHandler } from './sub-task.handlers';
+
+// Phase 4: Completion Cascade Handler
+export { CompleteParentTaskHandler } from './complete-parent-task.handler';
 
 // Note Command Handlers
 export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, ReorderNoteHandler, MigrateNoteHandler } from './note.handlers';
