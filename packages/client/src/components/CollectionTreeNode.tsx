@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { HierarchyNode } from '../hooks/useCollectionHierarchy';
-import type { Entry, UserPreferences } from '@squickr/shared';
+import type { Entry, UserPreferences } from '@squickr/domain';
 import { buildCollectionPath } from '../routes';
 import { CollectionStats } from './CollectionStats';
 import { ENTRY_ICONS } from '../utils/constants';

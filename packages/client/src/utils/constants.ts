@@ -5,7 +5,7 @@
  * Ensures consistency across the application.
  */
 
-import type { CompletedTaskBehavior } from '@squickr/shared';
+import type { CompletedTaskBehavior } from '@squickr/domain';
 
 /**
  * Drag and Drop Configuration

@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SyncManager } from './SyncManager';
-import type { IEventStore } from '@squickr/shared';
+import type { IEventStore } from '@squickr/domain';
 
 // Mock the sync functions
 vi.mock('./syncEvents', () => ({

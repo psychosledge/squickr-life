@@ -4,8 +4,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { sortCollectionsHierarchically } from './collectionSorting';
-import type { Collection, UserPreferences } from '@squickr/shared';
-import { DEFAULT_USER_PREFERENCES } from '@squickr/shared';
+import type { Collection, UserPreferences } from '@squickr/domain';
+import { DEFAULT_USER_PREFERENCES } from '@squickr/domain';
 
 describe('sortCollectionsHierarchically', () => {
   // Default preferences for most tests (auto-favorite disabled)

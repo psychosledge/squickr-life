@@ -1,4 +1,4 @@
-import type { Entry, Collection } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/domain';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { EntryItem } from './EntryItem';

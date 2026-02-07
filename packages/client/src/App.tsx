@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import {
-  IndexedDBEventStore,
   CreateCollectionHandler,
   ReorderCollectionHandler,
   MigrateTaskHandler,
@@ -10,7 +9,8 @@ import {
   EntryListProjection,
   TaskListProjection,
   CollectionListProjection
-} from '@squickr/shared';
+} from '@squickr/domain';
+import { IndexedDBEventStore } from '@squickr/infrastructure';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CollectionIndexView } from './views/CollectionIndexView';

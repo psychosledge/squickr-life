@@ -10,7 +10,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { useCollectionNavigation } from './useCollectionNavigation';
 import { AppProvider } from '../context/AppContext';
 import type { ReactNode } from 'react';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 
 // Mock useNavigate
 const mockNavigate = vi.fn();

@@ -14,8 +14,8 @@
  */
 
 import { useState, useEffect, FormEvent } from 'react';
-import type { CompletedTaskBehavior } from '@squickr/shared';
-import { UpdateUserPreferencesHandler } from '@squickr/shared';
+import type { CompletedTaskBehavior } from '@squickr/domain';
+import { UpdateUserPreferencesHandler } from '@squickr/domain';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useApp } from '../context/AppContext';
 import { BEHAVIOR_LABELS, BEHAVIOR_DESCRIPTIONS } from '../utils/constants';

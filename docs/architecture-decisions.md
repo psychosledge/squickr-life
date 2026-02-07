@@ -26,7 +26,8 @@ Organize code for multi-package project (client, shared domain logic, future bac
 ### Decision
 Use monorepo with pnpm workspaces:
 - `packages/client` - React PWA
-- `packages/shared` - Domain logic, event sourcing, types
+- `packages/domain` - Pure business logic, event sourcing, types (Clean Architecture core)
+- `packages/infrastructure` - EventStore implementations (IndexedDB, InMemory)
 - `packages/backend` - Supabase functions (future)
 
 ### Rationale

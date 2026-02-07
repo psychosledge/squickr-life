@@ -1,6 +1,6 @@
 # Event Models - Quick Reference
 
-**Purpose:** Quick reference for event schemas. Full TypeScript definitions are in `packages/shared/src/task.types.ts`.
+**Purpose:** Quick reference for event schemas. Full TypeScript definitions are in `packages/domain/src/task.types.ts`.
 
 ---
 
@@ -116,12 +116,12 @@ class EntryListProjection {
 ## For Full Schemas
 
 **See TypeScript definitions:**
-- `packages/shared/src/task.types.ts` - All event types
-- `packages/shared/src/*.handlers.ts` - Command handlers
-- `packages/shared/src/entry.projections.ts` - Read models
+- `packages/domain/src/task.types.ts` - All event types
+- `packages/domain/src/*.handlers.ts` - Command handlers
+- `packages/domain/src/entry.projections.ts` - Read models
 
 **See Architecture Decisions:**
 - `docs/architecture-decisions.md` - Why we chose this design
 
 **See Implementation Examples:**
-- `packages/shared/tests/*.test.ts` - Event creation examples
+- `packages/domain/tests/*.test.ts` - Event creation examples

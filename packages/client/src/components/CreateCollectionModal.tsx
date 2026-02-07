@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
-import type { CollectionType } from '@squickr/shared';
+import type { CollectionType } from '@squickr/domain';
 import { formatMonthlyLogName } from '../utils/formatters';
 
 interface CreateCollectionModalProps {

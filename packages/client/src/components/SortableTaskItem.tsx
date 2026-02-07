@@ -1,4 +1,4 @@
-import type { Task } from '@squickr/shared';
+import type { Task } from '@squickr/domain';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TaskItem } from './TaskItem';

@@ -4,7 +4,7 @@
  * Helper functions for working with collections, including auto-favorite logic.
  */
 
-import type { Collection, UserPreferences } from '@squickr/shared';
+import type { Collection, UserPreferences } from '@squickr/domain';
 
 /**
  * Checks if a daily collection is considered "recent" (Today, Yesterday, Tomorrow)

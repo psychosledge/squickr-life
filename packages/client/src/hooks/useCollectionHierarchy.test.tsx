@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCollectionHierarchy, formatDayLabel, formatMonthLabel, formatYearLabel, getCurrentYearMonth } from './useCollectionHierarchy';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 
 describe('useCollectionHierarchy', () => {
   const STORAGE_KEY = 'collection-hierarchy-expanded';

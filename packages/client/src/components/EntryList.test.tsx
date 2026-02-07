@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { EntryList } from './EntryList';
-import type { Entry } from '@squickr/shared';
+import type { Entry } from '@squickr/domain';
 
 describe('EntryList', () => {
   const mockOnCompleteTask = vi.fn();

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { EntryItem } from './EntryItem';
-import type { Entry } from '@squickr/shared';
+import type { Entry } from '@squickr/domain';
 
 describe('EntryItem', () => {
   const mockOnDelete = vi.fn();

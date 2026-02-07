@@ -61,7 +61,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@squickr/shared': path.resolve(__dirname, '../shared/src/index.ts'),
+      '@squickr/domain': path.resolve(__dirname, '../domain/src/index.ts'),
+      '@squickr/infrastructure': path.resolve(__dirname, '../infrastructure/src/index.ts'),
     },
   },
   server: {

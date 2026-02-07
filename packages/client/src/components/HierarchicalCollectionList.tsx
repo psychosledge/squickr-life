@@ -1,4 +1,4 @@
-import type { Collection, Entry, UserPreferences } from '@squickr/shared';
+import type { Collection, Entry, UserPreferences } from '@squickr/domain';
 import { useMemo } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';

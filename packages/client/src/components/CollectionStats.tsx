@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Entry } from '@squickr/shared';
+import type { Entry } from '@squickr/domain';
 import { ENTRY_ICONS } from '../utils/constants';
 
 interface CollectionStatsProps {

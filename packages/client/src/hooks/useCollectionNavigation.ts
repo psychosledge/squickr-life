@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { sortCollectionsHierarchically } from '../utils/collectionSorting';

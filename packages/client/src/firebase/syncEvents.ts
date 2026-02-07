@@ -10,7 +10,7 @@
 
 import { collection, doc, writeBatch, getDocs, query, where, orderBy } from 'firebase/firestore';
 import { firestore } from './config';
-import type { DomainEvent, IEventStore } from '@squickr/shared';
+import type { DomainEvent, IEventStore } from '@squickr/domain';
 import { logger } from '../utils/logger';
 import { SYNC_CONFIG } from '../utils/constants';
 

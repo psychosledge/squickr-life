@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { HierarchicalCollectionList } from './HierarchicalCollectionList';
-import type { Collection, UserPreferences } from '@squickr/shared';
+import type { Collection, UserPreferences } from '@squickr/domain';
 
 // Mock user preferences for tests
 const mockUserPreferences: UserPreferences = {

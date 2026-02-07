@@ -12,8 +12,6 @@ importers:
         specifier: ^5.3.3
         version: 5.9.3
 
-  packages/backend: {}
-
   packages/client:
     dependencies:
       '@dnd-kit/core':
@@ -25,6 +23,12 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
+      '@squickr/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@squickr/infrastructure':
+        specifier: workspace:*
+        version: link:../infrastructure
       firebase:
         specifier: ^12.8.0
         version: 12.8.0
@@ -84,11 +88,27 @@ importers:
         specifier: ^1.2.0
         version: 1.6.1(@types/node@25.1.0)(@vitest/ui@1.6.1)(jsdom@23.2.0)(terser@5.46.0)
 
-  packages/shared:
+  packages/domain:
     dependencies:
       fractional-indexing:
         specifier: ^3.2.0
         version: 3.2.0
+    devDependencies:
+      '@squickr/infrastructure':
+        specifier: workspace:*
+        version: link:../infrastructure
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vitest:
+        specifier: ^1.2.0
+        version: 1.6.1(@types/node@25.1.0)(@vitest/ui@1.6.1)(jsdom@23.2.0)(terser@5.46.0)
+
+  packages/infrastructure:
+    dependencies:
+      '@squickr/domain':
+        specifier: workspace:*
+        version: link:../domain
     devDependencies:
       fake-indexeddb:
         specifier: ^6.2.5
@@ -1901,6 +1921,7 @@ packages:
   glob@11.1.0:
     resolution: {integrity: sha512-vuNwKSaKiqm7g0THUBu2x7ckSs3XJLXE+2ssL7/MfTGPLLcrJQ/4Uq1CjPTtO5cCIiRxqvN6Twy1qOwhL0Xjcw==}
     engines: {node: 20 || >=22}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   globalthis@1.0.4:

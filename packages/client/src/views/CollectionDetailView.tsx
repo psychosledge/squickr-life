@@ -13,7 +13,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { Collection, Entry } from '@squickr/shared';
+import type { Collection, Entry } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useCollectionHandlers } from '../hooks/useCollectionHandlers';

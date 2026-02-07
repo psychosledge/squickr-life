@@ -19,7 +19,7 @@ import type {
   MigrateTaskHandler,
   MigrateNoteHandler,
   MigrateEventHandler,
-} from '@squickr/shared';
+} from '@squickr/domain';
 
 interface AppContextValue {
   eventStore: IEventStore;

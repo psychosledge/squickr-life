@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { Collection, Entry } from '@squickr/shared';
+import type { Collection, Entry } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from '../firebase/auth';
@@ -94,7 +94,7 @@ export function CollectionIndexView() {
     };
   }, [collectionProjection, entryProjection]);
 
-  const handleCreateCollection = async (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => {
+  const handleCreateCollection = async (name: string, type?: import('@squickr/domain').CollectionType, date?: string) => {
     await createCollectionHandler.handle({ name, type, date });
   };
 

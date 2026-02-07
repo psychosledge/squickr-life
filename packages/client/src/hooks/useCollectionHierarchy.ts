@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 import { formatMonthlyLogName, getCollectionDisplayName } from '../utils/formatters';
 
 export interface HierarchyNode {

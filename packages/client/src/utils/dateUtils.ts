@@ -1,6 +1,6 @@
 /**
  * Date utilities for Daily Logs feature
- * Re-exports from @squickr/shared for convenience
+ * Re-exports from @squickr/domain for convenience
  */
 
-export { getLocalDateKey, isoToLocalDateKey } from '@squickr/shared';
+export { getLocalDateKey, isoToLocalDateKey } from '@squickr/domain';

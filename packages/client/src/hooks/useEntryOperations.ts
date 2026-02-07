@@ -15,7 +15,7 @@
 
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Entry, Collection, CollectionSettings, MigrateTaskHandler, MigrateNoteHandler, MigrateEventHandler, CreateCollectionHandler } from '@squickr/shared';
+import type { Entry, Collection, CollectionSettings, MigrateTaskHandler, MigrateNoteHandler, MigrateEventHandler, CreateCollectionHandler } from '@squickr/domain';
 import type { CollectionHandlers } from './useCollectionHandlers';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
@@ -55,7 +55,7 @@ export interface EntryOperations {
   handleMigrate: (entryId: string, targetCollectionId: string | null) => Promise<void>;
   handleBulkMigrate: (entryIds: string[], targetCollectionId: string | null) => Promise<void>;
   handleNavigateToMigrated: (targetCollectionId: string | null) => void;
-  handleCreateCollection: (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => Promise<string>;
+  handleCreateCollection: (name: string, type?: import('@squickr/domain').CollectionType, date?: string) => Promise<string>;
   
   // Collection operations
   handleRenameCollection: () => Promise<void>;
@@ -229,7 +229,7 @@ export function useEntryOperations(
     }
   }, [navigate]);
 
-  const handleCreateCollection = useCallback(async (name: string, type?: import('@squickr/shared').CollectionType, date?: string): Promise<string> => {
+  const handleCreateCollection = useCallback(async (name: string, type?: import('@squickr/domain').CollectionType, date?: string): Promise<string> => {
     return await createCollectionHandler.handle({ name, type, date });
   }, [createCollectionHandler]);
 

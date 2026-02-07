@@ -1,4 +1,4 @@
-import type { DailyLog } from '@squickr/shared';
+import type { DailyLog } from '@squickr/domain';
 import { DateHeader } from './DateHeader';
 import { DayEntryList } from './DayEntryList';
 

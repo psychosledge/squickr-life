@@ -33,7 +33,7 @@ Quick navigation to find what you need.
 
 ### Understanding Event Sourcing
 1. Read: **[Event Models Reference](event-models.md)** - Quick patterns
-2. Check: `packages/shared/src/task.types.ts` - Full TypeScript definitions
+2. Check: `packages/domain/src/task.types.ts` - Full TypeScript definitions
 3. Read: **[Architecture ADR-002](architecture-decisions.md#adr-002-event-sourcing-with-cqrs)** - Why we chose this
 
 ---
@@ -106,7 +106,7 @@ Quick navigation to find what you need.
 → [Architecture Decisions](architecture-decisions.md)
 
 **"What events exist?"**
-→ `packages/shared/src/task.types.ts` (source of truth)  
+→ `packages/domain/src/task.types.ts` (source of truth)  
 → [Event Models Reference](event-models.md) (quick summary)
 
 **"What's the agent workflow?"**

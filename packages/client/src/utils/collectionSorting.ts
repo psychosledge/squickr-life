@@ -11,7 +11,7 @@
  * 4. Other customs (by order field, lexicographic)
  */
 
-import type { Collection, UserPreferences } from '@squickr/shared';
+import type { Collection, UserPreferences } from '@squickr/domain';
 import { isEffectivelyFavorited } from './collectionUtils';
 
 /**

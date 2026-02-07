@@ -66,7 +66,7 @@ squickr/life/
 
 ```bash
 # 1. RED: Write failing test
-cd packages/shared
+cd packages/domain
 # Edit: tests/[feature].test.ts
 
 # 2. Run tests (should fail)
@@ -108,12 +108,12 @@ pnpm dev
 # → http://localhost:3002
 
 # Tests
-cd packages/shared
+cd packages/domain
 pnpm test run           # Run once
 pnpm test              # Watch mode
 
 # Build
-cd packages/shared
+cd packages/domain
 pnpm run build
 ```
 
@@ -125,14 +125,15 @@ pnpm run build
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest';
-import { EventStore, CreateTaskHandler } from '@squickr/shared';
+import { CreateTaskHandler } from '@squickr/domain';
+import { InMemoryEventStore } from '@squickr/infrastructure';
 
 describe('CreateTaskHandler', () => {
-  let eventStore: EventStore;
+  let eventStore: InMemoryEventStore;
   let handler: CreateTaskHandler;
 
   beforeEach(() => {
-    eventStore = new EventStore();
+    eventStore = new InMemoryEventStore();
     handler = new CreateTaskHandler(eventStore);
   });
 
@@ -356,18 +357,66 @@ await projection.rebuild(); // Fragile, easy to forget
 
 ---
 
+## Session End Workflow
+
+At the end of each coding session:
+
+### 1. Update Documentation
+```bash
+# Update CHANGELOG.md with shipped changes
+# Include version, features, fixes, breaking changes
+
+# Update next-session-roadmap.md
+# Move completed items to done, add new backlog items
+```
+
+### 2. Clean Up Session Notes
+```bash
+# Keep last 2-3 session notes (recent context)
+# Delete older session notes (preserved in git history)
+git rm docs/session-2026-[old-dates]*.md
+git commit -m "chore: clean up old session notes"
+```
+
+### 3. Commit Changes
+```bash
+# Review what's changed
+git status
+git diff --stat
+
+# Commit with clear message
+git add .
+git commit -m "feat: description of what shipped"
+git push origin master
+```
+
+### 4. Deploy (if ready)
+```bash
+# See docs/deployment-guide.md for full process
+# 1. Bump version in package.json
+# 2. Create PR: master → production
+# 3. Merge after validation passes
+```
+
+**Why clean up session notes?**
+- Reduces token budget for next session startup
+- Git history preserves everything
+- Keeps docs/ focused on current work
+
+---
+
 ## Quick Commands
 
 ```bash
 # Run tests
 cd C:/Repos/squickr/life
-cd packages/shared && pnpm test run
+cd packages/domain && pnpm test run
 
 # Start dev server
 cd packages/client && pnpm dev
 
 # Build
-cd packages/shared && pnpm run build
+cd packages/domain && pnpm run build
 
 # Git
 git status
@@ -382,4 +431,4 @@ git diff
 - **Architecture decisions:** `docs/architecture-decisions.md`
 - **Event model reference:** `docs/event-models.md`
 - **Agent workflow:** `docs/opencode-workflow.md`
-- **Code:** `packages/shared/src/` (TypeScript is self-documenting)
+- **Code:** `packages/domain/src/` (TypeScript is self-documenting)

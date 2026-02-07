@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
 import { SortableContext } from '@dnd-kit/sortable';
 import { SortableCollectionItem } from './SortableCollectionItem';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 
 // Helper to render with Router and DnD context
 const renderWithContext = (ui: React.ReactElement, collectionIds: string[] = []) => {

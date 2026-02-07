@@ -12,7 +12,7 @@ import { CollectionIndexView } from './CollectionIndexView';
 import { AppProvider } from '../context/AppContext';
 import { AuthProvider } from '../context/AuthContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
-import type { Collection, Entry } from '@squickr/shared';
+import type { Collection, Entry } from '@squickr/domain';
 
 // Test for header branding
 describe('CollectionIndexView - Header Branding', () => {

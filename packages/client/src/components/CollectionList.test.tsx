@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { CollectionList } from './CollectionList';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
 // Helper to render with Router context

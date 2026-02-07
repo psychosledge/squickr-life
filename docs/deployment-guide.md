@@ -408,6 +408,30 @@ If traffic grows significantly:
 
 ---
 
+## Historical Context: Platform Selection
+
+**Why GitHub Pages?** (Decision made Jan 2026)
+
+We evaluated several platforms before choosing GitHub Pages:
+
+**Alternatives considered:**
+- **Vercel Free Tier:** 100 deployments/month, serverless functions included
+- **Cloudflare Pages:** Unlimited bandwidth, most generous free tier
+- **Netlify:** Previous platform, hit 300 builds/month limit
+
+**GitHub Pages chosen because:**
+- ✅ Completely free, no build limits
+- ✅ Perfect for static frontend (current architecture)
+- ✅ Custom domain support (squickr.com)
+- ✅ Easy integration with existing GitHub workflow
+- ✅ No commercial use restrictions
+
+**Migration path:** When backend is added, can either:
+1. Keep frontend on GitHub Pages + add backend separately (Cloudflare Workers/Vercel)
+2. Migrate everything to Cloudflare Pages (unlimited bandwidth, Workers for API)
+
+---
+
 ## Quick Reference
 
 **Deploy to Production:**

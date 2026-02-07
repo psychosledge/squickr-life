@@ -22,11 +22,12 @@ Built with event sourcing from the ground up, every action is an event, and the 
 
 ```
 packages/
-├── client/      # React PWA (UI components)
-├── shared/      # Event sourcing domain logic
-└── backend/     # Supabase functions (future)
+├── domain/          # Pure business logic & event sourcing (Clean Architecture core)
+├── infrastructure/  # EventStore implementations (IndexedDB, InMemory)
+├── client/          # React PWA (UI components)
+└── backend/         # Supabase functions (future)
 
-docs/            # Documentation (see docs/README.md)
+docs/                # Documentation (see docs/README.md)
 ```
 
 ## Quick Start
@@ -36,7 +37,7 @@ docs/            # Documentation (see docs/README.md)
 pnpm install
 
 # Run tests
-cd packages/shared && pnpm test run
+cd packages/domain && pnpm test run
 
 # Start dev server
 cd packages/client && pnpm dev

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Entry, Collection } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/domain';
 
 interface EntryActionsMenuProps {
   entry: Entry;

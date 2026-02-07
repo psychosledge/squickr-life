@@ -1,4 +1,4 @@
-import type { Entry, Collection } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/domain';
 import { TaskEntryItem } from './TaskEntryItem';
 import { NoteEntryItem } from './NoteEntryItem';
 import { EventEntryItem } from './EventEntryItem';

@@ -12,7 +12,7 @@
  */
 
 import { useMemo } from 'react';
-import type { IEventStore, CollectionListProjection, EntryListProjection, TaskListProjection } from '@squickr/shared';
+import type { IEventStore, CollectionListProjection, EntryListProjection, TaskListProjection } from '@squickr/domain';
 import {
   CreateTaskHandler,
   CreateNoteHandler,
@@ -34,7 +34,7 @@ import {
   UpdateCollectionSettingsHandler,
   FavoriteCollectionHandler,
   UnfavoriteCollectionHandler,
-} from '@squickr/shared';
+} from '@squickr/domain';
 
 export interface CollectionHandlers {
   // Entry creation handlers

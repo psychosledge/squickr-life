@@ -13,7 +13,7 @@
  * ADR-011: Background Sync Strategy
  */
 
-import type { IEventStore } from '@squickr/shared';
+import type { IEventStore } from '@squickr/domain';
 import { uploadLocalEvents, downloadRemoteEvents } from './syncEvents';
 import { logger } from '../utils/logger';
 import { DEBOUNCE, SYNC_CONFIG } from '../utils/constants';

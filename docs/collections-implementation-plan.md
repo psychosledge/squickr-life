@@ -281,13 +281,13 @@ Replace the current date-based Daily Logs view with a **Collections-based archit
 **Goal:** Update all entry types to reference a collection
 
 **Files to Modify:**
-- `packages/shared/src/task.types.ts` - Add `collectionId?: string`
-- `packages/shared/src/note.types.ts` - Add `collectionId?: string`
-- `packages/shared/src/event.types.ts` - Add `collectionId?: string`
-- `packages/shared/src/task.handlers.ts` - Accept collectionId in commands
-- `packages/shared/src/note.handlers.ts` - Accept collectionId in commands
-- `packages/shared/src/event.handlers.ts` - Accept collectionId in commands
-- `packages/shared/src/entry.projections.ts` - Handle legacy entries
+- `packages/domain/src/task.types.ts` - Add `collectionId?: string`
+- `packages/domain/src/note.types.ts` - Add `collectionId?: string`
+- `packages/domain/src/event.types.ts` - Add `collectionId?: string`
+- `packages/domain/src/task.handlers.ts` - Accept collectionId in commands
+- `packages/domain/src/note.handlers.ts` - Accept collectionId in commands
+- `packages/domain/src/event.handlers.ts` - Accept collectionId in commands
+- `packages/domain/src/entry.projections.ts` - Handle legacy entries
 
 **Legacy Entry Handling:**
 ```typescript
@@ -476,8 +476,8 @@ if (orphanedEntries.length > 0) {
 - ✅ Casey review: 9/10 rating
 
 **Files Modified:**
-- `packages/shared/src/entry.projections.ts` (added getEntryCountsByCollection)
-- `packages/shared/src/entry.projections.test.ts` (7 new tests)
+- `packages/domain/src/entry.projections.ts` (added getEntryCountsByCollection)
+- `packages/domain/src/entry.projections.test.ts` (7 new tests)
 - `packages/client/src/views/CollectionIndexView.tsx` (use bulk query)
 - `packages/client/src/views/CollectionIndexView.test.tsx` (updated mocks)
 
@@ -522,23 +522,23 @@ if (orphanedEntries.length > 0) {
 - ✅ All tests passing: 553 total (325 shared + 228 client)
 
 **Files Created:**
-- `packages/shared/src/task.migrations.ts` (handler + tests - later renamed)
-- `packages/shared/src/note.migrations.ts` (handler + tests - later renamed)
-- `packages/shared/src/event.migrations.ts` (handler + tests - later renamed)
-- `packages/shared/src/task-migration.test.ts` (10 migration tests)
-- `packages/shared/src/note-migration.test.ts` (10 migration tests)
-- `packages/shared/src/event-migration.test.ts` (10 migration tests)
+- `packages/domain/src/task.migrations.ts` (handler + tests - later renamed)
+- `packages/domain/src/note.migrations.ts` (handler + tests - later renamed)
+- `packages/domain/src/event.migrations.ts` (handler + tests - later renamed)
+- `packages/domain/src/task-migration.test.ts` (10 migration tests)
+- `packages/domain/src/note-migration.test.ts` (10 migration tests)
+- `packages/domain/src/event-migration.test.ts` (10 migration tests)
 - `packages/client/src/components/MoveEntryToCollectionModal.tsx` (collection picker UI)
 
 **Files Modified:**
-- `packages/shared/src/task.types.ts` (added migratedTo/migratedFrom + TaskMigrated event)
-- `packages/shared/src/note.types.ts` (added migratedTo/migratedFrom + NoteMigrated event)
-- `packages/shared/src/event.types.ts` (added migratedTo/migratedFrom + EventMigrated event)
-- `packages/shared/src/task.handlers.ts` (added MigrateTaskHandler + fixed projection usage)
-- `packages/shared/src/note.handlers.ts` (added MigrateNoteHandler)
-- `packages/shared/src/event.handlers.ts` (added MigrateEventHandler)
-- `packages/shared/src/entry.projections.ts` (handle migration events, create migrated entries)
-- `packages/shared/src/index.ts` (exported migration handlers)
+- `packages/domain/src/task.types.ts` (added migratedTo/migratedFrom + TaskMigrated event)
+- `packages/domain/src/note.types.ts` (added migratedTo/migratedFrom + NoteMigrated event)
+- `packages/domain/src/event.types.ts` (added migratedTo/migratedFrom + EventMigrated event)
+- `packages/domain/src/task.handlers.ts` (added MigrateTaskHandler + fixed projection usage)
+- `packages/domain/src/note.handlers.ts` (added MigrateNoteHandler)
+- `packages/domain/src/event.handlers.ts` (added MigrateEventHandler)
+- `packages/domain/src/entry.projections.ts` (handle migration events, create migrated entries)
+- `packages/domain/src/index.ts` (exported migration handlers)
 - `packages/client/src/context/AppContext.tsx` (added migration handlers)
 - `packages/client/src/components/TaskEntryItem.tsx` (added move button ↗️)
 - `packages/client/src/components/NoteEntryItem.tsx` (added move button ↗️)
@@ -1034,8 +1034,8 @@ Replace total count with active task count in Collection Index.
 - Add 6-8 tests for filtering logic
 
 **Files to Modify:**
-- `packages/shared/src/entry.projections.ts`
-- `packages/shared/src/entry.projections.test.ts`
+- `packages/domain/src/entry.projections.ts`
+- `packages/domain/src/entry.projections.test.ts`
 - `packages/client/src/views/CollectionIndexView.tsx`
 - `packages/client/src/components/CollectionListItem.tsx`
 

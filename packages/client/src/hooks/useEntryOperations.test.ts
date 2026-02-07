@@ -6,7 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useEntryOperations } from './useEntryOperations';
 import type { CollectionHandlers } from './useCollectionHandlers';
-import type { Entry, Collection } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/domain';
 
 // Mock react-router-dom
 vi.mock('react-router-dom', () => ({

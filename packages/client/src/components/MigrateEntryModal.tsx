@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Entry, Collection } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/domain';
 import { CreateCollectionModal } from './CreateCollectionModal';
 import { getCollectionDisplayName } from '../utils/formatters';
 
@@ -12,7 +12,7 @@ interface MigrateEntryModalProps {
   collections: Collection[];
   onMigrate: (entryId: string, targetCollectionId: string | null) => Promise<void>;
   onBulkMigrate?: (entryIds: string[], targetCollectionId: string | null) => Promise<void>;
-  onCreateCollection?: (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => Promise<string>;
+  onCreateCollection?: (name: string, type?: import('@squickr/domain').CollectionType, date?: string) => Promise<string>;
   selectedCollectionId?: string;
   onOpenCreateCollection?: () => void;
 }
@@ -309,7 +309,7 @@ export function MigrateEntryModal({
     }
   };
 
-  const handleCreateCollection = async (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => {
+  const handleCreateCollection = async (name: string, type?: import('@squickr/domain').CollectionType, date?: string) => {
     if (onCreateCollection) {
       try {
         // Create the collection and get the new collection ID

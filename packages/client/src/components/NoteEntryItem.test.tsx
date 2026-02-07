@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { NoteEntryItem } from './NoteEntryItem';
-import type { Entry } from '@squickr/shared';
+import type { Entry } from '@squickr/domain';
 
 describe('NoteEntryItem', () => {
   const mockOnUpdateNoteContent = vi.fn();

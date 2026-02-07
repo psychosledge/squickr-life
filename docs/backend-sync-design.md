@@ -771,7 +771,7 @@ useEffect(() => {
 5. Sync pending events when online
 
 **Files Modified:**
-- `packages/shared/src/indexeddb-event-store.ts` - Add pending sync tracking
+- `packages/infrastructure/src/indexeddb-event-store.ts` - Add pending sync tracking
 - `packages/client/src/firebase/config.ts` - Enable offline persistence
 - `packages/client/src/sync/SyncManager.ts` - Handle pending events
 - `packages/client/src/components/OfflineIndicator.tsx` (optional)
