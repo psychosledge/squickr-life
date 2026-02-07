@@ -109,6 +109,9 @@ importers:
       '@squickr/domain':
         specifier: workspace:*
         version: link:../domain
+      firebase:
+        specifier: ^12.8.0
+        version: 12.8.0
     devDependencies:
       fake-indexeddb:
         specifier: ^6.2.5

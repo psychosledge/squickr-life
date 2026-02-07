@@ -11,7 +11,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@squickr/domain": "workspace:*"
+    "@squickr/domain": "workspace:*",
+    "firebase": "^12.8.0"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.5",

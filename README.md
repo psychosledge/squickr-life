@@ -14,18 +14,19 @@ Built with event sourcing from the ground up, every action is an event, and the 
 
 - **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
 - **State Management**: Event Sourcing + CQRS
-- **Storage**: IndexedDB (event sourcing persistence)
+- **Storage**: IndexedDB (local), Firestore (cloud sync)
+- **Authentication**: Firebase Auth (Google OAuth)
 - **Testing**: Vitest, React Testing Library
-- **Backend** (planned): Supabase, Google OAuth
+- **Architecture**: Clean Architecture (domain/infrastructure/client)
 
 ## Project Structure
 
 ```
 packages/
 ├── domain/          # Pure business logic & event sourcing (Clean Architecture core)
-├── infrastructure/  # EventStore implementations (IndexedDB, InMemory)
-├── client/          # React PWA (UI components)
-└── backend/         # Supabase functions (future)
+├── infrastructure/  # Storage implementations (IndexedDB, Firestore, InMemory)
+├── client/          # React PWA (UI components, Firebase config/auth)
+└── backend/         # Future server (Node.js + Firebase Admin SDK)
 
 docs/                # Documentation (see docs/README.md)
 ```
@@ -76,12 +77,14 @@ This project uses a **3-agent orchestrator pattern**:
 **✅ Phase 1: PWA Deployment** - Installable, offline-first mobile app  
 **✅ Phase 2: Mobile UX Polish** - FAB workflow, dark mode, mobile-optimized interactions  
 **✅ Phase 3: Collections** - Full Collections feature with navigation (Phases 1A-2D complete)  
-**✅ Phase 4: UX Enhancements** - Background sync, task counts, collapse completed, user profile menu, page navigation
+**✅ Phase 4: Firebase Sync** - Multi-device cloud sync with Google authentication
+**✅ Phase 5: Clean Architecture** - Domain/infrastructure split, Firebase refactoring
 
-**Latest Updates (Session 3 - Feb 1, 2026):**
-- ✅ User profile menu with Google photos and dropdown
-- ✅ Page flipping navigation (keyboard shortcuts, swipe gestures)
-- ✅ 776 tests passing (348 backend + 428 frontend)
+**Latest Updates (Session 4 - Feb 7, 2026):**
+- ✅ Clean Architecture refactoring (domain/infrastructure packages)
+- ✅ Firebase moved to infrastructure layer following Dependency Inversion
+- ✅ FirestoreEventStore implements IEventStore interface
+- ✅ 1,118 tests passing (417 domain + 16 infrastructure + 685 client)
 - ✅ Deployed to production at squickr.com
 
 ## What's Next

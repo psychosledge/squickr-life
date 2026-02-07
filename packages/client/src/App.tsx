@@ -10,13 +10,14 @@ import {
   TaskListProjection,
   CollectionListProjection
 } from '@squickr/domain';
-import { IndexedDBEventStore } from '@squickr/infrastructure';
+import { IndexedDBEventStore, FirestoreEventStore } from '@squickr/infrastructure';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
 import { SignInView } from './views/SignInView';
 import { SyncManager } from './firebase/SyncManager';
+import { firestore } from './firebase/config';
 import { ROUTES } from './routes';
 import { logger } from './utils/logger';
 
@@ -79,7 +80,8 @@ function AppContent() {
     }
     
     // User signed in - start background sync
-    const manager = new SyncManager(user.uid, eventStore);
+    const remoteStore = new FirestoreEventStore(firestore, user.uid);
+    const manager = new SyncManager(eventStore, remoteStore);
     manager.start();
     syncManagerRef.current = manager;
     
