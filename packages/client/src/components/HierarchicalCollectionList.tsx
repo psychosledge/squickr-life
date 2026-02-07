@@ -1,17 +1,18 @@
-import type { Collection, Entry } from '@squickr/shared';
+import type { Collection, Entry, UserPreferences } from '@squickr/shared';
 import { useMemo } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useCollectionHierarchy } from '../hooks/useCollectionHierarchy';
+import { useCollectionHierarchy, type HierarchyNode } from '../hooks/useCollectionHierarchy';
 import { CollectionTreeNode } from './CollectionTreeNode';
 import { DRAG_SENSOR_CONFIG } from '../utils/constants';
+import { isEffectivelyFavorited } from '../utils/collectionUtils';
 
 interface HierarchicalCollectionListProps {
   collections: Collection[];
   selectedCollectionId?: string;
-  onNavigate?: (collectionId: string) => void;
   onReorder?: (collectionId: string, previousCollectionId: string | null, nextCollectionId: string | null) => void;
   entriesByCollection?: Map<string | null, Entry[]>;
+  userPreferences: UserPreferences;
 }
 
 /**
@@ -34,9 +35,9 @@ interface HierarchicalCollectionListProps {
 export function HierarchicalCollectionList({
   collections,
   selectedCollectionId,
-  onNavigate,
   onReorder,
   entriesByCollection,
+  userPreferences,
 }: HierarchicalCollectionListProps) {
   const { nodes, toggleExpand } = useCollectionHierarchy(collections);
   
@@ -76,8 +77,8 @@ export function HierarchicalCollectionList({
       .filter(node => node.type === 'custom' && node.collection)
       .filter(node => 
         section === 'favorites' 
-          ? node.collection!.isFavorite 
-          : !node.collection!.isFavorite
+          ? isEffectivelyFavorited(node.collection!, userPreferences)
+          : !isEffectivelyFavorited(node.collection!, userPreferences)
       );
     
     const activeId = String(active.id);
@@ -103,6 +104,49 @@ export function HierarchicalCollectionList({
     onReorder(activeId, previousCollectionId, nextCollectionId);
   };
   
+  // Collection count header
+  const collectionText = collections.length === 1 ? 'collection' : 'collections';
+  
+  // Separate nodes into sections for rendering with separators
+  // Use isEffectivelyFavorited to include both manual and auto-favorited collections
+  // For favorites, include both custom collections AND daily logs (day nodes) that are favorited
+  const favoriteNodes = nodes.filter(node => {
+    // For custom collections, check if favorited
+    if (node.type === 'custom' && node.collection) {
+      return isEffectivelyFavorited(node.collection, userPreferences);
+    }
+    // For daily logs, need to find them in the hierarchy (they're nested under year/month)
+    // We'll handle this by flattening the tree
+    return false;
+  });
+  
+  // Flatten the tree to get all day nodes that are favorited
+  const getAllDayNodes = (nodes: HierarchyNode[]): HierarchyNode[] => {
+    const dayNodes: HierarchyNode[] = [];
+    for (const node of nodes) {
+      if (node.type === 'day' && node.collection && isEffectivelyFavorited(node.collection, userPreferences)) {
+        dayNodes.push(node);
+      }
+      if (node.children.length > 0) {
+        dayNodes.push(...getAllDayNodes(node.children));
+      }
+    }
+    return dayNodes;
+  };
+  
+  const favoriteDayNodes = useMemo(() => getAllDayNodes(nodes), [nodes, userPreferences]);
+  const allFavoriteNodes = useMemo(
+    () => [...favoriteNodes, ...favoriteDayNodes], 
+    [favoriteNodes, favoriteDayNodes]
+  );
+  
+  const dateHierarchyNodes = nodes.filter(node => node.type === 'year');
+  const otherCustomNodes = nodes.filter(node => 
+    node.type === 'custom' && 
+    node.collection &&
+    !isEffectivelyFavorited(node.collection, userPreferences)
+  );
+  
   // Empty state
   if (collections.length === 0) {
     return (
@@ -117,14 +161,6 @@ export function HierarchicalCollectionList({
     );
   }
   
-  // Collection count header
-  const collectionText = collections.length === 1 ? 'collection' : 'collections';
-  
-  // Separate nodes into sections for rendering with separators
-  const favoriteNodes = nodes.filter(node => node.type === 'custom' && node.collection?.isFavorite);
-  const dateHierarchyNodes = nodes.filter(node => node.type === 'year');
-  const otherCustomNodes = nodes.filter(node => node.type === 'custom' && !node.collection?.isFavorite);
-  
   return (
     <div className="w-full max-w-2xl mx-auto pb-32">
       <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
@@ -133,23 +169,23 @@ export function HierarchicalCollectionList({
       
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-visible md:ml-12">
         {/* Favorites Section */}
-        {favoriteNodes.length > 0 && onReorder && (
+        {allFavoriteNodes.length > 0 && onReorder && (
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={(event) => handleDragEnd(event, 'favorites')}
           >
-            <SortableContext items={favoriteNodes.map(n => n.id)} strategy={verticalListSortingStrategy}>
-              {favoriteNodes.map(node => (
+            <SortableContext items={allFavoriteNodes.filter(n => n.type === 'custom').map(n => n.id)} strategy={verticalListSortingStrategy}>
+              {allFavoriteNodes.map(node => (
                 <CollectionTreeNode
                   key={node.id}
                   node={node}
                   depth={0}
                   onToggleExpand={toggleExpand}
-                  onNavigate={onNavigate}
                   selectedCollectionId={selectedCollectionId}
-                  isDraggable={true}
+                  isDraggable={node.type === 'custom'}
                   entriesByCollection={entriesByCollection}
+                  userPreferences={userPreferences}
                 />
               ))}
             </SortableContext>
@@ -157,21 +193,21 @@ export function HierarchicalCollectionList({
         )}
         
         {/* Non-draggable favorites (when onReorder not provided) */}
-        {favoriteNodes.length > 0 && !onReorder && favoriteNodes.map(node => (
+        {allFavoriteNodes.length > 0 && !onReorder && allFavoriteNodes.map(node => (
           <CollectionTreeNode
             key={node.id}
             node={node}
             depth={0}
             onToggleExpand={toggleExpand}
-            onNavigate={onNavigate}
             selectedCollectionId={selectedCollectionId}
             isDraggable={false}
             entriesByCollection={entriesByCollection}
+            userPreferences={userPreferences}
           />
         ))}
         
         {/* Separator between Favorites and Date Hierarchy */}
-        {favoriteNodes.length > 0 && dateHierarchyNodes.length > 0 && (
+        {allFavoriteNodes.length > 0 && dateHierarchyNodes.length > 0 && (
           <div className="border-t border-gray-200 dark:border-gray-700" />
         )}
         
@@ -182,10 +218,10 @@ export function HierarchicalCollectionList({
             node={node}
             depth={0}
             onToggleExpand={toggleExpand}
-            onNavigate={onNavigate}
             selectedCollectionId={selectedCollectionId}
             isDraggable={false}
             entriesByCollection={entriesByCollection}
+            userPreferences={userPreferences}
           />
         ))}
         
@@ -195,7 +231,7 @@ export function HierarchicalCollectionList({
         )}
         
         {/* Separator between Favorites and Other Customs (when no date hierarchy) */}
-        {favoriteNodes.length > 0 && dateHierarchyNodes.length === 0 && otherCustomNodes.length > 0 && (
+        {allFavoriteNodes.length > 0 && dateHierarchyNodes.length === 0 && otherCustomNodes.length > 0 && (
           <div className="border-t border-gray-200 dark:border-gray-700" />
         )}
         
@@ -213,10 +249,10 @@ export function HierarchicalCollectionList({
                   node={node}
                   depth={0}
                   onToggleExpand={toggleExpand}
-                  onNavigate={onNavigate}
                   selectedCollectionId={selectedCollectionId}
                   isDraggable={true}
                   entriesByCollection={entriesByCollection}
+                  userPreferences={userPreferences}
                 />
               ))}
             </SortableContext>
@@ -230,10 +266,10 @@ export function HierarchicalCollectionList({
             node={node}
             depth={0}
             onToggleExpand={toggleExpand}
-            onNavigate={onNavigate}
             selectedCollectionId={selectedCollectionId}
             isDraggable={false}
             entriesByCollection={entriesByCollection}
+            userPreferences={userPreferences}
           />
         ))}
       </div>

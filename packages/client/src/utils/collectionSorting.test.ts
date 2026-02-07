@@ -4,9 +4,16 @@
 
 import { describe, it, expect } from 'vitest';
 import { sortCollectionsHierarchically } from './collectionSorting';
-import type { Collection } from '@squickr/shared';
+import type { Collection, UserPreferences } from '@squickr/shared';
+import { DEFAULT_USER_PREFERENCES } from '@squickr/shared';
 
 describe('sortCollectionsHierarchically', () => {
+  // Default preferences for most tests (auto-favorite disabled)
+  const defaultPreferences: UserPreferences = {
+    ...DEFAULT_USER_PREFERENCES,
+    autoFavoriteRecentDailyLogs: false,
+  };
+
   it('should sort collections in hierarchical order: favorited customs, daily logs (newest first), other customs', () => {
     const collections: Collection[] = [
       // Other customs (should appear last)
@@ -23,7 +30,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'fav2', name: 'Favorite 2', type: 'custom', order: 'a1', isFavorite: true, createdAt: '2024-01-02T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
 
     // Expected order: fav1, fav2, daily2, daily1, daily3, custom1, custom2
     expect(sorted.map(c => c.id)).toEqual([
@@ -44,7 +51,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'fav3', name: 'Favorite 3', type: 'custom', order: 'c', isFavorite: true, createdAt: '2024-01-03T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
 
     expect(sorted.map(c => c.id)).toEqual(['fav1', 'fav2', 'fav3']);
   });
@@ -56,7 +63,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'daily2', name: 'Feb 2', type: 'daily', date: '2026-02-02', createdAt: '2024-01-02T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
 
     expect(sorted.map(c => c.id)).toEqual(['daily3', 'daily2', 'daily1']);
   });
@@ -68,13 +75,13 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'custom3', name: 'Custom 3', type: 'custom', order: 'c', isFavorite: false, createdAt: '2024-01-03T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
 
     expect(sorted.map(c => c.id)).toEqual(['custom1', 'custom2', 'custom3']);
   });
 
   it('should handle empty array', () => {
-    const sorted = sortCollectionsHierarchically([]);
+    const sorted = sortCollectionsHierarchically([], defaultPreferences);
     expect(sorted).toEqual([]);
   });
 
@@ -84,7 +91,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'fav1', name: 'Favorite 1', type: 'custom', order: 'a', isFavorite: true, createdAt: '2024-01-01T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
     expect(sorted.map(c => c.id)).toEqual(['fav1', 'fav2']);
   });
 
@@ -94,7 +101,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'daily2', name: 'Feb 2', type: 'daily', date: '2026-02-02', createdAt: '2024-01-02T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
     expect(sorted.map(c => c.id)).toEqual(['daily2', 'daily1']);
   });
 
@@ -104,7 +111,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'custom1', name: 'Custom 1', type: 'custom', order: 'a', isFavorite: false, createdAt: '2024-01-01T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
     expect(sorted.map(c => c.id)).toEqual(['custom1', 'custom2']);
   });
 
@@ -114,7 +121,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'legacy1', name: 'Legacy 1', order: 'a', createdAt: '2024-01-01T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
     expect(sorted.map(c => c.id)).toEqual(['legacy1', 'legacy2']);
   });
 
@@ -124,7 +131,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'log', name: 'Work Log', type: 'log', order: 'a', createdAt: '2024-01-01T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
     expect(sorted.map(c => c.id)).toEqual(['log', 'tracker']);
   });
 
@@ -134,7 +141,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'custom1', name: 'Custom 1', type: 'custom', order: 'a', createdAt: '2024-01-01T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
     // Empty order string comes before 'a' in lexicographic comparison
     expect(sorted.map(c => c.id)).toEqual(['custom2', 'custom1']);
   });
@@ -146,7 +153,7 @@ describe('sortCollectionsHierarchically', () => {
     ];
 
     const original = [...collections];
-    sortCollectionsHierarchically(collections);
+    sortCollectionsHierarchically(collections, defaultPreferences);
 
     expect(collections).toEqual(original);
   });
@@ -169,7 +176,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'custom1', name: 'Custom 1', type: 'custom', order: 'b0', isFavorite: false, createdAt: '2024-01-06T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
 
     // Expected order: fav1, monthly1, monthly2, daily1, daily2, custom1
     expect(sorted.map(c => c.id)).toEqual([
@@ -189,7 +196,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'monthly2', name: 'February 2026', type: 'monthly', date: '2026-02', createdAt: '2024-01-02T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
 
     expect(sorted.map(c => c.id)).toEqual(['monthly3', 'monthly2', 'monthly1']);
   });
@@ -200,7 +207,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'monthly2', name: 'January 2026', type: 'monthly', date: '2026-01', createdAt: '2024-01-01T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
     expect(sorted.map(c => c.id)).toEqual(['monthly1', 'monthly2']);
   });
 
@@ -216,7 +223,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'daily2', name: 'Feb 4', type: 'daily', date: '2026-02-04', createdAt: '2024-01-06T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
 
     // Expected order: fav1, fav2, monthly1, monthly2, daily1, daily2, custom1, custom2
     expect(sorted.map(c => c.id)).toEqual([
@@ -237,7 +244,7 @@ describe('sortCollectionsHierarchically', () => {
       { id: 'monthly2', name: 'No Date', type: 'monthly', createdAt: '2024-01-01T00:00:00Z' },
     ];
 
-    const sorted = sortCollectionsHierarchically(collections);
+    const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
     
     // Monthly without date should sort before those with dates (empty string < '2026-02')
     expect(sorted.map(c => c.id)).toEqual(['monthly1', 'monthly2']);

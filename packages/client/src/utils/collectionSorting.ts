@@ -11,7 +11,8 @@
  * 4. Other customs (by order field, lexicographic)
  */
 
-import type { Collection } from '@squickr/shared';
+import type { Collection, UserPreferences } from '@squickr/shared';
+import { isEffectivelyFavorited } from './collectionUtils';
 
 /**
  * Sort collections according to the hierarchical display order.
@@ -23,9 +24,13 @@ import type { Collection } from '@squickr/shared';
  * - Other custom collections last (sorted by order)
  * 
  * @param collections - Array of collections to sort
+ * @param userPreferences - User preferences (for auto-favorite logic)
  * @returns Sorted array of collections (does not mutate input)
  */
-export function sortCollectionsHierarchically(collections: Collection[]): Collection[] {
+export function sortCollectionsHierarchically(
+  collections: Collection[],
+  userPreferences: UserPreferences
+): Collection[] {
   // Separate monthly logs, daily logs, and custom collections
   const monthlyLogs = collections.filter(c => c.type === 'monthly');
   const dailyLogs = collections.filter(c => c.type === 'daily' && c.date);
@@ -33,9 +38,9 @@ export function sortCollectionsHierarchically(collections: Collection[]): Collec
     !c.type || c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
   );
   
-  // Separate pinned from unpinned custom collections
-  const pinnedCustoms = customCollections.filter(c => c.isFavorite);
-  const unpinnedCustoms = customCollections.filter(c => !c.isFavorite);
+  // Separate pinned from unpinned custom collections (using effective favorites)
+  const pinnedCustoms = customCollections.filter(c => isEffectivelyFavorited(c, userPreferences));
+  const unpinnedCustoms = customCollections.filter(c => !isEffectivelyFavorited(c, userPreferences));
   
   // Sort both by order field (fractional index string, lexicographic comparison)
   pinnedCustoms.sort((a, b) => (a.order || '').localeCompare(b.order || ''));

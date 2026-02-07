@@ -5,6 +5,8 @@
  * Ensures consistency across the application.
  */
 
+import type { CompletedTaskBehavior } from '@squickr/shared';
+
 /**
  * Drag and Drop Configuration
  * 
@@ -89,9 +91,36 @@ export const ENTRY_ICONS = {
   /** Migrated entry icon */
   MIGRATED: '>',
   
-  /** Favorite/starred collection icon */
+  /** Favorite/starred collection icon (manually favorited) */
   FAVORITE: '⭐',
+  
+  /** Auto-favorited collection icon (hollow star) */
+  AUTO_FAVORITE: '✦',
   
   /** Calendar collection icon */
   CALENDAR: '🗓️',
 } as const;
+
+/**
+ * Completed Task Behavior Labels
+ * 
+ * Human-readable labels for completed task behavior options.
+ * Used in settings modals and dropdowns.
+ */
+export const BEHAVIOR_LABELS: Record<CompletedTaskBehavior, string> = {
+  'keep-in-place': 'Keep in place',
+  'move-to-bottom': 'Move to bottom',
+  'collapse': 'Collapse',
+};
+
+/**
+ * Completed Task Behavior Descriptions
+ * 
+ * Detailed descriptions explaining what each behavior does.
+ * Displayed as help text in settings UI.
+ */
+export const BEHAVIOR_DESCRIPTIONS: Record<CompletedTaskBehavior, string> = {
+  'keep-in-place': 'Completed tasks stay where they are',
+  'move-to-bottom': 'Completed tasks move below a separator',
+  'collapse': 'Completed tasks hidden in expandable section',
+};

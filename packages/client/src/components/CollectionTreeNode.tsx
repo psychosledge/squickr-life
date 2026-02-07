@@ -2,19 +2,20 @@ import { Link } from 'react-router-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { HierarchyNode } from '../hooks/useCollectionHierarchy';
-import type { Entry } from '@squickr/shared';
+import type { Entry, UserPreferences } from '@squickr/shared';
 import { buildCollectionPath } from '../routes';
 import { CollectionStats } from './CollectionStats';
 import { ENTRY_ICONS } from '../utils/constants';
+import { isAutoFavorited } from '../utils/collectionUtils';
 
 interface CollectionTreeNodeProps {
   node: HierarchyNode;
   depth: number;
   onToggleExpand: (nodeId: string) => void;
-  onNavigate?: (collectionId: string) => void;
   selectedCollectionId?: string;
   isDraggable: boolean;
   entriesByCollection?: Map<string | null, Entry[]>;
+  userPreferences: UserPreferences;
 }
 
 /**
@@ -30,6 +31,7 @@ export function CollectionTreeNode({
   selectedCollectionId,
   isDraggable,
   entriesByCollection,
+  userPreferences,
 }: CollectionTreeNodeProps) {
   const isSelected = node.collection?.id === selectedCollectionId;
   const isContainer = node.type === 'year' || node.type === 'month';
@@ -57,16 +59,20 @@ export function CollectionTreeNode({
   // Indentation based on depth
   const paddingLeft = `${depth * 1.5}rem`;
   
-  // Icon selection
+  // Icon selection with auto-favorite support
   let icon = '';
   if (node.type === 'year' || node.type === 'month') {
     icon = node.isExpanded ? '▼' : '▶';
+  } else if (node.collection?.isFavorite) {
+    // Manually favorited - show filled star (for any collection type)
+    icon = ENTRY_ICONS.FAVORITE;
+  } else if (node.collection && isAutoFavorited(node.collection, userPreferences)) {
+    // Auto-favorited - show hollow star (only for daily logs when enabled)
+    icon = ENTRY_ICONS.AUTO_FAVORITE;
   } else if (node.type === 'monthly') {
     icon = ENTRY_ICONS.CALENDAR;
   } else if (node.type === 'day') {
     icon = ENTRY_ICONS.EVENT;
-  } else if (node.collection?.isFavorite) {
-    icon = ENTRY_ICONS.FAVORITE;
   } else {
     icon = ENTRY_ICONS.NOTE;
   }
@@ -101,6 +107,7 @@ export function CollectionTreeNode({
             selectedCollectionId={selectedCollectionId}
             isDraggable={false}
             entriesByCollection={entriesByCollection}
+            userPreferences={userPreferences}
           />
         ))}
       </>

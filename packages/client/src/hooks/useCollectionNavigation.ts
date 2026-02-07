@@ -11,6 +11,7 @@ import type { Collection } from '@squickr/shared';
 import { useApp } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { sortCollectionsHierarchically } from '../utils/collectionSorting';
+import { useUserPreferences } from './useUserPreferences';
 
 const SWIPE_THRESHOLD = 100; // Minimum pixels for horizontal swipe detection
 const VERTICAL_PRIORITY_RATIO = 1.5; // If vertical movement > horizontal * ratio, treat as scroll
@@ -27,6 +28,7 @@ export function useCollectionNavigation(
 ): UseCollectionNavigationResult {
   const { collectionProjection, entryProjection } = useApp();
   const navigate = useNavigate();
+  const userPreferences = useUserPreferences();
   const [collections, setCollections] = useState<Collection[]>([]);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -54,10 +56,10 @@ export function useCollectionNavigation(
     }
     
     // Sort collections hierarchically to match index page order
-    // Order: 1) Favorited customs, 2) Daily logs (newest first), 3) Other customs
-    const sortedCollections = sortCollectionsHierarchically(allCollections);
+    // Order: 1) Favorited customs, 2) Monthly logs, 3) Daily logs (newest first), 4) Other customs
+    const sortedCollections = sortCollectionsHierarchically(allCollections, userPreferences);
     setCollections(sortedCollections);
-  }, [collectionProjection, entryProjection]);
+  }, [collectionProjection, entryProjection, userPreferences]);
 
   // Load collections on mount and when they change
   useEffect(() => {

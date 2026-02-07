@@ -1,5 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import type { CollectionSettings, CompletedTaskBehavior } from '@squickr/shared';
+import { useUserPreferences } from '../hooks/useUserPreferences';
+import { BEHAVIOR_LABELS } from '../utils/constants';
 
 interface CollectionSettingsModalProps {
   isOpen: boolean;
@@ -14,7 +16,8 @@ interface CollectionSettingsModalProps {
  * Modal for updating collection settings.
  * 
  * Features:
- * - Dropdown for completed task behavior (keep-in-place, move-to-bottom, collapse)
+ * - Dropdown for completed task behavior (use-default, keep-in-place, move-to-bottom, collapse)
+ * - "Use default" option shows current global preference
  * - Escape key to close
  * - Displays validation errors
  * - Closes modal after successful save
@@ -26,21 +29,23 @@ export function CollectionSettingsModal({
   onClose, 
   onSubmit 
 }: CollectionSettingsModalProps) {
-  const [completedTaskBehavior, setCompletedTaskBehavior] = useState<CompletedTaskBehavior>('keep-in-place');
+  const userPreferences = useUserPreferences();
+  const [completedTaskBehavior, setCompletedTaskBehavior] = useState<CompletedTaskBehavior | undefined>('keep-in-place');
   const [error, setError] = useState('');
 
   // Initialize settings when modal opens (with migration from legacy format)
   useEffect(() => {
     if (isOpen) {
       // Migrate from old collapseCompleted boolean to new enum
-      const behavior: CompletedTaskBehavior = 
+      // undefined means "use default"
+      const behavior: CompletedTaskBehavior | undefined = 
         currentSettings?.completedTaskBehavior !== undefined
           ? currentSettings.completedTaskBehavior as CompletedTaskBehavior // Already using new format
           : currentSettings?.collapseCompleted === true
             ? 'collapse'
             : currentSettings?.collapseCompleted === false
               ? 'keep-in-place'
-              : 'keep-in-place'; // Default
+              : undefined; // Default to "use default"
       
       setCompletedTaskBehavior(behavior);
       setError('');
@@ -138,8 +143,11 @@ export function CollectionSettingsModal({
             </label>
             <select
               id="completed-task-behavior"
-              value={completedTaskBehavior}
-              onChange={(e) => setCompletedTaskBehavior(e.target.value as CompletedTaskBehavior)}
+              value={completedTaskBehavior ?? 'use-default'}
+              onChange={(e) => {
+                const value = e.target.value;
+                setCompletedTaskBehavior(value === 'use-default' ? undefined : value as CompletedTaskBehavior);
+              }}
               className="
                 w-full px-3 py-2
                 bg-white dark:bg-gray-700
@@ -150,11 +158,15 @@ export function CollectionSettingsModal({
                 cursor-pointer
               "
             >
+              <option value="use-default">
+                Use default ({BEHAVIOR_LABELS[userPreferences.defaultCompletedTaskBehavior]})
+              </option>
               <option value="keep-in-place">Keep in place</option>
               <option value="move-to-bottom">Move to bottom</option>
               <option value="collapse">Collapse</option>
             </select>
             <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {completedTaskBehavior === undefined && `Uses global default: ${BEHAVIOR_LABELS[userPreferences.defaultCompletedTaskBehavior].toLowerCase()}`}
               {completedTaskBehavior === 'keep-in-place' && 'Completed tasks stay where they are'}
               {completedTaskBehavior === 'move-to-bottom' && 'Completed tasks move below a separator'}
               {completedTaskBehavior === 'collapse' && 'Completed tasks hidden in expandable section'}

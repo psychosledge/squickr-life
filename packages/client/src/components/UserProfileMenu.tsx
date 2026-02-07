@@ -21,9 +21,10 @@ import { getInitials } from '../utils/userUtils';
 interface UserProfileMenuProps {
   user: User;
   onSignOut: () => Promise<void>;
+  onSettingsClick: () => void;
 }
 
-export function UserProfileMenu({ user, onSignOut }: UserProfileMenuProps) {
+export function UserProfileMenu({ user, onSignOut, onSettingsClick }: UserProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -54,6 +55,11 @@ export function UserProfileMenu({ user, onSignOut }: UserProfileMenuProps) {
 
   const handleToggle = () => {
     setIsOpen(!isOpen);
+  };
+
+  const handleSettingsClick = () => {
+    setIsOpen(false);
+    onSettingsClick();
   };
 
   const handleSignOut = async () => {
@@ -128,8 +134,25 @@ export function UserProfileMenu({ user, onSignOut }: UserProfileMenuProps) {
             )}
           </div>
 
-          {/* Sign Out Button */}
+          {/* Menu Options */}
           <div className="px-2 py-1">
+            <button
+              role="menuitem"
+              onClick={handleSettingsClick}
+              className="
+                w-full text-left
+                px-3 py-2
+                text-sm text-gray-700 dark:text-gray-300
+                hover:bg-gray-100 dark:hover:bg-gray-700
+                rounded-md
+                transition-colors
+                focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                flex items-center gap-2
+              "
+            >
+              <span>⚙️</span>
+              <span>Settings</span>
+            </button>
             <button
               role="menuitem"
               onClick={handleSignOut}
@@ -141,9 +164,11 @@ export function UserProfileMenu({ user, onSignOut }: UserProfileMenuProps) {
                 rounded-md
                 transition-colors
                 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                flex items-center gap-2
               "
             >
-              Sign out
+              <span>🚪</span>
+              <span>Sign out</span>
             </button>
           </div>
         </div>

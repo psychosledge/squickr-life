@@ -13,19 +13,23 @@ import { useAuth } from '../context/AuthContext';
 import { signOut } from '../firebase/auth';
 import { HierarchicalCollectionList } from '../components/HierarchicalCollectionList';
 import { CreateCollectionModal } from '../components/CreateCollectionModal';
+import { SettingsModal } from '../components/SettingsModal';
 import { FAB } from '../components/FAB';
 import { DarkModeToggle } from '../components/DarkModeToggle';
 import { UserProfileMenu } from '../components/UserProfileMenu';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { logger } from '../utils/logger';
+import { useUserPreferences } from '../hooks/useUserPreferences';
 
 export function CollectionIndexView() {
   const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler } = useApp();
   const { user } = useAuth();
+  const userPreferences = useUserPreferences();
   
   const [collections, setCollections] = useState<Collection[]>([]);
   const [entriesByCollection, setEntriesByCollection] = useState<Map<string | null, Entry[]>>(new Map());
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // Load collections and entries
   const loadData = async () => {
@@ -129,7 +133,13 @@ export function CollectionIndexView() {
           {/* Top-right controls */}
           <div className="flex justify-end items-center gap-3 mb-4">
             <DarkModeToggle />
-            {user && <UserProfileMenu user={user} onSignOut={handleSignOut} />}
+            {user && (
+              <UserProfileMenu 
+                user={user} 
+                onSignOut={handleSignOut}
+                onSettingsClick={() => setIsSettingsModalOpen(true)}
+              />
+            )}
           </div>
           
           {/* Title */}
@@ -151,6 +161,7 @@ export function CollectionIndexView() {
           collections={collections}
           onReorder={handleReorderCollection}
           entriesByCollection={entriesByCollection}
+          userPreferences={userPreferences}
         />
       </div>
 
@@ -162,6 +173,12 @@ export function CollectionIndexView() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreateCollection}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
       />
     </div>
   );
