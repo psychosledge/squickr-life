@@ -24,6 +24,8 @@ interface EntryItemProps {
   onNavigateToMigrated?: (collectionId: string | null) => void;
   // Collection creation handler
   onCreateCollection?: (name: string) => Promise<string>;
+  // Sub-task handler
+  onAddSubTask?: (entry: Entry) => void;
 }
 
 /**
@@ -47,7 +49,8 @@ export function EntryItem({
   collections,
   currentCollectionId,
   onNavigateToMigrated,
-  onCreateCollection
+  onCreateCollection,
+  onAddSubTask
 }: EntryItemProps) {
   // Route to the appropriate type-specific component
   if (entry.type === 'task') {
@@ -63,6 +66,7 @@ export function EntryItem({
         currentCollectionId={currentCollectionId}
         onNavigateToMigrated={onNavigateToMigrated}
         onCreateCollection={onCreateCollection}
+        onAddSubTask={onAddSubTask}
       />
     );
   }

@@ -28,6 +28,7 @@ import { RenameCollectionModal } from '../components/RenameCollectionModal';
 import { DeleteCollectionModal } from '../components/DeleteCollectionModal';
 import { CollectionSettingsModal } from '../components/CollectionSettingsModal';
 import { MigrateEntryModal } from '../components/MigrateEntryModal';
+import { CreateSubTaskModal } from '../components/CreateSubTaskModal';
 import { SelectionToolbar } from '../components/SelectionToolbar';
 import { SwipeIndicator } from '../components/SwipeIndicator';
 import { FAB } from '../components/FAB';
@@ -53,6 +54,10 @@ export function CollectionDetailView() {
 
   // Migration modal state for bulk migration
   const [isBulkMigrateModalOpen, setIsBulkMigrateModalOpen] = useState(false);
+
+  // Sub-task modal state
+  const [isSubTaskModalOpen, setIsSubTaskModalOpen] = useState(false);
+  const [subTaskParent, setSubTaskParent] = useState<Entry | null>(null);
 
   // Initialize all handlers (memoized to prevent recreation on every render)
   const handlers = useCollectionHandlers({
@@ -195,6 +200,23 @@ export function CollectionDetailView() {
     setIsBulkMigrateModalOpen(false);
   };
 
+  // Sub-task modal handlers
+  const handleOpenSubTaskModal = (parentEntry: Entry) => {
+    setSubTaskParent(parentEntry);
+    setIsSubTaskModalOpen(true);
+  };
+
+  const handleCloseSubTaskModal = () => {
+    setIsSubTaskModalOpen(false);
+    setSubTaskParent(null);
+  };
+
+  const handleCreateSubTask = async (title: string) => {
+    if (!subTaskParent || subTaskParent.type !== 'task') return;
+    await operations.handleCreateSubTask(subTaskParent.id, title);
+    handleCloseSubTaskModal();
+  };
+
   // Success state - show collection and entries
   if (isLoading) {
     return (
@@ -291,6 +313,7 @@ export function CollectionDetailView() {
           currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
           onNavigateToMigrated={operations.handleNavigateToMigrated}
           onCreateCollection={operations.handleCreateCollection}
+          onAddSubTask={handleOpenSubTaskModal}
           isSelectionMode={selection.isSelectionMode}
           selectedEntryIds={selection.selectedEntryIds}
           onToggleSelection={selection.toggleSelection}
@@ -317,6 +340,7 @@ export function CollectionDetailView() {
               currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
               onNavigateToMigrated={operations.handleNavigateToMigrated}
               onCreateCollection={operations.handleCreateCollection}
+              onAddSubTask={handleOpenSubTaskModal}
               isSelectionMode={selection.isSelectionMode}
               selectedEntryIds={selection.selectedEntryIds}
               onToggleSelection={selection.toggleSelection}
@@ -354,25 +378,26 @@ export function CollectionDetailView() {
             
             {modals.isCompletedExpanded && (
               <div className="mt-4">
-                <EntryList
-                  entries={completedTasks}
-                  onCompleteTask={operations.handleCompleteTask}
-                  onReopenTask={operations.handleReopenTask}
-                  onUpdateTaskTitle={operations.handleUpdateTaskTitle}
-                  onUpdateNoteContent={operations.handleUpdateNoteContent}
-                  onUpdateEventContent={operations.handleUpdateEventContent}
-                  onUpdateEventDate={operations.handleUpdateEventDate}
-                  onDelete={operations.handleDelete}
-                  onReorder={operations.handleReorder}
-                  onMigrate={operations.handleMigrate}
-                  collections={allCollections}
-                  currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
-                  onNavigateToMigrated={operations.handleNavigateToMigrated}
-                  onCreateCollection={operations.handleCreateCollection}
-                  isSelectionMode={selection.isSelectionMode}
-                  selectedEntryIds={selection.selectedEntryIds}
-                  onToggleSelection={selection.toggleSelection}
-                />
+              <EntryList
+                entries={completedTasks}
+                onCompleteTask={operations.handleCompleteTask}
+                onReopenTask={operations.handleReopenTask}
+                onUpdateTaskTitle={operations.handleUpdateTaskTitle}
+                onUpdateNoteContent={operations.handleUpdateNoteContent}
+                onUpdateEventContent={operations.handleUpdateEventContent}
+                onUpdateEventDate={operations.handleUpdateEventDate}
+                onDelete={operations.handleDelete}
+                onReorder={operations.handleReorder}
+                onMigrate={operations.handleMigrate}
+                collections={allCollections}
+                currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
+                onNavigateToMigrated={operations.handleNavigateToMigrated}
+                onCreateCollection={operations.handleCreateCollection}
+                onAddSubTask={handleOpenSubTaskModal}
+                isSelectionMode={selection.isSelectionMode}
+                selectedEntryIds={selection.selectedEntryIds}
+                onToggleSelection={selection.toggleSelection}
+              />
               </div>
             )}
           </div>
@@ -414,6 +439,14 @@ export function CollectionDetailView() {
         currentSettings={collection.settings}
         onClose={modals.closeSettingsModal}
         onSubmit={operations.handleSettingsSubmit}
+      />
+
+      {/* Create sub-task modal */}
+      <CreateSubTaskModal
+        isOpen={isSubTaskModalOpen}
+        parentTaskTitle={subTaskParent?.type === 'task' ? subTaskParent.title : ''}
+        onClose={handleCloseSubTaskModal}
+        onSubmit={handleCreateSubTask}
       />
 
       {/* Bulk migration modal */}

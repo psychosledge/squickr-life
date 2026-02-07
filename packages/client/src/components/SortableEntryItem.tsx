@@ -29,6 +29,8 @@ interface SortableEntryItemProps {
   isSelectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelection?: (entryId: string) => void;
+  // Sub-task handler
+  onAddSubTask?: (entry: Entry) => void;
 }
 
 /**
@@ -54,6 +56,7 @@ export function SortableEntryItem({
   isSelectionMode = false,
   isSelected = false,
   onToggleSelection,
+  onAddSubTask,
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -124,6 +127,7 @@ export function SortableEntryItem({
           currentCollectionId={currentCollectionId}
           onNavigateToMigrated={onNavigateToMigrated}
           onCreateCollection={onCreateCollection}
+          onAddSubTask={onAddSubTask}
         />
       </SelectableEntryItem>
     </div>

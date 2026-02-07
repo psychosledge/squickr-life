@@ -31,6 +31,8 @@ interface EntryListProps {
   isSelectionMode?: boolean;
   selectedEntryIds?: Set<string>;
   onToggleSelection?: (entryId: string) => void;
+  // Sub-task handler
+  onAddSubTask?: (entry: Entry) => void;
 }
 
 /**
@@ -58,6 +60,7 @@ export function EntryList({
   isSelectionMode = false,
   selectedEntryIds = new Set(),
   onToggleSelection,
+  onAddSubTask,
 }: EntryListProps) {
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -151,6 +154,7 @@ export function EntryList({
                 currentCollectionId={currentCollectionId}
                 onNavigateToMigrated={onNavigateToMigrated}
                 onCreateCollection={onCreateCollection}
+                onAddSubTask={onAddSubTask}
                 isSelectionMode={isSelectionMode}
                 isSelected={selectedEntryIds.has(entry.id)}
                 onToggleSelection={onToggleSelection}

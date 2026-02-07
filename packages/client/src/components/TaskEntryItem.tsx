@@ -16,6 +16,7 @@ interface TaskEntryItemProps {
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
   onCreateCollection?: (name: string) => Promise<string>;
+  onAddSubTask?: (entry: Entry) => void;
 }
 
 /**
@@ -37,7 +38,8 @@ export function TaskEntryItem({
   collections,
   currentCollectionId,
   onNavigateToMigrated,
-  onCreateCollection
+  onCreateCollection,
+  onAddSubTask
 }: TaskEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -119,6 +121,10 @@ export function TaskEntryItem({
     onDelete(entry.id);
   };
 
+  const handleAddSubTask = () => {
+    onAddSubTask?.(entry);
+  };
+
   const isCompleted = entry.status === 'completed';
   const canEdit = !!onUpdateTaskTitle;
 
@@ -186,6 +192,7 @@ export function TaskEntryItem({
           onEdit={handleEdit}
           onMove={handleMove}
           onDelete={handleDelete}
+          onAddSubTask={onAddSubTask ? handleAddSubTask : undefined}
           collections={collections}
           onNavigateToMigrated={onNavigateToMigrated}
         />
