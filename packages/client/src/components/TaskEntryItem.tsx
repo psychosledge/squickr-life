@@ -17,6 +17,12 @@ interface TaskEntryItemProps {
   onNavigateToMigrated?: (collectionId: string | null) => void;
   onCreateCollection?: (name: string) => Promise<string>;
   onAddSubTask?: (entry: Entry) => void;
+  // Phase 2: Completion status for parent tasks with sub-tasks
+  completionStatus?: {
+    total: number;
+    completed: number;
+    allComplete: boolean;
+  };
 }
 
 /**
@@ -39,7 +45,8 @@ export function TaskEntryItem({
   currentCollectionId,
   onNavigateToMigrated,
   onCreateCollection,
-  onAddSubTask
+  onAddSubTask,
+  completionStatus,
 }: TaskEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -162,17 +169,34 @@ export function TaskEntryItem({
             </div>
           ) : (
             <>
-              <div 
-                className={`text-lg font-medium cursor-pointer select-none ${
-                  isCompleted 
-                    ? 'text-gray-500 dark:text-gray-400 line-through' 
-                    : 'text-gray-900 dark:text-white'
-                } ${canEdit ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
-                onDoubleClick={handleDoubleClick}
-                title={canEdit ? 'Double-click to edit' : undefined}
-                style={{ whiteSpace: 'pre-wrap' }}
-              >
-                {entry.title}
+              <div className="flex items-center gap-2">
+                <div 
+                  className={`text-lg font-medium cursor-pointer select-none ${
+                    isCompleted 
+                      ? 'text-gray-500 dark:text-gray-400 line-through' 
+                      : 'text-gray-900 dark:text-white'
+                  } ${canEdit ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
+                  onDoubleClick={handleDoubleClick}
+                  title={canEdit ? 'Double-click to edit' : undefined}
+                  style={{ whiteSpace: 'pre-wrap' }}
+                >
+                  {entry.title}
+                </div>
+                
+                {/* Phase 2: Completion Badge for parent tasks */}
+                {completionStatus && completionStatus.total > 0 && (
+                  <span 
+                    className={`text-sm px-2 py-0.5 rounded-full ${
+                      completionStatus.allComplete
+                        ? 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30'
+                        : 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800'
+                    }`}
+                    data-testid="completion-badge"
+                    title={`${completionStatus.completed} of ${completionStatus.total} sub-tasks complete`}
+                  >
+                    {completionStatus.completed}/{completionStatus.total}
+                  </span>
+                )}
               </div>
               <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {formatTimestamp(entry.createdAt)}

@@ -1,5 +1,5 @@
 import type { Entry, Collection } from '@squickr/domain';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableEntryItem } from './SortableEntryItem';
@@ -33,6 +33,12 @@ interface EntryListProps {
   onToggleSelection?: (entryId: string) => void;
   // Sub-task handler
   onAddSubTask?: (entry: Entry) => void;
+  // Phase 2: Optional completion status calculator (for parent tasks)
+  getCompletionStatus?: (taskId: string) => Promise<{
+    total: number;
+    completed: number;
+    allComplete: boolean;
+  }>;
 }
 
 /**
@@ -61,6 +67,7 @@ export function EntryList({
   selectedEntryIds = new Set(),
   onToggleSelection,
   onAddSubTask,
+  getCompletionStatus,
 }: EntryListProps) {
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -83,6 +90,54 @@ export function EntryList({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+  
+  // Phase 2: Filter out sub-tasks from top-level list
+  // Sub-tasks will be rendered indented under their parent tasks
+  const topLevelEntries = useMemo(() => {
+    return entries.filter(entry => {
+      // Only tasks can be sub-tasks
+      if (entry.type !== 'task') return true;
+      // Filter out entries with parentTaskId (sub-tasks)
+      return !entry.parentTaskId;
+    });
+  }, [entries]);
+  
+  // Phase 2: Calculate completion status for each parent task
+  // This map stores completion status by task ID
+  const [completionStatusMap, setCompletionStatusMap] = useState<Map<string, {
+    total: number;
+    completed: number;
+    allComplete: boolean;
+  }>>(new Map());
+  
+  // Recalculate completion status when entries change
+  useEffect(() => {
+    // Skip if getCompletionStatus is not provided (e.g., in tests)
+    if (!getCompletionStatus) return;
+    
+    const calculateCompletionStatus = async () => {
+      const statusMap = new Map<string, {
+        total: number;
+        completed: number;
+        allComplete: boolean;
+      }>();
+      
+      // Calculate status for each task entry
+      for (const entry of topLevelEntries) {
+        if (entry.type === 'task') {
+          const status = await getCompletionStatus(entry.id);
+          // Only store if task has children
+          if (status.total > 0) {
+            statusMap.set(entry.id, status);
+          }
+        }
+      }
+      
+      setCompletionStatusMap(statusMap);
+    };
+    
+    calculateCompletionStatus();
+  }, [topLevelEntries, getCompletionStatus]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -95,8 +150,8 @@ export function EntryList({
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    const oldIndex = entries.findIndex(entry => entry.id === activeId);
-    const newIndex = entries.findIndex(entry => entry.id === overId);
+    const oldIndex = topLevelEntries.findIndex(entry => entry.id === activeId);
+    const newIndex = topLevelEntries.findIndex(entry => entry.id === overId);
 
     // Determine previousEntryId and nextEntryId based on new position
     let previousEntryId: string | null = null;
@@ -104,18 +159,18 @@ export function EntryList({
 
     if (oldIndex < newIndex) {
       // Moving down: item will go AFTER the item we're hovering over
-      previousEntryId = entries[newIndex]?.id || null;
-      nextEntryId = entries[newIndex + 1]?.id || null;
+      previousEntryId = topLevelEntries[newIndex]?.id || null;
+      nextEntryId = topLevelEntries[newIndex + 1]?.id || null;
     } else {
       // Moving up: item will go BEFORE the item we're hovering over
-      previousEntryId = entries[newIndex - 1]?.id || null;
-      nextEntryId = entries[newIndex]?.id || null;
+      previousEntryId = topLevelEntries[newIndex - 1]?.id || null;
+      nextEntryId = topLevelEntries[newIndex]?.id || null;
     }
 
     onReorder(activeId, previousEntryId, nextEntryId);
   };
 
-  if (entries.length === 0) {
+  if (topLevelEntries.length === 0) {
     return (
       <div className="w-full max-w-2xl mx-auto text-center py-12">
         <p className="text-gray-500 dark:text-gray-400 text-lg">
@@ -128,7 +183,7 @@ export function EntryList({
   return (
     <div className="w-full max-w-2xl mx-auto">
       <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-        {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+        {topLevelEntries.length} {topLevelEntries.length === 1 ? 'entry' : 'entries'}
       </div>
       
       <DndContext
@@ -136,9 +191,9 @@ export function EntryList({
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={entries.map(e => e.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={topLevelEntries.map(e => e.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
-            {entries.map((entry) => (
+            {topLevelEntries.map((entry) => (
               <SortableEntryItem
                 key={entry.id}
                 entry={entry}
@@ -158,6 +213,7 @@ export function EntryList({
                 isSelectionMode={isSelectionMode}
                 isSelected={selectedEntryIds.has(entry.id)}
                 onToggleSelection={onToggleSelection}
+                completionStatus={completionStatusMap.get(entry.id)}
               />
             ))}
           </div>

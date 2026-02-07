@@ -26,6 +26,12 @@ interface EntryItemProps {
   onCreateCollection?: (name: string) => Promise<string>;
   // Sub-task handler
   onAddSubTask?: (entry: Entry) => void;
+  // Phase 2: Completion status for parent tasks
+  completionStatus?: {
+    total: number;
+    completed: number;
+    allComplete: boolean;
+  };
 }
 
 /**
@@ -50,7 +56,8 @@ export function EntryItem({
   currentCollectionId,
   onNavigateToMigrated,
   onCreateCollection,
-  onAddSubTask
+  onAddSubTask,
+  completionStatus,
 }: EntryItemProps) {
   // Route to the appropriate type-specific component
   if (entry.type === 'task') {
@@ -67,6 +74,7 @@ export function EntryItem({
         onNavigateToMigrated={onNavigateToMigrated}
         onCreateCollection={onCreateCollection}
         onAddSubTask={onAddSubTask}
+        completionStatus={completionStatus}
       />
     );
   }

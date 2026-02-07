@@ -384,4 +384,210 @@ describe('EntryList', () => {
     expect(listContainer).not.toHaveClass('pb-32');
     expect(listContainer).not.toHaveClass('pb-20');
   });
+
+  // ============================================================================
+  // Phase 2: Visual Hierarchy & Filtering Tests
+  // ============================================================================
+
+  describe('Phase 2: Top-Level Entry Filtering', () => {
+    it('should filter out sub-tasks from top-level list', () => {
+      // Arrange: Mix of top-level and sub-tasks
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Parent task',
+          status: 'open',
+          createdAt: '2026-02-07T10:00:00Z',
+        },
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Sub-task 1',
+          status: 'open',
+          createdAt: '2026-02-07T10:01:00Z',
+          parentTaskId: 'parent-1', // This is a sub-task
+        },
+        {
+          id: 'subtask-2',
+          type: 'task',
+          title: 'Sub-task 2',
+          status: 'open',
+          createdAt: '2026-02-07T10:02:00Z',
+          parentTaskId: 'parent-1', // This is a sub-task
+        },
+        {
+          id: 'task-2',
+          type: 'task',
+          title: 'Another top-level task',
+          status: 'open',
+          createdAt: '2026-02-07T11:00:00Z',
+        },
+      ];
+
+      // Act
+      render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+        />
+      );
+
+      // Assert: Only top-level entries should be rendered
+      expect(screen.getByText('Parent task')).toBeInTheDocument();
+      expect(screen.getByText('Another top-level task')).toBeInTheDocument();
+      
+      // Sub-tasks should NOT appear in main list
+      expect(screen.queryByText('Sub-task 1')).not.toBeInTheDocument();
+      expect(screen.queryByText('Sub-task 2')).not.toBeInTheDocument();
+      
+      // Count should only show top-level entries
+      expect(screen.getByText('2 entries')).toBeInTheDocument();
+    });
+
+    it('should show empty state when all entries are sub-tasks', () => {
+      // Arrange: Only sub-tasks
+      const entries: Entry[] = [
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Sub-task 1',
+          status: 'open',
+          createdAt: '2026-02-07T10:00:00Z',
+          parentTaskId: 'parent-1',
+        },
+        {
+          id: 'subtask-2',
+          type: 'task',
+          title: 'Sub-task 2',
+          status: 'open',
+          createdAt: '2026-02-07T11:00:00Z',
+          parentTaskId: 'parent-1',
+        },
+      ];
+
+      // Act
+      render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+        />
+      );
+
+      // Assert: Empty state should be shown
+      expect(screen.getByText(/No entries yet/i)).toBeInTheDocument();
+      expect(screen.queryByText('Sub-task 1')).not.toBeInTheDocument();
+      expect(screen.queryByText('Sub-task 2')).not.toBeInTheDocument();
+    });
+
+    it('should handle mixed entry types with sub-tasks filtered out', () => {
+      // Arrange: Tasks, notes, events, and sub-tasks
+      const entries: Entry[] = [
+        {
+          id: 'task-1',
+          type: 'task',
+          title: 'Top-level task',
+          status: 'open',
+          createdAt: '2026-02-07T10:00:00Z',
+        },
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Sub-task',
+          status: 'open',
+          createdAt: '2026-02-07T10:01:00Z',
+          parentTaskId: 'task-1',
+        },
+        {
+          id: 'note-1',
+          type: 'note',
+          content: 'A note',
+          createdAt: '2026-02-07T11:00:00Z',
+        },
+        {
+          id: 'event-1',
+          type: 'event',
+          content: 'An event',
+          createdAt: '2026-02-07T12:00:00Z',
+        },
+      ];
+
+      // Act
+      render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+        />
+      );
+
+      // Assert: Only top-level entries (task, note, event) should render
+      expect(screen.getByText('Top-level task')).toBeInTheDocument();
+      expect(screen.getByText('A note')).toBeInTheDocument();
+      expect(screen.getByText('An event')).toBeInTheDocument();
+      expect(screen.queryByText('Sub-task')).not.toBeInTheDocument();
+      expect(screen.getByText('3 entries')).toBeInTheDocument();
+    });
+
+    it('should allow drag-and-drop only for top-level entries', () => {
+      // Arrange: Parent and sub-tasks
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Parent task',
+          status: 'open',
+          createdAt: '2026-02-07T10:00:00Z',
+        },
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Sub-task',
+          status: 'open',
+          createdAt: '2026-02-07T10:01:00Z',
+          parentTaskId: 'parent-1',
+        },
+      ];
+
+      // Act
+      render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+        />
+      );
+
+      // Assert: Only 1 drag handle (for parent, not sub-task)
+      const dragHandles = screen.getAllByLabelText('Drag to reorder');
+      expect(dragHandles).toHaveLength(1);
+      expect(screen.getByText('Parent task')).toBeInTheDocument();
+    });
+  });
 });

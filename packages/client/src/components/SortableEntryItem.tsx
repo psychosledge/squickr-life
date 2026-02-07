@@ -31,6 +31,12 @@ interface SortableEntryItemProps {
   onToggleSelection?: (entryId: string) => void;
   // Sub-task handler
   onAddSubTask?: (entry: Entry) => void;
+  // Phase 2: Completion status for parent tasks
+  completionStatus?: {
+    total: number;
+    completed: number;
+    allComplete: boolean;
+  };
 }
 
 /**
@@ -57,6 +63,7 @@ export function SortableEntryItem({
   isSelected = false,
   onToggleSelection,
   onAddSubTask,
+  completionStatus,
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -128,6 +135,7 @@ export function SortableEntryItem({
           onNavigateToMigrated={onNavigateToMigrated}
           onCreateCollection={onCreateCollection}
           onAddSubTask={onAddSubTask}
+          completionStatus={completionStatus}
         />
       </SelectableEntryItem>
     </div>

@@ -317,6 +317,7 @@ export function CollectionDetailView() {
           isSelectionMode={selection.isSelectionMode}
           selectedEntryIds={selection.selectedEntryIds}
           onToggleSelection={selection.toggleSelection}
+          getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
         />
 
         {/* Completed tasks section - Mode 2: Move to bottom */}
@@ -344,6 +345,7 @@ export function CollectionDetailView() {
               isSelectionMode={selection.isSelectionMode}
               selectedEntryIds={selection.selectedEntryIds}
               onToggleSelection={selection.toggleSelection}
+              getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
             />
           </div>
         )}
@@ -397,6 +399,7 @@ export function CollectionDetailView() {
                 isSelectionMode={selection.isSelectionMode}
                 selectedEntryIds={selection.selectedEntryIds}
                 onToggleSelection={selection.toggleSelection}
+                getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
               />
               </div>
             )}
