@@ -353,7 +353,8 @@ describe('EntryList', () => {
     });
   });
 
-  it('should apply bottom padding to prevent FAB overlap', () => {
+  it('should render entry list container without bottom padding', () => {
+    // Bottom padding is now the responsibility of the parent view
     const entries: Entry[] = [
       {
         type: 'task',
@@ -378,7 +379,9 @@ describe('EntryList', () => {
       />
     );
     
-    const listContainer = container.querySelector('.pb-32');
+    const listContainer = container.querySelector('.max-w-2xl.mx-auto');
     expect(listContainer).toBeInTheDocument();
+    expect(listContainer).not.toHaveClass('pb-32');
+    expect(listContainer).not.toHaveClass('pb-20');
   });
 });

@@ -109,35 +109,37 @@ export function HierarchicalCollectionList({
   
   // Separate nodes into sections for rendering with separators
   // Use isEffectivelyFavorited to include both manual and auto-favorited collections
-  // For favorites, include both custom collections AND daily logs (day nodes) that are favorited
-  const favoriteNodes = nodes.filter(node => {
+  // For favorites, include both custom collections AND daily logs that are favorited
+  const favoriteCustomNodes = nodes.filter(node => {
     // For custom collections, check if favorited
     if (node.type === 'custom' && node.collection) {
       return isEffectivelyFavorited(node.collection, userPreferences);
     }
-    // For daily logs, need to find them in the hierarchy (they're nested under year/month)
-    // We'll handle this by flattening the tree
     return false;
   });
   
-  // Flatten the tree to get all day nodes that are favorited
-  const getAllDayNodes = (nodes: HierarchyNode[]): HierarchyNode[] => {
-    const dayNodes: HierarchyNode[] = [];
-    for (const node of nodes) {
-      if (node.type === 'day' && node.collection && isEffectivelyFavorited(node.collection, userPreferences)) {
-        dayNodes.push(node);
-      }
-      if (node.children.length > 0) {
-        dayNodes.push(...getAllDayNodes(node.children));
-      }
-    }
-    return dayNodes;
-  };
+  // Find favorited daily/monthly logs from the original collections array
+  // This ensures they appear even when year/month are collapsed
+  const favoriteDayNodes = useMemo(() => {
+    return collections
+      .filter(collection => 
+        (collection.type === 'daily' || collection.type === 'monthly') &&
+        isEffectivelyFavorited(collection, userPreferences)
+      )
+      .map(collection => ({
+        type: (collection.type === 'monthly' ? 'monthly' : 'day') as 'day' | 'monthly',
+        id: collection.id,
+        label: collection.name,
+        date: collection.date,
+        collection,
+        children: [],
+        isExpanded: false,
+      } as HierarchyNode));
+  }, [collections, userPreferences]);
   
-  const favoriteDayNodes = useMemo(() => getAllDayNodes(nodes), [nodes, userPreferences]);
   const allFavoriteNodes = useMemo(
-    () => [...favoriteNodes, ...favoriteDayNodes], 
-    [favoriteNodes, favoriteDayNodes]
+    () => [...favoriteCustomNodes, ...favoriteDayNodes], 
+    [favoriteCustomNodes, favoriteDayNodes]
   );
   
   const dateHierarchyNodes = nodes.filter(node => node.type === 'year');
@@ -169,42 +171,48 @@ export function HierarchicalCollectionList({
       
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-visible md:ml-12">
         {/* Favorites Section */}
-        {allFavoriteNodes.length > 0 && onReorder && (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={(event) => handleDragEnd(event, 'favorites')}
-          >
-            <SortableContext items={allFavoriteNodes.filter(n => n.type === 'custom').map(n => n.id)} strategy={verticalListSortingStrategy}>
-              {allFavoriteNodes.map(node => (
+        {allFavoriteNodes.length > 0 && (
+          <>
+            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              Favorites
+            </div>
+            {onReorder ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={(event) => handleDragEnd(event, 'favorites')}
+              >
+                <SortableContext items={allFavoriteNodes.filter(n => n.type === 'custom').map(n => n.id)} strategy={verticalListSortingStrategy}>
+                  {allFavoriteNodes.map(node => (
+                    <CollectionTreeNode
+                      key={node.id}
+                      node={node}
+                      depth={0}
+                      onToggleExpand={toggleExpand}
+                      selectedCollectionId={selectedCollectionId}
+                      isDraggable={node.type === 'custom'}
+                      entriesByCollection={entriesByCollection}
+                      userPreferences={userPreferences}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            ) : (
+              allFavoriteNodes.map(node => (
                 <CollectionTreeNode
                   key={node.id}
                   node={node}
                   depth={0}
                   onToggleExpand={toggleExpand}
                   selectedCollectionId={selectedCollectionId}
-                  isDraggable={node.type === 'custom'}
+                  isDraggable={false}
                   entriesByCollection={entriesByCollection}
                   userPreferences={userPreferences}
                 />
-              ))}
-            </SortableContext>
-          </DndContext>
+              ))
+            )}
+          </>
         )}
-        
-        {/* Non-draggable favorites (when onReorder not provided) */}
-        {allFavoriteNodes.length > 0 && !onReorder && allFavoriteNodes.map(node => (
-          <CollectionTreeNode
-            key={node.id}
-            node={node}
-            depth={0}
-            onToggleExpand={toggleExpand}
-            selectedCollectionId={selectedCollectionId}
-            isDraggable={false}
-            entriesByCollection={entriesByCollection}
-            userPreferences={userPreferences}
-          />
-        ))}
         
         {/* Separator between Favorites and Date Hierarchy */}
         {allFavoriteNodes.length > 0 && dateHierarchyNodes.length > 0 && (
@@ -212,18 +220,25 @@ export function HierarchicalCollectionList({
         )}
         
         {/* Date Hierarchy Section (not draggable) */}
-        {dateHierarchyNodes.map(node => (
-          <CollectionTreeNode
-            key={node.id}
-            node={node}
-            depth={0}
-            onToggleExpand={toggleExpand}
-            selectedCollectionId={selectedCollectionId}
-            isDraggable={false}
-            entriesByCollection={entriesByCollection}
-            userPreferences={userPreferences}
-          />
-        ))}
+        {dateHierarchyNodes.length > 0 && (
+          <>
+            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              Daily Logs
+            </div>
+            {dateHierarchyNodes.map(node => (
+              <CollectionTreeNode
+                key={node.id}
+                node={node}
+                depth={0}
+                onToggleExpand={toggleExpand}
+                selectedCollectionId={selectedCollectionId}
+                isDraggable={false}
+                entriesByCollection={entriesByCollection}
+                userPreferences={userPreferences}
+              />
+            ))}
+          </>
+        )}
         
         {/* Separator between Date Hierarchy and Other Customs */}
         {dateHierarchyNodes.length > 0 && otherCustomNodes.length > 0 && (
@@ -236,42 +251,48 @@ export function HierarchicalCollectionList({
         )}
         
         {/* Other Custom Collections Section */}
-        {otherCustomNodes.length > 0 && onReorder && (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={(event) => handleDragEnd(event, 'other')}
-          >
-            <SortableContext items={otherCustomNodes.map(n => n.id)} strategy={verticalListSortingStrategy}>
-              {otherCustomNodes.map(node => (
+        {otherCustomNodes.length > 0 && (
+          <>
+            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+              Collections
+            </div>
+            {onReorder ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={(event) => handleDragEnd(event, 'other')}
+              >
+                <SortableContext items={otherCustomNodes.map(n => n.id)} strategy={verticalListSortingStrategy}>
+                  {otherCustomNodes.map(node => (
+                    <CollectionTreeNode
+                      key={node.id}
+                      node={node}
+                      depth={0}
+                      onToggleExpand={toggleExpand}
+                      selectedCollectionId={selectedCollectionId}
+                      isDraggable={true}
+                      entriesByCollection={entriesByCollection}
+                      userPreferences={userPreferences}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            ) : (
+              otherCustomNodes.map(node => (
                 <CollectionTreeNode
                   key={node.id}
                   node={node}
                   depth={0}
                   onToggleExpand={toggleExpand}
                   selectedCollectionId={selectedCollectionId}
-                  isDraggable={true}
+                  isDraggable={false}
                   entriesByCollection={entriesByCollection}
                   userPreferences={userPreferences}
                 />
-              ))}
-            </SortableContext>
-          </DndContext>
+              ))
+            )}
+          </>
         )}
-        
-        {/* Non-draggable other customs (when onReorder not provided) */}
-        {otherCustomNodes.length > 0 && !onReorder && otherCustomNodes.map(node => (
-          <CollectionTreeNode
-            key={node.id}
-            node={node}
-            depth={0}
-            onToggleExpand={toggleExpand}
-            selectedCollectionId={selectedCollectionId}
-            isDraggable={false}
-            entriesByCollection={entriesByCollection}
-            userPreferences={userPreferences}
-          />
-        ))}
       </div>
     </div>
   );

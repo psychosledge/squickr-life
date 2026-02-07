@@ -64,7 +64,7 @@ describe('HierarchicalCollectionList', () => {
     expect(screen.getByText('Sunday, February 1, 2026')).toBeInTheDocument();
   });
 
-  it('should show star icon for favorited collections', () => {
+  it('should show note icon for all custom collections (no star icons in sidebar)', () => {
     const collections: Collection[] = [
       {
         id: '1',
@@ -90,11 +90,10 @@ describe('HierarchicalCollectionList', () => {
       />
     );
 
-    // Check that favorite has star icon
+    // Both should have note icon (no star icons in sidebar)
     const favoriteLink = screen.getByText('Favorite Ideas').closest('a');
-    expect(favoriteLink?.textContent).toContain('⭐');
+    expect(favoriteLink?.textContent).toContain('📝');
 
-    // Check that regular has document icon
     const regularLink = screen.getByText('Regular Ideas').closest('a');
     expect(regularLink?.textContent).toContain('📝');
   });
@@ -271,5 +270,62 @@ describe('HierarchicalCollectionList', () => {
     // Verify order: pinned < year < unpinned
     expect(pinnedIndex).toBeLessThan(yearIndex);
     expect(yearIndex).toBeLessThan(unpinnedIndex);
+  });
+
+  it('should show auto-favorited daily logs in favorites section even when year/month are collapsed', async () => {
+    const user = userEvent.setup();
+    
+    // Create a daily log for today (which will be auto-favorited)
+    const today = new Date();
+    const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    const collections: Collection[] = [
+      {
+        id: 'today-log',
+        name: 'Today',
+        type: 'daily',
+        date: todayDate,
+        order: 'a',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const autoFavoritePreferences: UserPreferences = {
+      autoFavoriteRecentDailyLogs: true,
+    };
+
+    // Start with year/month COLLAPSED
+    localStorage.setItem('collection-hierarchy-expanded', JSON.stringify([]));
+
+    renderWithRouter(
+      <HierarchicalCollectionList 
+        collections={collections}
+        userPreferences={autoFavoritePreferences}
+      />
+    );
+
+    // Today should appear in favorites section (at depth 0, no indentation)
+    const todayLinks = screen.getAllByText(/Today/);
+    expect(todayLinks.length).toBeGreaterThanOrEqual(1);
+    
+    // Verify today is showing in the favorites section
+    // (it should appear BEFORE the year node)
+    const allElements = document.querySelectorAll('a, button');
+    const texts = Array.from(allElements).map(el => el.textContent);
+    
+    const todayIndex = texts.findIndex(t => t?.includes('Today'));
+    const yearIndex = texts.findIndex(t => t?.includes(`${today.getFullYear()} Logs`));
+    
+    // Today should appear before the year node (in favorites section)
+    expect(todayIndex).toBeGreaterThan(-1);
+    expect(todayIndex).toBeLessThan(yearIndex);
+
+    // Now expand the year
+    const yearButton = screen.getByText(new RegExp(`${today.getFullYear()} Logs`));
+    await user.click(yearButton);
+
+    // Today should still appear in favorites section AND in the hierarchy
+    const todayLinksAfterExpand = screen.getAllByText(/Today/);
+    expect(todayLinksAfterExpand.length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -123,7 +123,7 @@ export function EntryList({
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto pb-32">
+    <div className="w-full max-w-2xl mx-auto">
       <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
         {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
       </div>

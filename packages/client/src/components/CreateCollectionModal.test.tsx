@@ -40,8 +40,9 @@ describe('CreateCollectionModal', () => {
       />
     );
 
-    const input = screen.getByLabelText('Collection Name') as HTMLInputElement;
-    expect(input).toHaveFocus();
+    // Should focus the first type radio button (Custom Collection)
+    const typeRadio = screen.getByRole('radio', { name: /Custom Collection/ });
+    expect(typeRadio).toHaveFocus();
   });
 
   it('should call onClose when cancel button is clicked', async () => {

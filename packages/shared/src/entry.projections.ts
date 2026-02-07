@@ -76,8 +76,11 @@ export class EntryListProjection {
     const events = await this.eventStore.getAll();
     const entries = this.applyEvents(events);
     
+    // Sanitize migration pointers (clear invalid pointers where target is deleted)
+    const sanitizedEntries = entries.map(entry => this.sanitizeMigrationPointers(entry, entries));
+    
     // Apply filter
-    return this.filterEntries(entries, filter);
+    return this.filterEntries(sanitizedEntries, filter);
   }
 
   /**
@@ -92,7 +95,11 @@ export class EntryListProjection {
     // which have the ORIGINAL task ID as aggregateId, not the new task ID
     const events = await this.eventStore.getAll();
     const entries = this.applyEvents(events);
-    return entries.find(entry => entry.id === entryId);
+    
+    // Sanitize migration pointers before returning
+    const sanitizedEntries = entries.map(entry => this.sanitizeMigrationPointers(entry, entries));
+    
+    return sanitizedEntries.find(entry => entry.id === entryId);
   }
 
   /**
@@ -347,6 +354,34 @@ export class EntryListProjection {
     }
     
     return statsMap;
+  }
+
+  /**
+   * Sanitize migration pointers for a single entry
+   * If entry has migratedTo but target doesn't exist or is deleted, clear migration pointers
+   * 
+   * @param entry - The entry to sanitize
+   * @param allEntries - All entries (to check if migration target exists)
+   * @returns Entry with migration pointers cleared if target is invalid
+   */
+  private sanitizeMigrationPointers<T extends Entry>(entry: T, allEntries: Entry[]): T {
+    // If entry has no migration pointer, return unchanged
+    if (!entry.migratedTo) {
+      return entry;
+    }
+
+    // Check if target entry exists in any of the three types
+    const targetExists = allEntries.some(e => e.id === entry.migratedTo);
+
+    // If target exists (not deleted), return unchanged
+    if (targetExists) {
+      return entry;
+    }
+
+    // Target is deleted or doesn't exist, clear migration pointers
+    // Create new object without migratedTo and migratedToCollectionId properties
+    const { migratedTo, migratedToCollectionId, ...entryWithoutMigration } = entry as any;
+    return entryWithoutMigration as T;
   }
 
   /**
