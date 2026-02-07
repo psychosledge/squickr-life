@@ -63,6 +63,7 @@ describe('CollectionDetailView', () => {
     mockEventStore = {
       append: vi.fn(),
       getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 

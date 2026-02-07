@@ -47,7 +47,10 @@ describe('useCollectionNavigation', () => {
       <BrowserRouter>
         <AppProvider 
           value={{
-            eventStore: {} as any,
+            eventStore: { 
+              getAll: vi.fn().mockResolvedValue([]),
+              subscribe: vi.fn().mockReturnValue(() => {})
+            } as any,
             collectionProjection: mockCollectionProjection,
             entryProjection: mockEntryProjection,
             taskProjection: {} as any,

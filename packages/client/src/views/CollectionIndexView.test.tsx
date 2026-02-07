@@ -36,6 +36,7 @@ describe('CollectionIndexView - Header Branding', () => {
     mockEventStore = {
       append: vi.fn(),
       getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -157,6 +158,7 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
     mockEventStore = {
       append: vi.fn(),
       getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -347,6 +349,7 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
     mockEventStore = {
       append: vi.fn(),
       getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
