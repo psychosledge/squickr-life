@@ -53,6 +53,9 @@ export interface Task {
   
   /** Optional: Collection ID where this task was migrated to (for "Go to" navigation) */
   readonly migratedToCollectionId?: string;
+  
+  /** Optional: Parent task ID (if this is a sub-task) - Phase 1: Sub-Tasks */
+  readonly parentTaskId?: string;
 }
 
 /**
@@ -77,6 +80,7 @@ export interface TaskCreated extends DomainEvent {
     readonly order?: string; // Optional for backward compatibility
     readonly collectionId?: string; // Optional - collection this task belongs to
     readonly userId?: string;
+    readonly parentTaskId?: string; // Optional - parent task ID if this is a sub-task (Phase 1)
   };
 }
 
@@ -90,6 +94,21 @@ export interface TaskCreated extends DomainEvent {
 export interface CreateTaskCommand {
   readonly title: string;
   readonly collectionId?: string;
+  readonly userId?: string;
+}
+
+/**
+ * CreateSubTask Command (Phase 1: Sub-Tasks)
+ * Represents the user's intent to create a sub-task under a parent task
+ * 
+ * Validation rules:
+ * - title: Required, will be trimmed, 1-500 characters
+ * - parentTaskId: Required, must reference an existing task
+ * - Parent task must not be a sub-task itself (max 2 levels)
+ */
+export interface CreateSubTaskCommand {
+  readonly title: string;
+  readonly parentTaskId: string; // Required - which task to add sub-task under
   readonly userId?: string;
 }
 

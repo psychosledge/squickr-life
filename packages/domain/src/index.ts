@@ -19,6 +19,7 @@ export type {
   TaskTitleChanged,
   TaskMigrated,
   CreateTaskCommand,
+  CreateSubTaskCommand,
   CompleteTaskCommand,
   ReopenTaskCommand,
   DeleteTaskCommand,
@@ -115,6 +116,9 @@ export type { IEventStore } from './event-store';
 
 // Task Command Handlers
 export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler, MoveEntryToCollectionHandler, MigrateTaskHandler } from './task.handlers';
+
+// Sub-Task Command Handlers (Phase 1: Sub-Tasks)
+export { CreateSubTaskHandler } from './sub-task.handlers';
 
 // Note Command Handlers
 export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, ReorderNoteHandler, MigrateNoteHandler } from './note.handlers';

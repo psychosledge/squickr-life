@@ -356,6 +356,72 @@ export class EntryListProjection {
     return statsMap;
   }
 
+  // ============================================================================
+  // Sub-Task Queries (Phase 1: Sub-Tasks)
+  // ============================================================================
+
+  /**
+   * Get all sub-tasks of a parent task
+   * Returns tasks that have parentTaskId === parentTaskId
+   * NOTE: This is a cross-collection query - returns sub-tasks from ALL collections
+   * 
+   * @param parentTaskId - The parent task ID
+   * @returns Array of sub-tasks (tasks with this parentTaskId), sorted by order
+   */
+  async getSubTasks(parentTaskId: string): Promise<Task[]> {
+    const allTasks = await this.getTasks();
+    return allTasks.filter(task => task.parentTaskId === parentTaskId);
+  }
+
+  /**
+   * Check if a task is a sub-task
+   * A task is a sub-task if it has a parentTaskId set
+   * 
+   * @param task - The task to check
+   * @returns true if task is a sub-task, false otherwise
+   */
+  isSubTask(task: Task): boolean {
+    return task.parentTaskId !== undefined;
+  }
+
+  /**
+   * Check if a task is a parent task (has children)
+   * A task is a parent if at least one other task has parentTaskId === this task's ID
+   * 
+   * @param taskId - The task ID to check
+   * @returns true if task has children, false otherwise
+   */
+  async isParentTask(taskId: string): Promise<boolean> {
+    const children = await this.getSubTasks(taskId);
+    return children.length > 0;
+  }
+
+  /**
+   * Get completion status for a parent task's children
+   * 
+   * Returns:
+   * - total: Total number of sub-tasks
+   * - completed: Number of completed sub-tasks
+   * - allComplete: true if all sub-tasks are complete (or no sub-tasks exist)
+   * 
+   * @param parentTaskId - The parent task ID
+   * @returns Completion status object
+   */
+  async getParentCompletionStatus(parentTaskId: string): Promise<{
+    total: number;
+    completed: number;
+    allComplete: boolean;
+  }> {
+    const children = await this.getSubTasks(parentTaskId);
+    const completed = children.filter(child => child.status === 'completed').length;
+    
+    return {
+      total: children.length,
+      completed,
+      allComplete: children.length === 0 || completed === children.length, // Vacuous truth: 0/0 = all complete
+    };
+  }
+
   /**
    * Sanitize migration pointers for a single entry
    * If entry has migratedTo but target doesn't exist or is deleted, clear migration pointers
@@ -458,6 +524,7 @@ export class EntryListProjection {
           order: event.payload.order,
           collectionId: event.payload.collectionId,
           userId: event.payload.userId,
+          parentTaskId: event.payload.parentTaskId, // Phase 1: Sub-Tasks
         };
         tasks.set(task.id, task);
         break;
