@@ -115,6 +115,9 @@ export function EntryList({
     // Skip if getCompletionStatus is not provided (e.g., in tests)
     if (!getCompletionStatus) return;
     
+    // Race condition guard: prevent state updates after unmount/re-render
+    let isCancelled = false;
+    
     const calculateCompletionStatus = async () => {
       const statusMap = new Map<string, {
         total: number;
@@ -122,21 +125,35 @@ export function EntryList({
         allComplete: boolean;
       }>();
       
-      // Calculate status for each task entry
-      for (const entry of topLevelEntries) {
-        if (entry.type === 'task') {
+      // Calculate status for all task entries in parallel
+      const statusPromises = topLevelEntries
+        .filter(entry => entry.type === 'task')
+        .map(async (entry) => {
           const status = await getCompletionStatus(entry.id);
-          // Only store if task has children
-          if (status.total > 0) {
-            statusMap.set(entry.id, status);
-          }
+          return { entryId: entry.id, status };
+        });
+      
+      const results = await Promise.all(statusPromises);
+      
+      // Check if component unmounted or effect re-triggered
+      if (isCancelled) return;
+      
+      // Only store status for tasks with children
+      results.forEach(({ entryId, status }) => {
+        if (status.total > 0) {
+          statusMap.set(entryId, status);
         }
-      }
+      });
       
       setCompletionStatusMap(statusMap);
     };
     
     calculateCompletionStatus();
+    
+    // Cleanup: mark this effect as cancelled on unmount/re-render
+    return () => {
+      isCancelled = true;
+    };
   }, [topLevelEntries, getCompletionStatus]);
 
   const handleDragEnd = (event: DragEndEvent) => {
