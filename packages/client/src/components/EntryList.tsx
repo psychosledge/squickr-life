@@ -4,6 +4,7 @@ import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, us
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableEntryItem } from './SortableEntryItem';
 import { EntryItem } from './EntryItem';
+import { GhostEntry } from './GhostEntry';
 import { DRAG_SENSOR_CONFIG } from '../utils/constants';
 import type { Task } from '@squickr/domain';
 import { useCollapsedTasks } from '../hooks/useCollapsedTasks';
@@ -311,6 +312,25 @@ export function EntryList({
         <SortableContext items={topLevelEntries.map(e => e.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">
             {topLevelEntries.map((entry) => {
+              // Check if this is a ghost entry
+              const isGhost = 'renderAsGhost' in entry && entry.renderAsGhost === true;
+              
+              // Render ghost entry (non-interactive, crossed-out)
+              if (isGhost) {
+                return (
+                  <GhostEntry
+                    key={entry.id}
+                    entry={entry as Entry & { renderAsGhost: true; ghostNewLocation?: string }}
+                    onNavigateToCollection={(collectionId) => {
+                      if (onNavigateToMigrated) {
+                        onNavigateToMigrated(collectionId);
+                      }
+                    }}
+                    collections={collections || []}
+                  />
+                );
+              }
+              
               // Get sub-tasks for this entry (if it's a task)
               const subTasks = entry.type === 'task' ? (subTasksMap.get(entry.id) || []) : [];
               

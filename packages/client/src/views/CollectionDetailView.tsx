@@ -123,6 +123,7 @@ export function CollectionDetailView() {
       });
       
       // Load orphaned entries (null collectionId)
+      // Note: Uncategorized collection doesn't support ghost entries (no collection history)
       const orphanedEntries = await entryProjection.getEntriesByCollection(null);
       setEntries(orphanedEntries);
       
@@ -134,7 +135,8 @@ export function CollectionDetailView() {
     const foundCollection = collections.find((c: Collection) => c.id === collectionId);
     setCollection(foundCollection || null);
 
-    const collectionEntries = await entryProjection.getEntriesByCollection(collectionId);
+    // Phase 2: Use getEntriesForCollectionView to get entries with ghost metadata
+    const collectionEntries = await entryProjection.getEntriesForCollectionView(collectionId);
     setEntries(collectionEntries);
 
     setIsLoading(false);

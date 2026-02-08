@@ -135,6 +135,7 @@ export class TaskListProjection {
       status: event.payload.status,
       order: event.payload.order, // May be undefined for legacy events
       userId: event.payload.userId,
+      collections: event.payload.collectionId ? [event.payload.collectionId] : [],
     };
 
     tasks.set(task.id, task);
