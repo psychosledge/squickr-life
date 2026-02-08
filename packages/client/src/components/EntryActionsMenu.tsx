@@ -51,6 +51,13 @@ export function EntryActionsMenu({
   const targetCollectionName = targetCollection?.name || 'Unknown Collection';
   const showGoTo = isMigrated && collections && onNavigateToMigrated;
 
+  // Phase 3: "Go back" option for migrated entries (showing where they came from)
+  const hasMigratedFrom = !!entry.migratedFrom;
+  const sourceCollectionId = entry.migratedFromCollectionId;
+  const sourceCollection = collections?.find(c => c.id === sourceCollectionId);
+  const sourceCollectionName = sourceCollection?.name || 'Uncategorized';
+  const showGoBack = hasMigratedFrom && collections && onNavigateToMigrated;
+
   // Phase 1: Sub-Tasks - Check if "Add Sub-Task" should be available
   // Only show for tasks that are NOT already sub-tasks (enforce 2-level limit)
   const isTask = entry.type === 'task';
@@ -138,6 +145,13 @@ export function EntryActionsMenu({
     }
   };
 
+  const handleGoBack = () => {
+    if (onNavigateToMigrated) {
+      onNavigateToMigrated(sourceCollectionId || null);
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div className="relative" ref={menuRef}>
       {/* Trigger Button */}
@@ -168,13 +182,26 @@ export function EntryActionsMenu({
             </button>
           )}
           
+          {/* Phase 3: "Go back" option for entries with migratedFrom */}
+          {showGoBack && (
+            <button
+              role="menuitem"
+              onClick={handleGoBack}
+              className={`w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                showGoTo ? '' : 'rounded-t-lg'
+              }`}
+            >
+              Go back to {sourceCollectionId ? sourceCollectionName : 'Uncategorized'}
+            </button>
+          )}
+          
           {/* Phase 2: "Go to Parent" for sub-tasks */}
           {showGoToParent && (
             <button
               role="menuitem"
               onClick={handleGoToParent}
               className={`w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                showGoTo ? '' : 'rounded-t-lg'
+                showGoTo || showGoBack ? '' : 'rounded-t-lg'
               }`}
             >
               Go to Parent
@@ -187,7 +214,7 @@ export function EntryActionsMenu({
               role="menuitem"
               onClick={handleGoToSubTaskCollection}
               className={`w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                showGoTo || showGoToParent ? '' : 'rounded-t-lg'
+                showGoTo || showGoBack || showGoToParent ? '' : 'rounded-t-lg'
               }`}
             >
               Go to {subTaskCollectionName}
@@ -198,7 +225,7 @@ export function EntryActionsMenu({
             role="menuitem"
             onClick={handleEdit}
             className={`w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-              showGoTo || showGoToParent || showGoToSubTaskCollection ? '' : 'rounded-t-lg'
+              showGoTo || showGoBack || showGoToParent || showGoToSubTaskCollection ? '' : 'rounded-t-lg'
             }`}
           >
             Edit

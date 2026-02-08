@@ -54,6 +54,9 @@ export interface Task {
   /** Optional: Collection ID where this task was migrated to (for "Go to" navigation) */
   readonly migratedToCollectionId?: string;
   
+  /** Optional: Collection ID where this task was migrated from (for "Go back" navigation) */
+  readonly migratedFromCollectionId?: string;
+  
   /** Optional: Parent task ID (if this is a sub-task) - Phase 1: Sub-Tasks */
   readonly parentTaskId?: string;
 }
@@ -390,6 +393,9 @@ export interface Note {
   
   /** Optional: Collection ID where this note was migrated to (for "Go to" navigation) */
   readonly migratedToCollectionId?: string;
+  
+  /** Optional: Collection ID where this note was migrated from (for "Go back" navigation) */
+  readonly migratedFromCollectionId?: string;
 }
 
 /**
@@ -572,6 +578,9 @@ export interface Event {
   
   /** Optional: Collection ID where this event was migrated to (for "Go to" navigation) */
   readonly migratedToCollectionId?: string;
+  
+  /** Optional: Collection ID where this event was migrated from (for "Go back" navigation) */
+  readonly migratedFromCollectionId?: string;
 }
 
 /**

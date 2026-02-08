@@ -689,6 +689,25 @@ export class EntryListProjection {
         // New task inherits all properties from original except collectionId and migration pointers
         // IMPORTANT: Preserve parentTaskId for sub-tasks (Phase 2: Migration/Symlink)
         if (originalTask) {
+          // Phase 3: Parent Cascade - If this is a sub-task and its parent has been migrated,
+          // update parentTaskId to point to migrated parent (preserve hierarchy in new collection)
+          let parentTaskId = originalTask.parentTaskId;
+          
+          if (parentTaskId) {
+            // This is a sub-task - check if parent has been migrated
+            const parentTask = tasks.get(parentTaskId);
+            if (parentTask?.migratedTo) {
+              // Parent has been migrated - check if in SAME target collection
+              const parentMigrated = tasks.get(parentTask.migratedTo);
+              if (parentMigrated && 
+                  (parentMigrated.collectionId ?? null) === (event.payload.targetCollectionId ?? null)) {
+                // Parent migrated to SAME collection → update child to point to migrated parent
+                parentTaskId = parentTask.migratedTo;
+              }
+              // Else: Parent migrated to DIFFERENT collection → keep original parentTaskId
+            }
+          }
+
           const newTask: Task = {
             id: event.payload.migratedToId,
             title: originalTask.title,
@@ -699,7 +718,8 @@ export class EntryListProjection {
             collectionId: event.payload.targetCollectionId ?? undefined,
             userId: originalTask.userId,
             migratedFrom: event.payload.originalTaskId,
-            parentTaskId: originalTask.parentTaskId, // Preserve parent link for sub-tasks
+            migratedFromCollectionId: originalTask.collectionId, // Store source collection for "Go back"
+            parentTaskId, // Phase 3: Updated to point to migrated parent if cascade
           };
           tasks.set(newTask.id, newTask);
         }
@@ -771,6 +791,7 @@ export class EntryListProjection {
             collectionId: event.payload.targetCollectionId ?? undefined,
             userId: originalNote.userId,
             migratedFrom: event.payload.originalNoteId,
+            migratedFromCollectionId: originalNote.collectionId, // Store source collection for "Go back"
           };
           notes.set(newNote.id, newNote);
         }
@@ -854,6 +875,7 @@ export class EntryListProjection {
             collectionId: event.payload.targetCollectionId ?? undefined,
             userId: originalEvent.userId,
             migratedFrom: event.payload.originalEventId,
+            migratedFromCollectionId: originalEvent.collectionId, // Store source collection for "Go back"
           };
           eventEntries.set(newEvent.id, newEvent);
         }
