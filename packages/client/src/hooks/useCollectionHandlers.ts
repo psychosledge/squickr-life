@@ -26,6 +26,7 @@ import {
   UpdateEventContentHandler,
   UpdateEventDateHandler,
   DeleteTaskHandler,
+  DeleteParentTaskHandler,
   DeleteNoteHandler,
   DeleteEventHandler,
   ReorderTaskHandler,
@@ -58,6 +59,7 @@ export interface CollectionHandlers {
   
   // Entry deletion handlers
   deleteTaskHandler: DeleteTaskHandler;
+  deleteParentTaskHandler: DeleteParentTaskHandler; // Phase 5: Deletion cascade
   deleteNoteHandler: DeleteNoteHandler;
   deleteEventHandler: DeleteEventHandler;
   
@@ -156,6 +158,12 @@ export function useCollectionHandlers({
     [eventStore, entryProjection]
   );
   
+  // Phase 5: Deletion cascade handler - FINAL PHASE!
+  const deleteParentTaskHandler = useMemo(
+    () => new DeleteParentTaskHandler(eventStore, entryProjection),
+    [eventStore, entryProjection]
+  );
+  
   const deleteNoteHandler = useMemo(
     () => new DeleteNoteHandler(eventStore, entryProjection),
     [eventStore, entryProjection]
@@ -221,6 +229,7 @@ export function useCollectionHandlers({
     updateEventContentHandler,
     updateEventDateHandler,
     deleteTaskHandler,
+    deleteParentTaskHandler,
     deleteNoteHandler,
     deleteEventHandler,
     reorderTaskHandler,

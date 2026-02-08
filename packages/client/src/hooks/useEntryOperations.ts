@@ -76,6 +76,7 @@ export interface UseEntryOperationsConfig {
   onOpenDeleteModal: () => void;
   onOpenSettingsModal: () => void;
   onShowConfirmCompleteParent?: (taskId: string, incompleteCount: number, onConfirm: () => void) => void; // Phase 4: Completion cascade
+  onShowConfirmDeleteParent?: (taskId: string, childCount: number, onConfirm: () => void) => void; // Phase 5: Deletion cascade
 }
 
 /**
@@ -192,6 +193,42 @@ export function useEntryOperations(
     const entry = entries.find(e => e.id === entryId);
     if (!entry) return;
 
+    // Phase 5: Check if task has children before deleting
+    if (entry.type === 'task') {
+      const isParent = await entryProjection.isParentTask(entryId);
+      
+      if (isParent) {
+        const children = await entryProjection.getSubTasks(entryId);
+        const childCount = children.length;
+        
+        if (config.onShowConfirmDeleteParent) {
+          config.onShowConfirmDeleteParent(
+            entryId,
+            childCount,
+            async () => {
+              // Race condition fix: Re-check if task still has children
+              const currentChildren = await entryProjection.getSubTasks(entryId);
+              
+              if (currentChildren.length > 0) {
+                // Still has children → cascade delete
+                await handlers.deleteParentTaskHandler.handle({ taskId: entryId, confirmed: true });
+              } else {
+                // No more children (deleted while dialog open) → standard delete
+                await handlers.deleteTaskHandler.handle({ taskId: entryId });
+              }
+            }
+          );
+          return; // Exit early, confirmation dialog will handle deletion
+        } else {
+          // No confirmation dialog configured, use standard error message
+          throw new Error(
+            `This will delete the parent task AND all ${childCount} sub-task(s). Are you sure?`
+          );
+        }
+      }
+    }
+    
+    // No children or not a task → use standard delete handlers
     if (entry.type === 'task') {
       await handlers.deleteTaskHandler.handle({ taskId: entryId });
     } else if (entry.type === 'note') {
@@ -199,7 +236,7 @@ export function useEntryOperations(
     } else if (entry.type === 'event') {
       await handlers.deleteEventHandler.handle({ eventId: entryId });
     }
-  }, [entries, handlers.deleteTaskHandler, handlers.deleteNoteHandler, handlers.deleteEventHandler]);
+  }, [entries, handlers.deleteTaskHandler, handlers.deleteParentTaskHandler, handlers.deleteNoteHandler, handlers.deleteEventHandler, entryProjection, config]);
 
   // Entry reordering operations
   const handleReorder = useCallback(async (

@@ -30,6 +30,7 @@ import { CollectionSettingsModal } from '../components/CollectionSettingsModal';
 import { MigrateEntryModal } from '../components/MigrateEntryModal';
 import { CreateSubTaskModal } from '../components/CreateSubTaskModal';
 import { ConfirmCompleteParentModal } from '../components/ConfirmCompleteParentModal';
+import { ConfirmDeleteParentModal } from '../components/ConfirmDeleteParentModal';
 import { SelectionToolbar } from '../components/SelectionToolbar';
 import { SwipeIndicator } from '../components/SwipeIndicator';
 import { FAB } from '../components/FAB';
@@ -92,6 +93,10 @@ export function CollectionDetailView() {
       // Phase 4: Completion cascade confirmation dialog
       onShowConfirmCompleteParent: (taskId, incompleteCount, onConfirm) => {
         modals.openConfirmCompleteParent(taskId, incompleteCount, onConfirm);
+      },
+      // Phase 5: Deletion cascade confirmation dialog - FINAL PHASE!
+      onShowConfirmDeleteParent: (taskId, childCount, onConfirm) => {
+        modals.openConfirmDeleteParent(taskId, childCount, onConfirm);
       },
     }
   );
@@ -468,6 +473,16 @@ export function CollectionDetailView() {
           incompleteCount={modals.confirmCompleteParentData.incompleteCount}
           onConfirm={modals.confirmCompleteParentData.onConfirm}
           onClose={modals.closeConfirmCompleteParent}
+        />
+      )}
+
+      {/* Confirm delete parent modal (Phase 5: Deletion Cascade - FINAL PHASE!) */}
+      {modals.confirmDeleteParentData && (
+        <ConfirmDeleteParentModal
+          isOpen={modals.isConfirmDeleteParentOpen}
+          childCount={modals.confirmDeleteParentData.childCount}
+          onConfirm={modals.confirmDeleteParentData.onConfirm}
+          onClose={modals.closeConfirmDeleteParent}
         />
       )}
 
