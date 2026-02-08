@@ -3,11 +3,11 @@
  * 
  * When migrating a parent task:
  * 1. Parent always migrates to target collection
- * 2. Unmigrated children (in SAME collection) → migrate too (cascade)
- * 3. Migrated children (in DIFFERENT collection) → stay put (preserve symlinks)
+ * 2. ALL children migrate too (children belong to parent, not collection)
+ * 3. Previously migrated children get ANOTHER move event (appear in multiple places)
  * 
- * This handler enables bulk migration: moving a parent brings along all
- * children that haven't been individually migrated yet.
+ * This handler enables bulk migration: moving a parent brings along ALL children.
+ * Children are bound to their parent, not to a specific collection.
  */
 
 import type { IEventStore } from './event-store';
@@ -21,8 +21,7 @@ import { generateEventMetadata } from './event-helpers';
  * Responsibilities:
  * - Validate entry exists
  * - Move parent task (EntryMovedToCollection event)
- * - Cascade move unmigrated children (children in same collection)
- * - Preserve migrated children (children in different collections)
+ * - Cascade move ALL children (children belong to parent, not collection)
  * - Use batch event appending for performance
  * - Idempotent: no events if already in target collection
  */
@@ -40,7 +39,7 @@ export class MoveParentTaskHandler {
    * 2. Check idempotency (already in target collection?)
    * 3. Create EntryMovedToCollection event for parent
    * 4. Get all sub-tasks (children)
-   * 5. For each child in SAME collection as parent → create move event
+   * 5. For ALL children → create move event (children belong to parent)
    * 6. Batch append all events
    * 
    * @param command - The MoveEntryToCollection command
@@ -82,26 +81,23 @@ export class MoveParentTaskHandler {
     if (entry.type === 'task') {
       const children = await this.projection.getSubTasks(entry.id);
       
-      // 5. Cascade move: For each child in SAME collection as parent
+      // 5. Cascade move: ALL children follow parent (children belong to parent, not collection)
+      // This includes previously migrated children - they get ANOTHER move event
       for (const child of children) {
-        // Compare child's collection with parent's CURRENT collection
-        // (before the move, since we're building events)
-        if ((child.collectionId ?? null) === currentCollectionId) {
-          // Child is in same collection as parent → cascade migrate
-          const childMetadata = generateEventMetadata();
-          const childMoveEvent: EntryMovedToCollection = {
-            ...childMetadata,
-            type: 'EntryMovedToCollection',
-            aggregateId: child.id,
-            payload: {
-              entryId: child.id,
-              collectionId: targetCollectionId, // Same as parent's new collection
-              movedAt: childMetadata.timestamp,
-            },
-          };
-          events.push(childMoveEvent);
-        }
-        // Else: Child is in different collection (already migrated) → skip (preserve symlink)
+        // Child should follow parent to new collection (cascade migrate)
+        // Note: If child was previously migrated, this creates another move event
+        const childMetadata = generateEventMetadata();
+        const childMoveEvent: EntryMovedToCollection = {
+          ...childMetadata,
+          type: 'EntryMovedToCollection',
+          aggregateId: child.id,
+          payload: {
+            entryId: child.id,
+            collectionId: targetCollectionId, // Same as parent's new collection
+            movedAt: childMetadata.timestamp,
+          },
+        };
+        events.push(childMoveEvent);
       }
     }
 

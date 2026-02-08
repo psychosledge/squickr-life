@@ -256,7 +256,7 @@ describe('MoveEntryToCollectionHandler', () => {
       expect(updatedChildren.every(c => c.collectionId === 'collection-B')).toBe(true);
     });
 
-    it('should not cascade migrate children already in different collection', async () => {
+    it('should cascade ALL children when parent moves (including previously migrated)', async () => {
       const { CreateSubTaskHandler } = await import('./sub-task.handlers');
       const createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
 
@@ -292,14 +292,15 @@ describe('MoveEntryToCollectionHandler', () => {
         collectionId: 'collection-C',
       });
 
-      // Assert: 2 EntryMovedToCollection events (parent + 1 unmigrated child)
+      // Assert: 3 EntryMovedToCollection events (parent + ALL children)
+      // Children belong to parent, not collection - ALL children follow
       const allEvents = await eventStore.getAll();
       const newEvents = allEvents.slice(eventCountBefore);
       const moveEvents = newEvents.filter(e => e.type === 'EntryMovedToCollection') as EntryMovedToCollection[];
       
-      expect(moveEvents).toHaveLength(2); // Parent + child2 only
+      expect(moveEvents).toHaveLength(3); // Parent + BOTH children
 
-      // Verify: Parent in C, child1 still in B (preserved), child2 in C (followed parent)
+      // Verify: Parent in C, BOTH children now in C (all followed parent)
       const updatedChildren = await entryProjection.getSubTasks(parentId);
       expect(updatedChildren).toHaveLength(2);
       const updatedChild1 = updatedChildren.find(c => c.id === children[0]?.id);
@@ -307,7 +308,7 @@ describe('MoveEntryToCollectionHandler', () => {
 
       expect(updatedChild1).toBeDefined();
       expect(updatedChild2).toBeDefined();
-      expect(updatedChild1!.collectionId).toBe('collection-B'); // Stayed
+      expect(updatedChild1!.collectionId).toBe('collection-C'); // Followed parent (was in B, now in C)
       expect(updatedChild2!.collectionId).toBe('collection-C'); // Followed parent
     });
 

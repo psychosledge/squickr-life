@@ -148,7 +148,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
   });
 
   describe('Parent with all children migrated (different collections)', () => {
-    it('should not cascade migrate children already in different collections', async () => {
+    it('should cascade ALL children when parent migrates (including previously migrated)', async () => {
       // Arrange: Create parent in 'collection-1'
       await createTaskHandler.handle({ 
         title: 'Parent task',
@@ -196,26 +196,27 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
         collectionId: 'collection-2'
       });
 
-      // Assert: Only 1 EntryMovedToCollection event (parent only)
+      // Assert: 3 EntryMovedToCollection events (parent + ALL children)
+      // Children belong to parent, not collection - ALL children follow
       const allEvents = await eventStore.getAll();
       const newEvents = allEvents.slice(eventCountBefore);
       const moveEvents = newEvents.filter(e => e.type === 'EntryMovedToCollection') as EntryMovedToCollection[];
       
-      expect(moveEvents).toHaveLength(1);
+      expect(moveEvents).toHaveLength(3); // Parent + BOTH children
       expect(moveEvents[0]!.aggregateId).toBe(parent.id);
       expect(moveEvents[0]!.payload.collectionId).toBe('collection-2');
 
-      // Verify children stayed in their collections (symlinks preserved!)
+      // Verify ALL children followed parent to collection-2
       const finalTasks = await projection.getTasks();
       const finalChild1 = finalTasks.find(t => t.id === children[0]!.id)!;
       const finalChild2 = finalTasks.find(t => t.id === children[1]!.id)!;
-      expect(finalChild1.collectionId).toBe('daily-2026-02-11'); // Unchanged
-      expect(finalChild2.collectionId).toBe('daily-2026-02-12'); // Unchanged
+      expect(finalChild1.collectionId).toBe('collection-2'); // Followed parent
+      expect(finalChild2.collectionId).toBe('collection-2'); // Followed parent
     });
   });
 
   describe('Parent with mixed children (some migrated, some not)', () => {
-    it('should cascade only unmigrated children (in same collection)', async () => {
+    it('should cascade ALL children when parent migrates (including previously migrated)', async () => {
       // Arrange: Create parent in 'work-projects'
       await createTaskHandler.handle({ 
         title: 'App launch',
@@ -273,28 +274,27 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
         collectionId: 'monthly-2026-02'
       });
 
-      // Assert: 3 EntryMovedToCollection events (parent + 2 unmigrated children)
+      // Assert: 4 EntryMovedToCollection events (parent + ALL 3 children)
+      // Children belong to parent, not collection - ALL children follow
       const allEvents = await eventStore.getAll();
       const newEvents = allEvents.slice(eventCountBefore);
       const moveEvents = newEvents.filter(e => e.type === 'EntryMovedToCollection') as EntryMovedToCollection[];
       
-      expect(moveEvents).toHaveLength(3); // Parent + 2 unmigrated children
+      expect(moveEvents).toHaveLength(4); // Parent + ALL 3 children
       
       // Parent moved
       const parentMoveEvent = moveEvents.find(e => e.aggregateId === parent.id);
       expect(parentMoveEvent).toBeDefined();
       expect(parentMoveEvent!.payload.collectionId).toBe('monthly-2026-02');
       
-      // 2 unmigrated children moved
+      // ALL 3 children moved
       const childMoveEvents = moveEvents.filter(e => e.aggregateId !== parent.id);
-      expect(childMoveEvents).toHaveLength(2);
+      expect(childMoveEvents).toHaveLength(3);
       expect(childMoveEvents.some(e => e.aggregateId === analyticsChild.id)).toBe(true);
       expect(childMoveEvents.some(e => e.aggregateId === deployChild.id)).toBe(true);
-      
-      // Blog post child NOT in move events (already migrated - symlink!)
-      expect(childMoveEvents.some(e => e.aggregateId === blogChild.id)).toBe(false);
+      expect(childMoveEvents.some(e => e.aggregateId === blogChild.id)).toBe(true); // Now included!
 
-      // Verify final state
+      // Verify final state - ALL children in monthly-2026-02
       const finalTasks = await projection.getTasks();
       const finalParent = finalTasks.find(t => t.id === parent.id)!;
       const finalChildren = finalTasks.filter(t => t.parentTaskId === parent.id);
@@ -306,7 +306,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       const finalDeploy = finalChildren.find(c => c.title === 'Deploy to production')!;
       
       expect(finalAnalytics.collectionId).toBe('monthly-2026-02'); // Followed parent ✅
-      expect(finalBlog.collectionId).toBe('daily-2026-02-11'); // Stayed (symlink preserved!) ✅
+      expect(finalBlog.collectionId).toBe('monthly-2026-02'); // Followed parent (even though previously migrated) ✅
       expect(finalDeploy.collectionId).toBe('monthly-2026-02'); // Followed parent ✅
     });
   });

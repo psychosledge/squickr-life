@@ -357,6 +357,13 @@ export function EntryList({
                         const subTaskCollection = collections?.find(c => c.id === subTaskCollectionId);
                         const subTaskCollectionName = subTaskCollection?.name || 'Uncategorized';
                         
+                        // Phase 3: Detect migration chains
+                        // A sub-task is part of a migration chain if it has migratedFrom pointing to a different collection
+                        // than where the parent originally came from
+                        const hasIncomingMigration = !!subTask.migratedFrom && !!subTask.migratedFromCollectionId;
+                        const isPartOfMigrationChain = hasIncomingMigration && 
+                          subTask.migratedFromCollectionId !== entry.migratedFromCollectionId;
+                        
                         return (
                           <div key={subTask.id} className="relative">
                             {/* Phase 2: Migration indicator for migrated sub-tasks */}
@@ -381,9 +388,9 @@ export function EntryList({
                               onNavigateToMigrated={onNavigateToMigrated}
                               onCreateCollection={onCreateCollection}
                               onAddSubTask={onAddSubTask}
-                              // When rendered under parent: NO 🔗 icon (isSubTaskMigrated=false)
-                              // But DO show "Go to Collection" menu if migrated (via onNavigateToSubTaskCollection)
-                              isSubTaskMigrated={false}
+                              // Phase 3: Show 🔗 icon if sub-task is part of a migration chain
+                              // This happens when parent migrates after child was already migrated
+                              isSubTaskMigrated={isPartOfMigrationChain}
                               onNavigateToSubTaskCollection={isMigrated ? () => {
                                 // Navigate to sub-task's migrated collection
                                 if (onNavigateToMigrated) {

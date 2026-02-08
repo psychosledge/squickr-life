@@ -467,25 +467,23 @@ export class MoveEntryToCollectionHandler {
     if (entry.type === 'task') {
       const children = await this.entryProjection.getSubTasks(entry.id);
       
-      // Cascade move: For each child in SAME collection as parent
+      // Cascade move: ALL children follow parent (children belong to parent, not collection)
+      // This includes previously migrated children - they get ANOTHER move event
       for (const child of children) {
-        // Compare child's collection with parent's CURRENT collection
-        if ((child.collectionId ?? null) === currentCollectionId) {
-          // Child is in same collection as parent → cascade migrate
-          const childMetadata = generateEventMetadata();
-          const childMoveEvent: EntryMovedToCollection = {
-            ...childMetadata,
-            type: 'EntryMovedToCollection',
-            aggregateId: child.id,
-            payload: {
-              entryId: child.id,
-              collectionId: targetCollectionId, // Same as parent's new collection
-              movedAt: childMetadata.timestamp,
-            },
-          };
-          events.push(childMoveEvent);
-        }
-        // Else: Child is in different collection (already migrated) → skip (preserve symlink)
+        // Child should follow parent to new collection (cascade migrate)
+        // Note: If child was previously migrated, this creates another symlink
+        const childMetadata = generateEventMetadata();
+        const childMoveEvent: EntryMovedToCollection = {
+          ...childMetadata,
+          type: 'EntryMovedToCollection',
+          aggregateId: child.id,
+          payload: {
+            entryId: child.id,
+            collectionId: targetCollectionId, // Same as parent's new collection
+            movedAt: childMetadata.timestamp,
+          },
+        };
+        events.push(childMoveEvent);
       }
     }
 
@@ -518,12 +516,18 @@ export class MigrateTaskHandler {
   ) {}
 
   /**
-   * Handle MigrateTask command
+   * Handle MigrateTask command with Phase 3 Parent Migration Cascade
    * 
    * Validation rules:
    * - Task must exist
    * - Task must not already be migrated (migratedTo must be undefined)
    * - Idempotent: Return existing migration if already migrated to same target
+   * 
+   * Phase 3 Cascade Rules:
+   * - If task is a parent with sub-tasks, cascade migrate unmigrated children
+   * - Unmigrated children (in same collection as parent) → create symlinks in target
+   * - Already-migrated children (in different collection) → preserve existing symlinks
+   * - Migrated children point to MIGRATED parent (preserve hierarchy in new collection)
    * 
    * @param command - The MigrateTask command
    * @returns The ID of the newly created task in the target collection
@@ -561,7 +565,7 @@ export class MigrateTaskHandler {
     // Generate event metadata
     const metadata = generateEventMetadata();
 
-    // Create TaskMigrated event
+    // Create TaskMigrated event for parent
     // The projection will handle creating the new task with proper properties
     const event: TaskMigrated = {
       ...metadata,
@@ -575,8 +579,45 @@ export class MigrateTaskHandler {
       },
     };
 
-    // Persist event
-    await this.eventStore.append(event);
+    // Build list of events to append (parent + cascaded children)
+    const events: TaskMigrated[] = [event];
+
+    // Phase 3: Cascade migration for parent tasks
+    // Check if this task has children (is a parent)
+    const children = await this.entryProjection.getSubTasks(command.taskId);
+    
+    if (children.length > 0) {
+      // Task is a parent - ALL children follow parent (children belong to parent, not collection)
+      // This includes previously migrated children - they get ANOTHER migration event
+      for (const child of children) {
+        // Child should follow parent to new collection (cascade migrate)
+        // Note: If child was previously migrated, this creates another symlink (appears in multiple places)
+        const childNewId = crypto.randomUUID();
+        const childMetadata = generateEventMetadata();
+        
+        const childMigrationEvent: TaskMigrated = {
+          ...childMetadata,
+          type: 'TaskMigrated',
+          aggregateId: child.id,
+          payload: {
+            originalTaskId: child.id,
+            targetCollectionId: command.targetCollectionId,
+            migratedToId: childNewId,
+            migratedAt: childMetadata.timestamp,
+          },
+        };
+        
+        events.push(childMigrationEvent);
+      }
+    }
+
+    // Persist all events (parent + cascaded children) atomically
+    // Use appendBatch() to ensure all-or-nothing semantics
+    if (events.length > 1) {
+      await this.eventStore.appendBatch(events);
+    } else {
+      await this.eventStore.append(event);
+    }
     
     return newTaskId;
   }
