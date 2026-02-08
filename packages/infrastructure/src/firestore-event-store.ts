@@ -57,7 +57,7 @@ export class FirestoreEventStore implements IEventStore {
    * Append multiple events to Firestore atomically
    * Uses Firestore batch writes for atomic all-or-nothing semantics.
    * Firestore batch writes are limited to 500 operations, so we chunk if needed.
-   * Notifies subscribers for each event only after successful batch commit.
+   * Notifies subscribers ONCE after all batch commits succeed.
    * 
    * @param events - Array of domain events to append
    * @throws Error if batch append fails
@@ -85,8 +85,10 @@ export class FirestoreEventStore implements IEventStore {
       await batch.commit();
     }
     
-    // Notify subscribers for each event in order (only after all batches succeed)
-    events.forEach(event => this.notifySubscribers(event));
+    // Notify subscribers ONCE (not N times) - pass last event as sentinel
+    // Projections ignore the event parameter anyway and rebuild from getAll()
+    // Non-null assertion safe because we check length > 0 above
+    this.notifySubscribers(events[events.length - 1]!);
   }
 
   /**

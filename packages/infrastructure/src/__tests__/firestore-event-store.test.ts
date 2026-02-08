@@ -17,6 +17,9 @@ const mockDoc = vi.fn();
 const mockQuery = vi.fn();
 const mockWhere = vi.fn();
 const mockOrderBy = vi.fn();
+const mockWriteBatch = vi.fn();
+const mockBatchSet = vi.fn();
+const mockBatchCommit = vi.fn();
 
 vi.mock('firebase/firestore', () => ({
   collection: (...args: any[]) => mockCollection(...args),
@@ -27,6 +30,7 @@ vi.mock('firebase/firestore', () => ({
   where: (...args: any[]) => mockWhere(...args),
   orderBy: (...args: any[]) => mockOrderBy(...args),
   onSnapshot: (...args: any[]) => mockOnSnapshot(...args),
+  writeBatch: (...args: any[]) => mockWriteBatch(...args),
 }));
 
 describe('FirestoreEventStore', () => {
@@ -44,6 +48,9 @@ describe('FirestoreEventStore', () => {
     mockQuery.mockClear();
     mockWhere.mockClear();
     mockOrderBy.mockClear();
+    mockWriteBatch.mockClear();
+    mockBatchSet.mockClear();
+    mockBatchCommit.mockClear();
 
     // Mock Firestore instance
     firestore = {};
@@ -57,6 +64,13 @@ describe('FirestoreEventStore', () => {
     mockSetDoc.mockResolvedValue(undefined);
     mockGetDocs.mockResolvedValue({ docs: [] });
     mockOnSnapshot.mockReturnValue(() => {});
+    
+    // Setup batch mock
+    mockBatchCommit.mockResolvedValue(undefined);
+    mockWriteBatch.mockReturnValue({
+      set: mockBatchSet,
+      commit: mockBatchCommit,
+    });
 
     eventStore = new FirestoreEventStore(firestore, userId);
   });
@@ -381,6 +395,128 @@ describe('FirestoreEventStore', () => {
       // undefined values should be removed, not converted to null
       const call = mockSetDoc.mock.calls[0][1];
       expect(call.data).not.toHaveProperty('title');
+    });
+  });
+
+  describe('appendBatch()', () => {
+    it('should append multiple events using batch write', async () => {
+      const events: DomainEvent[] = [
+        {
+          id: 'event-1',
+          type: 'task-created',
+          aggregateId: 'task-1',
+          timestamp: '2026-02-07T10:00:00Z',
+          version: 1,
+        },
+        {
+          id: 'event-2',
+          type: 'task-created',
+          aggregateId: 'task-2',
+          timestamp: '2026-02-07T11:00:00Z',
+          version: 1,
+        },
+        {
+          id: 'event-3',
+          type: 'task-created',
+          aggregateId: 'task-3',
+          timestamp: '2026-02-07T12:00:00Z',
+          version: 1,
+        },
+      ];
+
+      await eventStore.appendBatch(events);
+
+      expect(mockWriteBatch).toHaveBeenCalledWith(firestore);
+      expect(mockBatchSet).toHaveBeenCalledTimes(3);
+      expect(mockBatchCommit).toHaveBeenCalledTimes(1);
+    });
+
+    it('should notify subscribers once (not N times)', async () => {
+      const callback = vi.fn();
+      eventStore.subscribe(callback);
+
+      const events: DomainEvent[] = [
+        {
+          id: 'event-1',
+          type: 'task-created',
+          aggregateId: 'task-1',
+          timestamp: '2026-02-07T10:00:00Z',
+          version: 1,
+        },
+        {
+          id: 'event-2',
+          type: 'task-created',
+          aggregateId: 'task-2',
+          timestamp: '2026-02-07T11:00:00Z',
+          version: 1,
+        },
+        {
+          id: 'event-3',
+          type: 'task-created',
+          aggregateId: 'task-3',
+          timestamp: '2026-02-07T12:00:00Z',
+          version: 1,
+        },
+      ];
+
+      await eventStore.appendBatch(events);
+
+      // CRITICAL: Should notify once, not 3 times
+      expect(callback).toHaveBeenCalledTimes(1);
+      // Should be called with last event
+      expect(callback).toHaveBeenCalledWith(events[2]);
+    });
+
+    it('should handle empty batch without error', async () => {
+      await eventStore.appendBatch([]);
+
+      expect(mockWriteBatch).not.toHaveBeenCalled();
+      expect(mockBatchCommit).not.toHaveBeenCalled();
+    });
+
+    it('should handle batches larger than 500 (Firestore limit)', async () => {
+      // Create 600 events to test chunking
+      const events: DomainEvent[] = [];
+      for (let i = 0; i < 600; i++) {
+        events.push({
+          id: `event-${i}`,
+          type: 'task-created',
+          aggregateId: `task-${i}`,
+          timestamp: `2026-02-07T${String(Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}:00Z`,
+          version: 1,
+        });
+      }
+
+      await eventStore.appendBatch(events);
+
+      // Should create 2 batches (500 + 100)
+      expect(mockWriteBatch).toHaveBeenCalledTimes(2);
+      expect(mockBatchCommit).toHaveBeenCalledTimes(2);
+      
+      // Should call batch.set 600 times total (500 + 100)
+      expect(mockBatchSet).toHaveBeenCalledTimes(600);
+    });
+
+    it('should still notify once even with chunked batches', async () => {
+      const callback = vi.fn();
+      eventStore.subscribe(callback);
+
+      // Create 600 events to test chunking
+      const events: DomainEvent[] = [];
+      for (let i = 0; i < 600; i++) {
+        events.push({
+          id: `event-${i}`,
+          type: 'task-created',
+          aggregateId: `task-${i}`,
+          timestamp: `2026-02-07T${String(Math.floor(i / 60)).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}:00Z`,
+          version: 1,
+        });
+      }
+
+      await eventStore.appendBatch(events);
+
+      // CRITICAL: Should notify once, not 600 times (or even 2 times)
+      expect(callback).toHaveBeenCalledTimes(1);
     });
   });
 });

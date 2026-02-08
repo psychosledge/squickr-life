@@ -16,7 +16,7 @@ export class InMemoryEventStore implements IEventStore {
   /**
    * Append multiple events atomically
    * In-memory implementation is inherently atomic (single-threaded JavaScript)
-   * Notifies subscribers for each event in order
+   * Notifies subscribers ONCE after all events are appended
    */
   async appendBatch(events: DomainEvent[]): Promise<void> {
     if (events.length === 0) return;
@@ -24,8 +24,10 @@ export class InMemoryEventStore implements IEventStore {
     // Push all events to array (atomic in single-threaded JS)
     this.events.push(...events);
     
-    // Notify subscribers for each event in order
-    events.forEach(event => this.notifySubscribers(event));
+    // Notify subscribers ONCE (not N times) - pass last event as sentinel
+    // Projections ignore the event parameter anyway and rebuild from getAll()
+    // Non-null assertion safe because we check length > 0 above
+    this.notifySubscribers(events[events.length - 1]!);
   }
 
   async getById(aggregateId: string): Promise<DomainEvent[]> {

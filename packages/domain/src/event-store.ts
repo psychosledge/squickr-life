@@ -27,6 +27,9 @@ export interface IEventStore {
    * All events are appended in a single transaction/batch.
    * If any event fails, the entire batch is rolled back.
    * 
+   * Notifies subscribers ONCE after all events are appended (not N times).
+   * This prevents multiple projection rebuilds and UI flashing during bulk operations.
+   * 
    * @param events - Array of domain events to append
    * @throws Error if batch append fails
    */

@@ -187,4 +187,120 @@ describe('EventStore', () => {
       expect(events[1]).toEqual(event2);
     });
   });
+
+  describe('appendBatch', () => {
+    it('should append all events to store', async () => {
+      const event1: TaskCreated = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+        payload: {
+          id: 'task-1',
+          title: 'First',
+          createdAt: '2026-01-24T10:00:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const event2: TaskCreated = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+        payload: {
+          id: 'task-2',
+          title: 'Second',
+          createdAt: '2026-01-24T10:01:00.000Z',
+          status: 'open',
+        },
+      };
+
+      const event3: TaskCreated = {
+        id: 'event-3',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:02:00.000Z',
+        version: 1,
+        aggregateId: 'task-3',
+        payload: {
+          id: 'task-3',
+          title: 'Third',
+          createdAt: '2026-01-24T10:02:00.000Z',
+          status: 'open',
+        },
+      };
+
+      await eventStore.appendBatch([event1, event2, event3]);
+
+      const allEvents = await eventStore.getAll();
+      expect(allEvents).toHaveLength(3);
+      expect(allEvents[0]).toEqual(event1);
+      expect(allEvents[1]).toEqual(event2);
+      expect(allEvents[2]).toEqual(event3);
+    });
+
+    it('should notify subscribers once (not N times)', async () => {
+      const event1: DomainEvent = {
+        id: 'event-1',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:00:00.000Z',
+        version: 1,
+        aggregateId: 'task-1',
+      };
+
+      const event2: DomainEvent = {
+        id: 'event-2',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:01:00.000Z',
+        version: 1,
+        aggregateId: 'task-2',
+      };
+
+      const event3: DomainEvent = {
+        id: 'event-3',
+        type: 'TaskCreated',
+        timestamp: '2026-01-24T10:02:00.000Z',
+        version: 1,
+        aggregateId: 'task-3',
+      };
+
+      let notifyCount = 0;
+      eventStore.subscribe(() => notifyCount++);
+
+      await eventStore.appendBatch([event1, event2, event3]);
+
+      // CRITICAL: Should notify once, not 3 times
+      expect(notifyCount).toBe(1);
+    });
+
+    it('should handle empty batch without error', async () => {
+      await eventStore.appendBatch([]);
+
+      const allEvents = await eventStore.getAll();
+      expect(allEvents).toHaveLength(0);
+    });
+
+    it('should preserve event order', async () => {
+      const events: DomainEvent[] = [];
+      for (let i = 0; i < 20; i++) {
+        events.push({
+          id: `event-${i}`,
+          type: 'TaskCreated',
+          timestamp: `2026-01-24T10:${String(i).padStart(2, '0')}:00.000Z`,
+          version: 1,
+          aggregateId: `task-${i}`,
+        });
+      }
+
+      await eventStore.appendBatch(events);
+
+      const allEvents = await eventStore.getAll();
+      expect(allEvents).toHaveLength(20);
+      allEvents.forEach((event, i) => {
+        expect(event.id).toBe(`event-${i}`);
+      });
+    });
+  });
 });

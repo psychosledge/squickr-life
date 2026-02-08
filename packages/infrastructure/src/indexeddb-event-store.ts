@@ -94,7 +94,7 @@ export class IndexedDBEventStore implements IEventStore {
    * Append multiple events to IndexedDB atomically
    * Uses a single transaction to ensure all-or-nothing semantics.
    * If any event fails, the entire batch is rolled back.
-   * Notifies subscribers for each event only after successful transaction.
+   * Notifies subscribers ONCE after successful transaction.
    * 
    * @param events - Array of domain events to append
    * @throws Error if batch append fails
@@ -118,8 +118,10 @@ export class IndexedDBEventStore implements IEventStore {
 
       // Wait for transaction to complete
       transaction.oncomplete = () => {
-        // Notify subscribers for each event in order (only after successful commit)
-        events.forEach(event => this.notifySubscribers(event));
+        // Notify subscribers ONCE (not N times) - pass last event as sentinel
+        // Projections ignore the event parameter anyway and rebuild from getAll()
+        // Non-null assertion safe because we check length > 0 above
+        this.notifySubscribers(events[events.length - 1]!);
         resolve();
       };
 
