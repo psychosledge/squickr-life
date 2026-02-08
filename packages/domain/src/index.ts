@@ -122,6 +122,9 @@ export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHa
 // Sub-Task Command Handlers (Phase 1: Sub-Tasks)
 export { CreateSubTaskHandler } from './sub-task.handlers';
 
+// Phase 3: Parent Migration Cascade Handler
+export { MoveParentTaskHandler } from './move-parent-task.handler';
+
 // Phase 4: Completion Cascade Handler
 export { CompleteParentTaskHandler } from './complete-parent-task.handler';
 

@@ -413,6 +413,11 @@ export class MoveEntryToCollectionHandler {
   /**
    * Handle MoveEntryToCollection command
    * 
+   * Phase 3: Parent Migration Cascade
+   * - If entry is a parent task with sub-tasks, cascade move to unmigrated children
+   * - Unmigrated children (in same collection) follow parent to new collection
+   * - Migrated children (in different collection) stay put (preserve symlinks)
+   * 
    * Validation rules:
    * - Entry must exist (can be task, note, or event)
    * - Idempotent: No event if entry is already in target collection
@@ -438,10 +443,13 @@ export class MoveEntryToCollectionHandler {
       return;
     }
 
-    // Generate event metadata
+    // Build list of events to append
+    const events: EntryMovedToCollection[] = [];
+
+    // Generate event metadata for parent
     const metadata = generateEventMetadata();
 
-    // Create EntryMovedToCollection event
+    // Create EntryMovedToCollection event for parent/entry
     const event: EntryMovedToCollection = {
       ...metadata,
       type: 'EntryMovedToCollection',
@@ -452,9 +460,39 @@ export class MoveEntryToCollectionHandler {
         movedAt: metadata.timestamp,
       },
     };
+    events.push(event);
 
-    // Persist event
-    await this.eventStore.append(event);
+    // Phase 3: Cascade migration for parent tasks
+    // If this is a task (not note/event), check if it has children
+    if (entry.type === 'task') {
+      const children = await this.entryProjection.getSubTasks(entry.id);
+      
+      // Cascade move: For each child in SAME collection as parent
+      for (const child of children) {
+        // Compare child's collection with parent's CURRENT collection
+        if ((child.collectionId ?? null) === currentCollectionId) {
+          // Child is in same collection as parent → cascade migrate
+          const childMetadata = generateEventMetadata();
+          const childMoveEvent: EntryMovedToCollection = {
+            ...childMetadata,
+            type: 'EntryMovedToCollection',
+            aggregateId: child.id,
+            payload: {
+              entryId: child.id,
+              collectionId: targetCollectionId, // Same as parent's new collection
+              movedAt: childMetadata.timestamp,
+            },
+          };
+          events.push(childMoveEvent);
+        }
+        // Else: Child is in different collection (already migrated) → skip (preserve symlink)
+      }
+    }
+
+    // Persist all events (parent + cascaded children)
+    for (const evt of events) {
+      await this.eventStore.append(evt);
+    }
   }
 }
 

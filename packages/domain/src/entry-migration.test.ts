@@ -205,4 +205,134 @@ describe('MoveEntryToCollectionHandler', () => {
       expect((events[2] as EntryMovedToCollection).payload.collectionId).toBe('collection-C');
     });
   });
+
+  // Phase 3: Parent Migration Cascade Tests
+  describe('Phase 3: Parent task migration with cascade', () => {
+    it('should cascade migrate unmigrated children when parent moves', async () => {
+      // Import CreateSubTaskHandler for creating children
+      const { CreateSubTaskHandler } = await import('./sub-task.handlers');
+      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+
+      // Create parent task in collection-A
+      const parentId = await createTaskHandler.handle({
+        title: 'Parent task',
+        collectionId: 'collection-A',
+      });
+
+      // Create 2 sub-tasks (will inherit parent's collection)
+      await createSubTaskHandler.handle({
+        title: 'Child 1',
+        parentTaskId: parentId,
+      });
+      await createSubTaskHandler.handle({
+        title: 'Child 2',
+        parentTaskId: parentId,
+      });
+
+      // Verify children are in same collection as parent
+      const children = await entryProjection.getSubTasks(parentId);
+      expect(children).toHaveLength(2);
+      expect(children.every(c => c.collectionId === 'collection-A')).toBe(true);
+
+      const eventCountBefore = (await eventStore.getAll()).length;
+
+      // Move parent to collection-B
+      await handler.handle({
+        entryId: parentId,
+        collectionId: 'collection-B',
+      });
+
+      // Assert: 3 EntryMovedToCollection events (parent + 2 children)
+      const allEvents = await eventStore.getAll();
+      const newEvents = allEvents.slice(eventCountBefore);
+      const moveEvents = newEvents.filter(e => e.type === 'EntryMovedToCollection') as EntryMovedToCollection[];
+      
+      expect(moveEvents).toHaveLength(3);
+      expect(moveEvents.every(e => e.payload.collectionId === 'collection-B')).toBe(true);
+
+      // Verify all tasks now in collection-B
+      const updatedChildren = await entryProjection.getSubTasks(parentId);
+      expect(updatedChildren).toHaveLength(2);
+      expect(updatedChildren.every(c => c.collectionId === 'collection-B')).toBe(true);
+    });
+
+    it('should not cascade migrate children already in different collection', async () => {
+      const { CreateSubTaskHandler } = await import('./sub-task.handlers');
+      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+
+      // Create parent in collection-A
+      const parentId = await createTaskHandler.handle({
+        title: 'Parent task',
+        collectionId: 'collection-A',
+      });
+
+      // Create 2 children
+      await createSubTaskHandler.handle({
+        title: 'Child 1',
+        parentTaskId: parentId,
+      });
+      await createSubTaskHandler.handle({
+        title: 'Child 2',
+        parentTaskId: parentId,
+      });
+
+      const children = await entryProjection.getSubTasks(parentId);
+
+      // Manually move one child to different collection (Phase 2 individual migration)
+      await handler.handle({
+        entryId: children[0]!.id,
+        collectionId: 'collection-B',
+      });
+
+      const eventCountBefore = (await eventStore.getAll()).length;
+
+      // Move parent to collection-C
+      await handler.handle({
+        entryId: parentId,
+        collectionId: 'collection-C',
+      });
+
+      // Assert: 2 EntryMovedToCollection events (parent + 1 unmigrated child)
+      const allEvents = await eventStore.getAll();
+      const newEvents = allEvents.slice(eventCountBefore);
+      const moveEvents = newEvents.filter(e => e.type === 'EntryMovedToCollection') as EntryMovedToCollection[];
+      
+      expect(moveEvents).toHaveLength(2); // Parent + child2 only
+
+      // Verify: Parent in C, child1 still in B (preserved), child2 in C (followed parent)
+      const updatedChildren = await entryProjection.getSubTasks(parentId);
+      expect(updatedChildren).toHaveLength(2);
+      const updatedChild1 = updatedChildren.find(c => c.id === children[0]?.id);
+      const updatedChild2 = updatedChildren.find(c => c.id === children[1]?.id);
+
+      expect(updatedChild1).toBeDefined();
+      expect(updatedChild2).toBeDefined();
+      expect(updatedChild1!.collectionId).toBe('collection-B'); // Stayed
+      expect(updatedChild2!.collectionId).toBe('collection-C'); // Followed parent
+    });
+
+    it('should handle parent with no children (standard migration)', async () => {
+      // Create parent task with no children
+      const parentId = await createTaskHandler.handle({
+        title: 'Parent with no children',
+        collectionId: 'collection-A',
+      });
+
+      const eventCountBefore = (await eventStore.getAll()).length;
+
+      // Move parent to collection-B
+      await handler.handle({
+        entryId: parentId,
+        collectionId: 'collection-B',
+      });
+
+      // Assert: Only 1 EntryMovedToCollection event (parent only)
+      const allEvents = await eventStore.getAll();
+      const newEvents = allEvents.slice(eventCountBefore);
+      const moveEvents = newEvents.filter(e => e.type === 'EntryMovedToCollection') as EntryMovedToCollection[];
+      
+      expect(moveEvents).toHaveLength(1);
+      expect(moveEvents[0]!.aggregateId).toBe(parentId);
+    });
+  });
 });
