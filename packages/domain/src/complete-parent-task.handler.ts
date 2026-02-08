@@ -89,10 +89,7 @@ export class CompleteParentTaskHandler {
     };
     events.push(parentEvent);
 
-    // Persist all events
-    // For now, append sequentially (could be optimized with batch append in future)
-    for (const event of events) {
-      await this.eventStore.append(event);
-    }
+    // Persist all events atomically
+    await this.eventStore.appendBatch(events);
   }
 }
