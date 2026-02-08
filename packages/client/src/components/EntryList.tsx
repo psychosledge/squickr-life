@@ -101,12 +101,26 @@ export function EntryList({
   
   // Phase 2: Filter out sub-tasks from top-level list
   // Sub-tasks will be rendered indented under their parent tasks
+  // UNLESS the parent is not in the current collection (migrated sub-tasks appear as flat entries)
   const topLevelEntries = useMemo(() => {
+    // Get all parent task IDs in current entry list
+    const parentIdsInList = new Set(
+      entries
+        .filter(e => e.type === 'task' && !e.parentTaskId)
+        .map(e => e.id)
+    );
+    
     return entries.filter(entry => {
       // Only tasks can be sub-tasks
       if (entry.type !== 'task') return true;
-      // Filter out entries with parentTaskId (sub-tasks)
-      return !entry.parentTaskId;
+      
+      // Top-level task (no parent) - always show
+      if (!entry.parentTaskId) return true;
+      
+      // Sub-task: Only show as flat entry if parent is NOT in current list
+      // If parent is in list, sub-task will be shown indented under parent
+      // If parent is NOT in list, sub-task is migrated and should appear as flat entry (symlink)
+      return !parentIdsInList.has(entry.parentTaskId);
     });
   }, [entries]);
   

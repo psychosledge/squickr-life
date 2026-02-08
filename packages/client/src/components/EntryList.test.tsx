@@ -452,8 +452,9 @@ describe('EntryList', () => {
       expect(screen.getByText('2 entries')).toBeInTheDocument();
     });
 
-    it('should show empty state when all entries are sub-tasks', () => {
-      // Arrange: Only sub-tasks
+    it('should show migrated sub-tasks as flat entries when parent not in list', () => {
+      // Arrange: Only sub-tasks whose parent is NOT in the current collection
+      // This simulates migrated sub-tasks (symlink behavior)
       const entries: Entry[] = [
         {
           id: 'subtask-1',
@@ -461,7 +462,7 @@ describe('EntryList', () => {
           title: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-07T10:00:00Z',
-          parentTaskId: 'parent-1',
+          parentTaskId: 'parent-1', // Parent NOT in this list
         },
         {
           id: 'subtask-2',
@@ -469,7 +470,7 @@ describe('EntryList', () => {
           title: 'Sub-task 2',
           status: 'open',
           createdAt: '2026-02-07T11:00:00Z',
-          parentTaskId: 'parent-1',
+          parentTaskId: 'parent-1', // Parent NOT in this list
         },
       ];
 
@@ -488,10 +489,10 @@ describe('EntryList', () => {
         />
       );
 
-      // Assert: Empty state should be shown
-      expect(screen.getByText(/No entries yet/i)).toBeInTheDocument();
-      expect(screen.queryByText('Sub-task 1')).not.toBeInTheDocument();
-      expect(screen.queryByText('Sub-task 2')).not.toBeInTheDocument();
+      // Assert: Sub-tasks should be shown as flat entries (migrated/symlink behavior)
+      expect(screen.getByText('Sub-task 1')).toBeInTheDocument();
+      expect(screen.getByText('Sub-task 2')).toBeInTheDocument();
+      expect(screen.getByText('2 entries')).toBeInTheDocument();
     });
 
     it('should handle mixed entry types with sub-tasks filtered out', () => {
