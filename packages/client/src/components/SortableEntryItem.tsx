@@ -37,6 +37,9 @@ interface SortableEntryItemProps {
     completed: number;
     allComplete: boolean;
   };
+  // Phase 2: Sub-task migration indicators and navigation
+  isSubTaskMigrated?: boolean;
+  onNavigateToParent?: () => void;
 }
 
 /**
@@ -64,6 +67,8 @@ export function SortableEntryItem({
   onToggleSelection,
   onAddSubTask,
   completionStatus,
+  isSubTaskMigrated,
+  onNavigateToParent,
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -136,6 +141,8 @@ export function SortableEntryItem({
           onCreateCollection={onCreateCollection}
           onAddSubTask={onAddSubTask}
           completionStatus={completionStatus}
+          isSubTaskMigrated={isSubTaskMigrated}
+          onNavigateToParent={onNavigateToParent}
         />
       </SelectableEntryItem>
     </div>

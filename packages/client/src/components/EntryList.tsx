@@ -307,6 +307,10 @@ export function EntryList({
               // Get sub-tasks for this entry (if it's a task)
               const subTasks = entry.type === 'task' ? (subTasksMap.get(entry.id) || []) : [];
               
+              // Check if this top-level entry is actually a migrated sub-task
+              const isSubTask = entry.type === 'task' && !!entry.parentTaskId;
+              const isMigratedSubTask = isSubTask; // If it's in topLevelEntries, parent is NOT in list (migrated)
+              
               return (
                 <div key={entry.id}>
                   {/* Render parent entry (draggable) */}
@@ -329,6 +333,15 @@ export function EntryList({
                     isSelected={selectedEntryIds.has(entry.id)}
                     onToggleSelection={onToggleSelection}
                     completionStatus={completionStatusMap.get(entry.id)}
+                    // Phase 2: Pass sub-task props for migrated sub-tasks rendered as flat entries
+                    isSubTaskMigrated={isMigratedSubTask}
+                    onNavigateToParent={isMigratedSubTask && onNavigateToMigrated ? () => {
+                      // Find the parent task by looking through ALL entries (not just topLevelEntries)
+                      const parentTask = entries.find(e => e.type === 'task' && e.id === entry.parentTaskId);
+                      if (parentTask && onNavigateToMigrated) {
+                        onNavigateToMigrated(parentTask.collectionId || null);
+                      }
+                    } : undefined}
                   />
                   
                   {/* Render sub-tasks indented (non-draggable) - Phase 3 */}
@@ -364,20 +377,15 @@ export function EntryList({
                               onNavigateToMigrated={onNavigateToMigrated}
                               onCreateCollection={onCreateCollection}
                               onAddSubTask={onAddSubTask}
-                              isSubTaskMigrated={isMigrated}
-                              onNavigateToParent={() => {
-                                // Navigate to parent's collection
-                                const parent = topLevelEntries.find(e => e.id === subTask.parentTaskId);
-                                if (parent && onNavigateToMigrated) {
-                                  onNavigateToMigrated(parent.collectionId || null);
-                                }
-                              }}
-                              onNavigateToSubTaskCollection={() => {
-                                // Navigate to sub-task's collection
+                              // When rendered under parent: NO isSubTaskMigrated icon, NO "Go to Parent" menu
+                              // User is already viewing the sub-task in context of its parent
+                              isSubTaskMigrated={false}
+                              onNavigateToSubTaskCollection={isMigrated ? () => {
+                                // Only show "Go to Sub-Task Collection" if migrated
                                 if (onNavigateToMigrated) {
                                   onNavigateToMigrated(subTaskCollectionId || null);
                                 }
-                              }}
+                              } : undefined}
                             />
                             
                             {/* Phase 2: Collection name indicator for migrated sub-tasks */}
