@@ -91,6 +91,45 @@ export class IndexedDBEventStore implements IEventStore {
   }
 
   /**
+   * Append multiple events to IndexedDB atomically
+   * Uses a single transaction to ensure all-or-nothing semantics.
+   * If any event fails, the entire batch is rolled back.
+   * Notifies subscribers for each event only after successful transaction.
+   * 
+   * @param events - Array of domain events to append
+   * @throws Error if batch append fails
+   */
+  async appendBatch(events: DomainEvent[]): Promise<void> {
+    if (!this.db) {
+      throw new Error('EventStore not initialized. Call initialize() first.');
+    }
+
+    if (events.length === 0) return;
+
+    return new Promise((resolve, reject) => {
+      // Create a single transaction for all events (atomic!)
+      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      const objectStore = transaction.objectStore(this.storeName);
+
+      // Add all events to the transaction
+      for (const event of events) {
+        objectStore.add(event);
+      }
+
+      // Wait for transaction to complete
+      transaction.oncomplete = () => {
+        // Notify subscribers for each event in order (only after successful commit)
+        events.forEach(event => this.notifySubscribers(event));
+        resolve();
+      };
+
+      transaction.onerror = () => {
+        reject(new Error(`Failed to append batch: ${transaction.error}`));
+      };
+    });
+  }
+
+  /**
    * Get all events for a specific aggregate
    */
   async getById(aggregateId: string): Promise<DomainEvent[]> {

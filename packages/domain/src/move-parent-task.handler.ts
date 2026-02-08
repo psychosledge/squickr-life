@@ -105,17 +105,9 @@ export class MoveParentTaskHandler {
       }
     }
 
-    // 6. Batch append all events for performance
-    // Use individual appends if batch not available (graceful degradation)
-    if (events.length === 1) {
-      // Only parent event, use single append
-      await this.eventStore.append(events[0]!);
-    } else {
-      // Multiple events, append individually in sequence
-      // Note: IEventStore doesn't have appendBatch yet, so we use sequential appends
-      for (const event of events) {
-        await this.eventStore.append(event);
-      }
-    }
+    // 6. Batch append all events for atomicity
+    // Use appendBatch() to ensure all-or-nothing semantics
+    // If cascade migration fails, entire operation is rolled back
+    await this.eventStore.appendBatch(events);
   }
 }

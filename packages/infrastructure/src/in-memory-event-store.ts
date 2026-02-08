@@ -13,6 +13,21 @@ export class InMemoryEventStore implements IEventStore {
     this.notifySubscribers(event);
   }
 
+  /**
+   * Append multiple events atomically
+   * In-memory implementation is inherently atomic (single-threaded JavaScript)
+   * Notifies subscribers for each event in order
+   */
+  async appendBatch(events: DomainEvent[]): Promise<void> {
+    if (events.length === 0) return;
+    
+    // Push all events to array (atomic in single-threaded JS)
+    this.events.push(...events);
+    
+    // Notify subscribers for each event in order
+    events.forEach(event => this.notifySubscribers(event));
+  }
+
   async getById(aggregateId: string): Promise<DomainEvent[]> {
     return this.events.filter(e => e.aggregateId === aggregateId);
   }

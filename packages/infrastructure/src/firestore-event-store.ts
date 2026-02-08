@@ -7,6 +7,7 @@ import {
   query, 
   where, 
   orderBy,
+  writeBatch,
   type Firestore 
 } from 'firebase/firestore';
 
@@ -50,6 +51,42 @@ export class FirestoreEventStore implements IEventStore {
     
     // Notify subscribers after successful append
     this.notifySubscribers(event);
+  }
+
+  /**
+   * Append multiple events to Firestore atomically
+   * Uses Firestore batch writes for atomic all-or-nothing semantics.
+   * Firestore batch writes are limited to 500 operations, so we chunk if needed.
+   * Notifies subscribers for each event only after successful batch commit.
+   * 
+   * @param events - Array of domain events to append
+   * @throws Error if batch append fails
+   */
+  async appendBatch(events: DomainEvent[]): Promise<void> {
+    if (events.length === 0) return;
+
+    const eventsRef = collection(this.firestore, `users/${this.userId}/events`);
+    
+    // Firestore batch writes are limited to 500 operations
+    const BATCH_SIZE = 500;
+    
+    // Process events in chunks of 500
+    for (let i = 0; i < events.length; i += BATCH_SIZE) {
+      const batchEvents = events.slice(i, i + BATCH_SIZE);
+      const batch = writeBatch(this.firestore);
+      
+      for (const event of batchEvents) {
+        const docRef = doc(eventsRef, event.id);
+        const cleanedEvent = removeUndefined(event);
+        batch.set(docRef, cleanedEvent);
+      }
+      
+      // Commit batch atomically
+      await batch.commit();
+    }
+    
+    // Notify subscribers for each event in order (only after all batches succeed)
+    events.forEach(event => this.notifySubscribers(event));
   }
 
   /**

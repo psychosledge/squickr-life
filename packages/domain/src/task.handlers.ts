@@ -489,10 +489,10 @@ export class MoveEntryToCollectionHandler {
       }
     }
 
-    // Persist all events (parent + cascaded children)
-    for (const evt of events) {
-      await this.eventStore.append(evt);
-    }
+    // Persist all events (parent + cascaded children) atomically
+    // Use appendBatch() to ensure all-or-nothing semantics
+    // If cascade migration fails, entire operation is rolled back
+    await this.eventStore.appendBatch(events);
   }
 }
 

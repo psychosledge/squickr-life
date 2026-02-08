@@ -23,6 +23,16 @@ export interface IEventStore {
   append(event: DomainEvent): Promise<void>;
 
   /**
+   * Append multiple events to the store atomically
+   * All events are appended in a single transaction/batch.
+   * If any event fails, the entire batch is rolled back.
+   * 
+   * @param events - Array of domain events to append
+   * @throws Error if batch append fails
+   */
+  appendBatch(events: DomainEvent[]): Promise<void>;
+
+  /**
    * Get all events for a specific aggregate
    * @param aggregateId - The aggregate identifier
    * @returns Events in the order they were appended
