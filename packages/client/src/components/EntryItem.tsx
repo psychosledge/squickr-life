@@ -32,6 +32,10 @@ interface EntryItemProps {
     completed: number;
     allComplete: boolean;
   };
+  // Phase 2: Sub-task navigation and migration indicators
+  onNavigateToParent?: () => void;
+  onNavigateToSubTaskCollection?: () => void;
+  isSubTaskMigrated?: boolean;
 }
 
 /**
@@ -58,6 +62,9 @@ export function EntryItem({
   onCreateCollection,
   onAddSubTask,
   completionStatus,
+  onNavigateToParent,
+  onNavigateToSubTaskCollection,
+  isSubTaskMigrated,
 }: EntryItemProps) {
   // Route to the appropriate type-specific component
   if (entry.type === 'task') {
@@ -75,6 +82,9 @@ export function EntryItem({
         onCreateCollection={onCreateCollection}
         onAddSubTask={onAddSubTask}
         completionStatus={completionStatus}
+        onNavigateToParent={onNavigateToParent}
+        onNavigateToSubTaskCollection={onNavigateToSubTaskCollection}
+        isSubTaskMigrated={isSubTaskMigrated}
       />
     );
   }

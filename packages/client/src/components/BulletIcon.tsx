@@ -5,6 +5,8 @@ interface BulletIconProps {
   entry: Entry;
   onClick?: () => void;
   className?: string;
+  /** Phase 2: Indicates if this is a migrated sub-task (show 🔗 icon) */
+  isSubTaskMigrated?: boolean;
 }
 
 interface BulletStyle {
@@ -14,9 +16,25 @@ interface BulletStyle {
   ariaLabel: string;
 }
 
-function getBulletStyle(entry: Entry): BulletStyle {
+function getBulletStyle(entry: Entry, isSubTaskMigrated: boolean = false): BulletStyle {
   // Task bullets
   if (entry.type === 'task') {
+    // Phase 2: Migrated sub-task (has parent + different collection) - show 🔗 icon
+    if (isSubTaskMigrated) {
+      const baseIcon = entry.status === 'completed' 
+        ? ENTRY_ICONS.TASK_COMPLETED 
+        : ENTRY_ICONS.TASK_OPEN;
+      
+      return {
+        icon: `🔗${baseIcon}`,
+        color: 'text-blue-600 dark:text-blue-400', // Blue to indicate migration
+        isInteractive: !entry.migratedTo, // Can interact if not already migrated (original)
+        ariaLabel: entry.status === 'completed' 
+          ? 'Migrated sub-task (completed) - click to reopen'
+          : 'Migrated sub-task (open) - click to complete',
+      };
+    }
+    
     if (entry.migratedTo) {
       // Migrated task (migration takes precedence)
       return {
@@ -93,8 +111,8 @@ function getBulletStyle(entry: Entry): BulletStyle {
   };
 }
 
-export function BulletIcon({ entry, onClick, className = '' }: BulletIconProps) {
-  const { icon, color, isInteractive, ariaLabel } = getBulletStyle(entry);
+export function BulletIcon({ entry, onClick, className = '', isSubTaskMigrated = false }: BulletIconProps) {
+  const { icon, color, isInteractive, ariaLabel } = getBulletStyle(entry, isSubTaskMigrated);
 
   const baseStyles = `
     text-2xl leading-none pt-1 flex-shrink-0 select-none font-mono

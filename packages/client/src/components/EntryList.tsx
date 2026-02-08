@@ -43,6 +43,8 @@ interface EntryListProps {
   }>;
   // Phase 3: Optional sub-task fetcher (for rendering sub-tasks under parents)
   getSubTasks?: (parentTaskId: string) => Promise<Task[]>;
+  // Phase 2: Optional batch sub-task fetcher (performance optimization)
+  getSubTasksForMultipleParents?: (parentIds: string[]) => Promise<Map<string, Task[]>>;
 }
 
 /**
@@ -73,6 +75,7 @@ export function EntryList({
   onAddSubTask,
   getCompletionStatus,
   getSubTasks,
+  getSubTasksForMultipleParents,
 }: EntryListProps) {
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -119,6 +122,9 @@ export function EntryList({
   // This map stores sub-task arrays by parent task ID
   const [subTasksMap, setSubTasksMap] = useState<Map<string, Task[]>>(new Map());
   
+  // Phase 2: Store migration status for each sub-task
+  const [subTaskMigrationMap, setSubTaskMigrationMap] = useState<Map<string, boolean>>(new Map());
+  
   // Recalculate completion status and fetch sub-tasks when entries change
   useEffect(() => {
     // Race condition guard: prevent state updates after unmount/re-render
@@ -131,6 +137,7 @@ export function EntryList({
         allComplete: boolean;
       }>();
       const subTasksMapTemp = new Map<string, Task[]>();
+      const migrationMapTemp = new Map<string, boolean>();
       
       // Get all task entries
       const taskEntries = topLevelEntries.filter(entry => entry.type === 'task');
@@ -144,6 +151,9 @@ export function EntryList({
         
         const results = await Promise.all(statusPromises);
         
+        // Early exit if component unmounted during Promise.all
+        if (isCancelled) return;
+        
         // Only store status for tasks with children
         results.forEach(({ entryId, status }) => {
           if (status.total > 0) {
@@ -152,8 +162,33 @@ export function EntryList({
         });
       }
       
-      // Fetch sub-tasks for all task entries in parallel (if getSubTasks provided)
-      if (getSubTasks) {
+      // Fetch sub-tasks for all task entries (if getSubTasks provided)
+      // Use batch query if available (performance optimization), otherwise fall back to individual queries
+      if (getSubTasksForMultipleParents) {
+        // Batch query - single event replay for all parents (O(n))
+        const parentIds = taskEntries.map(e => e.id);
+        const subTasksMapBatch = await getSubTasksForMultipleParents(parentIds);
+        
+        // Early exit if component unmounted during batch query
+        if (isCancelled) return;
+        
+        // Process the batch results
+        for (const entry of taskEntries) {
+          const subTasks = subTasksMapBatch.get(entry.id) || [];
+          if (subTasks.length > 0) {
+            subTasksMapTemp.set(entry.id, subTasks);
+            
+            // Phase 2: Calculate migration status for each sub-task
+            subTasks.forEach(subTask => {
+              const parentCollectionId = entry.collectionId ?? null;
+              const subTaskCollectionId = subTask.collectionId ?? null;
+              const isMigrated = parentCollectionId !== subTaskCollectionId;
+              migrationMapTemp.set(subTask.id, isMigrated);
+            });
+          }
+        }
+      } else if (getSubTasks) {
+        // Fallback: Individual queries - N event replays (O(n²))
         const subTaskPromises = taskEntries.map(async (entry) => {
           const subTasks = await getSubTasks(entry.id);
           return { parentId: entry.id, subTasks };
@@ -161,19 +196,35 @@ export function EntryList({
         
         const subTaskResults = await Promise.all(subTaskPromises);
         
+        // Early exit if component unmounted during Promise.all
+        if (isCancelled) return;
+        
         // Store sub-tasks for each parent
         subTaskResults.forEach(({ parentId, subTasks }) => {
           if (subTasks.length > 0) {
             subTasksMapTemp.set(parentId, subTasks);
+            
+            // Phase 2: Calculate migration status for each sub-task
+            // Compare sub-task's collectionId with parent's collectionId
+            const parent = taskEntries.find(e => e.id === parentId);
+            if (parent) {
+              subTasks.forEach(subTask => {
+                const parentCollectionId = parent.collectionId ?? null;
+                const subTaskCollectionId = subTask.collectionId ?? null;
+                const isMigrated = parentCollectionId !== subTaskCollectionId;
+                migrationMapTemp.set(subTask.id, isMigrated);
+              });
+            }
           }
         });
       }
       
-      // Check if component unmounted or effect re-triggered
+      // Final check before updating state
       if (isCancelled) return;
       
       setCompletionStatusMap(statusMap);
       setSubTasksMap(subTasksMapTemp);
+      setSubTaskMigrationMap(migrationMapTemp);
     };
     
     calculateStatusAndFetchSubTasks();
@@ -182,7 +233,7 @@ export function EntryList({
     return () => {
       isCancelled = true;
     };
-  }, [topLevelEntries, getCompletionStatus, getSubTasks]);
+  }, [topLevelEntries, getCompletionStatus, getSubTasks, getSubTasksForMultipleParents]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -269,25 +320,61 @@ export function EntryList({
                   {/* Render sub-tasks indented (non-draggable) - Phase 3 */}
                   {subTasks.length > 0 && (
                     <div className="pl-8 space-y-2 mt-2">
-                      {subTasks.map((subTask) => (
-                        <EntryItem
-                          key={subTask.id}
-                          entry={{ ...subTask, type: 'task' as const }}
-                          onCompleteTask={onCompleteTask}
-                          onReopenTask={onReopenTask}
-                          onUpdateTaskTitle={onUpdateTaskTitle}
-                          onUpdateNoteContent={onUpdateNoteContent}
-                          onUpdateEventContent={onUpdateEventContent}
-                          onUpdateEventDate={onUpdateEventDate}
-                          onDelete={onDelete}
-                          onMigrate={onMigrate}
-                          collections={collections}
-                          currentCollectionId={currentCollectionId}
-                          onNavigateToMigrated={onNavigateToMigrated}
-                          onCreateCollection={onCreateCollection}
-                          onAddSubTask={onAddSubTask}
-                        />
-                      ))}
+                      {subTasks.map((subTask) => {
+                        const isMigrated = subTaskMigrationMap.get(subTask.id) || false;
+                        const subTaskCollectionId = subTask.collectionId;
+                        const subTaskCollection = collections?.find(c => c.id === subTaskCollectionId);
+                        const subTaskCollectionName = subTaskCollection?.name || 'Uncategorized';
+                        
+                        return (
+                          <div key={subTask.id} className="relative">
+                            {/* Phase 2: Migration indicator for migrated sub-tasks */}
+                            {isMigrated && (
+                              <div className="absolute -left-6 top-0 text-xs text-blue-600 dark:text-blue-400" title={`Migrated to ${subTaskCollectionName}`}>
+                                →
+                              </div>
+                            )}
+                            
+                            <EntryItem
+                              entry={{ ...subTask, type: 'task' as const }}
+                              onCompleteTask={onCompleteTask}
+                              onReopenTask={onReopenTask}
+                              onUpdateTaskTitle={onUpdateTaskTitle}
+                              onUpdateNoteContent={onUpdateNoteContent}
+                              onUpdateEventContent={onUpdateEventContent}
+                              onUpdateEventDate={onUpdateEventDate}
+                              onDelete={onDelete}
+                              onMigrate={onMigrate}
+                              collections={collections}
+                              currentCollectionId={currentCollectionId}
+                              onNavigateToMigrated={onNavigateToMigrated}
+                              onCreateCollection={onCreateCollection}
+                              onAddSubTask={onAddSubTask}
+                              isSubTaskMigrated={isMigrated}
+                              onNavigateToParent={() => {
+                                // Navigate to parent's collection
+                                const parent = topLevelEntries.find(e => e.id === subTask.parentTaskId);
+                                if (parent && onNavigateToMigrated) {
+                                  onNavigateToMigrated(parent.collectionId || null);
+                                }
+                              }}
+                              onNavigateToSubTaskCollection={() => {
+                                // Navigate to sub-task's collection
+                                if (onNavigateToMigrated) {
+                                  onNavigateToMigrated(subTaskCollectionId || null);
+                                }
+                              }}
+                            />
+                            
+                            {/* Phase 2: Collection name indicator for migrated sub-tasks */}
+                            {isMigrated && (
+                              <div className="ml-12 mt-1 text-xs text-blue-600 dark:text-blue-400">
+                                → {subTaskCollectionName}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

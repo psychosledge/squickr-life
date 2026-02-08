@@ -9,6 +9,11 @@ interface EntryActionsMenuProps {
   onAddSubTask?: () => void; // Phase 1: Sub-Tasks
   collections?: Collection[];
   onNavigateToMigrated?: (collectionId: string | null) => void;
+  // Phase 2: Navigation for sub-tasks and migrated sub-tasks
+  onNavigateToParent?: () => void; // Navigate to parent's collection
+  onNavigateToSubTaskCollection?: () => void; // Navigate to migrated sub-task's collection (from parent view)
+  isSubTask?: boolean; // Whether this entry is a sub-task
+  isSubTaskMigrated?: boolean; // Whether this sub-task is migrated to a different collection
 }
 
 /**
@@ -32,6 +37,10 @@ export function EntryActionsMenu({
   onAddSubTask,
   collections,
   onNavigateToMigrated,
+  onNavigateToParent,
+  onNavigateToSubTaskCollection,
+  isSubTask = false,
+  isSubTaskMigrated = false,
 }: EntryActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -46,8 +55,16 @@ export function EntryActionsMenu({
   // Phase 1: Sub-Tasks - Check if "Add Sub-Task" should be available
   // Only show for tasks that are NOT already sub-tasks (enforce 2-level limit)
   const isTask = entry.type === 'task';
-  const isSubTask = isTask && !!entry.parentTaskId;
   const canAddSubTask = isTask && !isSubTask && onAddSubTask;
+
+  // Phase 2: Sub-Task navigation
+  const showGoToParent = isSubTask && onNavigateToParent;
+  const showGoToSubTaskCollection = isSubTaskMigrated && onNavigateToSubTaskCollection && collections;
+  
+  // Get sub-task's collection name (for "Go to Collection" option)
+  const subTaskCollectionId = entry.collectionId;
+  const subTaskCollection = collections?.find(c => c.id === subTaskCollectionId);
+  const subTaskCollectionName = subTaskCollection?.name || 'Uncategorized';
 
   // Close menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -107,6 +124,20 @@ export function EntryActionsMenu({
     }
   };
 
+  const handleGoToParent = () => {
+    if (onNavigateToParent) {
+      onNavigateToParent();
+      setIsOpen(false);
+    }
+  };
+
+  const handleGoToSubTaskCollection = () => {
+    if (onNavigateToSubTaskCollection) {
+      onNavigateToSubTaskCollection();
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div className="relative" ref={menuRef}>
       {/* Trigger Button */}
@@ -136,11 +167,38 @@ export function EntryActionsMenu({
               Go to {targetCollectionId ? targetCollectionName : 'Uncategorized'}
             </button>
           )}
+          
+          {/* Phase 2: "Go to Parent" for sub-tasks */}
+          {showGoToParent && (
+            <button
+              role="menuitem"
+              onClick={handleGoToParent}
+              className={`w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                showGoTo ? '' : 'rounded-t-lg'
+              }`}
+            >
+              Go to Parent
+            </button>
+          )}
+          
+          {/* Phase 2: "Go to [Collection]" for migrated sub-tasks when viewed in parent's collection */}
+          {showGoToSubTaskCollection && (
+            <button
+              role="menuitem"
+              onClick={handleGoToSubTaskCollection}
+              className={`w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                showGoTo || showGoToParent ? '' : 'rounded-t-lg'
+              }`}
+            >
+              Go to {subTaskCollectionName}
+            </button>
+          )}
+          
           <button
             role="menuitem"
             onClick={handleEdit}
             className={`w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-              showGoTo ? '' : 'rounded-t-lg'
+              showGoTo || showGoToParent || showGoToSubTaskCollection ? '' : 'rounded-t-lg'
             }`}
           >
             Edit

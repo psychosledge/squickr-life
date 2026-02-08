@@ -23,6 +23,10 @@ interface TaskEntryItemProps {
     completed: number;
     allComplete: boolean;
   };
+  // Phase 2: Navigation and migration indicators for sub-tasks
+  onNavigateToParent?: () => void; // Navigate to parent's collection
+  onNavigateToSubTaskCollection?: () => void; // Navigate to migrated sub-task's collection
+  isSubTaskMigrated?: boolean; // Whether this sub-task is migrated to different collection
 }
 
 /**
@@ -47,6 +51,9 @@ export function TaskEntryItem({
   onCreateCollection,
   onAddSubTask,
   completionStatus,
+  onNavigateToParent,
+  onNavigateToSubTaskCollection,
+  isSubTaskMigrated = false,
 }: TaskEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -134,6 +141,7 @@ export function TaskEntryItem({
 
   const isCompleted = entry.status === 'completed';
   const canEdit = !!onUpdateTaskTitle;
+  const isSubTask = !!entry.parentTaskId;
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
@@ -143,6 +151,7 @@ export function TaskEntryItem({
         <BulletIcon 
           entry={entry} 
           onClick={entry.migratedTo ? undefined : handleToggleComplete}
+          isSubTaskMigrated={isSubTaskMigrated}
         />
         
         {/* Content Area */}
@@ -219,6 +228,10 @@ export function TaskEntryItem({
           onAddSubTask={onAddSubTask ? handleAddSubTask : undefined}
           collections={collections}
           onNavigateToMigrated={onNavigateToMigrated}
+          onNavigateToParent={onNavigateToParent}
+          onNavigateToSubTaskCollection={onNavigateToSubTaskCollection}
+          isSubTask={isSubTask}
+          isSubTaskMigrated={isSubTaskMigrated}
         />
       </div>
       
