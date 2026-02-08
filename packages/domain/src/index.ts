@@ -140,6 +140,10 @@ export { CompleteParentTaskHandler } from './complete-parent-task.handler';
 // Phase 5: Deletion Cascade Handler - FINAL PHASE!
 export { DeleteParentTaskHandler } from './delete-parent-task.handler';
 
+// Bulk Migration Handler (ADR-013 Phase 3)
+export { BulkMigrateEntriesHandler } from './bulk-migrate-entries.handler';
+export type { BulkMigrateEntriesCommand } from './bulk-migrate-entries.handler';
+
 // Note Command Handlers
 export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, ReorderNoteHandler, MigrateNoteHandler } from './note.handlers';
 
