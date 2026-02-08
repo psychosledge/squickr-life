@@ -11,6 +11,7 @@ export type {
   TaskStatus,
   TaskFilter,
   Task,
+  CollectionHistoryEntry,
   TaskCreated,
   TaskCompleted,
   TaskReopened,
@@ -18,6 +19,8 @@ export type {
   TaskReordered,
   TaskTitleChanged,
   TaskMigrated,
+  TaskAddedToCollection,
+  TaskRemovedFromCollection,
   CreateTaskCommand,
   CreateSubTaskCommand,
   CompleteTaskCommand,
@@ -28,6 +31,9 @@ export type {
   ReorderTaskCommand,
   UpdateTaskTitleCommand,
   MigrateTaskCommand,
+  AddTaskToCollectionCommand,
+  RemoveTaskFromCollectionCommand,
+  MoveTaskToCollectionCommand,
   TaskEvent,
   EntryMovedToCollection,
   MoveEntryToCollectionCommand,
@@ -118,6 +124,9 @@ export type { IEventStore } from './event-store';
 
 // Task Command Handlers
 export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler, MoveEntryToCollectionHandler, MigrateTaskHandler } from './task.handlers';
+
+// Multi-Collection Command Handlers
+export { AddTaskToCollectionHandler, RemoveTaskFromCollectionHandler, MoveTaskToCollectionHandler } from './collection-management.handlers';
 
 // Sub-Task Command Handlers (Phase 1: Sub-Tasks)
 export { CreateSubTaskHandler } from './sub-task.handlers';

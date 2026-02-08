@@ -521,6 +521,51 @@ export class EntryListProjection {
   }
 
   /**
+   * Get entries for collection view (includes ghosts)
+   * 
+   * Returns active entries + ghost entries for a specific collection.
+   * - Active entries: Currently in this collection (renderAsGhost: false)
+   * - Ghost entries: Removed from this collection (renderAsGhost: true, with ghostNewLocation)
+   * 
+   * @param collectionId - The collection ID to view
+   * @returns Array of entries with ghost rendering metadata
+   */
+  async getEntriesForCollectionView(
+    collectionId: string
+  ): Promise<(Entry & { renderAsGhost?: boolean; ghostNewLocation?: string })[]> {
+    const allEntries = await this.getEntries();
+    
+    // Active entries: Currently in this collection
+    const activeEntries = allEntries
+      .filter(entry => {
+        if (entry.type === 'task') {
+          return entry.collections.includes(collectionId);
+        }
+        // For notes/events, use legacy collectionId (no multi-collection yet)
+        return entry.collectionId === collectionId;
+      })
+      .map(entry => ({
+        ...entry,
+        renderAsGhost: false,
+      }));
+    
+    // Ghost entries: Removed from this collection (tasks only for now)
+    const ghostEntries = allEntries
+      .filter(entry => entry.type === 'task')
+      .filter(entry => !entry.collections.includes(collectionId))
+      .filter(entry => entry.collectionHistory?.some(h => 
+        h.collectionId === collectionId && h.removedAt
+      ))
+      .map(entry => ({
+        ...entry,
+        renderAsGhost: true,
+        ghostNewLocation: entry.collections[0],  // First current collection
+      }));
+    
+    return [...activeEntries, ...ghostEntries];
+  }
+
+  /**
    * Sanitize migration pointers for a single entry
    * If entry has migratedTo but target doesn't exist or is deleted, clear migration pointers
    * 
@@ -611,7 +656,10 @@ export class EntryListProjection {
   /**
    * Apply task events (reuse logic from TaskListProjection)
    */
-  private applyTaskEvent(tasks: Map<string, Task>, event: TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | TaskMigrated): void {
+  private applyTaskEvent(
+    tasks: Map<string, Task>, 
+    event: TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | TaskMigrated | import('./task.types').TaskAddedToCollection | import('./task.types').TaskRemovedFromCollection
+  ): void {
     switch (event.type) {
       case 'TaskCreated': {
         const task: Task = {
@@ -623,6 +671,15 @@ export class EntryListProjection {
           collectionId: event.payload.collectionId,
           userId: event.payload.userId,
           parentTaskId: event.payload.parentTaskId, // Phase 1: Sub-Tasks
+          parentEntryId: event.payload.parentTaskId, // Use parentEntryId for polymorphism
+          // Initialize collections array from legacy collectionId
+          collections: event.payload.collectionId ? [event.payload.collectionId] : [],
+          collectionHistory: event.payload.collectionId ? [
+            {
+              collectionId: event.payload.collectionId,
+              addedAt: event.timestamp,
+            }
+          ] : [],
         };
         tasks.set(task.id, task);
         break;
@@ -720,9 +777,63 @@ export class EntryListProjection {
             migratedFrom: event.payload.originalTaskId,
             migratedFromCollectionId: originalTask.collectionId, // Store source collection for "Go back"
             parentTaskId, // Phase 3: Updated to point to migrated parent if cascade
+            parentEntryId: parentTaskId, // Use parentEntryId for polymorphism
+            // Initialize collections array from target collection
+            collections: event.payload.targetCollectionId ? [event.payload.targetCollectionId] : [],
+            collectionHistory: event.payload.targetCollectionId ? [
+              {
+                collectionId: event.payload.targetCollectionId,
+                addedAt: event.payload.migratedAt,
+              }
+            ] : [],
           };
           tasks.set(newTask.id, newTask);
         }
+        break;
+      }
+      case 'TaskAddedToCollection': {
+        const task = tasks.get(event.payload.taskId);
+        if (!task) {
+          return;
+        }
+        
+        // Idempotency check
+        if (task.collections.includes(event.payload.collectionId)) {
+          return;
+        }
+        
+        const updatedTask: Task = {
+          ...task,
+          collections: [...task.collections, event.payload.collectionId],
+          collectionHistory: [
+            ...(task.collectionHistory || []),
+            {
+              collectionId: event.payload.collectionId,
+              addedAt: event.timestamp,
+            }
+          ],
+        };
+        
+        tasks.set(task.id, updatedTask);
+        break;
+      }
+      case 'TaskRemovedFromCollection': {
+        const task = tasks.get(event.payload.taskId);
+        if (!task) {
+          return;
+        }
+        
+        const updatedTask: Task = {
+          ...task,
+          collections: task.collections.filter(c => c !== event.payload.collectionId),
+          collectionHistory: task.collectionHistory?.map(h => 
+            h.collectionId === event.payload.collectionId && !h.removedAt
+              ? { ...h, removedAt: event.timestamp }
+              : h
+          ),
+        };
+        
+        tasks.set(task.id, updatedTask);
         break;
       }
     }
@@ -913,8 +1024,8 @@ export class EntryListProjection {
     return event.type === 'EntryMovedToCollection';
   }
 
-  private isTaskEvent(event: import('./domain-event').DomainEvent): event is TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | TaskMigrated {
-    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened' || event.type === 'TaskDeleted' || event.type === 'TaskReordered' || event.type === 'TaskTitleChanged' || event.type === 'TaskMigrated';
+  private isTaskEvent(event: import('./domain-event').DomainEvent): event is TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | TaskMigrated | import('./task.types').TaskAddedToCollection | import('./task.types').TaskRemovedFromCollection {
+    return event.type === 'TaskCreated' || event.type === 'TaskCompleted' || event.type === 'TaskReopened' || event.type === 'TaskDeleted' || event.type === 'TaskReordered' || event.type === 'TaskTitleChanged' || event.type === 'TaskMigrated' || event.type === 'TaskAddedToCollection' || event.type === 'TaskRemovedFromCollection';
   }
 
   private isNoteEvent(event: import('./domain-event').DomainEvent): event is NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | NoteMigrated {

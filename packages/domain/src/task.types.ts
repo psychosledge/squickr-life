@@ -16,6 +16,16 @@ export type TaskStatus = 'open' | 'completed';
 export type TaskFilter = 'all' | 'open' | 'completed';
 
 /**
+ * Collection history entry - tracks when a task was added/removed from a collection
+ * Used for ghost rendering (show removed tasks as crossed out)
+ */
+export interface CollectionHistoryEntry {
+  readonly collectionId: string;
+  readonly addedAt: string;
+  readonly removedAt?: string; // undefined = still in this collection
+}
+
+/**
  * Task entity - represents the current state of a task
  * This is derived from events, not stored directly
  */
@@ -39,8 +49,16 @@ export interface Task {
    * Optional for backward compatibility with tasks created before this field was added */
   readonly order?: string;
   
-  /** Optional: Collection this task belongs to (null/undefined = uncategorized) */
+  /** Optional: Collection this task belongs to (null/undefined = uncategorized) 
+   * LEGACY: Kept for backward compatibility with single-collection tasks */
   readonly collectionId?: string;
+  
+  /** Array of collection IDs this task belongs to (multi-collection support) 
+   * Empty array = uncategorized */
+  readonly collections: string[];
+  
+  /** Collection history - track when task was added/removed from collections */
+  readonly collectionHistory?: CollectionHistoryEntry[];
   
   /** Optional: User who created the task (for future multi-user support) */
   readonly userId?: string;
@@ -57,7 +75,11 @@ export interface Task {
   /** Optional: Collection ID where this task was migrated from (for "Go back" navigation) */
   readonly migratedFromCollectionId?: string;
   
-  /** Optional: Parent task ID (if this is a sub-task) - Phase 1: Sub-Tasks */
+  /** Optional: Parent entry ID (if this is a sub-task)
+   * NOTE: Use parentEntryId (not parentTaskId) to enable future sub-notes/events */
+  readonly parentEntryId?: string;
+  
+  /** DEPRECATED: Use parentEntryId instead - kept for backward compatibility */
   readonly parentTaskId?: string;
 }
 
@@ -352,11 +374,84 @@ export interface MigrateTaskCommand {
   readonly targetCollectionId: string | null;
 }
 
+// ============================================================================
+// Multi-Collection Events (Phase: Multi-Collection Refactor)
+// ============================================================================
+
+/**
+ * TaskAddedToCollection Event
+ * Emitted when a task is added to an additional collection
+ * 
+ * This enables multi-collection membership where one task can appear in multiple collections.
+ * 
+ * Invariants:
+ * - aggregateId must match an existing task
+ * - Task must not already be in this collection (idempotent check)
+ * - collectionId is required (use empty collections array for uncategorized)
+ */
+export interface TaskAddedToCollection extends DomainEvent {
+  readonly type: 'TaskAddedToCollection';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly taskId: string;
+    readonly collectionId: string;
+    readonly addedAt: string;
+  };
+}
+
+/**
+ * TaskRemovedFromCollection Event
+ * Emitted when a task is removed from a collection
+ * 
+ * This creates a "ghost" entry - the task appears crossed out in the original collection.
+ * 
+ * Invariants:
+ * - aggregateId must match an existing task
+ * - Task must be in this collection (idempotent check)
+ */
+export interface TaskRemovedFromCollection extends DomainEvent {
+  readonly type: 'TaskRemovedFromCollection';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly taskId: string;
+    readonly collectionId: string;
+    readonly removedAt: string;
+  };
+}
+
+/**
+ * AddTaskToCollection Command
+ * Represents the user's intent to add a task to an additional collection
+ */
+export interface AddTaskToCollectionCommand {
+  readonly taskId: string;
+  readonly collectionId: string;
+}
+
+/**
+ * RemoveTaskFromCollection Command
+ * Represents the user's intent to remove a task from a collection
+ */
+export interface RemoveTaskFromCollectionCommand {
+  readonly taskId: string;
+  readonly collectionId: string;
+}
+
+/**
+ * MoveTaskToCollection Command
+ * Represents the user's intent to move a task to a different collection
+ * This removes the task from ALL current collections and adds it to the target
+ */
+export interface MoveTaskToCollectionCommand {
+  readonly taskId: string;
+  readonly targetCollectionId: string;
+}
+
 /**
  * Union type of all task-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | EntryMovedToCollection | TaskMigrated;
+export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | EntryMovedToCollection | TaskMigrated | TaskAddedToCollection | TaskRemovedFromCollection;
 
 // ============================================================================
 // Note Domain Types (Bullet Journal Notes)
