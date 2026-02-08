@@ -40,7 +40,6 @@ export function EntryActionsMenu({
   onNavigateToParent,
   onNavigateToSubTaskCollection,
   isSubTask = false,
-  isSubTaskMigrated = false,
 }: EntryActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -59,7 +58,8 @@ export function EntryActionsMenu({
 
   // Phase 2: Sub-Task navigation
   const showGoToParent = isSubTask && onNavigateToParent;
-  const showGoToSubTaskCollection = isSubTaskMigrated && onNavigateToSubTaskCollection && collections;
+  // Show "Go to Sub-Task Collection" if the handler is provided (indicates migration)
+  const showGoToSubTaskCollection = onNavigateToSubTaskCollection && collections;
   
   // Get sub-task's collection name (for "Go to Collection" option)
   const subTaskCollectionId = entry.collectionId;

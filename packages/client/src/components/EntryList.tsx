@@ -45,6 +45,8 @@ interface EntryListProps {
   getSubTasks?: (parentTaskId: string) => Promise<Task[]>;
   // Phase 2: Optional batch sub-task fetcher (performance optimization)
   getSubTasksForMultipleParents?: (parentIds: string[]) => Promise<Map<string, Task[]>>;
+  // Phase 2: Optional parent task fetcher (for "Go to Parent" navigation)
+  getParentTask?: (task: Task) => Promise<Task | undefined>;
 }
 
 /**
@@ -76,6 +78,7 @@ export function EntryList({
   getCompletionStatus,
   getSubTasks,
   getSubTasksForMultipleParents,
+  getParentTask,
 }: EntryListProps) {
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -335,11 +338,12 @@ export function EntryList({
                     completionStatus={completionStatusMap.get(entry.id)}
                     // Phase 2: Pass sub-task props for migrated sub-tasks rendered as flat entries
                     isSubTaskMigrated={isMigratedSubTask}
-                    onNavigateToParent={isMigratedSubTask && onNavigateToMigrated ? () => {
-                      // Find the parent task by looking through ALL entries (not just topLevelEntries)
-                      const parentTask = entries.find(e => e.type === 'task' && e.id === entry.parentTaskId);
-                      if (parentTask && onNavigateToMigrated) {
-                        onNavigateToMigrated(parentTask.collectionId || null);
+                    onNavigateToParent={isMigratedSubTask && onNavigateToMigrated && getParentTask && entry.type === 'task' ? async () => {
+                      // Use getParentTask to fetch parent from projection (not from current entries)
+                      // This works even when parent is in a different collection
+                      const parent = await getParentTask(entry);
+                      if (parent && onNavigateToMigrated) {
+                        onNavigateToMigrated(parent.collectionId || null);
                       }
                     } : undefined}
                   />
@@ -377,11 +381,11 @@ export function EntryList({
                               onNavigateToMigrated={onNavigateToMigrated}
                               onCreateCollection={onCreateCollection}
                               onAddSubTask={onAddSubTask}
-                              // When rendered under parent: NO isSubTaskMigrated icon, NO "Go to Parent" menu
-                              // User is already viewing the sub-task in context of its parent
+                              // When rendered under parent: NO 🔗 icon (isSubTaskMigrated=false)
+                              // But DO show "Go to Collection" menu if migrated (via onNavigateToSubTaskCollection)
                               isSubTaskMigrated={false}
                               onNavigateToSubTaskCollection={isMigrated ? () => {
-                                // Only show "Go to Sub-Task Collection" if migrated
+                                // Navigate to sub-task's migrated collection
                                 if (onNavigateToMigrated) {
                                   onNavigateToMigrated(subTaskCollectionId || null);
                                 }
