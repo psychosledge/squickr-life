@@ -6,6 +6,7 @@ import { SortableEntryItem } from './SortableEntryItem';
 import { EntryItem } from './EntryItem';
 import { DRAG_SENSOR_CONFIG } from '../utils/constants';
 import type { Task } from '@squickr/domain';
+import { useCollapsedTasks } from '../hooks/useCollapsedTasks';
 
 interface EntryListProps {
   entries: Entry[];
@@ -101,6 +102,9 @@ export function EntryList({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+  
+  // Phase 4: Collapse/expand state management
+  const { isCollapsed, toggleCollapsed } = useCollapsedTasks();
   
   // Phase 2: Filter out sub-tasks from top-level list
   // Sub-tasks will be rendered indented under their parent tasks
@@ -314,6 +318,9 @@ export function EntryList({
               const isSubTask = entry.type === 'task' && !!entry.parentTaskId;
               const isMigratedSubTask = isSubTask; // If it's in topLevelEntries, parent is NOT in list (migrated)
               
+              // Phase 4: Check collapse state
+              const collapsed = isCollapsed(entry.id);
+              
               return (
                 <div key={entry.id}>
                   {/* Render parent entry (draggable) */}
@@ -346,10 +353,14 @@ export function EntryList({
                         onNavigateToMigrated(parent.collectionId || null);
                       }
                     } : undefined}
+                    // Phase 4: Pass collapse props
+                    isCollapsed={collapsed}
+                    onToggleCollapse={() => toggleCollapsed(entry.id)}
                   />
                   
                   {/* Render sub-tasks indented (non-draggable) - Phase 3 */}
-                  {subTasks.length > 0 && (
+                  {/* Phase 4: Only show sub-tasks if parent is not collapsed */}
+                  {subTasks.length > 0 && !collapsed && (
                     <div className="pl-8 space-y-2 mt-2">
                       {subTasks.map((subTask) => {
                         const isMigrated = subTaskMigrationMap.get(subTask.id) || false;

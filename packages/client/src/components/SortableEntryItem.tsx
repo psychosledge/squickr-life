@@ -40,6 +40,9 @@ interface SortableEntryItemProps {
   // Phase 2: Sub-task migration indicators and navigation
   isSubTaskMigrated?: boolean;
   onNavigateToParent?: () => void;
+  // Phase 4: Expand/collapse control for sub-tasks
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 /**
@@ -69,6 +72,8 @@ export function SortableEntryItem({
   completionStatus,
   isSubTaskMigrated,
   onNavigateToParent,
+  isCollapsed,
+  onToggleCollapse,
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -143,6 +148,8 @@ export function SortableEntryItem({
           completionStatus={completionStatus}
           isSubTaskMigrated={isSubTaskMigrated}
           onNavigateToParent={onNavigateToParent}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={onToggleCollapse}
         />
       </SelectableEntryItem>
     </div>

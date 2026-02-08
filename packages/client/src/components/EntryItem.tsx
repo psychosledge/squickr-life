@@ -36,6 +36,9 @@ interface EntryItemProps {
   onNavigateToParent?: () => void;
   onNavigateToSubTaskCollection?: () => void;
   isSubTaskMigrated?: boolean;
+  // Phase 4: Expand/collapse control for sub-tasks
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 /**
@@ -65,6 +68,8 @@ export function EntryItem({
   onNavigateToParent,
   onNavigateToSubTaskCollection,
   isSubTaskMigrated,
+  isCollapsed,
+  onToggleCollapse,
 }: EntryItemProps) {
   // Route to the appropriate type-specific component
   if (entry.type === 'task') {
@@ -85,6 +90,8 @@ export function EntryItem({
         onNavigateToParent={onNavigateToParent}
         onNavigateToSubTaskCollection={onNavigateToSubTaskCollection}
         isSubTaskMigrated={isSubTaskMigrated}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={onToggleCollapse}
       />
     );
   }

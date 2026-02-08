@@ -4,6 +4,7 @@ import { formatTimestamp } from '../utils/formatters';
 import { MigrateEntryModal } from './MigrateEntryModal';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 
 interface TaskEntryItemProps {
   entry: Entry & { type: 'task' };
@@ -27,6 +28,9 @@ interface TaskEntryItemProps {
   onNavigateToParent?: () => void; // Navigate to parent's collection
   onNavigateToSubTaskCollection?: () => void; // Navigate to migrated sub-task's collection
   isSubTaskMigrated?: boolean; // Whether this sub-task is migrated to different collection
+  // Phase 4: Expand/collapse control for sub-tasks
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 /**
@@ -54,6 +58,8 @@ export function TaskEntryItem({
   onNavigateToParent,
   onNavigateToSubTaskCollection,
   isSubTaskMigrated = false,
+  isCollapsed = false,
+  onToggleCollapse,
 }: TaskEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -142,6 +148,7 @@ export function TaskEntryItem({
   const isCompleted = entry.status === 'completed';
   const canEdit = !!onUpdateTaskTitle;
   const isSubTask = !!entry.parentTaskId;
+  const hasSubTasks = completionStatus && completionStatus.total > 0;
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
@@ -179,6 +186,26 @@ export function TaskEntryItem({
           ) : (
             <>
               <div className="flex items-center gap-2">
+                {/* Phase 4: Chevron icon for expand/collapse (only if task has sub-tasks) */}
+                {hasSubTasks && onToggleCollapse && (
+                  <button
+                    onClick={onToggleCollapse}
+                    className="flex-shrink-0 text-gray-500 dark:text-gray-400 
+                               hover:text-gray-700 dark:hover:text-gray-200 
+                               focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 
+                               rounded transition-colors"
+                    aria-label={isCollapsed ? 'Expand sub-tasks' : 'Collapse sub-tasks'}
+                    title={isCollapsed ? 'Expand sub-tasks' : 'Collapse sub-tasks'}
+                    type="button"
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+                
                 <div 
                   className={`text-lg font-medium cursor-pointer select-none ${
                     isCompleted 
