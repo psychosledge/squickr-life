@@ -57,7 +57,13 @@ describe('CollectionDetailView', () => {
 
     mockEntryProjection = {
       getEntriesByCollection: vi.fn().mockResolvedValue(mockEntries),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue(mockEntries), // Phase 2: Ghost entries
       subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue([]),
+      getParentTask: vi.fn().mockResolvedValue(null),
+      isParentTask: vi.fn().mockResolvedValue(false),
     };
 
     mockEventStore = {
@@ -94,6 +100,10 @@ describe('CollectionDetailView', () => {
       migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
     };
 
     return render(
@@ -251,7 +261,15 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
         }
         return Promise.resolve([]);
       }),
+      getEntriesForCollectionView: vi.fn((collectionId: string) => {
+        return Promise.resolve([]);
+      }),
       subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue([]),
+      getParentTask: vi.fn().mockResolvedValue(null),
+      isParentTask: vi.fn().mockResolvedValue(false),
     };
 
     mockTaskProjection = {
@@ -277,6 +295,10 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
     };
 
     return render(
@@ -456,6 +478,10 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
     };
 
     return render(

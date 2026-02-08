@@ -30,6 +30,7 @@ interface MigrateEntryDialogProps {
   onBulkMigrate?: (entryIds: string[], targetCollectionId: string, mode: 'move' | 'add') => Promise<void>;
   onCreateCollection?: (name: string, type?: CollectionType, date?: string) => Promise<string>;
   userPreferences?: UserPreferences;
+  isBulkMigrating?: boolean; // Phase 4: Loading state
 }
 
 /**
@@ -165,6 +166,7 @@ export function MigrateEntryDialog({
   onBulkMigrate,
   onCreateCollection,
   userPreferences,
+  isBulkMigrating = false, // Phase 4: Loading state with default
 }: MigrateEntryDialogProps) {
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [mode, setMode] = useState<'move' | 'add'>('move');
@@ -377,7 +379,17 @@ export function MigrateEntryDialog({
         }
       }}
     >
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 relative">
+        {/* Loading overlay */}
+        {isBulkMigrating && (
+          <div className="absolute inset-0 bg-white/90 dark:bg-gray-800/90 flex flex-col items-center justify-center rounded-lg z-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-3" />
+            <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+              Migrating {isBulkMode ? entryCount : 1} {isBulkMode && entryCount > 1 ? 'entries' : 'entry'}...
+            </p>
+          </div>
+        )}
+
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
           {getModalTitle()}
         </h2>
@@ -407,7 +419,7 @@ export function MigrateEntryDialog({
                 id="target-collection"
                 value={selectedCollectionId}
                 onChange={(e) => handleSelectChange(e.target.value)}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isBulkMigrating}
                 required
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
                            bg-white dark:bg-gray-700 text-gray-900 dark:text-white
@@ -439,7 +451,7 @@ export function MigrateEntryDialog({
                     value="move"
                     checked={mode === 'move'}
                     onChange={(e) => setMode(e.target.value as 'move' | 'add')}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isBulkMigrating}
                     className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
                   />
                   <div className="flex-1">
@@ -460,7 +472,7 @@ export function MigrateEntryDialog({
                     value="add"
                     checked={mode === 'add'}
                     onChange={(e) => setMode(e.target.value as 'move' | 'add')}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isBulkMigrating}
                     className="mt-1 mr-3 text-blue-600 focus:ring-blue-500"
                   />
                   <div className="flex-1">
@@ -482,7 +494,7 @@ export function MigrateEntryDialog({
           <button
             type="button"
             onClick={onClose}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isBulkMigrating}
             className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 
                        hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors
                        focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2
@@ -493,7 +505,7 @@ export function MigrateEntryDialog({
           <button
             type="button"
             onClick={handleMigrate}
-            disabled={isSubmitting || (availableCollections.length === 0 && !onCreateCollection) || !selectedCollectionId}
+            disabled={isSubmitting || isBulkMigrating || (availableCollections.length === 0 && !onCreateCollection) || !selectedCollectionId}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg 
                        transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 
                        focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"

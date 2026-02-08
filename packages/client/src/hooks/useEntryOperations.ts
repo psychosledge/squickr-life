@@ -26,6 +26,7 @@ import type {
   EntryListProjection,
   AddTaskToCollectionHandler,
   MoveTaskToCollectionHandler,
+  BulkMigrateEntriesHandler,
 } from '@squickr/domain';
 import type { CollectionHandlers } from './useCollectionHandlers';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
@@ -41,6 +42,7 @@ export interface UseEntryOperationsParams {
   entryProjection: EntryListProjection; // Phase 4: Need projection for sub-task queries
   addTaskToCollectionHandler: AddTaskToCollectionHandler; // Phase 3: Multi-collection add
   moveTaskToCollectionHandler: MoveTaskToCollectionHandler; // Phase 3: Multi-collection move
+  bulkMigrateEntriesHandler: BulkMigrateEntriesHandler; // Phase 4: Batch migration
 }
 
 export interface EntryOperations {
@@ -112,6 +114,7 @@ export function useEntryOperations(
     entryProjection, // Phase 4: Need for sub-task queries
     addTaskToCollectionHandler, // Phase 3: Multi-collection add
     moveTaskToCollectionHandler, // Phase 3: Multi-collection move
+    bulkMigrateEntriesHandler, // Phase 4: Batch migration
   }: UseEntryOperationsParams,
   config: UseEntryOperationsConfig
 ): EntryOperations {
@@ -351,11 +354,13 @@ export function useEntryOperations(
   }, [entries, addTaskToCollectionHandler, moveTaskToCollectionHandler, handleMigrate]);
 
   const handleBulkMigrateWithMode = useCallback(async (entryIds: string[], targetCollectionId: string | null, mode: 'move' | 'add' = 'move') => {
-    // Migrate all entries sequentially
-    for (const entryId of entryIds) {
-      await handleMigrateWithMode(entryId, targetCollectionId, mode);
-    }
-  }, [handleMigrateWithMode]);
+    // Use bulk handler for atomic batch migration
+    await bulkMigrateEntriesHandler.handle({
+      entryIds,
+      targetCollectionId,
+      mode,
+    });
+  }, [bulkMigrateEntriesHandler]);
 
   const handleNavigateToMigrated = useCallback((targetCollectionId: string | null) => {
     if (targetCollectionId) {

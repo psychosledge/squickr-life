@@ -22,6 +22,7 @@ import type {
   AddTaskToCollectionHandler,
   RemoveTaskFromCollectionHandler,
   MoveTaskToCollectionHandler,
+  BulkMigrateEntriesHandler,
 } from '@squickr/domain';
 
 interface AppContextValue {
@@ -37,6 +38,7 @@ interface AppContextValue {
   addTaskToCollectionHandler: AddTaskToCollectionHandler;
   removeTaskFromCollectionHandler: RemoveTaskFromCollectionHandler;
   moveTaskToCollectionHandler: MoveTaskToCollectionHandler;
+  bulkMigrateEntriesHandler: BulkMigrateEntriesHandler;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);

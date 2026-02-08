@@ -51,6 +51,7 @@ export function CollectionDetailView() {
     createCollectionHandler,
     addTaskToCollectionHandler,
     moveTaskToCollectionHandler,
+    bulkMigrateEntriesHandler, // Phase 4: Batch migration
   } = useApp();
   const userPreferences = useUserPreferences();
 
@@ -67,6 +68,7 @@ export function CollectionDetailView() {
 
   // Migration modal state for bulk migration
   const [isBulkMigrateModalOpen, setIsBulkMigrateModalOpen] = useState(false);
+  const [isBulkMigrating, setIsBulkMigrating] = useState(false); // Phase 4: Loading state
 
   // Sub-task modal state
   const [isSubTaskModalOpen, setIsSubTaskModalOpen] = useState(false);
@@ -96,6 +98,7 @@ export function CollectionDetailView() {
       entryProjection, // Phase 4: Pass entryProjection for sub-task queries
       addTaskToCollectionHandler, // Phase 3: Multi-collection add
       moveTaskToCollectionHandler, // Phase 3: Multi-collection move
+      bulkMigrateEntriesHandler, // Phase 4: Batch migration
     },
     {
       collectionId,
@@ -217,9 +220,17 @@ export function CollectionDetailView() {
   };
 
   const handleBulkMigrateSubmit = async (entryIds: string[], targetCollectionId: string, mode: 'move' | 'add') => {
-    await operations.handleBulkMigrateWithMode(entryIds, targetCollectionId, mode);
-    setIsBulkMigrateModalOpen(false);
-    selection.exitSelectionMode();
+    setIsBulkMigrating(true); // Add loading state
+    try {
+      await operations.handleBulkMigrateWithMode(entryIds, targetCollectionId, mode);
+      setIsBulkMigrateModalOpen(false);
+      selection.exitSelectionMode();
+    } catch (error) {
+      console.error('Bulk migration failed:', error);
+      // TODO: Show error toast to user
+    } finally {
+      setIsBulkMigrating(false); // Clear loading state
+    }
   };
 
   const handleCloseBulkMigrateModal = () => {
@@ -519,6 +530,7 @@ export function CollectionDetailView() {
           onBulkMigrate={handleBulkMigrateSubmit}
           onCreateCollection={operations.handleCreateCollection}
           userPreferences={userPreferences}
+          isBulkMigrating={isBulkMigrating} // Phase 4: Loading state
         />
       )}
 

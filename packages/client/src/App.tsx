@@ -9,6 +9,7 @@ import {
   AddTaskToCollectionHandler,
   RemoveTaskFromCollectionHandler,
   MoveTaskToCollectionHandler,
+  BulkMigrateEntriesHandler,
   EntryListProjection,
   TaskListProjection,
   CollectionListProjection
@@ -61,6 +62,9 @@ function AppContent() {
     const removeHandler = new RemoveTaskFromCollectionHandler(eventStore, entryProjection);
     return new MoveTaskToCollectionHandler(addHandler, removeHandler, entryProjection);
   });
+  
+  // Bulk migration handler (Phase 4: ADR-013)
+  const [bulkMigrateEntriesHandler] = useState(() => new BulkMigrateEntriesHandler(eventStore, entryProjection));
   
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
@@ -144,6 +148,7 @@ function AppContent() {
     addTaskToCollectionHandler,
     removeTaskFromCollectionHandler,
     moveTaskToCollectionHandler,
+    bulkMigrateEntriesHandler,
   };
 
   // Show main app for authenticated users
