@@ -195,11 +195,11 @@ export function CollectionDetailView() {
     selection.selectAll(entries.map(e => e.id));
   };
 
-  const handleSelectIncomplete = () => {
-    const incompleteTasks = entries
-      .filter(e => e.type === 'task' && e.status !== 'completed')
+  const handleSelectActive = () => {
+    const activeEntries = entries
+      .filter(e => !e.migratedTo)
       .map(e => e.id);
-    selection.selectAll(incompleteTasks);
+    selection.selectAll(activeEntries);
   };
 
   const handleSelectNotes = () => {
@@ -527,7 +527,7 @@ export function CollectionDetailView() {
         <SelectionToolbar
           selectedCount={selection.selectedCount}
           onSelectAll={handleSelectAll}
-          onSelectIncomplete={handleSelectIncomplete}
+          onSelectActive={handleSelectActive}
           onSelectNotes={handleSelectNotes}
           onClear={selection.clearSelection}
           onMigrate={handleBulkMigrate}
