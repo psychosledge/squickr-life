@@ -14,6 +14,8 @@ interface EntryActionsMenuProps {
   onNavigateToSubTaskCollection?: () => void; // Navigate to migrated sub-task's collection (from parent view)
   isSubTask?: boolean; // Whether this entry is a sub-task
   isSubTaskMigrated?: boolean; // Whether this sub-task is migrated to a different collection
+  // Phase 4: Ghost entries
+  isGhost?: boolean; // Whether this entry is a ghost (show only "Go to" and "Delete")
 }
 
 /**
@@ -40,6 +42,7 @@ export function EntryActionsMenu({
   onNavigateToParent,
   onNavigateToSubTaskCollection,
   isSubTask = false,
+  isGhost = false,
 }: EntryActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -52,16 +55,37 @@ export function EntryActionsMenu({
   const showGoTo = isMigrated && collections && onNavigateToMigrated;
 
   // Phase 3: "Go back" option for migrated entries (showing where they came from)
-  const hasMigratedFrom = !!entry.migratedFrom;
-  const sourceCollectionId = entry.migratedFromCollectionId;
-  const sourceCollection = collections?.find(c => c.id === sourceCollectionId);
+  // Support BOTH legacy migration (migratedFrom) AND multi-collection moves (collectionHistory)
+  let sourceCollectionId: string | undefined | null = undefined;
+  let showGoBack = false;
+  
+  if (entry.migratedFrom && entry.migratedFromCollectionId !== undefined) {
+    // Legacy migration: Use migratedFrom pointers
+    sourceCollectionId = entry.migratedFromCollectionId;
+    showGoBack = !!collections && !!onNavigateToMigrated;
+  } else if ('collectionHistory' in entry && entry.collectionHistory) {
+    // Multi-collection move: Find most recent "removedFrom" collection
+    // Look for collections that this entry was removed from (has removedAt timestamp)
+    const removedCollections = entry.collectionHistory
+      .filter(h => h.removedAt !== undefined)
+      .sort((a, b) => (b.removedAt || '').localeCompare(a.removedAt || '')); // Most recent first
+    
+    if (removedCollections.length > 0 && removedCollections[0]) {
+      sourceCollectionId = removedCollections[0].collectionId;
+      showGoBack = !!collections && !!onNavigateToMigrated;
+    }
+  }
+  
+  const sourceCollection = sourceCollectionId !== undefined 
+    ? collections?.find(c => c.id === sourceCollectionId) 
+    : undefined;
   const sourceCollectionName = sourceCollection?.name || 'Uncategorized';
-  const showGoBack = hasMigratedFrom && collections && onNavigateToMigrated;
 
   // Phase 1: Sub-Tasks - Check if "Add Sub-Task" should be available
   // Only show for tasks that are NOT already sub-tasks (enforce 2-level limit)
+  // Do NOT show for ghost entries
   const isTask = entry.type === 'task';
-  const canAddSubTask = isTask && !isSubTask && onAddSubTask;
+  const canAddSubTask = isTask && !isSubTask && !isGhost && onAddSubTask;
 
   // Phase 2: Sub-Task navigation
   const showGoToParent = isSubTask && onNavigateToParent;
@@ -72,6 +96,10 @@ export function EntryActionsMenu({
   const subTaskCollectionId = entry.collectionId;
   const subTaskCollection = collections?.find(c => c.id === subTaskCollectionId);
   const subTaskCollectionName = subTaskCollection?.name || 'Uncategorized';
+  
+  // Phase 4: Ghost entries - Hide Edit/Migrate for ghost entries
+  const showEdit = !isGhost;
+  const showMigrate = !isGhost;
 
   // Close menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -221,22 +249,29 @@ export function EntryActionsMenu({
             </button>
           )}
           
-          <button
-            role="menuitem"
-            onClick={handleEdit}
-            className={`w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-              showGoTo || showGoBack || showGoToParent || showGoToSubTaskCollection ? '' : 'rounded-t-lg'
-            }`}
-          >
-            Edit
-          </button>
-          <button
-            role="menuitem"
-            onClick={handleMove}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          >
-            Migrate
-          </button>
+          {/* Edit - Hidden for ghost entries */}
+          {showEdit && (
+            <button
+              role="menuitem"
+              onClick={handleEdit}
+              className={`w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                showGoTo || showGoBack || showGoToParent || showGoToSubTaskCollection ? '' : 'rounded-t-lg'
+              }`}
+            >
+              Edit
+            </button>
+          )}
+          
+          {/* Migrate - Hidden for ghost entries */}
+          {showMigrate && (
+            <button
+              role="menuitem"
+              onClick={handleMove}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              Migrate
+            </button>
+          )}
           {/* Phase 1: Sub-Tasks - Add Sub-Task option */}
           {canAddSubTask && (
             <button

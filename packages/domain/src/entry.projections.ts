@@ -802,7 +802,42 @@ export class EntryListProjection {
           return;
         }
         
-        const updatedTask: Task = {
+        // Check if this is a MOVE (there's a recent removal in collectionHistory)
+        // Find the most recent removal (entry with removedAt timestamp)
+        // NOTE: When events happen in quick succession, timestamps might be identical.
+        // In that case, use array order (last removed = most recent)
+        const removals = task.collectionHistory
+          ?.map((h, index) => ({ ...h, index })) // Track original index
+          ?.filter(h => h.removedAt !== undefined) || [];
+        
+        const recentRemoval = removals.length > 0
+          ? removals.reduce((latest, current) => {
+              // Compare by timestamp first
+              const latestTime = new Date(latest.removedAt!).getTime();
+              const currentTime = new Date(current.removedAt!).getTime();
+              
+              if (currentTime > latestTime) return current;
+              if (currentTime < latestTime) return latest;
+              
+              // Same timestamp - use array index (later index = more recent)
+              return current.index > latest.index ? current : latest;
+            })
+          : undefined;
+        
+        // Build the updated task - if this is a MOVE, set migratedFrom properties
+        const updatedTask: Task = recentRemoval ? {
+          ...task,
+          collections: [...task.collections, event.payload.collectionId],
+          collectionHistory: [
+            ...(task.collectionHistory || []),
+            {
+              collectionId: event.payload.collectionId,
+              addedAt: event.timestamp,
+            }
+          ],
+          migratedFrom: task.id, // Use task's own ID (indicates moved, not migrated)
+          migratedFromCollectionId: recentRemoval.collectionId,
+        } : {
           ...task,
           collections: [...task.collections, event.payload.collectionId],
           collectionHistory: [

@@ -24,7 +24,7 @@ interface EntryListProps {
   onDelete: (entryId: string) => void;
   onReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => void;
   // Migration handlers
-  onMigrate?: (entryId: string, targetCollectionId: string | null) => Promise<void>;
+  onMigrate?: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
   // Navigation handler for migrated entries
@@ -201,10 +201,16 @@ export function EntryList({
             subTasksMapTemp.set(entry.id, subTasks);
             
             // Phase 2: Calculate migration status for each sub-task
+            // A sub-task is "migrated" if it's NOT in the current collection (parent's context)
             subTasks.forEach(subTask => {
-              const parentCollectionId = entry.collectionId ?? null;
-              const subTaskCollectionId = subTask.collectionId ?? null;
-              const isMigrated = parentCollectionId !== subTaskCollectionId;
+              // Use collections array for multi-collection support
+              const subTaskCollections = subTask.collections || [];
+              // Check if sub-task is in the same collection as the parent (current view)
+              const isInCurrentCollection = currentCollectionId 
+                ? subTaskCollections.includes(currentCollectionId)
+                : subTaskCollections.length === 0; // Uncategorized context
+              const isMigrated = !isInCurrentCollection;
+              
               migrationMapTemp.set(subTask.id, isMigrated);
             });
           }
@@ -227,16 +233,18 @@ export function EntryList({
             subTasksMapTemp.set(parentId, subTasks);
             
             // Phase 2: Calculate migration status for each sub-task
-            // Compare sub-task's collectionId with parent's collectionId
-            const parent = taskEntries.find(e => e.id === parentId);
-            if (parent) {
-              subTasks.forEach(subTask => {
-                const parentCollectionId = parent.collectionId ?? null;
-                const subTaskCollectionId = subTask.collectionId ?? null;
-                const isMigrated = parentCollectionId !== subTaskCollectionId;
-                migrationMapTemp.set(subTask.id, isMigrated);
-              });
-            }
+            // A sub-task is "migrated" if it's NOT in the current collection
+            subTasks.forEach(subTask => {
+              // Use collections array for multi-collection support
+              const subTaskCollections = subTask.collections || [];
+              // Check if sub-task is in the same collection as the parent (current view)
+              const isInCurrentCollection = currentCollectionId 
+                ? subTaskCollections.includes(currentCollectionId)
+                : subTaskCollections.length === 0; // Uncategorized context
+              const isMigrated = !isInCurrentCollection;
+              
+              migrationMapTemp.set(subTask.id, isMigrated);
+            });
           }
         });
       }
@@ -326,6 +334,7 @@ export function EntryList({
                         onNavigateToMigrated(collectionId);
                       }
                     }}
+                    onDelete={() => onDelete(entry.id)}
                     collections={collections || []}
                   />
                 );

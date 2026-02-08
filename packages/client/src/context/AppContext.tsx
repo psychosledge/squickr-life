@@ -19,6 +19,9 @@ import type {
   MigrateTaskHandler,
   MigrateNoteHandler,
   MigrateEventHandler,
+  AddTaskToCollectionHandler,
+  RemoveTaskFromCollectionHandler,
+  MoveTaskToCollectionHandler,
 } from '@squickr/domain';
 
 interface AppContextValue {
@@ -31,6 +34,9 @@ interface AppContextValue {
   migrateTaskHandler: MigrateTaskHandler;
   migrateNoteHandler: MigrateNoteHandler;
   migrateEventHandler: MigrateEventHandler;
+  addTaskToCollectionHandler: AddTaskToCollectionHandler;
+  removeTaskFromCollectionHandler: RemoveTaskFromCollectionHandler;
+  moveTaskToCollectionHandler: MoveTaskToCollectionHandler;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);

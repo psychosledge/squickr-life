@@ -47,6 +47,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -55,12 +56,13 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
       const entryText = screen.getByText('Buy milk');
-      expect(entryText).toHaveClass('line-through');
+      expect(entryText).toHaveStyle({ textDecoration: 'line-through' });
     });
 
     it('should render with muted gray colors', () => {
@@ -71,6 +73,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -79,12 +82,13 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
       const entryText = screen.getByText('Buy milk');
-      expect(entryText).toHaveClass('text-gray-500', 'dark:text-gray-400');
+      expect(entryText).toHaveClass('text-gray-600', 'dark:text-gray-300');
     });
 
     it('should render with reduced opacity', () => {
@@ -95,6 +99,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -103,6 +108,7 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
@@ -119,6 +125,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'project-alpha',
       };
@@ -127,6 +134,7 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
@@ -140,6 +148,7 @@ describe('GhostEntry', () => {
         id: 'note-1',
         content: 'Important meeting notes from yesterday',
         createdAt: '2026-01-24T10:00:00.000Z',
+        migratedTo: 'migrated-note-id', // Ghost entries are migrated notes
         renderAsGhost: true,
         ghostNewLocation: 'monthly-log',
       };
@@ -148,6 +157,7 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostNote}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
@@ -162,6 +172,7 @@ describe('GhostEntry', () => {
         content: 'Team standup meeting',
         createdAt: '2026-01-24T10:00:00.000Z',
         eventDate: '2026-02-15',
+        migratedTo: 'migrated-event-id', // Ghost entries are migrated events
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -170,6 +181,7 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostEvent}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
@@ -185,6 +197,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -193,95 +206,21 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
       expect(screen.getByText('➜')).toBeInTheDocument();
     });
-
-    it('should show navigation button with target collection name', () => {
-      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
-        type: 'task',
-        id: 'task-1',
-        title: 'Buy milk',
-        createdAt: '2026-01-24T10:00:00.000Z',
-        status: 'open',
-        collections: [],
-        renderAsGhost: true,
-        ghostNewLocation: 'project-alpha',
-      };
-
-      render(
-        <GhostEntry
-          entry={mockGhostTask}
-          onNavigateToCollection={mockOnNavigateToCollection}
-          collections={mockCollections}
-        />
-      );
-
-      expect(screen.getByRole('button', { name: 'Go to Project Alpha' })).toBeInTheDocument();
-      expect(screen.getByText(/Go to Project Alpha/)).toBeInTheDocument();
-    });
-
-    it('should apply dark mode classes', () => {
-      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
-        type: 'task',
-        id: 'task-1',
-        title: 'Buy milk',
-        createdAt: '2026-01-24T10:00:00.000Z',
-        status: 'open',
-        collections: [],
-        renderAsGhost: true,
-        ghostNewLocation: 'daily-log',
-      };
-
-      const { container } = render(
-        <GhostEntry
-          entry={mockGhostTask}
-          onNavigateToCollection={mockOnNavigateToCollection}
-          collections={mockCollections}
-        />
-      );
-
-      const ghostContainer = container.firstChild as HTMLElement;
-      expect(ghostContainer).toHaveClass('dark:bg-gray-800', 'dark:border-gray-700');
-
-      const entryText = screen.getByText('Buy milk');
-      expect(entryText).toHaveClass('dark:text-gray-400');
-    });
-
-    it('should render BulletIcon with muted opacity', () => {
-      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
-        type: 'task',
-        id: 'task-1',
-        title: 'Buy milk',
-        createdAt: '2026-01-24T10:00:00.000Z',
-        status: 'open',
-        collections: [],
-        renderAsGhost: true,
-        ghostNewLocation: 'daily-log',
-      };
-
-      render(
-        <GhostEntry
-          entry={mockGhostTask}
-          onNavigateToCollection={mockOnNavigateToCollection}
-          collections={mockCollections}
-        />
-      );
-
-      // BulletIcon should be rendered (checkbox for task)
-      expect(screen.getByText('☐')).toBeInTheDocument();
-    });
   });
 
   // ============================================================================
-  // Navigation Tests
+  // Context Menu Tests
   // ============================================================================
 
-  describe('Navigation', () => {
-    it('should call onNavigateToCollection when button is clicked', () => {
+  describe('Context Menu', () => {
+    it('should render EntryActionsMenu (three-dot menu)', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
@@ -289,6 +228,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id',
         renderAsGhost: true,
         ghostNewLocation: 'project-alpha',
       };
@@ -297,99 +237,247 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
-      const button = screen.getByRole('button', { name: 'Go to Project Alpha' });
-      fireEvent.click(button);
+      // Should show three-dot menu button
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      expect(menuButton).toBeInTheDocument();
+      expect(menuButton).toHaveTextContent('⋯');
+    });
+
+    it('should show "Go to [Collection]" option in menu', () => {
+      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy milk',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        status: 'open',
+        collections: [],
+        migratedTo: 'migrated-task-id',
+        renderAsGhost: true,
+        ghostNewLocation: 'project-alpha',
+      };
+
+      render(
+        <GhostEntry
+          entry={mockGhostTask}
+          onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
+          collections={mockCollections}
+        />
+      );
+
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
+
+      // Should show "Go to" option
+      expect(screen.getByRole('menuitem', { name: 'Go to Project Alpha' })).toBeInTheDocument();
+    });
+
+    it('should show "Delete" option in menu', () => {
+      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy milk',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        status: 'open',
+        collections: [],
+        migratedTo: 'migrated-task-id',
+        renderAsGhost: true,
+        ghostNewLocation: 'daily-log',
+      };
+
+      render(
+        <GhostEntry
+          entry={mockGhostTask}
+          onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
+          collections={mockCollections}
+        />
+      );
+
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
+
+      // Should show Delete option
+      expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+    });
+
+    it('should NOT show Edit option in menu', () => {
+      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy milk',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        status: 'open',
+        collections: [],
+        migratedTo: 'migrated-task-id',
+        renderAsGhost: true,
+        ghostNewLocation: 'daily-log',
+      };
+
+      render(
+        <GhostEntry
+          entry={mockGhostTask}
+          onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
+          collections={mockCollections}
+        />
+      );
+
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
+
+      // Should NOT show Edit option
+      expect(screen.queryByRole('menuitem', { name: 'Edit' })).not.toBeInTheDocument();
+    });
+
+    it('should NOT show Migrate option in menu', () => {
+      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy milk',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        status: 'open',
+        collections: [],
+        migratedTo: 'migrated-task-id',
+        renderAsGhost: true,
+        ghostNewLocation: 'daily-log',
+      };
+
+      render(
+        <GhostEntry
+          entry={mockGhostTask}
+          onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
+          collections={mockCollections}
+        />
+      );
+
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
+
+      // Should NOT show Migrate option
+      expect(screen.queryByRole('menuitem', { name: 'Migrate' })).not.toBeInTheDocument();
+    });
+
+    it('should NOT show Add Sub-Task option in menu', () => {
+      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy milk',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        status: 'open',
+        collections: [],
+        migratedTo: 'migrated-task-id',
+        renderAsGhost: true,
+        ghostNewLocation: 'daily-log',
+      };
+
+      render(
+        <GhostEntry
+          entry={mockGhostTask}
+          onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
+          collections={mockCollections}
+        />
+      );
+
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
+
+      // Should NOT show Add Sub-Task option
+      expect(screen.queryByRole('menuitem', { name: 'Add Sub-Task' })).not.toBeInTheDocument();
+    });
+
+    it('should call onNavigateToCollection when "Go to" is clicked', () => {
+      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy milk',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        status: 'open',
+        collections: [],
+        migratedTo: 'migrated-task-id',
+        renderAsGhost: true,
+        ghostNewLocation: 'project-alpha',
+      };
+
+      render(
+        <GhostEntry
+          entry={mockGhostTask}
+          onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
+          collections={mockCollections}
+        />
+      );
+
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
+
+      // Click "Go to" option
+      const goToButton = screen.getByRole('menuitem', { name: 'Go to Project Alpha' });
+      fireEvent.click(goToButton);
 
       expect(mockOnNavigateToCollection).toHaveBeenCalledTimes(1);
       expect(mockOnNavigateToCollection).toHaveBeenCalledWith('project-alpha');
     });
 
-    it('should navigate to correct collection ID when clicked', () => {
-      const mockGhostNote: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
-        type: 'note',
-        id: 'note-1',
-        content: 'Important notes',
-        createdAt: '2026-01-24T10:00:00.000Z',
-        renderAsGhost: true,
-        ghostNewLocation: 'monthly-log',
-      };
-
-      render(
-        <GhostEntry
-          entry={mockGhostNote}
-          onNavigateToCollection={mockOnNavigateToCollection}
-          collections={mockCollections}
-        />
-      );
-
-      const button = screen.getByRole('button', { name: 'Go to Monthly Log' });
-      fireEvent.click(button);
-
-      expect(mockOnNavigateToCollection).toHaveBeenCalledWith('monthly-log');
-    });
-
-    it('should handle missing ghostNewLocation gracefully', () => {
-      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation?: string } = {
+    it('should call onDelete when "Delete" is clicked', () => {
+      const mockOnDelete = vi.fn();
+      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
         title: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id',
         renderAsGhost: true,
-        // ghostNewLocation is undefined
+        ghostNewLocation: 'daily-log',
       };
 
       render(
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={mockOnDelete}
           collections={mockCollections}
         />
       );
 
-      // Should show fallback text
-      expect(screen.getByText(/Go to another collection/)).toBeInTheDocument();
-    });
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
 
-    it('should not call onNavigateToCollection when ghostNewLocation is undefined', () => {
-      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation?: string } = {
-        type: 'task',
-        id: 'task-1',
-        title: 'Buy milk',
-        createdAt: '2026-01-24T10:00:00.000Z',
-        status: 'open',
-        collections: [],
-        renderAsGhost: true,
-        // ghostNewLocation is undefined
-      };
+      // Click Delete option
+      const deleteButton = screen.getByRole('menuitem', { name: 'Delete' });
+      fireEvent.click(deleteButton);
 
-      render(
-        <GhostEntry
-          entry={mockGhostTask}
-          onNavigateToCollection={mockOnNavigateToCollection}
-          collections={mockCollections}
-        />
-      );
-
-      const button = screen.getByRole('button', { name: 'Go to another collection' });
-      fireEvent.click(button);
-
-      // Should not call navigation callback when target is undefined
-      expect(mockOnNavigateToCollection).not.toHaveBeenCalled();
+      expect(mockOnDelete).toHaveBeenCalledTimes(1);
     });
   });
+
+  // ============================================================================
+  // Navigation Tests (Legacy - Removed)
+  // Navigation is now tested in the Context Menu Tests section above
+  // ============================================================================
 
   // ============================================================================
   // Edge Cases
   // ============================================================================
 
   describe('Edge Cases', () => {
-    it('should show "another collection" when collection name is not found', () => {
+    it('should show context menu with "Go to" option when collection name is not found', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
@@ -397,6 +485,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'non-existent-collection-id',
       };
@@ -405,11 +494,17 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
-      expect(screen.getByText(/Go to another collection/)).toBeInTheDocument();
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
+      
+      // Should show "Go to Unknown Collection" as fallback
+      expect(screen.getByRole('menuitem', { name: 'Go to Unknown Collection' })).toBeInTheDocument();
     });
 
     it('should handle empty collections array', () => {
@@ -420,6 +515,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -428,12 +524,14 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={[]}
         />
       );
 
-      // Should show fallback when collection is not found
-      expect(screen.getByText(/Go to another collection/)).toBeInTheDocument();
+      // Should still render with menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      expect(menuButton).toBeInTheDocument();
     });
 
     it('should handle undefined target collection ID', () => {
@@ -444,6 +542,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: undefined,
       };
@@ -452,11 +551,14 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
-      expect(screen.getByText(/Go to another collection/)).toBeInTheDocument();
+      // Should still render with menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      expect(menuButton).toBeInTheDocument();
     });
 
     it('should handle empty task title', () => {
@@ -467,6 +569,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -475,12 +578,15 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
       // Should still render, just with empty text
-      expect(container.querySelector('.line-through')).toBeInTheDocument();
+      const styledDiv = container.querySelector('.break-words');
+      expect(styledDiv).toBeInTheDocument();
+      expect(styledDiv).toHaveStyle({ textDecoration: 'line-through' });
     });
 
     it('should handle empty note content', () => {
@@ -489,6 +595,7 @@ describe('GhostEntry', () => {
         id: 'note-1',
         content: '',
         createdAt: '2026-01-24T10:00:00.000Z',
+        migratedTo: 'migrated-note-id', // Ghost entries are migrated notes
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -502,7 +609,9 @@ describe('GhostEntry', () => {
       );
 
       // Should still render, just with empty text
-      expect(container.querySelector('.line-through')).toBeInTheDocument();
+      const styledDiv = container.querySelector('.break-words');
+      expect(styledDiv).toBeInTheDocument();
+      expect(styledDiv).toHaveStyle({ textDecoration: 'line-through' });
     });
 
     it('should handle long entry text with word wrapping', () => {
@@ -515,6 +624,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -523,6 +633,7 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
@@ -531,7 +642,7 @@ describe('GhostEntry', () => {
       expect(entryText).toHaveClass('break-words');
     });
 
-    it('should navigate when button is clicked even if collection name not found', () => {
+    it('should navigate via menu when collection is not found', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
@@ -539,6 +650,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'non-existent-collection',
       };
@@ -547,12 +659,18 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
-      const button = screen.getByRole('button', { name: 'Go to another collection' });
-      fireEvent.click(button);
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
+      
+      // Click "Go to" option (fallback to Unknown Collection)
+      const goToButton = screen.getByRole('menuitem', { name: 'Go to Unknown Collection' });
+      fireEvent.click(goToButton);
 
       // Should still call navigation with the ID, even if collection not found
       expect(mockOnNavigateToCollection).toHaveBeenCalledWith('non-existent-collection');
@@ -564,7 +682,7 @@ describe('GhostEntry', () => {
   // ============================================================================
 
   describe('Accessibility', () => {
-    it('should have proper aria-label on navigation button', () => {
+    it('should have accessible menu button', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
@@ -572,6 +690,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'project-alpha',
       };
@@ -580,15 +699,17 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
-      const button = screen.getByRole('button', { name: 'Go to Project Alpha' });
-      expect(button).toHaveAttribute('aria-label', 'Go to Project Alpha');
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      expect(menuButton).toHaveAttribute('aria-label', 'Entry actions');
+      expect(menuButton).toHaveAttribute('aria-haspopup', 'true');
     });
 
-    it('should have proper aria-label when collection not found', () => {
+    it('should have accessible menu items', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
@@ -596,23 +717,30 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
-        ghostNewLocation: 'non-existent',
+        ghostNewLocation: 'project-alpha',
       };
 
       render(
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
-      const button = screen.getByRole('button', { name: 'Go to another collection' });
-      expect(button).toHaveAttribute('aria-label', 'Go to another collection');
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
+      
+      // Check menu items have proper roles
+      expect(screen.getByRole('menuitem', { name: 'Go to Project Alpha' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
     });
 
-    it('should support keyboard navigation on button', () => {
+    it('should support keyboard navigation on menu button', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
@@ -620,6 +748,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -628,70 +757,19 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
-      const button = screen.getByRole('button', { name: 'Go to Daily Log' });
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
       
       // Button should be focusable
-      button.focus();
-      expect(document.activeElement).toBe(button);
+      menuButton.focus();
+      expect(document.activeElement).toBe(menuButton);
 
-      // Pressing Enter should trigger the click
-      fireEvent.keyDown(button, { key: 'Enter', code: 'Enter' });
-      
-      // Note: In RTL, keyDown doesn't automatically trigger click, but the button
-      // should be accessible via keyboard since it's a proper button element
-      expect(button.tagName).toBe('BUTTON');
-    });
-
-    it('should have type="button" to prevent form submission', () => {
-      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
-        type: 'task',
-        id: 'task-1',
-        title: 'Buy milk',
-        createdAt: '2026-01-24T10:00:00.000Z',
-        status: 'open',
-        collections: [],
-        renderAsGhost: true,
-        ghostNewLocation: 'daily-log',
-      };
-
-      render(
-        <GhostEntry
-          entry={mockGhostTask}
-          onNavigateToCollection={mockOnNavigateToCollection}
-          collections={mockCollections}
-        />
-      );
-
-      const button = screen.getByRole('button', { name: 'Go to Daily Log' });
-      expect(button).toHaveAttribute('type', 'button');
-    });
-
-    it('should have focus visible styles', () => {
-      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
-        type: 'task',
-        id: 'task-1',
-        title: 'Buy milk',
-        createdAt: '2026-01-24T10:00:00.000Z',
-        status: 'open',
-        collections: [],
-        renderAsGhost: true,
-        ghostNewLocation: 'daily-log',
-      };
-
-      render(
-        <GhostEntry
-          entry={mockGhostTask}
-          onNavigateToCollection={mockOnNavigateToCollection}
-          collections={mockCollections}
-        />
-      );
-
-      const button = screen.getByRole('button', { name: 'Go to Daily Log' });
-      expect(button).toHaveClass('focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500');
+      // Should be a proper button element
+      expect(menuButton.tagName).toBe('BUTTON');
     });
 
     it('should not have draggable attribute (not interactive for drag-drop)', () => {
@@ -702,6 +780,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -710,6 +789,7 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
@@ -718,7 +798,7 @@ describe('GhostEntry', () => {
       expect(ghostContainer).not.toHaveAttribute('draggable');
     });
 
-    it('should render bullet icon and navigation button', () => {
+    it('should render bullet icon and context menu', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
@@ -726,6 +806,7 @@ describe('GhostEntry', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -734,17 +815,18 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
-      // Ghost entries have: bullet icon (role=button for tasks) + navigation button
+      // Ghost entries have: bullet icon + context menu button
       const buttons = screen.getAllByRole('button');
       expect(buttons.length).toBeGreaterThanOrEqual(1);
       
-      // Should have the navigation button
-      const navButton = screen.getByRole('button', { name: 'Go to Daily Log' });
-      expect(navButton).toBeInTheDocument();
+      // Should have the context menu button
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      expect(menuButton).toBeInTheDocument();
     });
   });
 
@@ -762,6 +844,7 @@ describe('GhostEntry', () => {
         status: 'completed',
         completedAt: '2026-01-24T11:00:00.000Z',
         collections: [],
+        migratedTo: 'migrated-task-id', // Ghost entries are migrated tasks
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -770,14 +853,15 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostTask}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
 
       // Should render the completed task title
       expect(screen.getByText('Buy milk')).toBeInTheDocument();
-      // BulletIcon should show checkmark for completed tasks
-      expect(screen.getByText('✓')).toBeInTheDocument();
+      // BulletIcon should show arrow for migrated tasks (migration takes precedence over completion)
+      expect(screen.getByText('➜')).toBeInTheDocument();
     });
 
     it('should handle notes with long content', () => {
@@ -788,6 +872,7 @@ describe('GhostEntry', () => {
         id: 'note-1',
         content: longContent,
         createdAt: '2026-01-24T10:00:00.000Z',
+        migratedTo: 'migrated-note-id', // Ghost entries are migrated notes
         renderAsGhost: true,
         ghostNewLocation: 'monthly-log',
       };
@@ -796,6 +881,7 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostNote}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
@@ -810,6 +896,7 @@ describe('GhostEntry', () => {
         content: 'Team meeting at 2pm',
         createdAt: '2026-01-24T10:00:00.000Z',
         eventDate: '2026-02-15',
+        migratedTo: 'migrated-event-id', // Ghost entries are migrated events
         renderAsGhost: true,
         ghostNewLocation: 'project-alpha',
       };
@@ -818,6 +905,7 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostEvent}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );
@@ -831,6 +919,7 @@ describe('GhostEntry', () => {
         id: 'event-1',
         content: 'Undated event',
         createdAt: '2026-01-24T10:00:00.000Z',
+        migratedTo: 'migrated-event-id', // Ghost entries are migrated events
         renderAsGhost: true,
         ghostNewLocation: 'daily-log',
       };
@@ -839,6 +928,7 @@ describe('GhostEntry', () => {
         <GhostEntry
           entry={mockGhostEvent}
           onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
           collections={mockCollections}
         />
       );

@@ -7,6 +7,14 @@ interface BulletIconProps {
   className?: string;
   /** Phase 2: Indicates if this is a migrated sub-task (show 🔗 icon) */
   isSubTaskMigrated?: boolean;
+  /** 
+   * Multi-collection: Indicates if this is a ghost entry (show ➜ icon)
+   * NOTE: Should be true when entry has renderAsGhost: true
+   * Takes precedence over all other states (completion, migration)
+   */
+  isGhost?: boolean;
+  /** Optional tooltip text to show on hover */
+  title?: string;
 }
 
 interface BulletStyle {
@@ -16,7 +24,26 @@ interface BulletStyle {
   ariaLabel: string;
 }
 
-function getBulletStyle(entry: Entry, isSubTaskMigrated: boolean = false): BulletStyle {
+function getBulletStyle(entry: Entry, isSubTaskMigrated: boolean = false, isGhost: boolean = false): BulletStyle {
+  /**
+   * Icon Precedence Order (first match wins):
+   * 1. Ghost (removed from collection) - ➜
+   * 2. Migrated sub-task - 🔗☐ or 🔗✓
+   * 3. Old-style migrated - ➜
+   * 4. Completion status - ✓
+   * 5. Entry type default - ☐, 📝, 📅
+   */
+  
+  // Multi-collection ghost (removed from current collection) - takes precedence
+  if (isGhost) {
+    return {
+      icon: ENTRY_ICONS.MIGRATED,
+      color: 'text-blue-500 dark:text-blue-400',
+      isInteractive: false,
+      ariaLabel: 'Moved to another collection',
+    };
+  }
+  
   // Task bullets
   if (entry.type === 'task') {
     // Phase 2: Migrated sub-task (has parent + different collection) - show 🔗 icon
@@ -36,7 +63,7 @@ function getBulletStyle(entry: Entry, isSubTaskMigrated: boolean = false): Bulle
     }
     
     if (entry.migratedTo) {
-      // Migrated task (migration takes precedence)
+      // Migrated task (OLD-STYLE migration, legacy system)
       return {
         icon: ENTRY_ICONS.MIGRATED,
         color: 'text-blue-500 dark:text-blue-400',
@@ -111,8 +138,8 @@ function getBulletStyle(entry: Entry, isSubTaskMigrated: boolean = false): Bulle
   };
 }
 
-export function BulletIcon({ entry, onClick, className = '', isSubTaskMigrated = false }: BulletIconProps) {
-  const { icon, color, isInteractive, ariaLabel } = getBulletStyle(entry, isSubTaskMigrated);
+export function BulletIcon({ entry, onClick, className = '', isSubTaskMigrated = false, isGhost = false, title }: BulletIconProps) {
+  const { icon, color, isInteractive, ariaLabel } = getBulletStyle(entry, isSubTaskMigrated, isGhost);
 
   const baseStyles = `
     text-2xl leading-none pt-1 flex-shrink-0 select-none font-mono
@@ -135,6 +162,7 @@ export function BulletIcon({ entry, onClick, className = '', isSubTaskMigrated =
       aria-label={ariaLabel}
       tabIndex={isInteractive ? 0 : undefined}
       onKeyDown={isInteractive ? handleKeyDown : undefined}
+      title={title}
     >
       {icon}
     </span>

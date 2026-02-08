@@ -27,7 +27,7 @@ import { EntryInputModal } from '../components/EntryInputModal';
 import { RenameCollectionModal } from '../components/RenameCollectionModal';
 import { DeleteCollectionModal } from '../components/DeleteCollectionModal';
 import { CollectionSettingsModal } from '../components/CollectionSettingsModal';
-import { MigrateEntryModal } from '../components/MigrateEntryModal';
+import { MigrateEntryDialog } from '../components/MigrateEntryDialog';
 import { CreateSubTaskModal } from '../components/CreateSubTaskModal';
 import { ConfirmCompleteParentModal } from '../components/ConfirmCompleteParentModal';
 import { ConfirmDeleteParentModal } from '../components/ConfirmDeleteParentModal';
@@ -40,7 +40,18 @@ import { DEBOUNCE } from '../utils/constants';
 export function CollectionDetailView() {
   const { id: collectionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { eventStore, collectionProjection, entryProjection, taskProjection, migrateTaskHandler, migrateNoteHandler, migrateEventHandler, createCollectionHandler } = useApp();
+  const { 
+    eventStore, 
+    collectionProjection, 
+    entryProjection, 
+    taskProjection, 
+    migrateTaskHandler, 
+    migrateNoteHandler, 
+    migrateEventHandler, 
+    createCollectionHandler,
+    addTaskToCollectionHandler,
+    moveTaskToCollectionHandler,
+  } = useApp();
   const userPreferences = useUserPreferences();
 
   const [collection, setCollection] = useState<Collection | null>(null);
@@ -83,6 +94,8 @@ export function CollectionDetailView() {
       migrateEventHandler,
       createCollectionHandler,
       entryProjection, // Phase 4: Pass entryProjection for sub-task queries
+      addTaskToCollectionHandler, // Phase 3: Multi-collection add
+      moveTaskToCollectionHandler, // Phase 3: Multi-collection move
     },
     {
       collectionId,
@@ -203,8 +216,8 @@ export function CollectionDetailView() {
     }
   };
 
-  const handleBulkMigrateSubmit = async (entryIds: string[], targetCollectionId: string | null) => {
-    await operations.handleBulkMigrate(entryIds, targetCollectionId);
+  const handleBulkMigrateSubmit = async (entryIds: string[], targetCollectionId: string, mode: 'move' | 'add') => {
+    await operations.handleBulkMigrateWithMode(entryIds, targetCollectionId, mode);
     setIsBulkMigrateModalOpen(false);
     selection.exitSelectionMode();
   };
@@ -321,7 +334,7 @@ export function CollectionDetailView() {
           onUpdateEventDate={operations.handleUpdateEventDate}
           onDelete={operations.handleDelete}
           onReorder={operations.handleReorder}
-          onMigrate={operations.handleMigrate}
+          onMigrate={operations.handleMigrateWithMode}
           collections={allCollections}
           currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
           onNavigateToMigrated={operations.handleNavigateToMigrated}
@@ -352,7 +365,7 @@ export function CollectionDetailView() {
               onUpdateEventDate={operations.handleUpdateEventDate}
               onDelete={operations.handleDelete}
               onReorder={operations.handleReorder}
-              onMigrate={operations.handleMigrate}
+              onMigrate={operations.handleMigrateWithMode}
               collections={allCollections}
               currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
               onNavigateToMigrated={operations.handleNavigateToMigrated}
@@ -409,7 +422,7 @@ export function CollectionDetailView() {
                 onUpdateEventDate={operations.handleUpdateEventDate}
                 onDelete={operations.handleDelete}
                 onReorder={operations.handleReorder}
-                onMigrate={operations.handleMigrate}
+                onMigrate={operations.handleMigrateWithMode}
                 collections={allCollections}
                 currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
                 onNavigateToMigrated={operations.handleNavigateToMigrated}
@@ -496,15 +509,14 @@ export function CollectionDetailView() {
 
       {/* Bulk migration modal */}
       {selection.isSelectionMode && selection.selectedCount > 0 && (
-        <MigrateEntryModal
+        <MigrateEntryDialog
           isOpen={isBulkMigrateModalOpen}
           onClose={handleCloseBulkMigrateModal}
           entries={entries.filter(e => selection.selectedEntryIds.has(e.id))}
           currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
           collections={allCollections}
-          onMigrate={operations.handleMigrate}
+          onMigrate={operations.handleMigrateWithMode}
           onBulkMigrate={handleBulkMigrateSubmit}
-          onCreateCollection={operations.handleCreateCollection}
         />
       )}
 

@@ -1,5 +1,6 @@
 import type { Entry, Collection } from '@squickr/domain';
 import { BulletIcon } from './BulletIcon';
+import { EntryActionsMenu } from './EntryActionsMenu';
 
 interface GhostEntryProps {
   entry: Entry & { 
@@ -7,6 +8,7 @@ interface GhostEntryProps {
     ghostNewLocation?: string; 
   };
   onNavigateToCollection: (collectionId: string) => void;
+  onDelete: () => void;
   collections: Collection[];
 }
 
@@ -15,19 +17,20 @@ interface GhostEntryProps {
  * 
  * Renders a "ghost" entry - a crossed-out representation of a task that has been
  * migrated/moved to another collection. Shows where the task went and provides
- * navigation to the new location.
+ * navigation to the new location via context menu.
  * 
  * Design:
  * - Crossed-out text (strikethrough)
  * - Muted/grayed appearance (lower opacity)
- * - Shows ➜ migration arrow
- * - "Go to [Collection]" button/link
+ * - Shows ➜ migration arrow in bullet icon
+ * - Context menu (⋯) with "Go to [Collection]" and "Delete" options
  * - NOT interactive for drag-drop
- * - NO checkbox or edit buttons
+ * - NO checkbox, edit, or migrate buttons
  */
 export function GhostEntry({ 
   entry, 
   onNavigateToCollection,
+  onDelete,
   collections,
 }: GhostEntryProps) {
   // Find the target collection name
@@ -49,9 +52,9 @@ export function GhostEntry({
     return '';
   };
 
-  const handleNavigate = () => {
-    if (targetCollectionId) {
-      onNavigateToCollection(targetCollectionId);
+  const handleNavigateToMigrated = (collectionId: string | null) => {
+    if (collectionId) {
+      onNavigateToCollection(collectionId);
     }
   };
 
@@ -66,45 +69,49 @@ export function GhostEntry({
       "
     >
       <div className="flex items-start gap-3">
-        {/* Bullet icon - muted */}
+        {/* Bullet icon - muted, with tooltip */}
         <div className="flex-shrink-0 mt-1 opacity-60">
-          <BulletIcon entry={entry} />
+          <BulletIcon 
+            entry={entry}
+            isGhost={true}
+            title={`Moved to ${targetCollectionName}`}
+          />
         </div>
 
         {/* Ghost entry content */}
         <div className="flex-1 min-w-0">
           {/* Crossed-out text */}
-          <div className="
-            text-gray-500 dark:text-gray-400
-            line-through
-            text-base
-            break-words
-          ">
+          <div 
+            className="
+              text-gray-600 dark:text-gray-300
+              text-base
+              break-words
+            "
+            style={{ 
+              textDecoration: 'line-through',
+              textDecorationColor: 'currentColor',
+              textDecorationThickness: '2px',
+              textDecorationStyle: 'solid'
+            }}
+          >
             {getEntryText()}
           </div>
-
-          {/* Migration indicator and navigation */}
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-sm text-gray-400 dark:text-gray-500">
-              ➜
-            </span>
-            <button
-              onClick={handleNavigate}
-              className="
-                text-sm text-blue-600 dark:text-blue-400
-                hover:text-blue-800 dark:hover:text-blue-300
-                hover:underline
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                rounded
-                transition-colors
-              "
-              type="button"
-              aria-label={`Go to ${targetCollectionName}`}
-            >
-              Go to {targetCollectionName}
-            </button>
-          </div>
         </div>
+        
+        {/* Actions Menu - Ghost entries show only "Go to" and "Delete" */}
+        <EntryActionsMenu
+          entry={{ 
+            ...entry, 
+            migratedTo: entry.ghostNewLocation, // Set migratedTo for menu logic to show "Go to"
+            migratedToCollectionId: targetCollectionId 
+          }}
+          onEdit={() => {}} // No-op for ghost entries
+          onMove={() => {}} // No-op for ghost entries
+          onDelete={onDelete}
+          collections={collections}
+          onNavigateToMigrated={handleNavigateToMigrated}
+          isGhost={true}
+        />
       </div>
     </div>
   );

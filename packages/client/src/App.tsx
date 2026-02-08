@@ -6,6 +6,9 @@ import {
   MigrateTaskHandler,
   MigrateNoteHandler,
   MigrateEventHandler,
+  AddTaskToCollectionHandler,
+  RemoveTaskFromCollectionHandler,
+  MoveTaskToCollectionHandler,
   EntryListProjection,
   TaskListProjection,
   CollectionListProjection
@@ -45,10 +48,19 @@ function AppContent() {
   const [createCollectionHandler] = useState(() => new CreateCollectionHandler(eventStore, collectionProjection));
   const [reorderCollectionHandler] = useState(() => new ReorderCollectionHandler(eventStore, collectionProjection));
   
-  // Migration handlers
+  // Migration handlers (legacy single-collection)
   const [migrateTaskHandler] = useState(() => new MigrateTaskHandler(eventStore, entryProjection));
   const [migrateNoteHandler] = useState(() => new MigrateNoteHandler(eventStore, entryProjection));
   const [migrateEventHandler] = useState(() => new MigrateEventHandler(eventStore, entryProjection));
+  
+  // Multi-collection handlers (Phase 3)
+  const [addTaskToCollectionHandler] = useState(() => new AddTaskToCollectionHandler(eventStore, entryProjection));
+  const [removeTaskFromCollectionHandler] = useState(() => new RemoveTaskFromCollectionHandler(eventStore, entryProjection));
+  const [moveTaskToCollectionHandler] = useState(() => {
+    const addHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
+    const removeHandler = new RemoveTaskFromCollectionHandler(eventStore, entryProjection);
+    return new MoveTaskToCollectionHandler(addHandler, removeHandler, entryProjection);
+  });
   
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
@@ -129,6 +141,9 @@ function AppContent() {
     migrateTaskHandler,
     migrateNoteHandler,
     migrateEventHandler,
+    addTaskToCollectionHandler,
+    removeTaskFromCollectionHandler,
+    moveTaskToCollectionHandler,
   };
 
   // Show main app for authenticated users

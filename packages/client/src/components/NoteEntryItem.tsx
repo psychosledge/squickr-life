@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Entry, Collection } from '@squickr/domain';
 import { formatTimestamp } from '../utils/formatters';
-import { MigrateEntryModal } from './MigrateEntryModal';
+import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
 
@@ -9,7 +9,7 @@ interface NoteEntryItemProps {
   entry: Entry & { type: 'note' };
   onUpdateNoteContent?: (noteId: string, newContent: string) => void | Promise<void>;
   onDelete: (entryId: string) => void;
-  onMigrate?: (noteId: string, targetCollectionId: string | null) => Promise<void>;
+  onMigrate?: (noteId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
@@ -31,7 +31,7 @@ export function NoteEntryItem({
   collections,
   currentCollectionId,
   onNavigateToMigrated,
-  onCreateCollection
+  onCreateCollection: _onCreateCollection, // Not used in new dialog
 }: NoteEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -168,14 +168,13 @@ export function NoteEntryItem({
       
       {/* Migrate modal */}
       {onMigrate && collections && (
-        <MigrateEntryModal
+        <MigrateEntryDialog
           isOpen={showMoveModal}
           onClose={() => setShowMoveModal(false)}
           entry={entry}
           currentCollectionId={currentCollectionId}
           collections={collections}
           onMigrate={onMigrate}
-          onCreateCollection={onCreateCollection}
         />
       )}
     </div>

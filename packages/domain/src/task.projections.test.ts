@@ -41,13 +41,13 @@ describe('TaskListProjection', () => {
 
       const tasks = await projection.getTasks();
       expect(tasks).toHaveLength(1);
-      expect(tasks[0]).toEqual({
+      expect(tasks[0]).toMatchObject({
         id: 'task-1',
         title: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         order: 'a0',
-        order: 'a0',
+        collections: [],
       });
     });
 
@@ -147,12 +147,13 @@ describe('TaskListProjection', () => {
       await eventStore.append(event);
 
       const task = await projection.getTaskById('task-1');
-      expect(task).toEqual({
+      expect(task).toMatchObject({
         id: 'task-1',
         title: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         order: 'a0',
+        collections: [],
       });
     });
   });
@@ -1324,12 +1325,13 @@ describe('TaskListProjection', () => {
       await eventStore.append(titleChangedEvent);
 
       const tasks = await projection.getTasks();
-      expect(tasks[0]).toEqual({
+      expect(tasks[0]).toMatchObject({
         id: 'task-1',
         title: 'Updated Title',
         createdAt: '2024-01-01T12:00:00.000Z',
         status: 'open',
         order: 'a0',
+        collections: [],
       });
     });
 

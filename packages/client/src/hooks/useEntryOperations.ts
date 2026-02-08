@@ -15,7 +15,18 @@
 
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Entry, Collection, CollectionSettings, MigrateTaskHandler, MigrateNoteHandler, MigrateEventHandler, CreateCollectionHandler, EntryListProjection } from '@squickr/domain';
+import type { 
+  Entry, 
+  Collection, 
+  CollectionSettings, 
+  MigrateTaskHandler, 
+  MigrateNoteHandler, 
+  MigrateEventHandler, 
+  CreateCollectionHandler, 
+  EntryListProjection,
+  AddTaskToCollectionHandler,
+  MoveTaskToCollectionHandler,
+} from '@squickr/domain';
 import type { CollectionHandlers } from './useCollectionHandlers';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
@@ -28,6 +39,8 @@ export interface UseEntryOperationsParams {
   migrateEventHandler: MigrateEventHandler;
   createCollectionHandler: CreateCollectionHandler;
   entryProjection: EntryListProjection; // Phase 4: Need projection for sub-task queries
+  addTaskToCollectionHandler: AddTaskToCollectionHandler; // Phase 3: Multi-collection add
+  moveTaskToCollectionHandler: MoveTaskToCollectionHandler; // Phase 3: Multi-collection move
 }
 
 export interface EntryOperations {
@@ -53,9 +66,14 @@ export interface EntryOperations {
   // Entry reordering operations
   handleReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => Promise<void>;
   
-  // Entry migration operations
+  // Entry migration operations (legacy single-collection)
   handleMigrate: (entryId: string, targetCollectionId: string | null) => Promise<void>;
   handleBulkMigrate: (entryIds: string[], targetCollectionId: string | null) => Promise<void>;
+  
+  // Entry migration operations (Phase 3: Multi-collection)
+  handleMigrateWithMode: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
+  handleBulkMigrateWithMode: (entryIds: string[], targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
+  
   handleNavigateToMigrated: (targetCollectionId: string | null) => void;
   handleCreateCollection: (name: string, type?: import('@squickr/domain').CollectionType, date?: string) => Promise<string>;
   
@@ -92,6 +110,8 @@ export function useEntryOperations(
     migrateEventHandler,
     createCollectionHandler,
     entryProjection, // Phase 4: Need for sub-task queries
+    addTaskToCollectionHandler, // Phase 3: Multi-collection add
+    moveTaskToCollectionHandler, // Phase 3: Multi-collection move
   }: UseEntryOperationsParams,
   config: UseEntryOperationsConfig
 ): EntryOperations {
@@ -307,6 +327,36 @@ export function useEntryOperations(
     }
   }, [entries, migrateTaskHandler, migrateNoteHandler, migrateEventHandler]);
 
+  // Phase 3: Multi-collection migration with mode (move vs add)
+  const handleMigrateWithMode = useCallback(async (entryId: string, targetCollectionId: string | null, mode: 'move' | 'add' = 'move') => {
+    // Handle null targetCollectionId (move to uncategorized)
+    const effectiveTargetId = targetCollectionId || UNCATEGORIZED_COLLECTION_ID;
+    
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry || entry.type !== 'task') {
+      // Currently only tasks support multi-collection
+      // For notes/events, fall back to old migration (which is effectively a move)
+      console.warn(
+        `[Migration] Entry ${entryId} is type ${entry?.type ?? 'undefined'}, falling back to legacy migrate. ` +
+        `Multi-collection migration only supports tasks.`
+      );
+      return handleMigrate(entryId, targetCollectionId);
+    }
+
+    if (mode === 'move') {
+      await moveTaskToCollectionHandler.handle({ taskId: entryId, targetCollectionId: effectiveTargetId });
+    } else {
+      await addTaskToCollectionHandler.handle({ taskId: entryId, collectionId: effectiveTargetId });
+    }
+  }, [entries, addTaskToCollectionHandler, moveTaskToCollectionHandler, handleMigrate]);
+
+  const handleBulkMigrateWithMode = useCallback(async (entryIds: string[], targetCollectionId: string | null, mode: 'move' | 'add' = 'move') => {
+    // Migrate all entries sequentially
+    for (const entryId of entryIds) {
+      await handleMigrateWithMode(entryId, targetCollectionId, mode);
+    }
+  }, [handleMigrateWithMode]);
+
   const handleNavigateToMigrated = useCallback((targetCollectionId: string | null) => {
     if (targetCollectionId) {
       navigate(`/collection/${targetCollectionId}`);
@@ -380,6 +430,8 @@ export function useEntryOperations(
     handleReorder,
     handleMigrate,
     handleBulkMigrate,
+    handleMigrateWithMode,
+    handleBulkMigrateWithMode,
     handleNavigateToMigrated,
     handleCreateCollection,
     handleRenameCollection,

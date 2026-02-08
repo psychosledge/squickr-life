@@ -18,7 +18,7 @@ interface SortableEntryItemProps {
   // Common handlers
   onDelete: (entryId: string) => void;
   // Migration handlers
-  onMigrate?: (entryId: string, targetCollectionId: string | null) => Promise<void>;
+  onMigrate?: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
   // Navigation handler for migrated entries

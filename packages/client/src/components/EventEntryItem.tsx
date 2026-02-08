@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Entry, Collection } from '@squickr/domain';
 import { formatTimestamp, formatDate } from '../utils/formatters';
-import { MigrateEntryModal } from './MigrateEntryModal';
+import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
 
@@ -10,7 +10,7 @@ interface EventEntryItemProps {
   onUpdateEventContent?: (eventId: string, newContent: string) => void | Promise<void>;
   onUpdateEventDate?: (eventId: string, newDate: string | null) => void | Promise<void>;
   onDelete: (entryId: string) => void;
-  onMigrate?: (eventId: string, targetCollectionId: string | null) => Promise<void>;
+  onMigrate?: (eventId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
@@ -34,7 +34,7 @@ export function EventEntryItem({
   collections,
   currentCollectionId,
   onNavigateToMigrated,
-  onCreateCollection
+  onCreateCollection: _onCreateCollection, // Not used in new dialog
 }: EventEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -200,14 +200,13 @@ export function EventEntryItem({
       
       {/* Migrate modal */}
       {onMigrate && collections && (
-        <MigrateEntryModal
+        <MigrateEntryDialog
           isOpen={showMoveModal}
           onClose={() => setShowMoveModal(false)}
           entry={entry}
           currentCollectionId={currentCollectionId}
           collections={collections}
           onMigrate={onMigrate}
-          onCreateCollection={onCreateCollection}
         />
       )}
     </div>

@@ -89,7 +89,7 @@ export const ENTRY_ICONS = {
   EVENT: '📅',
   
   /** Migrated entry icon */
-  MIGRATED: '>',
+  MIGRATED: '➜',
   
   /** Favorite/starred collection icon (manually favorited) */
   FAVORITE: '⭐',
