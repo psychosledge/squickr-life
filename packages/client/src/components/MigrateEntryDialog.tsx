@@ -9,11 +9,15 @@
  * - Smart defaults: top-level tasks → move, sub-tasks → add
  * - Helper text explaining behavior
  * - Supports both single and bulk migration
+ * - Create new collection option (restored from old modal)
+ * - Smart collection sorting (hierarchical: Favorites → Daily Logs → Collections)
  */
 
 import { useState, useEffect, useRef } from 'react';
-import type { Entry, Collection } from '@squickr/domain';
+import type { Entry, Collection, CollectionType, UserPreferences } from '@squickr/domain';
 import { getCollectionDisplayName } from '../utils/formatters';
+import { isEffectivelyFavorited } from '../utils/collectionUtils';
+import { CreateCollectionModal } from './CreateCollectionModal';
 
 interface MigrateEntryDialogProps {
   isOpen: boolean;
@@ -24,6 +28,8 @@ interface MigrateEntryDialogProps {
   collections: Collection[];
   onMigrate: (entryId: string, targetCollectionId: string, mode: 'move' | 'add') => Promise<void>;
   onBulkMigrate?: (entryIds: string[], targetCollectionId: string, mode: 'move' | 'add') => Promise<void>;
+  onCreateCollection?: (name: string, type?: CollectionType, date?: string) => Promise<string>;
+  userPreferences?: UserPreferences;
 }
 
 /**
@@ -42,6 +48,88 @@ function isSubTask(entry: Entry): boolean {
 function getDefaultMode(entry: Entry | undefined | null): 'move' | 'add' {
   if (!entry) return 'move';
   return isSubTask(entry) ? 'add' : 'move';
+}
+
+/**
+ * Sort collections in hierarchical order for migration dialog:
+ * 1. Favorites (both custom and daily/monthly logs)
+ * 2. Recent daily logs (Today, Tomorrow, Yesterday)
+ * 3. Recent monthly logs (Current Month)
+ * 4. Other custom collections (by order field)
+ * 5. Older daily/monthly logs (by date descending)
+ */
+function getSortedCollections(
+  collections: Collection[], 
+  userPreferences?: UserPreferences
+): Collection[] {
+  const now = new Date();
+  const today = now.toISOString().split('T')[0]!;
+  const tomorrow = new Date(now.getTime() + 86400000).toISOString().split('T')[0]!;
+  const yesterday = new Date(now.getTime() - 86400000).toISOString().split('T')[0]!;
+  const currentMonth = today.substring(0, 7); // YYYY-MM
+  
+  const favorites: Collection[] = [];
+  const recentDailies: Collection[] = [];
+  const recentMonthlies: Collection[] = [];
+  const otherCustoms: Collection[] = [];
+  const olderDailies: Collection[] = [];
+  const olderMonthlies: Collection[] = [];
+  
+  for (const c of collections) {
+    // Check if favorited
+    const isFav = userPreferences ? isEffectivelyFavorited(c, userPreferences) : c.isFavorite;
+    
+    if (isFav) {
+      favorites.push(c);
+    } else if (c.type === 'daily') {
+      // Split dailies into recent (today/tomorrow/yesterday) vs older
+      if (c.date === today || c.date === tomorrow || c.date === yesterday) {
+        recentDailies.push(c);
+      } else {
+        olderDailies.push(c);
+      }
+    } else if (c.type === 'monthly') {
+      // Split monthlies into current month vs older
+      if (c.date === currentMonth) {
+        recentMonthlies.push(c);
+      } else {
+        olderMonthlies.push(c);
+      }
+    } else {
+      // Custom collections
+      otherCustoms.push(c);
+    }
+  }
+  
+  // Sort each group
+  favorites.sort((a, b) => a.order < b.order ? -1 : a.order > b.order ? 1 : 0);
+  
+  // Recent dailies: Today, Tomorrow, Yesterday order
+  recentDailies.sort((a, b) => {
+    const aDate = a.date || '';
+    const bDate = b.date || '';
+    if (aDate === today) return -1;
+    if (bDate === today) return 1;
+    if (aDate === tomorrow) return -1;
+    if (bDate === tomorrow) return 1;
+    return 0; // both yesterday
+  });
+  
+  otherCustoms.sort((a, b) => a.order < b.order ? -1 : a.order > b.order ? 1 : 0);
+  
+  // Older logs by date descending (most recent first)
+  olderDailies.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  olderMonthlies.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  
+  // Combine in order
+  return [
+    ...favorites,
+    ...recentDailies,
+    ...recentMonthlies,
+    ...otherCustoms,
+    ...olderDailies,
+    ...olderMonthlies,
+  ];
 }
 
 /**
@@ -75,25 +163,28 @@ export function MigrateEntryDialog({
   collections,
   onMigrate,
   onBulkMigrate,
+  onCreateCollection,
+  userPreferences,
 }: MigrateEntryDialogProps) {
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [mode, setMode] = useState<'move' | 'add'>('move');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const selectRef = useRef<HTMLSelectElement>(null);
+
+  const CREATE_NEW_OPTION = '__CREATE_NEW__';
 
   // Determine if we're in bulk mode
   const isBulkMode = !!entries && entries.length > 0;
   const singleEntry = isBulkMode ? entries[0] : entry;
   const entryCount = isBulkMode ? entries.length : 1;
 
-  // Filter out current collection and sort by order field
-  const availableCollections = collections
-    .filter(c => c.id !== currentCollectionId)
-    .sort((a, b) => {
-      // Sort by order field (lexicographic comparison for fractional indexing)
-      return a.order < b.order ? -1 : a.order > b.order ? 1 : 0;
-    });
+  // Filter out current collection and sort hierarchically
+  const availableCollections = getSortedCollections(
+    collections.filter(c => c.id !== currentCollectionId),
+    userPreferences
+  );
 
   // Get collection name for display in helper text
   const selectedCollection = availableCollections.find(c => c.id === selectedCollectionId);
@@ -120,6 +211,7 @@ export function MigrateEntryDialog({
       setMode('move');
       setIsSubmitting(false);
       setError('');
+      setShowCreateModal(false);
       return;
     }
 
@@ -132,10 +224,10 @@ export function MigrateEntryDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, singleEntry, availableCollections.length]);
 
-  // Handle Escape key to close modal
+  // Handle Escape key to close modal (only when no nested modal is open)
   useEffect(() => {
     const handleEscape = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape' && isOpen && !showCreateModal) {
         onClose();
       }
     };
@@ -145,7 +237,7 @@ export function MigrateEntryDialog({
       return () => document.removeEventListener('keydown', handleEscape);
     }
     return undefined;
-  }, [isOpen, onClose]);
+  }, [isOpen, showCreateModal, onClose]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -183,7 +275,7 @@ export function MigrateEntryDialog({
   }, [isOpen, onClose]);
 
   const handleMigrate = async () => {
-    if (!selectedCollectionId) {
+    if (!selectedCollectionId || selectedCollectionId === CREATE_NEW_OPTION) {
       setError('Please select a collection');
       return;
     }
@@ -205,6 +297,44 @@ export function MigrateEntryDialog({
       setError(err instanceof Error ? err.message : 'Failed to migrate entry');
       setIsSubmitting(false);
     }
+  };
+
+  const handleSelectChange = (value: string) => {
+    if (value === CREATE_NEW_OPTION) {
+      // Open create collection modal
+      setShowCreateModal(true);
+      setSelectedCollectionId(''); // Reset selection
+    } else {
+      setSelectedCollectionId(value);
+    }
+  };
+
+  const handleCreateCollection = async (name: string, type?: CollectionType, date?: string) => {
+    if (!onCreateCollection) return;
+
+    try {
+      // Create the collection and get the new collection ID
+      const newCollectionId = await onCreateCollection(name, type, date);
+      setShowCreateModal(false);
+      
+      // Auto-migrate the entry/entries to the newly created collection
+      if (isBulkMode && onBulkMigrate && entries) {
+        const entryIds = entries.map(e => e.id);
+        await onBulkMigrate(entryIds, newCollectionId, mode);
+      } else if (!isBulkMode && singleEntry) {
+        await onMigrate(singleEntry.id, newCollectionId, mode);
+      }
+      
+      // Close the migrate dialog
+      onClose();
+    } catch (err) {
+      // Error handling is done in CreateCollectionModal
+      throw err;
+    }
+  };
+
+  const handleCloseCreateModal = () => {
+    setShowCreateModal(false);
   };
 
   if (!isOpen || (!entry && (!entries || entries.length === 0))) {
@@ -258,7 +388,7 @@ export function MigrateEntryDialog({
           </div>
         )}
 
-        {availableCollections.length === 0 ? (
+        {availableCollections.length === 0 && !onCreateCollection ? (
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
             No other collections available. Create a collection first.
           </p>
@@ -276,7 +406,7 @@ export function MigrateEntryDialog({
                 ref={selectRef}
                 id="target-collection"
                 value={selectedCollectionId}
-                onChange={(e) => setSelectedCollectionId(e.target.value)}
+                onChange={(e) => handleSelectChange(e.target.value)}
                 disabled={isSubmitting}
                 required
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
@@ -285,6 +415,11 @@ export function MigrateEntryDialog({
                            disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="">Select a collection...</option>
+                {onCreateCollection && (
+                  <option value={CREATE_NEW_OPTION} className="text-blue-600 font-medium">
+                    + Create New Collection
+                  </option>
+                )}
                 {availableCollections.map(collection => (
                   <option key={collection.id} value={collection.id}>
                     {getCollectionDisplayName(collection, new Date())}
@@ -358,7 +493,7 @@ export function MigrateEntryDialog({
           <button
             type="button"
             onClick={handleMigrate}
-            disabled={isSubmitting || availableCollections.length === 0 || !selectedCollectionId}
+            disabled={isSubmitting || (availableCollections.length === 0 && !onCreateCollection) || !selectedCollectionId}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg 
                        transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 
                        focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -367,6 +502,15 @@ export function MigrateEntryDialog({
           </button>
         </div>
       </div>
+
+      {/* Nested Create Collection Modal */}
+      {onCreateCollection && (
+        <CreateCollectionModal
+          isOpen={showCreateModal}
+          onClose={handleCloseCreateModal}
+          onSubmit={handleCreateCollection}
+        />
+      )}
     </div>
   );
 }

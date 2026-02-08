@@ -517,6 +517,8 @@ export function CollectionDetailView() {
           collections={allCollections}
           onMigrate={operations.handleMigrateWithMode}
           onBulkMigrate={handleBulkMigrateSubmit}
+          onCreateCollection={operations.handleCreateCollection}
+          userPreferences={userPreferences}
         />
       )}
 

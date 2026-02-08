@@ -6,6 +6,7 @@ import { useCollectionHierarchy, type HierarchyNode } from '../hooks/useCollecti
 import { CollectionTreeNode } from './CollectionTreeNode';
 import { DRAG_SENSOR_CONFIG } from '../utils/constants';
 import { isEffectivelyFavorited } from '../utils/collectionUtils';
+import { getCollectionDisplayName } from '../utils/formatters';
 
 interface HierarchicalCollectionListProps {
   collections: Collection[];
@@ -121,6 +122,8 @@ export function HierarchicalCollectionList({
   // Find favorited daily/monthly logs from the original collections array
   // This ensures they appear even when year/month are collapsed
   const favoriteDayNodes = useMemo(() => {
+    const now = new Date(); // Reference date for Today/Yesterday/Tomorrow
+    
     return collections
       .filter(collection => 
         (collection.type === 'daily' || collection.type === 'monthly') &&
@@ -129,7 +132,7 @@ export function HierarchicalCollectionList({
       .map(collection => ({
         type: (collection.type === 'monthly' ? 'monthly' : 'day') as 'day' | 'monthly',
         id: collection.id,
-        label: collection.name,
+        label: getCollectionDisplayName(collection, now), // Use relative dates (Today, Yesterday, Tomorrow)
         date: collection.date,
         collection,
         children: [],

@@ -59,46 +59,51 @@ export function GhostEntry({
   };
 
   return (
-    <div 
-      className="
-        py-3 px-4
-        bg-white dark:bg-gray-800
-        rounded-lg
-        border border-gray-200 dark:border-gray-700
-        opacity-50
-      "
-    >
-      <div className="flex items-start gap-3">
-        {/* Bullet icon - muted, with tooltip */}
-        <div className="flex-shrink-0 mt-1 opacity-60">
-          <BulletIcon 
-            entry={entry}
-            isGhost={true}
-            title={`Moved to ${targetCollectionName}`}
-          />
-        </div>
+    <div className="relative">
+      {/* Ghost content with opacity */}
+      <div 
+        className="
+          py-3 px-4
+          bg-white dark:bg-gray-800
+          rounded-lg
+          border border-gray-200 dark:border-gray-700
+          opacity-50
+        "
+      >
+        <div className="flex items-start gap-3">
+          {/* Bullet icon - muted, with tooltip */}
+          <div className="flex-shrink-0 mt-1 opacity-60">
+            <BulletIcon 
+              entry={entry}
+              isGhost={true}
+              title={`Moved to ${targetCollectionName}`}
+            />
+          </div>
 
-        {/* Ghost entry content */}
-        <div className="flex-1 min-w-0">
-          {/* Crossed-out text */}
-          <div 
-            className="
-              text-gray-600 dark:text-gray-300
-              text-base
-              break-words
-            "
-            style={{ 
-              textDecoration: 'line-through',
-              textDecorationColor: 'currentColor',
-              textDecorationThickness: '2px',
-              textDecorationStyle: 'solid'
-            }}
-          >
-            {getEntryText()}
+          {/* Ghost entry content */}
+          <div className="flex-1 min-w-0">
+            {/* Crossed-out text */}
+            <div 
+              className="
+                text-gray-600 dark:text-gray-300
+                text-base
+                break-words
+              "
+              style={{ 
+                textDecoration: 'line-through',
+                textDecorationColor: 'currentColor',
+                textDecorationThickness: '2px',
+                textDecorationStyle: 'solid'
+              }}
+            >
+              {getEntryText()}
+            </div>
           </div>
         </div>
-        
-        {/* Actions Menu - Ghost entries show only "Go to" and "Delete" */}
+      </div>
+      
+      {/* Actions Menu - positioned absolutely outside opacity container */}
+      <div className="absolute top-4 right-4 z-[100]">
         <EntryActionsMenu
           entry={{ 
             ...entry, 

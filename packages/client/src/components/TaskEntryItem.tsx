@@ -149,20 +149,24 @@ export function TaskEntryItem({
   const canEdit = !!onUpdateTaskTitle;
   const isSubTask = !!entry.parentTaskId;
   const hasSubTasks = completionStatus && completionStatus.total > 0;
+  const isLegacyMigrated = !!entry.migratedTo;
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
-                    rounded-lg p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start gap-3">
-        {/* Bullet Journal Icon - integrates type + state + migration */}
-        <BulletIcon 
-          entry={entry} 
-          onClick={entry.migratedTo ? undefined : handleToggleComplete}
-          isSubTaskMigrated={isSubTaskMigrated}
-        />
-        
-        {/* Content Area */}
-        <div className="flex-1 min-w-0">
+    <div className="relative">
+      <div className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                      rounded-lg p-4 hover:shadow-md transition-shadow ${
+                        isLegacyMigrated ? 'opacity-50' : ''
+                      }`}>
+        <div className="flex items-start gap-3">
+          {/* Bullet Journal Icon - integrates type + state + migration */}
+          <BulletIcon 
+            entry={entry} 
+            onClick={entry.migratedTo ? undefined : handleToggleComplete}
+            isSubTaskMigrated={isSubTaskMigrated}
+          />
+          
+          {/* Content Area */}
+          <div className="flex-1 min-w-0">
           {isEditing ? (
             <div className="space-y-2">
               <input
@@ -208,7 +212,7 @@ export function TaskEntryItem({
                 
                 <div 
                   className={`text-lg font-medium cursor-pointer select-none ${
-                    isCompleted 
+                    isCompleted || isLegacyMigrated
                       ? 'text-gray-500 dark:text-gray-400 line-through' 
                       : 'text-gray-900 dark:text-white'
                   } ${canEdit ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
@@ -244,9 +248,12 @@ export function TaskEntryItem({
               </div>
             </>
           )}
+          </div>
         </div>
-        
-        {/* Actions Menu */}
+      </div>
+      
+      {/* Actions Menu - OUTSIDE opacity container to avoid stacking context trap */}
+      <div className="absolute top-4 right-4 z-[100]">
         <EntryActionsMenu
           entry={entry}
           onEdit={handleEdit}
@@ -271,6 +278,7 @@ export function TaskEntryItem({
           currentCollectionId={currentCollectionId}
           collections={collections}
           onMigrate={onMigrate}
+          onCreateCollection={_onCreateCollection}
         />
       )}
     </div>

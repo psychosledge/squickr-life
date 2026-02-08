@@ -114,7 +114,8 @@ describe('GhostEntry', () => {
       );
 
       const ghostContainer = container.firstChild as HTMLElement;
-      expect(ghostContainer).toHaveClass('opacity-50');
+      const opacityDiv = ghostContainer.children[0] as HTMLElement;
+      expect(opacityDiv).toHaveClass('opacity-50');
     });
 
     it('should display task title correctly', () => {

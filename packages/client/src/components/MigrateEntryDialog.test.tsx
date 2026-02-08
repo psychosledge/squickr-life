@@ -205,10 +205,12 @@ describe('MigrateEntryDialog', () => {
       const select = screen.getByRole('combobox', { name: /Collection/i });
       const options = Array.from(select.querySelectorAll('option'));
 
-      // Should have 2 options (excludes Monthly Log)
-      expect(options).toHaveLength(2);
-      expect(options[0]?.textContent).toBe('Daily Log');
+      // Should have 3 options: placeholder + 2 collections (excludes Monthly Log)
+      expect(options).toHaveLength(3);
+      expect(options[0]?.textContent).toBe('Select a collection...');
+      // Collections are sorted (Work Projects, Daily Log)
       expect(options[1]?.textContent).toBe('Work Projects');
+      expect(options[2]?.textContent).toBe('Daily Log');
     });
 
     it('should populate collection selector with available collections', () => {
@@ -240,7 +242,7 @@ describe('MigrateEntryDialog', () => {
       expect(screen.getByRole('option', { name: 'Work Projects' })).toBeInTheDocument();
     });
 
-    it('should auto-select first available collection', () => {
+    it('should require explicit collection selection (no auto-select)', () => {
       const mockTask: Entry = {
         type: 'task',
         id: 'task-1',
@@ -262,7 +264,10 @@ describe('MigrateEntryDialog', () => {
       );
 
       const select = screen.getByRole('combobox', { name: /Collection/i }) as HTMLSelectElement;
-      expect(select.value).toBe('daily-log');
+      expect(select.value).toBe(''); // No auto-selection, user must choose
+      
+      const migrateButton = screen.getByRole('button', { name: /Migrate/i });
+      expect(migrateButton).toBeDisabled(); // Button disabled until selection
     });
   });
 
@@ -379,11 +384,15 @@ describe('MigrateEntryDialog', () => {
         />
       );
 
-      // Initially shows "Daily Log" (first collection)
+      // Initially shows "selected collection" placeholder text
+      expect(screen.getByText(/Move to selected collection/i)).toBeInTheDocument();
+
+      // Select Daily Log
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      fireEvent.change(select, { target: { value: 'daily-log' } });
       expect(screen.getByText(/Move to Daily Log/i)).toBeInTheDocument();
 
-      // Change collection
-      const select = screen.getByRole('combobox', { name: /Collection/i });
+      // Change collection to Work Projects
       fireEvent.change(select, { target: { value: 'work-projects' } });
 
       expect(screen.getByText(/Move to Work Projects/i)).toBeInTheDocument();
@@ -666,6 +675,10 @@ describe('MigrateEntryDialog', () => {
         />
       );
 
+      // Select a collection first
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      fireEvent.change(select, { target: { value: 'daily-log' } });
+
       const migrateButton = screen.getByRole('button', { name: /Migrate/i });
       fireEvent.click(migrateButton);
 
@@ -696,6 +709,10 @@ describe('MigrateEntryDialog', () => {
           onMigrate={mockOnMigrate}
         />
       );
+
+      // Select a collection first
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      fireEvent.change(select, { target: { value: 'daily-log' } });
 
       const migrateButton = screen.getByRole('button', { name: /Migrate/i });
       fireEvent.click(migrateButton);
@@ -731,6 +748,10 @@ describe('MigrateEntryDialog', () => {
           onMigrate={mockOnMigrate}
         />
       );
+
+      // Select a collection first
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      fireEvent.change(select, { target: { value: 'daily-log' } });
 
       const migrateButton = screen.getByRole('button', { name: /Migrate/i });
       fireEvent.click(migrateButton);
@@ -859,6 +880,10 @@ describe('MigrateEntryDialog', () => {
         />
       );
 
+      // Select a collection first
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      fireEvent.change(select, { target: { value: 'daily-log' } });
+
       const migrateButton = screen.getByRole('button', { name: /Migrate/i });
       fireEvent.click(migrateButton);
 
@@ -888,6 +913,10 @@ describe('MigrateEntryDialog', () => {
           onMigrate={mockOnMigrate}
         />
       );
+
+      // Select a collection first
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      fireEvent.change(select, { target: { value: 'daily-log' } });
 
       // Switch to add mode
       const addRadio = screen.getByRole('radio', { name: /Also show in/i });
@@ -932,6 +961,10 @@ describe('MigrateEntryDialog', () => {
           onBulkMigrate={mockOnBulkMigrate}
         />
       );
+
+      // Select a collection first
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      fireEvent.change(select, { target: { value: 'daily-log' } });
 
       const migrateButton = screen.getByRole('button', { name: /Migrate/i });
       fireEvent.click(migrateButton);
@@ -1023,6 +1056,10 @@ describe('MigrateEntryDialog', () => {
         />
       );
 
+      // Select a collection first
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      fireEvent.change(select, { target: { value: 'daily-log' } });
+
       const migrateButton = screen.getByRole('button', { name: /Migrate/i });
       fireEvent.click(migrateButton);
 
@@ -1054,7 +1091,11 @@ describe('MigrateEntryDialog', () => {
 
       const select = screen.getByRole('combobox', { name: /Collection/i }) as HTMLSelectElement;
       
-      // Initially should be Daily Log
+      // Initially should be empty (no auto-selection)
+      expect(select.value).toBe('');
+
+      // Select Daily Log
+      fireEvent.change(select, { target: { value: 'daily-log' } });
       expect(select.value).toBe('daily-log');
 
       // Change to Work Projects
@@ -1134,6 +1175,10 @@ describe('MigrateEntryDialog', () => {
         />
       );
 
+      // Select a collection first
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      fireEvent.change(select, { target: { value: 'daily-log' } });
+
       const migrateButton = screen.getByRole('button', { name: /Migrate/i });
       const cancelButton = screen.getByRole('button', { name: /Cancel/i });
 
@@ -1202,12 +1247,12 @@ describe('MigrateEntryDialog', () => {
         />
       );
 
-      // Should reset to default mode and first collection
+      // Should reset to default mode and empty selection
       const moveRadio = screen.getByRole('radio', { name: /Move to/i });
       expect(moveRadio).toBeChecked();
 
       const resetSelect = screen.getByRole('combobox', { name: /Collection/i }) as HTMLSelectElement;
-      expect(resetSelect.value).toBe('daily-log');
+      expect(resetSelect.value).toBe(''); // Reset to empty
     });
   });
 
@@ -1265,10 +1310,14 @@ describe('MigrateEntryDialog', () => {
         />
       );
 
+      // Check the select has proper label (use id to be specific)
       const select = screen.getByRole('combobox', { name: /Collection/i });
-      const label = screen.getByLabelText(/Collection/i);
+      expect(select).toHaveAttribute('id', 'target-collection');
       
-      expect(label).toBe(select);
+      // Verify label links to the select
+      const label = document.querySelector('label[for="target-collection"]');
+      expect(label).toBeInTheDocument();
+      expect(label?.textContent).toBe('Collection');
     });
 
     it('should have proper error role when error is displayed', async () => {
@@ -1293,6 +1342,10 @@ describe('MigrateEntryDialog', () => {
           onMigrate={mockOnMigrate}
         />
       );
+
+      // Select a collection first
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      fireEvent.change(select, { target: { value: 'daily-log' } });
 
       const migrateButton = screen.getByRole('button', { name: /Migrate/i });
       fireEvent.click(migrateButton);
