@@ -24,6 +24,7 @@ export type {
   CompleteParentTaskCommand,
   ReopenTaskCommand,
   DeleteTaskCommand,
+  DeleteParentTaskCommand,
   ReorderTaskCommand,
   UpdateTaskTitleCommand,
   MigrateTaskCommand,
@@ -123,6 +124,9 @@ export { CreateSubTaskHandler } from './sub-task.handlers';
 
 // Phase 4: Completion Cascade Handler
 export { CompleteParentTaskHandler } from './complete-parent-task.handler';
+
+// Phase 5: Deletion Cascade Handler - FINAL PHASE!
+export { DeleteParentTaskHandler } from './delete-parent-task.handler';
 
 // Note Command Handlers
 export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, ReorderNoteHandler, MigrateNoteHandler } from './note.handlers';

@@ -202,6 +202,25 @@ export interface DeleteTaskCommand {
 }
 
 /**
+ * DeleteParentTask Command (Phase 5: Deletion Cascade)
+ * Represents the user's intent to delete a parent task and all its sub-tasks
+ * 
+ * Validation rules:
+ * - taskId: Required, must reference an existing task
+ * - confirmed: If false and task has children, throw error with warning message
+ * - confirmed: If true, delete all children + parent (cascade delete)
+ * 
+ * Behavior:
+ * - If task has no children: Delete normally (confirmed flag ignored)
+ * - If task has children and confirmed=false: Throw error
+ * - If task has children and confirmed=true: Delete all children + parent
+ */
+export interface DeleteParentTaskCommand {
+  readonly taskId: string;
+  readonly confirmed: boolean; // If true, cascade delete all children
+}
+
+/**
  * TaskReordered Event
  * Emitted when a task's position in the list is changed
  * 
