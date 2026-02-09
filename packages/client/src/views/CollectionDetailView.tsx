@@ -332,8 +332,8 @@ export function CollectionDetailView() {
         onEnterSelectionMode={selection.enterSelectionMode}
       />
 
-      {/* Entry list */}
-      <div className="py-8 px-4 pb-20">
+      {/* Entry list - dynamic bottom padding when selection toolbar is visible */}
+      <div className={`py-8 px-4 ${selection.isSelectionMode ? 'pb-52' : 'pb-20'}`}>
         {/* Active entries (or all entries if not collapsed) */}
         <EntryList
           entries={activeTasks}
