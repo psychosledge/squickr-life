@@ -1,4 +1,4 @@
-import type { Collection, Entry, UserPreferences } from '@squickr/domain';
+import type { Collection, Entry } from '@squickr/domain';
 import { useMemo } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -8,13 +8,13 @@ import { DRAG_SENSOR_CONFIG } from '../utils/constants';
 import { isEffectivelyFavorited } from '../utils/collectionUtils';
 import { getCollectionDisplayName } from '../utils/formatters';
 import { sortDailyLogsByDate } from '../utils/collectionSorting';
+import { useApp } from '../context/AppContext';
 
 interface HierarchicalCollectionListProps {
   collections: Collection[];
   selectedCollectionId?: string;
   onReorder?: (collectionId: string, previousCollectionId: string | null, nextCollectionId: string | null) => void;
   entriesByCollection?: Map<string | null, Entry[]>;
-  userPreferences: UserPreferences;
 }
 
 /**
@@ -60,8 +60,10 @@ export function HierarchicalCollectionList({
   selectedCollectionId,
   onReorder,
   entriesByCollection,
-  userPreferences,
 }: HierarchicalCollectionListProps) {
+  // Get userPreferences from context
+  const { userPreferences } = useApp();
+  
   const { nodes, toggleExpand } = useCollectionHierarchy(collections);
   
   // Memoize sensor configuration to prevent recreation on every render

@@ -39,8 +39,6 @@ interface EntryItemProps {
   // Phase 4: Expand/collapse control for sub-tasks
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  // User preferences (for collection sorting in migration dialog)
-  userPreferences?: import('@squickr/domain').UserPreferences;
 }
 
 /**
@@ -72,7 +70,6 @@ export function EntryItem({
   isSubTaskMigrated,
   isCollapsed,
   onToggleCollapse,
-  userPreferences,
 }: EntryItemProps) {
   // Route to the appropriate type-specific component
   if (entry.type === 'task') {
@@ -95,7 +92,6 @@ export function EntryItem({
         isSubTaskMigrated={isSubTaskMigrated}
         isCollapsed={isCollapsed}
         onToggleCollapse={onToggleCollapse}
-        userPreferences={userPreferences}
       />
     );
   }
@@ -111,7 +107,6 @@ export function EntryItem({
         currentCollectionId={currentCollectionId}
         onNavigateToMigrated={onNavigateToMigrated}
         onCreateCollection={onCreateCollection}
-        userPreferences={userPreferences}
       />
     );
   }
@@ -128,7 +123,6 @@ export function EntryItem({
         currentCollectionId={currentCollectionId}
         onNavigateToMigrated={onNavigateToMigrated}
         onCreateCollection={onCreateCollection}
-        userPreferences={userPreferences}
       />
     );
   }

@@ -1,18 +1,14 @@
+import { renderWithAppProvider } from "./../test/test-utils";
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { HierarchicalCollectionList } from './HierarchicalCollectionList';
 import type { Collection, UserPreferences } from '@squickr/domain';
 
-// Mock user preferences for tests
-const mockUserPreferences: UserPreferences = {
-  autoFavoriteRecentDailyLogs: false,
-};
-
-// Helper to render with Router context
-const renderWithRouter = (ui: React.ReactElement) => {
-  return render(<BrowserRouter>{ui}</BrowserRouter>);
+// Helper to render with Router and App context
+const renderWithRouter = (ui: React.ReactElement, options?: { userPreferences?: UserPreferences }) => {
+  return renderWithAppProvider(<BrowserRouter>{ui}</BrowserRouter>, options);
 };
 
 describe('HierarchicalCollectionList', () => {
@@ -22,10 +18,7 @@ describe('HierarchicalCollectionList', () => {
 
   it('should render empty state when no collections exist', () => {
     renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={[]} 
-        userPreferences={mockUserPreferences}
-      />
+      <HierarchicalCollectionList collections={[]} />
     );
 
     expect(screen.getByText('No collections yet')).toBeInTheDocument();
@@ -48,10 +41,7 @@ describe('HierarchicalCollectionList', () => {
     localStorage.setItem('collection-hierarchy-expanded', JSON.stringify(['year-2026', 'month-2026-02']));
 
     renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={collections}
-        userPreferences={mockUserPreferences}
-      />
+      <HierarchicalCollectionList collections={collections} />
     );
 
     // Should show year node
@@ -86,7 +76,7 @@ describe('HierarchicalCollectionList', () => {
     const { container } = renderWithRouter(
       <HierarchicalCollectionList 
         collections={collections}
-        userPreferences={mockUserPreferences}
+        
       />
     );
 
@@ -116,10 +106,7 @@ describe('HierarchicalCollectionList', () => {
     localStorage.setItem('collection-hierarchy-expanded', JSON.stringify([]));
 
     renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={collections}
-        userPreferences={mockUserPreferences}
-      />
+      <HierarchicalCollectionList collections={collections} />
     );
 
     // Year should be collapsed, showing count
@@ -147,10 +134,7 @@ describe('HierarchicalCollectionList', () => {
     ];
 
     renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={collections}
-        userPreferences={mockUserPreferences}
-      />
+      <HierarchicalCollectionList collections={collections} />
     );
 
     const link = screen.getByText('Ideas').closest('a');
@@ -173,10 +157,7 @@ describe('HierarchicalCollectionList', () => {
     localStorage.setItem('collection-hierarchy-expanded', JSON.stringify(['year-2026']));
 
     renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={collections}
-        userPreferences={mockUserPreferences}
-      />
+      <HierarchicalCollectionList collections={collections} />
     );
 
     // Year should be a button, not a link
@@ -210,7 +191,6 @@ describe('HierarchicalCollectionList', () => {
       <HierarchicalCollectionList 
         collections={collections}
         selectedCollectionId="selected-1"
-        userPreferences={mockUserPreferences}
       />
     );
 
@@ -254,7 +234,7 @@ describe('HierarchicalCollectionList', () => {
     const { container } = renderWithRouter(
       <HierarchicalCollectionList 
         collections={collections}
-        userPreferences={mockUserPreferences}
+        
       />
     );
 
@@ -297,11 +277,11 @@ describe('HierarchicalCollectionList', () => {
     // Start with year/month COLLAPSED
     localStorage.setItem('collection-hierarchy-expanded', JSON.stringify([]));
 
-    renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={collections}
-        userPreferences={autoFavoritePreferences}
-      />
+    renderWithAppProvider(
+      <BrowserRouter>
+        <HierarchicalCollectionList collections={collections} />
+      </BrowserRouter>,
+      { userPreferences: autoFavoritePreferences }
     );
 
     // Today should appear in favorites section (at depth 0, no indentation)
@@ -352,7 +332,7 @@ describe('HierarchicalCollectionList', () => {
       const { container } = renderWithRouter(
         <HierarchicalCollectionList 
           collections={collections}
-          userPreferences={mockUserPreferences}
+          
         />
       );
 
@@ -390,7 +370,7 @@ describe('HierarchicalCollectionList', () => {
       const { container } = renderWithRouter(
         <HierarchicalCollectionList 
           collections={collections}
-          userPreferences={mockUserPreferences}
+          
         />
       );
 
@@ -424,7 +404,7 @@ describe('HierarchicalCollectionList', () => {
       const { container } = renderWithRouter(
         <HierarchicalCollectionList 
           collections={collections}
-          userPreferences={mockUserPreferences}
+          
         />
       );
 
@@ -465,7 +445,7 @@ describe('HierarchicalCollectionList', () => {
       const { container } = renderWithRouter(
         <HierarchicalCollectionList 
           collections={collections}
-          userPreferences={mockUserPreferences}
+          
         />
       );
 
@@ -490,7 +470,7 @@ describe('HierarchicalCollectionList', () => {
       const { container } = renderWithRouter(
         <HierarchicalCollectionList 
           collections={collections}
-          userPreferences={mockUserPreferences}
+          
         />
       );
 
@@ -517,7 +497,7 @@ describe('HierarchicalCollectionList', () => {
       renderWithRouter(
         <HierarchicalCollectionList 
           collections={collections}
-          userPreferences={mockUserPreferences}
+          
         />
       );
 
@@ -541,7 +521,7 @@ describe('HierarchicalCollectionList', () => {
       renderWithRouter(
         <HierarchicalCollectionList 
           collections={collections}
-          userPreferences={mockUserPreferences}
+          
         />
       );
 
@@ -564,7 +544,7 @@ describe('HierarchicalCollectionList', () => {
       renderWithRouter(
         <HierarchicalCollectionList 
           collections={collections}
-          userPreferences={mockUserPreferences}
+          
         />
       );
 
@@ -595,7 +575,7 @@ describe('HierarchicalCollectionList', () => {
       const { container } = renderWithRouter(
         <HierarchicalCollectionList 
           collections={collections}
-          userPreferences={mockUserPreferences}
+          
         />
       );
 

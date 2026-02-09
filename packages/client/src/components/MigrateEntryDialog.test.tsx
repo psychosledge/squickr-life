@@ -1,5 +1,6 @@
+import { renderWithAppProvider } from "./../test/test-utils";
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { MigrateEntryDialog } from './MigrateEntryDialog';
 import type { Entry, Collection } from '@squickr/domain';
 
@@ -57,7 +58,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -86,7 +87,7 @@ describe('MigrateEntryDialog', () => {
         parentTaskId: 'task-1',
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -115,7 +116,7 @@ describe('MigrateEntryDialog', () => {
         parentEntryId: 'task-1',
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -138,7 +139,7 @@ describe('MigrateEntryDialog', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -162,7 +163,7 @@ describe('MigrateEntryDialog', () => {
         eventDate: '2026-02-15',
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -193,7 +194,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -225,7 +226,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -254,7 +255,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -288,7 +289,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -316,7 +317,7 @@ describe('MigrateEntryDialog', () => {
         parentTaskId: 'task-1',
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -344,7 +345,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -375,7 +376,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -416,7 +417,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -438,7 +439,7 @@ describe('MigrateEntryDialog', () => {
         createdAt: '2026-01-24T10:00:00.000Z',
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -461,7 +462,7 @@ describe('MigrateEntryDialog', () => {
         eventDate: '2026-02-15',
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -503,7 +504,7 @@ describe('MigrateEntryDialog', () => {
         },
       ];
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -530,7 +531,7 @@ describe('MigrateEntryDialog', () => {
         },
       ];
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -561,7 +562,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -593,7 +594,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -626,7 +627,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -666,7 +667,7 @@ describe('MigrateEntryDialog', () => {
 
       mockOnMigrate.mockRejectedValue(new Error('Migration failed'));
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -701,7 +702,7 @@ describe('MigrateEntryDialog', () => {
 
       mockOnMigrate.mockRejectedValue(new Error('Migration failed'));
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -740,7 +741,7 @@ describe('MigrateEntryDialog', () => {
 
       mockOnMigrate.mockRejectedValue('Unknown error');
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -779,7 +780,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -805,7 +806,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -830,7 +831,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -871,7 +872,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -905,7 +906,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -952,7 +953,7 @@ describe('MigrateEntryDialog', () => {
         },
       ];
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -991,7 +992,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1018,7 +1019,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1047,7 +1048,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1080,7 +1081,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1121,7 +1122,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      const { container } = render(
+      const { container } = renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={false}
           onClose={mockOnClose}
@@ -1136,7 +1137,7 @@ describe('MigrateEntryDialog', () => {
     });
 
     it('should not render when no entry or entries provided', () => {
-      const { container } = render(
+      const { container } = renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1166,7 +1167,7 @@ describe('MigrateEntryDialog', () => {
       });
       mockOnMigrate.mockReturnValue(hangingPromise);
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1207,7 +1208,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      const { rerender } = render(
+      const { rerender } = renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1273,7 +1274,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1301,7 +1302,7 @@ describe('MigrateEntryDialog', () => {
         collections: [],
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1334,7 +1335,7 @@ describe('MigrateEntryDialog', () => {
 
       mockOnMigrate.mockRejectedValue(new Error('Migration failed'));
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1405,7 +1406,7 @@ describe('MigrateEntryDialog', () => {
         autoFavoriteRecentDailyLogs: true,
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}
@@ -1413,8 +1414,8 @@ describe('MigrateEntryDialog', () => {
           currentCollectionId="yesterday"
           collections={collectionsWithDailies}
           onMigrate={mockOnMigrate}
-          userPreferences={userPreferences}
-        />
+        />,
+        { userPreferences }
       );
 
       const select = screen.getByRole('combobox', { name: /Collection/i });
@@ -1480,7 +1481,7 @@ describe('MigrateEntryDialog', () => {
         autoFavoriteRecentDailyLogs: false, // DISABLED (default)
       };
 
-      render(
+      renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
           onClose={mockOnClose}

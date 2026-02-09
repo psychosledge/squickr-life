@@ -14,11 +14,11 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import type { Entry, Collection, CollectionType, UserPreferences } from '@squickr/domain';
-import { DEFAULT_USER_PREFERENCES } from '@squickr/domain';
+import type { Entry, Collection, CollectionType } from '@squickr/domain';
 import { getCollectionDisplayName } from '../utils/formatters';
 import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 import { CreateCollectionModal } from './CreateCollectionModal';
+import { useApp } from '../context/AppContext';
 
 interface MigrateEntryDialogProps {
   isOpen: boolean;
@@ -30,7 +30,6 @@ interface MigrateEntryDialogProps {
   onMigrate: (entryId: string, targetCollectionId: string, mode: 'move' | 'add') => Promise<void>;
   onBulkMigrate?: (entryIds: string[], targetCollectionId: string, mode: 'move' | 'add') => Promise<void>;
   onCreateCollection?: (name: string, type?: CollectionType, date?: string) => Promise<string>;
-  userPreferences?: UserPreferences;
   isBulkMigrating?: boolean; // Phase 4: Loading state
 }
 
@@ -84,9 +83,11 @@ export function MigrateEntryDialog({
   onMigrate,
   onBulkMigrate,
   onCreateCollection,
-  userPreferences,
   isBulkMigrating = false, // Phase 4: Loading state with default
 }: MigrateEntryDialogProps) {
+  // Get userPreferences from context instead of props
+  const { userPreferences } = useApp();
+  
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>('');
   const [mode, setMode] = useState<'move' | 'add'>('move');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,7 +105,7 @@ export function MigrateEntryDialog({
   // Filter out current collection and sort hierarchically (DRY - Casey's review #2)
   const availableCollections = sortCollectionsHierarchically(
     collections.filter((c: Collection) => c.id !== currentCollectionId),
-    userPreferences || DEFAULT_USER_PREFERENCES
+    userPreferences
   );
 
   // Get collection name for display in helper text

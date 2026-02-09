@@ -1,3 +1,5 @@
+import { render } from '@testing-library/react';
+import { DEFAULT_USER_PREFERENCES } from '@squickr/domain';
 /**
  * CollectionIndexView Tests
  * 
@@ -5,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { CollectionIndexView } from './CollectionIndexView';
@@ -52,6 +54,14 @@ describe('CollectionIndexView - Header Branding', () => {
       taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
+      migrateTaskHandler: {} as any,
+      migrateNoteHandler: {} as any,
+      migrateEventHandler: {} as any,
+      addTaskToCollectionHandler: {} as any,
+      removeTaskFromCollectionHandler: {} as any,
+      moveTaskToCollectionHandler: {} as any,
+      bulkMigrateEntriesHandler: {} as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
     };
 
     return render(
@@ -174,6 +184,14 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
       taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
+      migrateTaskHandler: {} as any,
+      migrateNoteHandler: {} as any,
+      migrateEventHandler: {} as any,
+      addTaskToCollectionHandler: {} as any,
+      removeTaskFromCollectionHandler: {} as any,
+      moveTaskToCollectionHandler: {} as any,
+      bulkMigrateEntriesHandler: {} as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
     };
 
     return render(
@@ -385,6 +403,11 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
       migrateTaskHandler: mockMigrateTaskHandler,
       migrateNoteHandler: mockMigrateNoteHandler,
       migrateEventHandler: mockMigrateEventHandler,
+      addTaskToCollectionHandler: {} as any,
+      removeTaskFromCollectionHandler: {} as any,
+      moveTaskToCollectionHandler: {} as any,
+      bulkMigrateEntriesHandler: {} as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
     };
 
     return render(

@@ -6,7 +6,8 @@
  * Phase 2B: Full implementation with collection list
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Collection, Entry } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -19,17 +20,28 @@ import { DarkModeToggle } from '../components/DarkModeToggle';
 import { UserProfileMenu } from '../components/UserProfileMenu';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { logger } from '../utils/logger';
+import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { useSwipeProgress } from '../hooks/useSwipeProgress';
 
 export function CollectionIndexView() {
   const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler } = useApp();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const userPreferences = useUserPreferences();
   
   const [collections, setCollections] = useState<Collection[]>([]);
   const [entriesByCollection, setEntriesByCollection] = useState<Map<string | null, Entry[]>>(new Map());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  // Touch gesture tracking
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const swipeProgress = useSwipeProgress();
+
+  const SWIPE_THRESHOLD = 100; // Minimum pixels for horizontal swipe detection
+  const VERTICAL_PRIORITY_RATIO = 1.5; // If vertical movement > horizontal * ratio, treat as scroll
 
   // Load collections and entries
   const loadData = async () => {
@@ -93,6 +105,101 @@ export function CollectionIndexView() {
       unsubscribeEntry();
     };
   }, [collectionProjection, entryProjection]);
+
+  // Calculate next collection (first in sorted order) for navigation
+  const nextCollection = useMemo(() => {
+    // Sort collections hierarchically to match sidebar order
+    const sortedCollections = sortCollectionsHierarchically(collections, userPreferences);
+    return sortedCollections.length > 0 ? sortedCollections[0] : null;
+  }, [collections, userPreferences]);
+
+  // Navigate to next collection (first collection in the list)
+  const navigateToNext = useCallback(() => {
+    if (nextCollection) {
+      navigate(`/collection/${nextCollection.id}`);
+    }
+  }, [nextCollection, navigate]);
+
+  // Keyboard shortcuts for navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ignore if user is typing in input or textarea
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Handle arrow right to navigate to first collection
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        navigateToNext();
+      }
+      // ArrowLeft does nothing on index page (can't go before index)
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigateToNext]);
+
+  // Touch gestures for navigation
+  useEffect(() => {
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length === 1) {
+        touchStartX.current = event.touches[0]?.clientX ?? null;
+        touchStartY.current = event.touches[0]?.clientY ?? null;
+        swipeProgress.handleTouchStart(event);
+      }
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      swipeProgress.handleTouchMove(event);
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      if (touchStartX.current === null || touchStartY.current === null || event.changedTouches.length === 0) {
+        swipeProgress.handleTouchEnd(event);
+        return;
+      }
+
+      const touchEndX = event.changedTouches[0]?.clientX;
+      const touchEndY = event.changedTouches[0]?.clientY;
+      if (touchEndX === undefined || touchEndY === undefined) {
+        swipeProgress.handleTouchEnd(event);
+        return;
+      }
+      
+      const deltaX = touchEndX - touchStartX.current;
+      const deltaY = touchEndY - touchStartY.current;
+      
+      const absDeltaX = Math.abs(deltaX);
+      const absDeltaY = Math.abs(deltaY);
+
+      // Only navigate if horizontal movement exceeds threshold and dominates vertical
+      const isHorizontalSwipe = absDeltaX > SWIPE_THRESHOLD && absDeltaX > absDeltaY * VERTICAL_PRIORITY_RATIO;
+
+      if (isHorizontalSwipe) {
+        // Swipe left (deltaX < 0) = navigate to first collection
+        // Swipe right (deltaX > 0) = do nothing (can't go before index)
+        if (deltaX < 0) {
+          navigateToNext();
+        }
+      }
+
+      touchStartX.current = null;
+      touchStartY.current = null;
+      swipeProgress.handleTouchEnd(event);
+    };
+
+    window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [navigateToNext, swipeProgress, SWIPE_THRESHOLD, VERTICAL_PRIORITY_RATIO]);
 
   const handleCreateCollection = async (name: string, type?: import('@squickr/domain').CollectionType, date?: string) => {
     await createCollectionHandler.handle({ name, type, date });
@@ -161,7 +268,6 @@ export function CollectionIndexView() {
           collections={collections}
           onReorder={handleReorderCollection}
           entriesByCollection={entriesByCollection}
-          userPreferences={userPreferences}
         />
       </div>
 

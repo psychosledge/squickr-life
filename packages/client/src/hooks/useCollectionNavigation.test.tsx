@@ -163,7 +163,7 @@ describe('useCollectionNavigation', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/collection/c2');
   });
 
-  it('should not navigate when at boundaries', async () => {
+  it('should navigate to index when navigating previous from first collection', async () => {
     collectionsData = [
       { id: 'c1', name: 'Only', type: 'custom', order: 'a', createdAt: '2024-01-01T00:00:00Z' },
     ];
@@ -178,9 +178,13 @@ describe('useCollectionNavigation', () => {
       expect(result.current.nextCollection).toBeNull();
     });
 
+    // Navigate previous from first collection should go to index
     result.current.navigateToPrevious();
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+    
+    // Navigate next from last collection should do nothing
+    mockNavigate.mockClear();
     result.current.navigateToNext();
-
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 

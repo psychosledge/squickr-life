@@ -12,7 +12,10 @@ import {
   BulkMigrateEntriesHandler,
   EntryListProjection,
   TaskListProjection,
-  CollectionListProjection
+  CollectionListProjection,
+  UserPreferencesProjection,
+  DEFAULT_USER_PREFERENCES,
+  UserPreferences,
 } from '@squickr/domain';
 import { IndexedDBEventStore, FirestoreEventStore } from '@squickr/infrastructure';
 import { AppProvider } from './context/AppContext';
@@ -66,6 +69,9 @@ function AppContent() {
   // Bulk migration handler (Phase 4: ADR-013)
   const [bulkMigrateEntriesHandler] = useState(() => new BulkMigrateEntriesHandler(eventStore, entryProjection));
   
+  // User preferences (reactive)
+  const [userPreferences, setUserPreferences] = useState<UserPreferences>(DEFAULT_USER_PREFERENCES);
+  
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
   
@@ -113,6 +119,19 @@ function AppContent() {
     try {
       // Initialize IndexedDB connection
       await eventStore.initialize();
+      
+      // Subscribe to user preferences changes
+      const userPrefsProjection = new UserPreferencesProjection(eventStore);
+      
+      // Load initial preferences
+      const prefs = await userPrefsProjection.getUserPreferences();
+      setUserPreferences(prefs);
+      
+      // Subscribe to changes
+      userPrefsProjection.subscribe(async () => {
+        const updatedPrefs = await userPrefsProjection.getUserPreferences();
+        setUserPreferences(updatedPrefs);
+      });
     } catch (error) {
       logger.error('Failed to initialize app:', error);
     } finally {
@@ -149,6 +168,7 @@ function AppContent() {
     removeTaskFromCollectionHandler,
     moveTaskToCollectionHandler,
     bulkMigrateEntriesHandler,
+    userPreferences,
   };
 
   // Show main app for authenticated users

@@ -104,6 +104,9 @@ export function useCollectionNavigation(
   const navigateToPrevious = useCallback(() => {
     if (previousCollection) {
       navigate(`/collection/${previousCollection.id}`);
+    } else {
+      // If at the first collection and no previous, navigate back to index
+      navigate('/');
     }
   }, [previousCollection, navigate]);
 
