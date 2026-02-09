@@ -23,6 +23,7 @@ import { logger } from '../utils/logger';
 import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useSwipeProgress } from '../hooks/useSwipeProgress';
+import { SWIPE } from '../utils/constants';
 
 export function CollectionIndexView() {
   const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler } = useApp();
@@ -39,9 +40,6 @@ export function CollectionIndexView() {
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const swipeProgress = useSwipeProgress();
-
-  const SWIPE_THRESHOLD = 100; // Minimum pixels for horizontal swipe detection
-  const VERTICAL_PRIORITY_RATIO = 1.5; // If vertical movement > horizontal * ratio, treat as scroll
 
   // Load collections and entries
   const loadData = async () => {
@@ -175,7 +173,7 @@ export function CollectionIndexView() {
       const absDeltaY = Math.abs(deltaY);
 
       // Only navigate if horizontal movement exceeds threshold and dominates vertical
-      const isHorizontalSwipe = absDeltaX > SWIPE_THRESHOLD && absDeltaX > absDeltaY * VERTICAL_PRIORITY_RATIO;
+      const isHorizontalSwipe = absDeltaX > SWIPE.THRESHOLD && absDeltaX > absDeltaY * SWIPE.VERTICAL_PRIORITY_RATIO;
 
       if (isHorizontalSwipe) {
         // Swipe left (deltaX < 0) = navigate to first collection
@@ -199,7 +197,7 @@ export function CollectionIndexView() {
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [navigateToNext, swipeProgress, SWIPE_THRESHOLD, VERTICAL_PRIORITY_RATIO]);
+  }, [navigateToNext, swipeProgress]);
 
   const handleCreateCollection = async (name: string, type?: import('@squickr/domain').CollectionType, date?: string) => {
     await createCollectionHandler.handle({ name, type, date });

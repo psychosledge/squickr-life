@@ -121,3 +121,17 @@ export const BEHAVIOR_DESCRIPTIONS: Record<CompletedTaskBehavior, string> = {
   'move-to-bottom': 'Completed tasks move below a separator',
   'collapse': 'Completed tasks hidden in expandable section',
 };
+
+/**
+ * Swipe Gesture Configuration
+ * 
+ * Configuration for horizontal swipe gestures used in collection navigation.
+ * These values ensure swipes are distinct from vertical scrolling.
+ */
+export const SWIPE = {
+  /** Minimum pixels for horizontal swipe to trigger navigation */
+  THRESHOLD: 100,
+  
+  /** If vertical movement > horizontal * ratio, treat as scroll (not swipe) */
+  VERTICAL_PRIORITY_RATIO: 1.5,
+} as const;

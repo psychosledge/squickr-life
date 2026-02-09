@@ -13,9 +13,7 @@ import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 import { useUserPreferences } from './useUserPreferences';
 import { useSwipeProgress } from './useSwipeProgress';
-
-const SWIPE_THRESHOLD = 100; // Minimum pixels for horizontal swipe detection
-const VERTICAL_PRIORITY_RATIO = 1.5; // If vertical movement > horizontal * ratio, treat as scroll
+import { SWIPE } from '../utils/constants';
 
 export interface UseCollectionNavigationResult {
   previousCollection: Collection | null;
@@ -178,7 +176,7 @@ export function useCollectionNavigation(
       // Only navigate if:
       // 1. Horizontal movement exceeds threshold
       // 2. Horizontal movement dominates vertical movement (not a scroll gesture)
-      const isHorizontalSwipe = absDeltaX > SWIPE_THRESHOLD && absDeltaX > absDeltaY * VERTICAL_PRIORITY_RATIO;
+      const isHorizontalSwipe = absDeltaX > SWIPE.THRESHOLD && absDeltaX > absDeltaY * SWIPE.VERTICAL_PRIORITY_RATIO;
 
       if (isHorizontalSwipe) {
         // Carousel "Push Away" Metaphor:
