@@ -357,6 +357,7 @@ describe('useCollectionNavigation', () => {
 
     it('should navigate when horizontal swipe clearly exceeds threshold', async () => {
       // Horizontal swipe (120px) should navigate when vertical movement is minimal
+      // Carousel metaphor: swipe left = next (higher index)
       
       const { result } = renderHook(
         () => useCollectionNavigation('c2'),
@@ -379,7 +380,7 @@ describe('useCollectionNavigation', () => {
       window.dispatchEvent(touchEnd);
 
       await new Promise(resolve => setTimeout(resolve, 100));
-      expect(mockNavigate).toHaveBeenCalledWith('/collection/c3');
+      expect(mockNavigate).toHaveBeenCalledWith('/collection/c3'); // Navigates to next
     });
 
     it('should not navigate when horizontal movement is below threshold', async () => {
@@ -411,6 +412,7 @@ describe('useCollectionNavigation', () => {
 
     it('should navigate when horizontal swipe is clearly intentional (diagonal)', async () => {
       // Diagonal swipe where horizontal > vertical should navigate
+      // Carousel metaphor: swipe right = previous (lower index)
       
       const { result } = renderHook(
         () => useCollectionNavigation('c2'),
@@ -433,7 +435,7 @@ describe('useCollectionNavigation', () => {
       window.dispatchEvent(touchEnd);
 
       await new Promise(resolve => setTimeout(resolve, 100));
-      expect(mockNavigate).toHaveBeenCalledWith('/collection/c1');
+      expect(mockNavigate).toHaveBeenCalledWith('/collection/c1'); // Navigates to previous
     });
   });
 });

@@ -178,13 +178,23 @@ export function useCollectionNavigation(
       const isHorizontalSwipe = absDeltaX > SWIPE_THRESHOLD && absDeltaX > absDeltaY * VERTICAL_PRIORITY_RATIO;
 
       if (isHorizontalSwipe) {
-        // Swipe left = next (moving finger to the left)
+        // Carousel "Push Away" Metaphor:
+        // Collections are like pages in a carousel laid out horizontally
+        // Higher index = later page (further to the right)
+        // 
+        // Swipe left (finger moves left, deltaX < 0) = go to NEXT (higher index)
+        // - Like pushing the current page left to reveal the next page underneath
+        // - Matches Instagram, Photos app, and standard carousel behavior
+        // 
+        // Swipe right (finger moves right, deltaX > 0) = go to PREVIOUS (lower index)
+        // - Like pushing the current page right to reveal the previous page underneath
+        //
+        // This matches the "push away" mental model: swipe in the direction
+        // you want to push the current page to reveal what's behind it
         if (deltaX < 0) {
-          navigateToNext();
-        }
-        // Swipe right = previous (moving finger to the right)
-        else {
-          navigateToPrevious();
+          navigateToNext();  // Swipe left → next (higher index)
+        } else {
+          navigateToPrevious();  // Swipe right → previous (lower index)
         }
       }
 

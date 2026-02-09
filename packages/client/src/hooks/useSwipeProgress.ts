@@ -12,7 +12,7 @@ const ACTIVATION_THRESHOLD = 5; // Minimum pixels to activate indicator
 
 export interface UseSwipeProgressResult {
   isSwipeActive: boolean;
-  swipeProgress: number; // -100 to 100 (negative = left/next, positive = right/prev)
+  swipeProgress: number; // -100 to 100 (negative = left/next, positive = right/previous)
   handleTouchStart: (event: TouchEvent) => void;
   handleTouchMove: (event: TouchEvent) => void;
   handleTouchEnd: (event: TouchEvent) => void;
