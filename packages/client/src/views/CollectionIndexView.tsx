@@ -18,6 +18,7 @@ import { SettingsModal } from '../components/SettingsModal';
 import { FAB } from '../components/FAB';
 import { DarkModeToggle } from '../components/DarkModeToggle';
 import { UserProfileMenu } from '../components/UserProfileMenu';
+import { CollectionNavigationControls } from '../components/CollectionNavigationControls';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { logger } from '../utils/logger';
 import { sortCollectionsHierarchically } from '../utils/collectionSorting';
@@ -247,18 +248,31 @@ export function CollectionIndexView() {
             )}
           </div>
           
-          {/* Title */}
-          <div className="text-center">
-            <h1 className="text-4xl sm:text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Squickr Life
-            </h1>
-            <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400">
-              Get shit done quicker with Squickr!
-            </p>
-            <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">
-              v{__APP_VERSION__}
-            </p>
+          {/* Title and Navigation */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex-1" /> {/* Spacer for centering */}
+            <div className="text-center flex-shrink-0">
+              <h1 className="text-4xl sm:text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Squickr Life
+              </h1>
+            </div>
+            <div className="flex-1 flex justify-end">
+              {/* Navigation Controls - only right arrow */}
+              <CollectionNavigationControls
+                previousCollection={null}
+                nextCollection={nextCollection || null}
+                onNavigatePrevious={() => {}}
+                onNavigateNext={navigateToNext}
+              />
+            </div>
           </div>
+
+          <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 text-center">
+            Get shit done quicker with Squickr!
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-600 mt-1 text-center">
+            v{__APP_VERSION__}
+          </p>
         </div>
 
         {/* Collection List */}
