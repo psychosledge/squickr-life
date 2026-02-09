@@ -31,6 +31,8 @@ interface TaskEntryItemProps {
   // Phase 4: Expand/collapse control for sub-tasks
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  // User preferences (for collection sorting in migration dialog)
+  userPreferences?: import('@squickr/domain').UserPreferences;
 }
 
 /**
@@ -60,6 +62,7 @@ export function TaskEntryItem({
   isSubTaskMigrated = false,
   isCollapsed = false,
   onToggleCollapse,
+  userPreferences,
 }: TaskEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -279,6 +282,7 @@ export function TaskEntryItem({
           collections={collections}
           onMigrate={onMigrate}
           onCreateCollection={_onCreateCollection}
+          userPreferences={userPreferences}
         />
       )}
     </div>

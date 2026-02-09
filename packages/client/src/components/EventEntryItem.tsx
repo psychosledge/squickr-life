@@ -15,6 +15,8 @@ interface EventEntryItemProps {
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
   onCreateCollection?: (name: string) => Promise<string>;
+  // User preferences (for collection sorting in migration dialog)
+  userPreferences?: import('@squickr/domain').UserPreferences;
 }
 
 /**
@@ -35,6 +37,7 @@ export function EventEntryItem({
   currentCollectionId,
   onNavigateToMigrated,
   onCreateCollection: _onCreateCollection, // Not used in new dialog
+  userPreferences,
 }: EventEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -217,6 +220,7 @@ export function EventEntryItem({
           collections={collections}
           onMigrate={onMigrate}
           onCreateCollection={_onCreateCollection}
+          userPreferences={userPreferences}
         />
       )}
     </div>

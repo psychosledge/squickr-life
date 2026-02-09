@@ -9,6 +9,7 @@ describe('MigrateEntryDialog', () => {
       id: 'daily-log',
       name: 'Daily Log',
       type: 'daily',
+      date: '2026-01-24', // Daily logs need a date field
       createdAt: '2026-01-24T10:00:00.000Z',
       order: 'a0',
     },
@@ -16,6 +17,7 @@ describe('MigrateEntryDialog', () => {
       id: 'monthly-log',
       name: 'Monthly Log',
       type: 'monthly',
+      date: '2026-01', // Monthly logs need a date field
       createdAt: '2026-01-24T10:00:00.000Z',
       order: 'a1',
     },
@@ -208,9 +210,9 @@ describe('MigrateEntryDialog', () => {
       // Should have 3 options: placeholder + 2 collections (excludes Monthly Log)
       expect(options).toHaveLength(3);
       expect(options[0]?.textContent).toBe('Select a collection...');
-      // Collections are sorted (Work Projects, Daily Log)
+      // New sorting order: Work Projects (custom), Daily Log (formatted as date)
       expect(options[1]?.textContent).toBe('Work Projects');
-      expect(options[2]?.textContent).toBe('Daily Log');
+      expect(options[2]?.textContent).toBe('Saturday, January 24, 2026');
     });
 
     it('should populate collection selector with available collections', () => {
@@ -237,8 +239,8 @@ describe('MigrateEntryDialog', () => {
       const select = screen.getByRole('combobox', { name: /Collection/i });
       expect(select).toBeInTheDocument();
 
-      // Should show Daily Log and Work Projects
-      expect(screen.getByRole('option', { name: 'Daily Log' })).toBeInTheDocument();
+      // Should show formatted date for daily log and Work Projects
+      expect(screen.getByRole('option', { name: 'Saturday, January 24, 2026' })).toBeInTheDocument();
       expect(screen.getByRole('option', { name: 'Work Projects' })).toBeInTheDocument();
     });
 
@@ -353,14 +355,14 @@ describe('MigrateEntryDialog', () => {
         />
       );
 
-      // Initially in "move" mode
-      expect(screen.getByText(/Crosses out original in Monthly Log/i)).toBeInTheDocument();
+      // Initially in "move" mode (monthly log formatted as "January 2026")
+      expect(screen.getByText(/Crosses out original in January 2026/i)).toBeInTheDocument();
 
       // Switch to "add" mode
       const addRadio = screen.getByRole('radio', { name: /Also show in/i });
       fireEvent.click(addRadio);
 
-      expect(screen.getByText(/Keep in Monthly Log/i)).toBeInTheDocument();
+      expect(screen.getByText(/Keep in January 2026/i)).toBeInTheDocument();
     });
 
     it('should update collection name in helper text when collection changes', () => {
@@ -387,10 +389,10 @@ describe('MigrateEntryDialog', () => {
       // Initially shows "selected collection" placeholder text
       expect(screen.getByText(/Move to selected collection/i)).toBeInTheDocument();
 
-      // Select Daily Log
+      // Select Daily Log (formatted as date)
       const select = screen.getByRole('combobox', { name: /Collection/i });
       fireEvent.change(select, { target: { value: 'daily-log' } });
-      expect(screen.getByText(/Move to Daily Log/i)).toBeInTheDocument();
+      expect(screen.getByText(/Move to Saturday, January 24, 2026/i)).toBeInTheDocument();
 
       // Change collection to Work Projects
       fireEvent.change(select, { target: { value: 'work-projects' } });
@@ -1354,6 +1356,163 @@ describe('MigrateEntryDialog', () => {
         const errorDiv = screen.getByRole('alert');
         expect(errorDiv).toHaveTextContent('Migration failed');
       });
+    });
+  });
+
+  // ============================================================================
+  // Auto-Favorited Daily Logs Tests (Bug Fix: auto-favorited dailies in calendar hierarchy)
+  // ============================================================================
+
+  describe('Auto-Favorited Daily Logs', () => {
+    it('should show auto-favorited dailies (Today, Tomorrow, Yesterday) at top when autoFavoriteRecentDailyLogs is enabled', () => {
+      const mockTask: Entry = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy milk',
+        createdAt: '2026-02-07T10:00:00.000Z', // Yesterday
+        status: 'open',
+        collections: ['yesterday'],
+      };
+
+      // Use actual current time for the test (Feb 9, 2026 based on env)
+      const now = new Date('2026-02-09T12:00:00.000Z');
+      const todayStr = '2026-02-09';
+      const tomorrowStr = '2026-02-10';
+      const yesterdayStr = '2026-02-08';
+      const olderStr = '2026-02-04';
+
+      const collectionsWithDailies: Collection[] = [
+        // Favorited custom
+        { id: 'fav-custom', name: 'Favorite Custom', type: 'custom', order: 'a0', isFavorite: true, createdAt: '2026-02-01T00:00:00.000Z' },
+        
+        // Auto-favorited dailies (Today, Tomorrow, Yesterday)
+        { id: 'tomorrow', name: 'Tomorrow', type: 'daily', date: tomorrowStr, createdAt: tomorrowStr + 'T00:00:00.000Z' },
+        { id: 'today', name: 'Today', type: 'daily', date: todayStr, createdAt: todayStr + 'T00:00:00.000Z' },
+        { id: 'yesterday', name: 'Yesterday', type: 'daily', date: yesterdayStr, createdAt: yesterdayStr + 'T00:00:00.000Z' },
+        
+        // Older daily (not auto-favorited)
+        { id: 'older', name: 'Older Daily', type: 'daily', date: olderStr, createdAt: olderStr + 'T00:00:00.000Z' },
+        
+        // Monthly log
+        { id: 'monthly', name: 'February 2026', type: 'monthly', date: '2026-02', createdAt: '2026-02-01T00:00:00.000Z' },
+        
+        // Other custom
+        { id: 'other-custom', name: 'Other Custom', type: 'custom', order: 'b0', isFavorite: false, createdAt: '2026-02-01T00:00:00.000Z' },
+      ];
+
+      const userPreferences = {
+        defaultCompletedTaskBehavior: 'keep-in-place' as const,
+        autoFavoriteRecentDailyLogs: true,
+      };
+
+      render(
+        <MigrateEntryDialog
+          isOpen={true}
+          onClose={mockOnClose}
+          entry={mockTask}
+          currentCollectionId="yesterday"
+          collections={collectionsWithDailies}
+          onMigrate={mockOnMigrate}
+          userPreferences={userPreferences}
+        />
+      );
+
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      const options = Array.from(select.querySelectorAll('option')).map(opt => ({
+        value: opt.value,
+        text: opt.textContent,
+      }));
+
+      // Filter out the "Select a collection..." placeholder
+      const collectionOptions = options.filter(opt => opt.value !== '');
+
+      // Expected order:
+      // 1. Favorited customs (fav-custom)
+      // 2. Auto-favorited dailies (Tomorrow → Today, Yesterday is filtered out as current)
+      // 3. Other customs (other-custom)
+      // 4. Calendar hierarchy (monthly → older daily)
+      expect(collectionOptions.map(opt => opt.value)).toEqual([
+        'fav-custom',     // Favorited custom
+        'tomorrow',       // Auto-favorited (Tomorrow)
+        'today',          // Auto-favorited (Today)
+        // 'yesterday' is filtered out (current collection)
+        'other-custom',   // Other custom
+        'monthly',        // Monthly log (February 2026)
+        'older',          // Older daily (not auto-favorited)
+      ]);
+    });
+
+    it('should NOT show Today/Tomorrow/Yesterday at top when autoFavoriteRecentDailyLogs is disabled (DEFAULT)', () => {
+      const mockTask: Entry = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy milk',
+        createdAt: '2026-02-07T10:00:00.000Z', // Yesterday
+        status: 'open',
+        collections: ['yesterday'],
+      };
+
+      const now = new Date('2026-02-09T12:00:00.000Z');
+      const todayStr = '2026-02-09';
+      const tomorrowStr = '2026-02-10';
+      const yesterdayStr = '2026-02-08';
+      const olderStr = '2026-02-04';
+
+      const collectionsWithDailies: Collection[] = [
+        // Favorited custom
+        { id: 'fav-custom', name: 'Favorite Custom', type: 'custom', order: 'a0', isFavorite: true, createdAt: '2026-02-01T00:00:00.000Z' },
+        
+        // Dailies (NOT auto-favorited)
+        { id: 'tomorrow', name: 'Tomorrow', type: 'daily', date: tomorrowStr, createdAt: tomorrowStr + 'T00:00:00.000Z' },
+        { id: 'today', name: 'Today', type: 'daily', date: todayStr, createdAt: todayStr + 'T00:00:00.000Z' },
+        { id: 'yesterday', name: 'Yesterday', type: 'daily', date: yesterdayStr, createdAt: yesterdayStr + 'T00:00:00.000Z' },
+        { id: 'older', name: 'Older Daily', type: 'daily', date: olderStr, createdAt: olderStr + 'T00:00:00.000Z' },
+        
+        // Monthly log
+        { id: 'monthly', name: 'February 2026', type: 'monthly', date: '2026-02', createdAt: '2026-02-01T00:00:00.000Z' },
+        
+        // Other custom
+        { id: 'other-custom', name: 'Other Custom', type: 'custom', order: 'b0', isFavorite: false, createdAt: '2026-02-01T00:00:00.000Z' },
+      ];
+
+      const userPreferences = {
+        defaultCompletedTaskBehavior: 'keep-in-place' as const,
+        autoFavoriteRecentDailyLogs: false, // DISABLED (default)
+      };
+
+      render(
+        <MigrateEntryDialog
+          isOpen={true}
+          onClose={mockOnClose}
+          entry={mockTask}
+          currentCollectionId="yesterday"
+          collections={collectionsWithDailies}
+          onMigrate={mockOnMigrate}
+          userPreferences={userPreferences}
+        />
+      );
+
+      const select = screen.getByRole('combobox', { name: /Collection/i });
+      const options = Array.from(select.querySelectorAll('option')).map(opt => ({
+        value: opt.value,
+        text: opt.textContent,
+      }));
+
+      const collectionOptions = options.filter(opt => opt.value !== '');
+
+      // Expected order (WITHOUT auto-favoriting):
+      // 1. Favorited customs (fav-custom)
+      // 2. Other customs (other-custom)
+      // 3. Calendar hierarchy (monthly → tomorrow → today → older, yesterday filtered)
+      expect(collectionOptions.map(opt => opt.value)).toEqual([
+        'fav-custom',     // Favorited custom
+        'other-custom',   // Other custom
+        'monthly',        // Monthly log (February 2026)
+        'tomorrow',       // Daily (newest, in calendar hierarchy)
+        'today',          // Daily (in calendar hierarchy)
+        // 'yesterday' is filtered out (current collection)
+        'older',          // Older daily
+      ]);
     });
   });
 });

@@ -358,6 +358,7 @@ export function CollectionDetailView() {
           getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
           getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
           getParentTask={(task) => entryProjection.getParentTask(task)}
+          userPreferences={userPreferences}
         />
 
         {/* Completed tasks section - Mode 2: Move to bottom */}
@@ -389,6 +390,7 @@ export function CollectionDetailView() {
               getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
               getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
               getParentTask={(task) => entryProjection.getParentTask(task)}
+              userPreferences={userPreferences}
             />
           </div>
         )}
@@ -446,6 +448,7 @@ export function CollectionDetailView() {
                 getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
                 getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
                 getParentTask={(task) => entryProjection.getParentTask(task)}
+                userPreferences={userPreferences}
               />
               </div>
             )}

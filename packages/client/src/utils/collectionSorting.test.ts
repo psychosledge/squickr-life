@@ -32,15 +32,15 @@ describe('sortCollectionsHierarchically', () => {
 
     const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
 
-    // Expected order: fav1, fav2, daily2, daily1, daily3, custom1, custom2
+    // Expected order (NEW): fav customs → unfav customs → dailies
     expect(sorted.map(c => c.id)).toEqual([
       'fav1',    // Favorited custom (order: a0)
       'fav2',    // Favorited custom (order: a1)
+      'custom1', // Other custom (order: b0)
+      'custom2', // Other custom (order: b1)
       'daily2',  // Daily log (2026-02-02, newest)
       'daily1',  // Daily log (2026-02-01)
       'daily3',  // Daily log (2026-01-31, oldest)
-      'custom1', // Other custom (order: b0)
-      'custom2', // Other custom (order: b1)
     ]);
   });
 
@@ -158,34 +158,40 @@ describe('sortCollectionsHierarchically', () => {
     expect(collections).toEqual(original);
   });
 
-  // Bug #1: Monthly logs navigation tests
-  it('should include monthly logs between favorited customs and daily logs', () => {
+  // Bug #1: Monthly logs navigation tests - interwoven by year/month
+  it('should interweave monthly logs BEFORE their respective month\'s daily logs', () => {
     const collections: Collection[] = [
       // Favorited customs (should appear first)
       { id: 'fav1', name: 'Favorite 1', type: 'custom', order: 'a0', isFavorite: true, createdAt: '2024-01-01T00:00:00Z' },
       
-      // Monthly logs (should appear between favorited customs and daily logs)
+      // Monthly logs
       { id: 'monthly1', name: 'February 2026', type: 'monthly', date: '2026-02', createdAt: '2024-01-02T00:00:00Z' },
       { id: 'monthly2', name: 'January 2026', type: 'monthly', date: '2026-01', createdAt: '2024-01-03T00:00:00Z' },
       
-      // Daily logs (should appear after monthly logs)
+      // Daily logs
       { id: 'daily1', name: 'Feb 2', type: 'daily', date: '2026-02-02', createdAt: '2024-01-04T00:00:00Z' },
       { id: 'daily2', name: 'Feb 1', type: 'daily', date: '2026-02-01', createdAt: '2024-01-05T00:00:00Z' },
+      { id: 'daily3', name: 'Jan 31', type: 'daily', date: '2026-01-31', createdAt: '2024-01-06T00:00:00Z' },
+      { id: 'daily4', name: 'Jan 30', type: 'daily', date: '2026-01-30', createdAt: '2024-01-07T00:00:00Z' },
       
-      // Other customs (should appear last)
-      { id: 'custom1', name: 'Custom 1', type: 'custom', order: 'b0', isFavorite: false, createdAt: '2024-01-06T00:00:00Z' },
+      // Other customs (should appear after favorited)
+      { id: 'custom1', name: 'Custom 1', type: 'custom', order: 'b0', isFavorite: false, createdAt: '2024-01-08T00:00:00Z' },
     ];
 
     const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
 
-    // Expected order: fav1, monthly1, monthly2, daily1, daily2, custom1
+    // Expected order: fav customs → unfav customs → calendar hierarchy (interwoven)
     expect(sorted.map(c => c.id)).toEqual([
       'fav1',     // Favorited custom
-      'monthly1', // Monthly log (Feb 2026, newest)
-      'monthly2', // Monthly log (Jan 2026)
-      'daily1',   // Daily log (Feb 2, newest)
-      'daily2',   // Daily log (Feb 1)
       'custom1',  // Other custom
+      // February 2026 (newest month)
+      'monthly1', // February 2026 monthly log
+      'daily1',   // Feb 2, 2026
+      'daily2',   // Feb 1, 2026
+      // January 2026
+      'monthly2', // January 2026 monthly log
+      'daily3',   // Jan 31, 2026
+      'daily4',   // Jan 30, 2026
     ]);
   });
 
@@ -211,7 +217,7 @@ describe('sortCollectionsHierarchically', () => {
     expect(sorted.map(c => c.id)).toEqual(['monthly1', 'monthly2']);
   });
 
-  it('should handle mix of all collection types including monthly', () => {
+  it('should handle mix of all collection types with interwoven calendar hierarchy', () => {
     const collections: Collection[] = [
       { id: 'custom2', name: 'Custom 2', type: 'custom', order: 'b1', isFavorite: false, createdAt: '2024-01-08T00:00:00Z' },
       { id: 'monthly1', name: 'March 2026', type: 'monthly', date: '2026-03', createdAt: '2024-01-03T00:00:00Z' },
@@ -225,16 +231,18 @@ describe('sortCollectionsHierarchically', () => {
 
     const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
 
-    // Expected order: fav1, fav2, monthly1, monthly2, daily1, daily2, custom1, custom2
+    // Expected order: fav customs → unfav customs → calendar hierarchy (interwoven by month)
     expect(sorted.map(c => c.id)).toEqual([
       'fav1',     // Favorited customs (by order)
       'fav2',
-      'monthly1', // Monthly logs (by date, newest first)
-      'monthly2',
-      'daily1',   // Daily logs (by date, newest first)
-      'daily2',
       'custom1',  // Other customs (by order)
       'custom2',
+      // March 2026 (newest month, monthly only, no dailies)
+      'monthly1', // March 2026 monthly log
+      // February 2026 (monthly + dailies)
+      'monthly2', // February 2026 monthly log
+      'daily1',   // Feb 5, 2026
+      'daily2',   // Feb 4, 2026
     ]);
   });
 
@@ -248,5 +256,97 @@ describe('sortCollectionsHierarchically', () => {
     
     // Monthly without date should sort before those with dates (empty string < '2026-02')
     expect(sorted.map(c => c.id)).toEqual(['monthly1', 'monthly2']);
+  });
+
+  // Casey's Review: Tomorrow → Today → Yesterday sorting tests with bidirectional comparison
+  describe('Tomorrow → Today → Yesterday sorting (bidirectional comparison)', () => {
+    it('should sort auto-favorited daily logs: Tomorrow → Today → Yesterday → Older', () => {
+      const autoFavoritePreferences: UserPreferences = {
+        ...DEFAULT_USER_PREFERENCES,
+        autoFavoriteRecentDailyLogs: true,
+      };
+
+      // Use actual current time for the test
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0]!;
+      const tomorrowDate = new Date(now.getTime() + 86400000);
+      const tomorrowStr = tomorrowDate.toISOString().split('T')[0]!;
+      const yesterdayDate = new Date(now.getTime() - 86400000);
+      const yesterdayStr = yesterdayDate.toISOString().split('T')[0]!;
+      const olderDate = new Date(now.getTime() - 5 * 86400000);
+      const olderStr = olderDate.toISOString().split('T')[0]!;
+
+      const collections: Collection[] = [
+        { id: 'older', name: 'Older', type: 'daily', date: olderStr, order: 'a', createdAt: olderStr + 'T00:00:00Z' },
+        { id: 'yesterday', name: 'Yesterday', type: 'daily', date: yesterdayStr, order: 'b', createdAt: yesterdayStr + 'T00:00:00Z' },
+        { id: 'tomorrow', name: 'Tomorrow', type: 'daily', date: tomorrowStr, order: 'c', createdAt: tomorrowStr + 'T00:00:00Z' },
+        { id: 'today', name: 'Today', type: 'daily', date: todayStr, order: 'd', createdAt: todayStr + 'T00:00:00Z' },
+      ];
+
+      const sorted = sortCollectionsHierarchically(collections, autoFavoritePreferences, now);
+
+      // All are auto-favorited, should sort: Tomorrow → Today → Yesterday → Older
+      expect(sorted.map(c => c.id)).toEqual(['tomorrow', 'today', 'yesterday', 'older']);
+    });
+
+    it('should use bidirectional comparison (regression test for Casey bug #1)', () => {
+      const autoFavoritePreferences: UserPreferences = {
+        ...DEFAULT_USER_PREFERENCES,
+        autoFavoriteRecentDailyLogs: true,
+      };
+
+      // Use actual current time for the test
+      const now = new Date();
+      const tomorrowDate = new Date(now.getTime() + 86400000);
+      const tomorrowStr = tomorrowDate.toISOString().split('T')[0]!;
+      const yesterdayDate = new Date(now.getTime() - 86400000);
+      const yesterdayStr = yesterdayDate.toISOString().split('T')[0]!;
+
+      const collections: Collection[] = [
+        { id: 'yesterday', name: 'Yesterday', type: 'daily', date: yesterdayStr, order: 'a', createdAt: yesterdayStr + 'T00:00:00Z' },
+        { id: 'tomorrow', name: 'Tomorrow', type: 'daily', date: tomorrowStr, order: 'b', createdAt: tomorrowStr + 'T00:00:00Z' },
+      ];
+
+      // Sort in both directions to verify bidirectional comparison
+      const sorted1 = sortCollectionsHierarchically(collections, autoFavoritePreferences, now);
+      const sorted2 = sortCollectionsHierarchically([...collections].reverse(), autoFavoritePreferences, now);
+
+      // Both should produce same order: Tomorrow → Yesterday
+      expect(sorted1.map(c => c.id)).toEqual(['tomorrow', 'yesterday']);
+      expect(sorted2.map(c => c.id)).toEqual(['tomorrow', 'yesterday']);
+    });
+
+    it('should separate favorited and non-favorited daily logs with proper sorting', () => {
+      const autoFavoritePreferences: UserPreferences = {
+        ...DEFAULT_USER_PREFERENCES,
+        autoFavoriteRecentDailyLogs: true,
+      };
+
+      // Use actual current time for the test
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0]!;
+      const tomorrowDate = new Date(now.getTime() + 86400000);
+      const tomorrowStr = tomorrowDate.toISOString().split('T')[0]!;
+      const yesterdayDate = new Date(now.getTime() - 86400000);
+      const yesterdayStr = yesterdayDate.toISOString().split('T')[0]!;
+      const olderDate = new Date(now.getTime() - 5 * 86400000);
+      const olderStr = olderDate.toISOString().split('T')[0]!;
+
+      const collections: Collection[] = [
+        // Non-favorited older daily (should appear after customs)
+        { id: 'older', name: 'Older', type: 'daily', date: olderStr, order: 'a', createdAt: olderStr + 'T00:00:00Z' },
+        // Auto-favorited (Today, Yesterday, Tomorrow)
+        { id: 'yesterday', name: 'Yesterday', type: 'daily', date: yesterdayStr, order: 'b', createdAt: yesterdayStr + 'T00:00:00Z' },
+        { id: 'tomorrow', name: 'Tomorrow', type: 'daily', date: tomorrowStr, order: 'c', createdAt: tomorrowStr + 'T00:00:00Z' },
+        { id: 'today', name: 'Today', type: 'daily', date: todayStr, order: 'd', createdAt: todayStr + 'T00:00:00Z' },
+        // Custom collection
+        { id: 'custom', name: 'Custom', type: 'custom', order: 'e', createdAt: todayStr + 'T00:00:00Z' },
+      ];
+
+      const sorted = sortCollectionsHierarchically(collections, autoFavoritePreferences, now);
+
+      // Favorites (Tomorrow → Today → Yesterday), then custom, then older daily
+      expect(sorted.map(c => c.id)).toEqual(['tomorrow', 'today', 'yesterday', 'custom', 'older']);
+    });
   });
 });

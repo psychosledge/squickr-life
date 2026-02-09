@@ -14,6 +14,8 @@ interface NoteEntryItemProps {
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
   onCreateCollection?: (name: string) => Promise<string>;
+  // User preferences (for collection sorting in migration dialog)
+  userPreferences?: import('@squickr/domain').UserPreferences;
 }
 
 /**
@@ -32,6 +34,7 @@ export function NoteEntryItem({
   currentCollectionId,
   onNavigateToMigrated,
   onCreateCollection: _onCreateCollection, // Not used in new dialog
+  userPreferences,
 }: NoteEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -185,6 +188,7 @@ export function NoteEntryItem({
           collections={collections}
           onMigrate={onMigrate}
           onCreateCollection={_onCreateCollection}
+          userPreferences={userPreferences}
         />
       )}
     </div>

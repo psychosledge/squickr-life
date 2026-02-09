@@ -133,11 +133,11 @@ describe('CollectionDetailView', () => {
       expect(screen.getByText('Classic dystopian fiction')).toBeInTheDocument();
     });
 
-    expect(mockEntryProjection.getEntriesByCollection).toHaveBeenCalledWith('col-1');
+    expect(mockEntryProjection.getEntriesForCollectionView).toHaveBeenCalledWith('col-1');
   });
 
   it('should show empty state when collection has no entries', async () => {
-    mockEntryProjection.getEntriesByCollection.mockResolvedValue([]);
+    mockEntryProjection.getEntriesForCollectionView.mockResolvedValue([]);
     renderView();
     
     await waitFor(() => {
@@ -261,9 +261,7 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
         }
         return Promise.resolve([]);
       }),
-      getEntriesForCollectionView: vi.fn((collectionId: string) => {
-        return Promise.resolve([]);
-      }),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue(mockOrphanedEntries),
       subscribe: vi.fn().mockReturnValue(() => {}),
       getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
       getSubTasks: vi.fn().mockResolvedValue([]),
@@ -455,7 +453,13 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
 
     mockEntryProjection = {
       getEntriesByCollection: vi.fn().mockResolvedValue(mockMixedEntries),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue(mockMixedEntries),
       subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue([]),
+      getParentTask: vi.fn().mockResolvedValue(null),
+      isParentTask: vi.fn().mockResolvedValue(false),
     };
 
     mockEventStore = {
@@ -624,7 +628,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       },
     ];
 
-    mockEntryProjection.getEntriesByCollection.mockResolvedValue(singleCompletedTaskEntries);
+    mockEntryProjection.getEntriesForCollectionView.mockResolvedValue(singleCompletedTaskEntries);
     renderViewWithSettings();
 
     await waitFor(() => {
@@ -647,7 +651,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       },
     ];
 
-    mockEntryProjection.getEntriesByCollection.mockResolvedValue(noCompletedEntries);
+    mockEntryProjection.getEntriesForCollectionView.mockResolvedValue(noCompletedEntries);
     renderViewWithSettings();
 
     await waitFor(() => {

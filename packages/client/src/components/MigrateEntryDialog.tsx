@@ -15,8 +15,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { Entry, Collection, CollectionType, UserPreferences } from '@squickr/domain';
+import { DEFAULT_USER_PREFERENCES } from '@squickr/domain';
 import { getCollectionDisplayName } from '../utils/formatters';
-import { isEffectivelyFavorited } from '../utils/collectionUtils';
+import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 import { CreateCollectionModal } from './CreateCollectionModal';
 
 interface MigrateEntryDialogProps {
@@ -49,88 +50,6 @@ function isSubTask(entry: Entry): boolean {
 function getDefaultMode(entry: Entry | undefined | null): 'move' | 'add' {
   if (!entry) return 'move';
   return isSubTask(entry) ? 'add' : 'move';
-}
-
-/**
- * Sort collections in hierarchical order for migration dialog:
- * 1. Favorites (both custom and daily/monthly logs)
- * 2. Recent daily logs (Today, Tomorrow, Yesterday)
- * 3. Recent monthly logs (Current Month)
- * 4. Other custom collections (by order field)
- * 5. Older daily/monthly logs (by date descending)
- */
-function getSortedCollections(
-  collections: Collection[], 
-  userPreferences?: UserPreferences
-): Collection[] {
-  const now = new Date();
-  const today = now.toISOString().split('T')[0]!;
-  const tomorrow = new Date(now.getTime() + 86400000).toISOString().split('T')[0]!;
-  const yesterday = new Date(now.getTime() - 86400000).toISOString().split('T')[0]!;
-  const currentMonth = today.substring(0, 7); // YYYY-MM
-  
-  const favorites: Collection[] = [];
-  const recentDailies: Collection[] = [];
-  const recentMonthlies: Collection[] = [];
-  const otherCustoms: Collection[] = [];
-  const olderDailies: Collection[] = [];
-  const olderMonthlies: Collection[] = [];
-  
-  for (const c of collections) {
-    // Check if favorited
-    const isFav = userPreferences ? isEffectivelyFavorited(c, userPreferences) : c.isFavorite;
-    
-    if (isFav) {
-      favorites.push(c);
-    } else if (c.type === 'daily') {
-      // Split dailies into recent (today/tomorrow/yesterday) vs older
-      if (c.date === today || c.date === tomorrow || c.date === yesterday) {
-        recentDailies.push(c);
-      } else {
-        olderDailies.push(c);
-      }
-    } else if (c.type === 'monthly') {
-      // Split monthlies into current month vs older
-      if (c.date === currentMonth) {
-        recentMonthlies.push(c);
-      } else {
-        olderMonthlies.push(c);
-      }
-    } else {
-      // Custom collections
-      otherCustoms.push(c);
-    }
-  }
-  
-  // Sort each group
-  favorites.sort((a, b) => a.order < b.order ? -1 : a.order > b.order ? 1 : 0);
-  
-  // Recent dailies: Today, Tomorrow, Yesterday order
-  recentDailies.sort((a, b) => {
-    const aDate = a.date || '';
-    const bDate = b.date || '';
-    if (aDate === today) return -1;
-    if (bDate === today) return 1;
-    if (aDate === tomorrow) return -1;
-    if (bDate === tomorrow) return 1;
-    return 0; // both yesterday
-  });
-  
-  otherCustoms.sort((a, b) => a.order < b.order ? -1 : a.order > b.order ? 1 : 0);
-  
-  // Older logs by date descending (most recent first)
-  olderDailies.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  olderMonthlies.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  
-  // Combine in order
-  return [
-    ...favorites,
-    ...recentDailies,
-    ...recentMonthlies,
-    ...otherCustoms,
-    ...olderDailies,
-    ...olderMonthlies,
-  ];
 }
 
 /**
@@ -182,10 +101,10 @@ export function MigrateEntryDialog({
   const singleEntry = isBulkMode ? entries[0] : entry;
   const entryCount = isBulkMode ? entries.length : 1;
 
-  // Filter out current collection and sort hierarchically
-  const availableCollections = getSortedCollections(
-    collections.filter(c => c.id !== currentCollectionId),
-    userPreferences
+  // Filter out current collection and sort hierarchically (DRY - Casey's review #2)
+  const availableCollections = sortCollectionsHierarchically(
+    collections.filter((c: Collection) => c.id !== currentCollectionId),
+    userPreferences || DEFAULT_USER_PREFERENCES
   );
 
   // Get collection name for display in helper text

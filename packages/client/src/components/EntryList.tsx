@@ -49,6 +49,8 @@ interface EntryListProps {
   getSubTasksForMultipleParents?: (parentIds: string[]) => Promise<Map<string, Task[]>>;
   // Phase 2: Optional parent task fetcher (for "Go to Parent" navigation)
   getParentTask?: (task: Task) => Promise<Task | undefined>;
+  // User preferences (for collection sorting in migration dialog)
+  userPreferences?: import('@squickr/domain').UserPreferences;
 }
 
 /**
@@ -81,6 +83,7 @@ export function EntryList({
   getSubTasks,
   getSubTasksForMultipleParents,
   getParentTask,
+  userPreferences,
 }: EntryListProps) {
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -385,6 +388,7 @@ export function EntryList({
                     // Phase 4: Pass collapse props
                     isCollapsed={collapsed}
                     onToggleCollapse={() => toggleCollapsed(entry.id)}
+                    userPreferences={userPreferences}
                   />
                   
                   {/* Render sub-tasks indented (non-draggable) - Phase 3 */}
@@ -437,6 +441,7 @@ export function EntryList({
                                   onNavigateToMigrated(subTaskCollectionId || null);
                                 }
                               } : undefined}
+                              userPreferences={userPreferences}
                             />
                             
                             {/* Phase 2: Collection name indicator for migrated sub-tasks */}

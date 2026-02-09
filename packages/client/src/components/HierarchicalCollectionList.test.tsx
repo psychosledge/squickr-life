@@ -222,7 +222,7 @@ describe('HierarchicalCollectionList', () => {
     expect(notSelectedLink?.className).not.toContain('bg-blue');
   });
 
-  it('should sort collections correctly: pinned first, then years, then unpinned', () => {
+  it('should sort collections correctly: pinned first, then unpinned, then years', () => {
     const collections: Collection[] = [
       {
         id: 'unpinned',
@@ -267,9 +267,9 @@ describe('HierarchicalCollectionList', () => {
     const yearIndex = texts.findIndex(t => t?.includes('2026 Logs'));
     const unpinnedIndex = texts.findIndex(t => t?.includes('Unpinned Custom'));
 
-    // Verify order: pinned < year < unpinned
-    expect(pinnedIndex).toBeLessThan(yearIndex);
-    expect(yearIndex).toBeLessThan(unpinnedIndex);
+    // Verify order: pinned < unpinned < year
+    expect(pinnedIndex).toBeLessThan(unpinnedIndex);
+    expect(unpinnedIndex).toBeLessThan(yearIndex);
   });
 
   it('should show auto-favorited daily logs in favorites section even when year/month are collapsed', async () => {
@@ -327,5 +327,286 @@ describe('HierarchicalCollectionList', () => {
     // Today should still appear in favorites section AND in the hierarchy
     const todayLinksAfterExpand = screen.getAllByText(/Today/);
     expect(todayLinksAfterExpand.length).toBeGreaterThanOrEqual(1);
+  });
+
+  describe('Visual Dividers', () => {
+    it('should render divider between favorites and other custom collections', () => {
+      const collections: Collection[] = [
+        {
+          id: 'fav-1',
+          name: 'Favorite Collection',
+          type: 'custom',
+          isFavorite: true,
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'custom-1',
+          name: 'Regular Collection',
+          type: 'custom',
+          order: 'b',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          userPreferences={mockUserPreferences}
+        />
+      );
+
+      // Find dividers (horizontal separators)
+      const dividers = container.querySelectorAll('.border-t');
+      
+      // Should have exactly 1 divider (between favorites and other customs)
+      expect(dividers.length).toBe(1);
+      
+      // Divider should have proper ARIA role
+      const separator = container.querySelector('[role="separator"]');
+      expect(separator).toBeInTheDocument();
+      expect(separator).toHaveAttribute('aria-orientation', 'horizontal');
+    });
+
+    it('should render divider between other custom collections and date hierarchy', () => {
+      const collections: Collection[] = [
+        {
+          id: 'custom-1',
+          name: 'Regular Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          userPreferences={mockUserPreferences}
+        />
+      );
+
+      // Find dividers
+      const dividers = container.querySelectorAll('.border-t');
+      
+      // Should have exactly 1 divider (between customs and date hierarchy)
+      expect(dividers.length).toBe(1);
+    });
+
+    it('should render divider between favorites and date hierarchy when no other customs exist', () => {
+      const collections: Collection[] = [
+        {
+          id: 'fav-1',
+          name: 'Favorite Collection',
+          type: 'custom',
+          isFavorite: true,
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          userPreferences={mockUserPreferences}
+        />
+      );
+
+      // Find dividers
+      const dividers = container.querySelectorAll('.border-t');
+      
+      // Should have exactly 1 divider (between favorites and date hierarchy, skipping other customs)
+      expect(dividers.length).toBe(1);
+    });
+
+    it('should render two dividers when all three sections exist', () => {
+      const collections: Collection[] = [
+        {
+          id: 'fav-1',
+          name: 'Favorite Collection',
+          type: 'custom',
+          isFavorite: true,
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'custom-1',
+          name: 'Regular Collection',
+          type: 'custom',
+          order: 'b',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'c',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          userPreferences={mockUserPreferences}
+        />
+      );
+
+      // Find dividers
+      const dividers = container.querySelectorAll('.border-t');
+      
+      // Should have exactly 2 dividers (favorites -> other customs -> date hierarchy)
+      expect(dividers.length).toBe(2);
+    });
+
+    it('should not render any dividers when only one section exists', () => {
+      const collections: Collection[] = [
+        {
+          id: 'custom-1',
+          name: 'Only Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          userPreferences={mockUserPreferences}
+        />
+      );
+
+      // Find dividers
+      const dividers = container.querySelectorAll('.border-t');
+      
+      // Should have no dividers when only one section exists
+      expect(dividers.length).toBe(0);
+    });
+  });
+
+  describe('ARIA Accessibility', () => {
+    it('should render ARIA live region for screen reader announcements', () => {
+      const collections: Collection[] = [
+        {
+          id: 'custom-1',
+          name: 'Test Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          userPreferences={mockUserPreferences}
+        />
+      );
+
+      // Check for ARIA live region
+      const liveRegion = screen.getByRole('status');
+      expect(liveRegion).toBeInTheDocument();
+      expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+    });
+
+    it('should have screen-reader-only class on ARIA live region', () => {
+      const collections: Collection[] = [
+        {
+          id: 'custom-1',
+          name: 'Test Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          userPreferences={mockUserPreferences}
+        />
+      );
+
+      // Check for sr-only class (screen reader only)
+      const liveRegion = screen.getByRole('status');
+      expect(liveRegion.className).toContain('sr-only');
+    });
+
+    it('should announce divider state to screen readers', () => {
+      const collections: Collection[] = [
+        {
+          id: 'custom-1',
+          name: 'Test Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          userPreferences={mockUserPreferences}
+        />
+      );
+
+      // Check the announcement text
+      const liveRegion = screen.getByRole('status');
+      expect(liveRegion.textContent).toBe('Dividers shown between groups');
+    });
+
+    it('should render dividers with proper ARIA separator role', () => {
+      const collections: Collection[] = [
+        {
+          id: 'fav-1',
+          name: 'Favorite Collection',
+          type: 'custom',
+          isFavorite: true,
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'custom-1',
+          name: 'Regular Collection',
+          type: 'custom',
+          order: 'b',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          userPreferences={mockUserPreferences}
+        />
+      );
+
+      // Check for ARIA separator role
+      const separators = container.querySelectorAll('[role="separator"]');
+      expect(separators.length).toBeGreaterThan(0);
+      
+      // All separators should have horizontal orientation
+      separators.forEach(separator => {
+        expect(separator).toHaveAttribute('aria-orientation', 'horizontal');
+      });
+    });
   });
 });

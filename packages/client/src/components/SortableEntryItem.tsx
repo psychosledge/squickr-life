@@ -43,6 +43,8 @@ interface SortableEntryItemProps {
   // Phase 4: Expand/collapse control for sub-tasks
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  // User preferences (for collection sorting in migration dialog)
+  userPreferences?: import('@squickr/domain').UserPreferences;
 }
 
 /**
@@ -74,6 +76,7 @@ export function SortableEntryItem({
   onNavigateToParent,
   isCollapsed,
   onToggleCollapse,
+  userPreferences,
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -150,6 +153,7 @@ export function SortableEntryItem({
           onNavigateToParent={onNavigateToParent}
           isCollapsed={isCollapsed}
           onToggleCollapse={onToggleCollapse}
+          userPreferences={userPreferences}
         />
       </SelectableEntryItem>
     </div>
