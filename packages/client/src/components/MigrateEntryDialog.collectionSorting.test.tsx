@@ -97,19 +97,19 @@ describe('MigrateEntryDialog - Collection Sorting', () => {
       // Filter out the "Select a collection..." placeholder
       const collectionOptions = options.filter(opt => opt.value !== '');
 
-      // Expected order:
+      // Expected order (oldest-first):
       // 1. Favorited customs (fav-custom)
-      // 2. Auto-favorited dailies (Tomorrow → Today, Yesterday is filtered out as current)
-      // 3. Other customs (other-custom)
-      // 4. Calendar hierarchy (monthly → older daily)
+      // 2. Other customs (other-custom)
+      // 3. Older calendar (monthly → older daily from Feb, before today)
+      // 4. Auto-favorited recent dailies (Today → Tomorrow, Yesterday filtered out as current)
       expect(collectionOptions.map(opt => opt.value)).toEqual([
         'fav-custom',     // Favorited custom
-        'tomorrow',       // Auto-favorited (Tomorrow)
-        'today',          // Auto-favorited (Today)
-        // 'yesterday' is filtered out (current collection)
         'other-custom',   // Other custom
-        'monthly',        // Monthly log (February 2026)
-        'older',          // Older daily (not auto-favorited)
+        'monthly',        // Monthly log (February 2026, in older section)
+        'older',          // Older daily (not auto-favorited, before today)
+        // 'yesterday' is filtered out (current collection)
+        'today',          // Auto-favorited (Today)
+        'tomorrow',       // Auto-favorited (Tomorrow)
       ]);
     });
 
@@ -171,18 +171,19 @@ describe('MigrateEntryDialog - Collection Sorting', () => {
 
       const collectionOptions = options.filter(opt => opt.value !== '');
 
-      // Expected order (WITHOUT auto-favoriting):
+      // Expected order (WITHOUT auto-favoriting, oldest-first):
       // 1. Favorited customs (fav-custom)
       // 2. Other customs (other-custom)
-      // 3. Calendar hierarchy (monthly → tomorrow → today → older, yesterday filtered)
+      // 3. Older calendar (monthly → older daily from Feb, before yesterday)
+      // 4. Future calendar (today → tomorrow, after yesterday)
       expect(collectionOptions.map(opt => opt.value)).toEqual([
         'fav-custom',     // Favorited custom
         'other-custom',   // Other custom
-        'monthly',        // Monthly log (February 2026)
-        'tomorrow',       // Daily (newest, in calendar hierarchy)
-        'today',          // Daily (in calendar hierarchy)
+        'monthly',        // Monthly log (February 2026, in older section)
+        'older',          // Older daily (before yesterday)
         // 'yesterday' is filtered out (current collection)
-        'older',          // Older daily
+        'today',          // Daily (in future calendar, oldest first)
+        'tomorrow',       // Daily (in future calendar)
       ]);
     });
   });

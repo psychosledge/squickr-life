@@ -152,8 +152,8 @@ function buildHierarchy(
     ...Array.from(monthlyLogsByYear.keys())
   ]);
   
-  // Build year nodes (sorted newest first)
-  const years = Array.from(allYears).sort((a, b) => b.localeCompare(a));
+  // Build year nodes (sorted oldest first)
+  const years = Array.from(allYears).sort((a, b) => a.localeCompare(b));
   
   years.forEach(year => {
     const monthMap = yearMap.get(year);
@@ -177,9 +177,9 @@ function buildHierarchy(
     };
     
     if (isYearExpanded) {
-      // Add monthly logs FIRST (sorted newest first by date)
+      // Add monthly logs FIRST (sorted oldest first by date)
       const sortedMonthlyLogs = [...monthlyLogsForYear].sort((a, b) => 
-        (b.date || '').localeCompare(a.date || '')
+        (a.date || '').localeCompare(b.date || '')
       );
       
       sortedMonthlyLogs.forEach(log => {
@@ -194,9 +194,9 @@ function buildHierarchy(
         });
       });
       
-      // Then build month nodes for daily logs (sorted newest first)
+      // Then build month nodes for daily logs (sorted oldest first)
       if (monthMap) {
-        const yearMonths = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
+        const yearMonths = Array.from(monthMap.keys()).sort((a, b) => a.localeCompare(b));
         
         yearMonths.forEach(yearMonth => {
           const logs = monthMap.get(yearMonth)!;
@@ -214,9 +214,9 @@ function buildHierarchy(
           };
           
           if (isMonthExpanded) {
-            // Add day nodes (sorted newest first)
+            // Add day nodes (sorted oldest first)
             const sortedLogs = [...logs].sort((a, b) => 
-              (b.date || '').localeCompare(a.date || '')
+              (a.date || '').localeCompare(b.date || '')
             );
             
             sortedLogs.forEach(log => {

@@ -140,17 +140,17 @@ describe('useCollectionHierarchy', () => {
       const yearNodes = result.current.nodes.filter(n => n.type === 'year');
       expect(yearNodes).toHaveLength(2);
 
-      // 2026 should come first (newest)
-      expect(yearNodes[0]?.id).toBe('year-2026');
-      expect(yearNodes[1]?.id).toBe('year-2025');
+      // 2025 should come first (oldest)
+      expect(yearNodes[0]?.id).toBe('year-2025');
+      expect(yearNodes[1]?.id).toBe('year-2026');
 
-      // 2026 should have 2 month nodes
-      const year2026 = yearNodes[0];
+      // 2026 should have 2 month nodes (now at index 1 since 2025 comes first)
+      const year2026 = yearNodes[1];
       expect(year2026?.children).toHaveLength(2);
 
-      // February should come first (newest)
-      expect(year2026?.children[0]?.id).toBe('month-2026-02');
-      expect(year2026?.children[1]?.id).toBe('month-2026-01');
+      // January should come first (oldest)
+      expect(year2026?.children[0]?.id).toBe('month-2026-01');
+      expect(year2026?.children[1]?.id).toBe('month-2026-02');
     });
 
     it('should place custom collections at root level', () => {
@@ -437,10 +437,10 @@ describe('useCollectionHierarchy', () => {
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       expect(yearNode?.children).toHaveLength(3);
 
-      // Should be sorted newest first: March, February, January
-      expect(yearNode?.children[0]?.date).toBe('2026-03');
+      // Should be sorted oldest first: January, February, March
+      expect(yearNode?.children[0]?.date).toBe('2026-01');
       expect(yearNode?.children[1]?.date).toBe('2026-02');
-      expect(yearNode?.children[2]?.date).toBe('2026-01');
+      expect(yearNode?.children[2]?.date).toBe('2026-03');
     });
 
     it('should handle multiple monthly logs in same year', () => {
@@ -535,11 +535,11 @@ describe('useCollectionHierarchy', () => {
       // Should have 2 monthly logs + 2 month groups = 4 children
       expect(yearNode?.children).toHaveLength(4);
       
-      // First 2 should be monthly logs (newest first)
+      // First 2 should be monthly logs (oldest first)
       expect(yearNode?.children[0]?.type).toBe('monthly');
-      expect(yearNode?.children[0]?.date).toBe('2026-02');
+      expect(yearNode?.children[0]?.date).toBe('2026-01');
       expect(yearNode?.children[1]?.type).toBe('monthly');
-      expect(yearNode?.children[1]?.date).toBe('2026-01');
+      expect(yearNode?.children[1]?.date).toBe('2026-02');
       
       // Next 2 should be month groups
       expect(yearNode?.children[2]?.type).toBe('month');
@@ -577,9 +577,9 @@ describe('useCollectionHierarchy', () => {
       expect(yearNode?.children).toHaveLength(2);
       expect(yearNode?.children.every(n => n.type === 'monthly')).toBe(true);
       
-      // Sorted newest first
-      expect(yearNode?.children[0]?.date).toBe('2025-12');
-      expect(yearNode?.children[1]?.date).toBe('2025-01');
+      // Sorted oldest first
+      expect(yearNode?.children[0]?.date).toBe('2025-01');
+      expect(yearNode?.children[1]?.date).toBe('2025-12');
     });
 
     it('should include monthly logs in year count when collapsed', () => {
@@ -693,15 +693,15 @@ describe('useCollectionHierarchy', () => {
       // Should have 3 year nodes
       expect(yearNodes).toHaveLength(3);
       
-      // Each year should have 1 monthly log child
-      expect(yearNodes[0]?.children).toHaveLength(1); // 2026
+      // Each year should have 1 monthly log child (oldest year first)
+      expect(yearNodes[0]?.children).toHaveLength(1); // 2024
       expect(yearNodes[1]?.children).toHaveLength(1); // 2025
-      expect(yearNodes[2]?.children).toHaveLength(1); // 2024
+      expect(yearNodes[2]?.children).toHaveLength(1); // 2026
       
-      // Verify correct monthly log in each year
-      expect(yearNodes[0]?.children[0]?.date).toBe('2026-03');
+      // Verify correct monthly log in each year (oldest year first)
+      expect(yearNodes[0]?.children[0]?.date).toBe('2024-01');
       expect(yearNodes[1]?.children[0]?.date).toBe('2025-12');
-      expect(yearNodes[2]?.children[0]?.date).toBe('2024-01');
+      expect(yearNodes[2]?.children[0]?.date).toBe('2026-03');
     });
   });
 });

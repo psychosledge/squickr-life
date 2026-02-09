@@ -285,34 +285,34 @@ describe('useCollectionNavigation', () => {
 
     await waitFor(() => {
       expect(result4.current.previousCollection?.id).toBe('custom1'); // Previous is custom1
-      expect(result4.current.nextCollection?.id).toBe('daily2'); // Next is daily2 (newest daily log)
+      expect(result4.current.nextCollection?.id).toBe('daily3'); // Next is daily3 (oldest daily log)
     });
 
-    // Test navigation from daily2 (newest daily log)
+    // Test navigation from daily3 (oldest daily log)
     const { result: result5 } = renderHook(
-      () => useCollectionNavigation('daily2'),
+      () => useCollectionNavigation('daily3'),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
       expect(result5.current.previousCollection?.id).toBe('custom2'); // Previous is custom2
-      expect(result5.current.nextCollection?.id).toBe('daily1'); // Next is daily1 (second newest)
+      expect(result5.current.nextCollection?.id).toBe('daily1'); // Next is daily1 (second oldest)
     });
 
-    // Test navigation from daily1 (second newest daily log)
+    // Test navigation from daily1 (second oldest daily log)
     const { result: result6 } = renderHook(
       () => useCollectionNavigation('daily1'),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
-      expect(result6.current.previousCollection?.id).toBe('daily2'); // Previous is daily2
-      expect(result6.current.nextCollection?.id).toBe('daily3'); // Next is daily3 (third newest)
+      expect(result6.current.previousCollection?.id).toBe('daily3'); // Previous is daily3
+      expect(result6.current.nextCollection?.id).toBe('daily2'); // Next is daily2 (newest/last)
     });
 
-    // Test navigation from daily3 (last collection)
+    // Test navigation from daily2 (last collection)
     const { result: result7 } = renderHook(
-      () => useCollectionNavigation('daily3'),
+      () => useCollectionNavigation('daily2'),
       { wrapper: createWrapper() }
     );
 
