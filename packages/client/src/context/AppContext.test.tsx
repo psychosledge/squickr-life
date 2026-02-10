@@ -7,7 +7,7 @@ import type {
   TaskListProjection,
   CollectionListProjection,
   CreateCollectionHandler,
-} from '@squickr/shared';
+} from '@squickr/domain';
 
 describe('AppContext', () => {
   const createMockContext = () => ({

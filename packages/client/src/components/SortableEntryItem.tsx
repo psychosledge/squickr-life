@@ -1,4 +1,4 @@
-import type { Entry, Collection } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/domain';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { EntryItem } from './EntryItem';
@@ -18,7 +18,7 @@ interface SortableEntryItemProps {
   // Common handlers
   onDelete: (entryId: string) => void;
   // Migration handlers
-  onMigrate?: (entryId: string, targetCollectionId: string | null) => Promise<void>;
+  onMigrate?: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
   // Navigation handler for migrated entries
@@ -29,6 +29,20 @@ interface SortableEntryItemProps {
   isSelectionMode?: boolean;
   isSelected?: boolean;
   onToggleSelection?: (entryId: string) => void;
+  // Sub-task handler
+  onAddSubTask?: (entry: Entry) => void;
+  // Phase 2: Completion status for parent tasks
+  completionStatus?: {
+    total: number;
+    completed: number;
+    allComplete: boolean;
+  };
+  // Phase 2: Sub-task migration indicators and navigation
+  isSubTaskMigrated?: boolean;
+  onNavigateToParent?: () => void;
+  // Phase 4: Expand/collapse control for sub-tasks
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 /**
@@ -54,6 +68,12 @@ export function SortableEntryItem({
   isSelectionMode = false,
   isSelected = false,
   onToggleSelection,
+  onAddSubTask,
+  completionStatus,
+  isSubTaskMigrated,
+  onNavigateToParent,
+  isCollapsed,
+  onToggleCollapse,
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -124,6 +144,12 @@ export function SortableEntryItem({
           currentCollectionId={currentCollectionId}
           onNavigateToMigrated={onNavigateToMigrated}
           onCreateCollection={onCreateCollection}
+          onAddSubTask={onAddSubTask}
+          completionStatus={completionStatus}
+          isSubTaskMigrated={isSubTaskMigrated}
+          onNavigateToParent={onNavigateToParent}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={onToggleCollapse}
         />
       </SelectableEntryItem>
     </div>

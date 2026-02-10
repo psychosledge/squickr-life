@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BulletIcon } from './BulletIcon';
-import type { Entry } from '@squickr/shared';
+import type { Entry } from '@squickr/domain';
 
 describe('BulletIcon', () => {
   describe('Task Bullets', () => {
@@ -37,7 +37,7 @@ describe('BulletIcon', () => {
       expect(bullet).toHaveTextContent('✓');
     });
 
-    it('should render migrated task with > and no button role', () => {
+    it('should render migrated task with ➜ and no button role', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
@@ -49,7 +49,7 @@ describe('BulletIcon', () => {
       
       render(<BulletIcon entry={entry} />);
       
-      expect(screen.getByText('>')).toBeInTheDocument();
+      expect(screen.getByText('➜')).toBeInTheDocument();
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
       expect(screen.getByLabelText('Migrated task')).toBeInTheDocument();
     });
@@ -68,8 +68,45 @@ describe('BulletIcon', () => {
       render(<BulletIcon entry={entry} />);
       
       // Should show migration icon, not completion
-      expect(screen.getByText('>')).toBeInTheDocument();
+      expect(screen.getByText('➜')).toBeInTheDocument();
       expect(screen.queryByText('✓')).not.toBeInTheDocument();
+    });
+
+    it('should show arrow for ghost completed task (precedence test)', () => {
+      const entry: Entry = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Test',
+        status: 'completed',
+        completedAt: '2026-01-27T10:00:00.000Z',
+        createdAt: '2026-01-27T09:00:00.000Z',
+        collections: []
+      };
+      
+      render(<BulletIcon entry={entry} isGhost={true} />);
+      
+      // Should show arrow, not checkmark
+      expect(screen.getByText('➜')).toBeInTheDocument();
+      expect(screen.queryByText('✓')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Moved to another collection')).toBeInTheDocument();
+    });
+
+    it('should show arrow for ghost migrated sub-task (precedence test)', () => {
+      const entry: Entry = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Test',
+        status: 'open',
+        parentTaskId: 'parent-1',
+        createdAt: '2026-01-27T10:00:00.000Z',
+        collections: []
+      };
+      
+      render(<BulletIcon entry={entry} isGhost={true} isSubTaskMigrated={true} />);
+      
+      // Ghost takes precedence over sub-task migration
+      expect(screen.getByText('➜')).toBeInTheDocument();
+      expect(screen.queryByText('🔗')).not.toBeInTheDocument();
     });
   });
 
@@ -89,7 +126,7 @@ describe('BulletIcon', () => {
       expect(screen.getByLabelText('Note')).toBeInTheDocument();
     });
 
-    it('should render migrated note with >', () => {
+    it('should render migrated note with ➜', () => {
       const entry: Entry = {
         type: 'note',
         id: 'note-1',
@@ -100,7 +137,7 @@ describe('BulletIcon', () => {
       
       render(<BulletIcon entry={entry} />);
       
-      expect(screen.getByText('>')).toBeInTheDocument();
+      expect(screen.getByText('➜')).toBeInTheDocument();
       expect(screen.getByLabelText('Migrated note')).toBeInTheDocument();
     });
   });
@@ -121,7 +158,7 @@ describe('BulletIcon', () => {
       expect(screen.getByLabelText('Event')).toBeInTheDocument();
     });
 
-    it('should render migrated event with >', () => {
+    it('should render migrated event with ➜', () => {
       const entry: Entry = {
         type: 'event',
         id: 'event-1',
@@ -132,7 +169,7 @@ describe('BulletIcon', () => {
       
       render(<BulletIcon entry={entry} />);
       
-      expect(screen.getByText('>')).toBeInTheDocument();
+      expect(screen.getByText('➜')).toBeInTheDocument();
       expect(screen.getByLabelText('Migrated event')).toBeInTheDocument();
     });
   });
@@ -261,7 +298,7 @@ describe('BulletIcon', () => {
       
       render(<BulletIcon entry={entry} onClick={onClick} />);
       
-      const bullet = screen.getByText('>');
+      const bullet = screen.getByText('➜');
       fireEvent.click(bullet);
       
       // Should not call onClick for migrated entries

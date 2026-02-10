@@ -4,8 +4,8 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { isRecentDailyLog, isEffectivelyFavorited, isAutoFavorited } from './collectionUtils';
-import type { Collection, UserPreferences } from '@squickr/shared';
-import { DEFAULT_USER_PREFERENCES } from '@squickr/shared';
+import type { Collection, UserPreferences } from '@squickr/domain';
+import { DEFAULT_USER_PREFERENCES } from '@squickr/domain';
 
 describe('collectionUtils', () => {
   // Save original Date

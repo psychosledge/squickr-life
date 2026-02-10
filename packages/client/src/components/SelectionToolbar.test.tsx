@@ -13,7 +13,7 @@ describe('SelectionToolbar', () => {
   const defaultProps = {
     selectedCount: 0,
     onSelectAll: vi.fn(),
-    onSelectIncomplete: vi.fn(),
+    onSelectActive: vi.fn(),
     onSelectNotes: vi.fn(),
     onClear: vi.fn(),
     onMigrate: vi.fn(),
@@ -36,7 +36,7 @@ describe('SelectionToolbar', () => {
     render(<SelectionToolbar {...defaultProps} />);
     
     expect(screen.getByText('All')).toBeInTheDocument();
-    expect(screen.getByText('Incomplete')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('Notes')).toBeInTheDocument();
     expect(screen.getByText('Clear')).toBeInTheDocument();
   });
@@ -73,15 +73,15 @@ describe('SelectionToolbar', () => {
     expect(onSelectAll).toHaveBeenCalledTimes(1);
   });
 
-  it('should call onSelectIncomplete when Incomplete button is clicked', async () => {
+  it('should call onSelectActive when Active button is clicked', async () => {
     const user = userEvent.setup();
-    const onSelectIncomplete = vi.fn();
+    const onSelectActive = vi.fn();
     
-    render(<SelectionToolbar {...defaultProps} onSelectIncomplete={onSelectIncomplete} />);
+    render(<SelectionToolbar {...defaultProps} onSelectActive={onSelectActive} />);
     
-    await user.click(screen.getByText('Incomplete'));
+    await user.click(screen.getByText('Active'));
     
-    expect(onSelectIncomplete).toHaveBeenCalledTimes(1);
+    expect(onSelectActive).toHaveBeenCalledTimes(1);
   });
 
   it('should call onSelectNotes when Notes button is clicked', async () => {

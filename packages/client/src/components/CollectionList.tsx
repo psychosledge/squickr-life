@@ -1,4 +1,4 @@
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CollectionListItem } from './CollectionListItem';

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 import { buildCollectionPath } from '../routes';
 
 interface CollectionListItemProps {

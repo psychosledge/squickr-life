@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Entry, Collection } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/domain';
 import { formatTimestamp } from '../utils/formatters';
-import { MigrateEntryModal } from './MigrateEntryModal';
+import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 
 interface TaskEntryItemProps {
   entry: Entry & { type: 'task' };
@@ -11,11 +12,25 @@ interface TaskEntryItemProps {
   onReopenTask?: (taskId: string) => void | Promise<void>;
   onUpdateTaskTitle?: (taskId: string, newTitle: string) => void | Promise<void>;
   onDelete: (entryId: string) => void;
-  onMigrate?: (taskId: string, targetCollectionId: string | null) => Promise<void>;
+  onMigrate?: (taskId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
   onCreateCollection?: (name: string) => Promise<string>;
+  onAddSubTask?: (entry: Entry) => void;
+  // Phase 2: Completion status for parent tasks with sub-tasks
+  completionStatus?: {
+    total: number;
+    completed: number;
+    allComplete: boolean;
+  };
+  // Phase 2: Navigation and migration indicators for sub-tasks
+  onNavigateToParent?: () => void; // Navigate to parent's collection
+  onNavigateToSubTaskCollection?: () => void; // Navigate to migrated sub-task's collection
+  isSubTaskMigrated?: boolean; // Whether this sub-task is migrated to different collection
+  // Phase 4: Expand/collapse control for sub-tasks
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 /**
@@ -37,7 +52,14 @@ export function TaskEntryItem({
   collections,
   currentCollectionId,
   onNavigateToMigrated,
-  onCreateCollection
+  onCreateCollection: _onCreateCollection, // Not used in new dialog
+  onAddSubTask,
+  completionStatus,
+  onNavigateToParent,
+  onNavigateToSubTaskCollection,
+  isSubTaskMigrated = false,
+  isCollapsed = false,
+  onToggleCollapse,
 }: TaskEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -119,21 +141,32 @@ export function TaskEntryItem({
     onDelete(entry.id);
   };
 
+  const handleAddSubTask = () => {
+    onAddSubTask?.(entry);
+  };
+
   const isCompleted = entry.status === 'completed';
   const canEdit = !!onUpdateTaskTitle;
+  const isSubTask = !!entry.parentTaskId;
+  const hasSubTasks = completionStatus && completionStatus.total > 0;
+  const isLegacyMigrated = !!entry.migratedTo;
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
-                    rounded-lg p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start gap-3">
-        {/* Bullet Journal Icon - integrates type + state + migration */}
-        <BulletIcon 
-          entry={entry} 
-          onClick={entry.migratedTo ? undefined : handleToggleComplete}
-        />
-        
-        {/* Content Area */}
-        <div className="flex-1 min-w-0">
+    <div className="relative">
+      <div className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                      rounded-lg p-4 hover:shadow-md transition-shadow ${
+                        isLegacyMigrated ? 'opacity-50' : ''
+                      }`}>
+        <div className="flex items-start gap-3">
+          {/* Bullet Journal Icon - integrates type + state + migration */}
+          <BulletIcon 
+            entry={entry} 
+            onClick={entry.migratedTo ? undefined : handleToggleComplete}
+            isSubTaskMigrated={isSubTaskMigrated}
+          />
+          
+          {/* Content Area */}
+          <div className="flex-1 min-w-0">
           {isEditing ? (
             <div className="space-y-2">
               <input
@@ -156,17 +189,54 @@ export function TaskEntryItem({
             </div>
           ) : (
             <>
-              <div 
-                className={`text-lg font-medium cursor-pointer select-none ${
-                  isCompleted 
-                    ? 'text-gray-500 dark:text-gray-400 line-through' 
-                    : 'text-gray-900 dark:text-white'
-                } ${canEdit ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
-                onDoubleClick={handleDoubleClick}
-                title={canEdit ? 'Double-click to edit' : undefined}
-                style={{ whiteSpace: 'pre-wrap' }}
-              >
-                {entry.title}
+              <div className="flex items-center gap-2">
+                {/* Phase 4: Chevron icon for expand/collapse (only if task has sub-tasks) */}
+                {hasSubTasks && onToggleCollapse && (
+                  <button
+                    onClick={onToggleCollapse}
+                    className="flex-shrink-0 text-gray-500 dark:text-gray-400 
+                               hover:text-gray-700 dark:hover:text-gray-200 
+                               focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 
+                               rounded transition-colors"
+                    aria-label={isCollapsed ? 'Expand sub-tasks' : 'Collapse sub-tasks'}
+                    title={isCollapsed ? 'Expand sub-tasks' : 'Collapse sub-tasks'}
+                    type="button"
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </button>
+                )}
+                
+                <div 
+                  className={`text-lg font-medium cursor-pointer select-none ${
+                    isCompleted || isLegacyMigrated
+                      ? 'text-gray-500 dark:text-gray-400 line-through' 
+                      : 'text-gray-900 dark:text-white'
+                  } ${canEdit ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
+                  onDoubleClick={handleDoubleClick}
+                  title={canEdit ? 'Double-click to edit' : undefined}
+                  style={{ whiteSpace: 'pre-wrap' }}
+                >
+                  {entry.title}
+                </div>
+                
+                {/* Phase 2: Completion Badge for parent tasks */}
+                {completionStatus && completionStatus.total > 0 && (
+                  <span 
+                    className={`text-sm px-2 py-0.5 rounded-full ${
+                      completionStatus.allComplete
+                        ? 'text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30'
+                        : 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800'
+                    }`}
+                    data-testid="completion-badge"
+                    title={`${completionStatus.completed} of ${completionStatus.total} sub-tasks complete`}
+                  >
+                    {completionStatus.completed}/{completionStatus.total}
+                  </span>
+                )}
               </div>
               <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {formatTimestamp(entry.createdAt)}
@@ -178,29 +248,37 @@ export function TaskEntryItem({
               </div>
             </>
           )}
+          </div>
         </div>
-        
-        {/* Actions Menu */}
+      </div>
+      
+      {/* Actions Menu - OUTSIDE opacity container to avoid stacking context trap */}
+      <div className="absolute top-4 right-4 z-[100]">
         <EntryActionsMenu
           entry={entry}
           onEdit={handleEdit}
           onMove={handleMove}
           onDelete={handleDelete}
+          onAddSubTask={onAddSubTask ? handleAddSubTask : undefined}
           collections={collections}
           onNavigateToMigrated={onNavigateToMigrated}
+          onNavigateToParent={onNavigateToParent}
+          onNavigateToSubTaskCollection={onNavigateToSubTaskCollection}
+          isSubTask={isSubTask}
+          isSubTaskMigrated={isSubTaskMigrated}
         />
       </div>
       
       {/* Migrate modal */}
       {onMigrate && collections && (
-        <MigrateEntryModal
+        <MigrateEntryDialog
           isOpen={showMoveModal}
           onClose={() => setShowMoveModal(false)}
           entry={entry}
           currentCollectionId={currentCollectionId}
           collections={collections}
           onMigrate={onMigrate}
-          onCreateCollection={onCreateCollection}
+          onCreateCollection={_onCreateCollection}
         />
       )}
     </div>

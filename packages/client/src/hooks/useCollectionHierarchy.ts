@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { Collection } from '@squickr/shared';
+import type { Collection, UserPreferences } from '@squickr/domain';
 import { formatMonthlyLogName, getCollectionDisplayName } from '../utils/formatters';
+import { isEffectivelyFavorited } from '../utils/collectionUtils';
 
 export interface HierarchyNode {
   type: 'year' | 'month' | 'monthly' | 'day' | 'custom';
@@ -79,12 +80,19 @@ export function getCurrentYearMonth(): { year: string; yearMonth: string } {
  */
 function buildHierarchy(
   collections: Collection[],
-  expandedSet: Set<string>
+  expandedSet: Set<string>,
+  userPreferences: UserPreferences,
+  now: Date
 ): HierarchyNode[] {
   const nodes: HierarchyNode[] = [];
   
   // Separate daily logs, monthly logs, and custom collections
-  const dailyLogs = collections.filter(c => c.type === 'daily' && c.date);
+  // Exclude auto-favorited dailies from calendar hierarchy (they appear in favorites section)
+  const dailyLogs = collections.filter(c => 
+    c.type === 'daily' && 
+    c.date &&
+    !isEffectivelyFavorited(c, userPreferences, now)
+  );
   const monthlyLogs = collections.filter(c => c.type === 'monthly' && c.date);
   const customCollections = collections.filter(c => 
     !c.type || c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
@@ -152,8 +160,8 @@ function buildHierarchy(
     ...Array.from(monthlyLogsByYear.keys())
   ]);
   
-  // Build year nodes (sorted newest first)
-  const years = Array.from(allYears).sort((a, b) => b.localeCompare(a));
+  // Build year nodes (sorted oldest first)
+  const years = Array.from(allYears).sort((a, b) => a.localeCompare(b));
   
   years.forEach(year => {
     const monthMap = yearMap.get(year);
@@ -177,9 +185,9 @@ function buildHierarchy(
     };
     
     if (isYearExpanded) {
-      // Add monthly logs FIRST (sorted newest first by date)
+      // Add monthly logs FIRST (sorted oldest first by date)
       const sortedMonthlyLogs = [...monthlyLogsForYear].sort((a, b) => 
-        (b.date || '').localeCompare(a.date || '')
+        (a.date || '').localeCompare(b.date || '')
       );
       
       sortedMonthlyLogs.forEach(log => {
@@ -194,9 +202,9 @@ function buildHierarchy(
         });
       });
       
-      // Then build month nodes for daily logs (sorted newest first)
+      // Then build month nodes for daily logs (sorted oldest first)
       if (monthMap) {
-        const yearMonths = Array.from(monthMap.keys()).sort((a, b) => b.localeCompare(a));
+        const yearMonths = Array.from(monthMap.keys()).sort((a, b) => a.localeCompare(b));
         
         yearMonths.forEach(yearMonth => {
           const logs = monthMap.get(yearMonth)!;
@@ -214,9 +222,9 @@ function buildHierarchy(
           };
           
           if (isMonthExpanded) {
-            // Add day nodes (sorted newest first)
+            // Add day nodes (sorted oldest first)
             const sortedLogs = [...logs].sort((a, b) => 
-              (b.date || '').localeCompare(a.date || '')
+              (a.date || '').localeCompare(b.date || '')
             );
             
             sortedLogs.forEach(log => {
@@ -258,7 +266,10 @@ function buildHierarchy(
 /**
  * Hook to manage collection hierarchy state
  */
-export function useCollectionHierarchy(collections: Collection[]) {
+export function useCollectionHierarchy(
+  collections: Collection[],
+  userPreferences: UserPreferences
+) {
   // Load expanded state from localStorage
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -275,6 +286,9 @@ export function useCollectionHierarchy(collections: Collection[]) {
     const { year, yearMonth } = getCurrentYearMonth();
     return new Set([`year-${year}`, `month-${yearMonth}`]);
   });
+  
+  // Use current time for auto-favorite detection
+  const now = useMemo(() => new Date(), []);
   
   // Persist expanded state to localStorage
   useEffect(() => {
@@ -302,8 +316,8 @@ export function useCollectionHierarchy(collections: Collection[]) {
   
   // Build hierarchy (memoized)
   const nodes = useMemo(
-    () => buildHierarchy(collections, expandedSet),
-    [collections, expandedSet]
+    () => buildHierarchy(collections, expandedSet, userPreferences, now),
+    [collections, expandedSet, userPreferences, now]
   );
   
   return {

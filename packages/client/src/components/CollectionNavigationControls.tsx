@@ -5,7 +5,7 @@
  */
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 
 export interface CollectionNavigationControlsProps {
   previousCollection: Collection | null;

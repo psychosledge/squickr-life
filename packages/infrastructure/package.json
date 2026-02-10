@@ -1,0 +1,22 @@
+{
+  "name": "@squickr/infrastructure",
+  "version": "0.7.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@squickr/domain": "workspace:*",
+    "firebase": "^12.8.0"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.5",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}

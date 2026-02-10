@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from 'react';
-import type { CollectionSettings, CompletedTaskBehavior } from '@squickr/shared';
+import type { CollectionSettings, CompletedTaskBehavior } from '@squickr/domain';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { BEHAVIOR_LABELS } from '../utils/constants';
 

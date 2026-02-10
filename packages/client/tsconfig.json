@@ -9,7 +9,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@squickr/shared": ["../shared/src/index.ts"]
+      "@squickr/domain": ["../domain/src/index.ts"],
+      "@squickr/infrastructure": ["../infrastructure/src/index.ts"]
     },
     
     // Output
@@ -19,6 +20,7 @@
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx", "src/test/**/*"],
   "references": [
-    { "path": "../shared" }
+    { "path": "../domain" },
+    { "path": "../infrastructure" }
   ]
 }

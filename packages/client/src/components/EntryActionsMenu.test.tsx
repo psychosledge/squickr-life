@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { EntryActionsMenu } from './EntryActionsMenu';
-import type { Entry } from '@squickr/shared';
+import type { Entry } from '@squickr/domain';
 
 describe('EntryActionsMenu', () => {
   const mockOnEdit = vi.fn();

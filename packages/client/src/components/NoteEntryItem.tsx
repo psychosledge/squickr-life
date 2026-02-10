@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Entry, Collection } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/domain';
 import { formatTimestamp } from '../utils/formatters';
-import { MigrateEntryModal } from './MigrateEntryModal';
+import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
 
@@ -9,7 +9,7 @@ interface NoteEntryItemProps {
   entry: Entry & { type: 'note' };
   onUpdateNoteContent?: (noteId: string, newContent: string) => void | Promise<void>;
   onDelete: (entryId: string) => void;
-  onMigrate?: (noteId: string, targetCollectionId: string | null) => Promise<void>;
+  onMigrate?: (noteId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
   onNavigateToMigrated?: (collectionId: string | null) => void;
@@ -31,7 +31,7 @@ export function NoteEntryItem({
   collections,
   currentCollectionId,
   onNavigateToMigrated,
-  onCreateCollection
+  onCreateCollection: _onCreateCollection, // Not used in new dialog
 }: NoteEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -106,15 +106,19 @@ export function NoteEntryItem({
   };
 
   const canEdit = !!onUpdateNoteContent;
+  const isLegacyMigrated = !!entry.migratedTo;
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
-                    rounded-lg p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between gap-3">
-        {/* Bullet and Content */}
-        <div className="flex-1 flex gap-3 min-w-0">
-          <BulletIcon entry={entry} />
-          <div className="flex-1">
+    <div className="relative">
+      <div className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                      rounded-lg p-4 hover:shadow-md transition-shadow ${
+                        isLegacyMigrated ? 'opacity-50' : ''
+                      }`}>
+        <div className="flex items-start justify-between gap-3">
+          {/* Bullet and Content */}
+          <div className="flex-1 flex gap-3 min-w-0">
+            <BulletIcon entry={entry} />
+            <div className="flex-1">
             {isEditing ? (
               <div className="space-y-2">
                 <textarea
@@ -138,9 +142,11 @@ export function NoteEntryItem({
             ) : (
               <>
                 <div 
-                  className={`text-lg font-medium cursor-pointer select-none text-gray-900 dark:text-white ${
-                    canEdit ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''
-                  }`}
+                  className={`text-lg font-medium cursor-pointer select-none ${
+                    isLegacyMigrated
+                      ? 'text-gray-500 dark:text-gray-400 line-through'
+                      : 'text-gray-900 dark:text-white'
+                  } ${canEdit ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
                   onDoubleClick={handleDoubleClick}
                   title={canEdit ? 'Double-click to edit' : undefined}
                   style={{ whiteSpace: 'pre-wrap' }}
@@ -152,10 +158,13 @@ export function NoteEntryItem({
                 </div>
               </>
             )}
+            </div>
           </div>
         </div>
-        
-        {/* Actions Menu */}
+      </div>
+      
+      {/* Actions Menu - OUTSIDE opacity container to avoid stacking context trap */}
+      <div className="absolute top-4 right-4 z-[100]">
         <EntryActionsMenu
           entry={entry}
           onEdit={handleEdit}
@@ -168,14 +177,14 @@ export function NoteEntryItem({
       
       {/* Migrate modal */}
       {onMigrate && collections && (
-        <MigrateEntryModal
+        <MigrateEntryDialog
           isOpen={showMoveModal}
           onClose={() => setShowMoveModal(false)}
           entry={entry}
           currentCollectionId={currentCollectionId}
           collections={collections}
           onMigrate={onMigrate}
-          onCreateCollection={onCreateCollection}
+          onCreateCollection={_onCreateCollection}
         />
       )}
     </div>

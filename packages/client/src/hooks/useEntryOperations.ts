@@ -15,7 +15,19 @@
 
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Entry, Collection, CollectionSettings, MigrateTaskHandler, MigrateNoteHandler, MigrateEventHandler, CreateCollectionHandler } from '@squickr/shared';
+import type { 
+  Entry, 
+  Collection, 
+  CollectionSettings, 
+  MigrateTaskHandler, 
+  MigrateNoteHandler, 
+  MigrateEventHandler, 
+  CreateCollectionHandler, 
+  EntryListProjection,
+  AddTaskToCollectionHandler,
+  MoveTaskToCollectionHandler,
+  BulkMigrateEntriesHandler,
+} from '@squickr/domain';
 import type { CollectionHandlers } from './useCollectionHandlers';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 
@@ -27,11 +39,16 @@ export interface UseEntryOperationsParams {
   migrateNoteHandler: MigrateNoteHandler;
   migrateEventHandler: MigrateEventHandler;
   createCollectionHandler: CreateCollectionHandler;
+  entryProjection: EntryListProjection; // Phase 4: Need projection for sub-task queries
+  addTaskToCollectionHandler: AddTaskToCollectionHandler; // Phase 3: Multi-collection add
+  moveTaskToCollectionHandler: MoveTaskToCollectionHandler; // Phase 3: Multi-collection move
+  bulkMigrateEntriesHandler: BulkMigrateEntriesHandler; // Phase 4: Batch migration
 }
 
 export interface EntryOperations {
   // Entry creation operations
   handleCreateTask: (title: string) => Promise<void>;
+  handleCreateSubTask: (parentTaskId: string, title: string) => Promise<void>; // Phase 1: Sub-Tasks
   handleCreateNote: (content: string) => Promise<void>;
   handleCreateEvent: (content: string, eventDate?: string) => Promise<void>;
   
@@ -51,11 +68,16 @@ export interface EntryOperations {
   // Entry reordering operations
   handleReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => Promise<void>;
   
-  // Entry migration operations
+  // Entry migration operations (legacy single-collection)
   handleMigrate: (entryId: string, targetCollectionId: string | null) => Promise<void>;
   handleBulkMigrate: (entryIds: string[], targetCollectionId: string | null) => Promise<void>;
+  
+  // Entry migration operations (Phase 3: Multi-collection)
+  handleMigrateWithMode: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
+  handleBulkMigrateWithMode: (entryIds: string[], targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
+  
   handleNavigateToMigrated: (targetCollectionId: string | null) => void;
-  handleCreateCollection: (name: string, type?: import('@squickr/shared').CollectionType, date?: string) => Promise<string>;
+  handleCreateCollection: (name: string, type?: import('@squickr/domain').CollectionType, date?: string) => Promise<string>;
   
   // Collection operations
   handleRenameCollection: () => Promise<void>;
@@ -73,6 +95,8 @@ export interface UseEntryOperationsConfig {
   onCloseDeleteModal: () => void;
   onOpenDeleteModal: () => void;
   onOpenSettingsModal: () => void;
+  onShowConfirmCompleteParent?: (taskId: string, incompleteCount: number, onConfirm: () => void) => void; // Phase 4: Completion cascade
+  onShowConfirmDeleteParent?: (taskId: string, childCount: number, onConfirm: () => void) => void; // Phase 5: Deletion cascade
 }
 
 /**
@@ -87,6 +111,10 @@ export function useEntryOperations(
     migrateNoteHandler,
     migrateEventHandler,
     createCollectionHandler,
+    entryProjection, // Phase 4: Need for sub-task queries
+    addTaskToCollectionHandler, // Phase 3: Multi-collection add
+    moveTaskToCollectionHandler, // Phase 3: Multi-collection move
+    bulkMigrateEntriesHandler, // Phase 4: Batch migration
   }: UseEntryOperationsParams,
   config: UseEntryOperationsConfig
 ): EntryOperations {
@@ -99,6 +127,11 @@ export function useEntryOperations(
     const actualCollectionId = collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId;
     await handlers.createTaskHandler.handle({ title, collectionId: actualCollectionId });
   }, [handlers.createTaskHandler, collectionId]);
+
+  // Phase 1: Sub-Tasks - Create sub-task under parent
+  const handleCreateSubTask = useCallback(async (parentTaskId: string, title: string) => {
+    await handlers.createSubTaskHandler.handle({ parentTaskId, title });
+  }, [handlers.createSubTaskHandler]);
 
   const handleCreateNote = useCallback(async (content: string) => {
     // If in uncategorized view, don't set collectionId (keep entries truly uncategorized)
@@ -113,9 +146,49 @@ export function useEntryOperations(
   }, [handlers.createEventHandler, collectionId]);
 
   // Task state operations
+  // Phase 4: Completion Cascade - Check for sub-tasks before completing
   const handleCompleteTask = useCallback(async (taskId: string) => {
+    // Check if task has sub-tasks
+    const isParent = await entryProjection.isParentTask(taskId);
+    
+    if (isParent) {
+      // Task has sub-tasks - check completion status
+      const status = await entryProjection.getParentCompletionStatus(taskId);
+      
+      if (!status.allComplete) {
+        // Has incomplete sub-tasks - show confirmation dialog
+        const incompleteCount = status.total - status.completed;
+        
+        if (config.onShowConfirmCompleteParent) {
+          config.onShowConfirmCompleteParent(
+            taskId,
+            incompleteCount,
+            async () => {
+              // Re-check status in case children completed while dialog was open
+              const currentStatus = await entryProjection.getParentCompletionStatus(taskId);
+              
+              if (currentStatus.allComplete) {
+                // All children now complete → use standard completion
+                await handlers.completeTaskHandler.handle({ taskId });
+              } else {
+                // Still have incomplete children → cascade complete
+                await handlers.completeParentTaskHandler.handle({ taskId, confirmed: true });
+              }
+            }
+          );
+          return; // Exit early, confirmation dialog will handle completion
+        } else {
+          // No confirmation dialog configured, use standard error message
+          throw new Error(
+            `This will complete the parent task AND all ${incompleteCount} sub-task(s). Are you sure?`
+          );
+        }
+      }
+    }
+    
+    // No sub-tasks or all sub-tasks complete - use standard complete handler
     await handlers.completeTaskHandler.handle({ taskId });
-  }, [handlers.completeTaskHandler]);
+  }, [handlers.completeTaskHandler, handlers.completeParentTaskHandler, entryProjection, config]);
 
   const handleReopenTask = useCallback(async (taskId: string) => {
     await handlers.reopenTaskHandler.handle({ taskId });
@@ -143,6 +216,42 @@ export function useEntryOperations(
     const entry = entries.find(e => e.id === entryId);
     if (!entry) return;
 
+    // Phase 5: Check if task has children before deleting
+    if (entry.type === 'task') {
+      const isParent = await entryProjection.isParentTask(entryId);
+      
+      if (isParent) {
+        const children = await entryProjection.getSubTasks(entryId);
+        const childCount = children.length;
+        
+        if (config.onShowConfirmDeleteParent) {
+          config.onShowConfirmDeleteParent(
+            entryId,
+            childCount,
+            async () => {
+              // Race condition fix: Re-check if task still has children
+              const currentChildren = await entryProjection.getSubTasks(entryId);
+              
+              if (currentChildren.length > 0) {
+                // Still has children → cascade delete
+                await handlers.deleteParentTaskHandler.handle({ taskId: entryId, confirmed: true });
+              } else {
+                // No more children (deleted while dialog open) → standard delete
+                await handlers.deleteTaskHandler.handle({ taskId: entryId });
+              }
+            }
+          );
+          return; // Exit early, confirmation dialog will handle deletion
+        } else {
+          // No confirmation dialog configured, use standard error message
+          throw new Error(
+            `This will delete the parent task AND all ${childCount} sub-task(s). Are you sure?`
+          );
+        }
+      }
+    }
+    
+    // No children or not a task → use standard delete handlers
     if (entry.type === 'task') {
       await handlers.deleteTaskHandler.handle({ taskId: entryId });
     } else if (entry.type === 'note') {
@@ -150,7 +259,7 @@ export function useEntryOperations(
     } else if (entry.type === 'event') {
       await handlers.deleteEventHandler.handle({ eventId: entryId });
     }
-  }, [entries, handlers.deleteTaskHandler, handlers.deleteNoteHandler, handlers.deleteEventHandler]);
+  }, [entries, handlers.deleteTaskHandler, handlers.deleteParentTaskHandler, handlers.deleteNoteHandler, handlers.deleteEventHandler, entryProjection, config]);
 
   // Entry reordering operations
   const handleReorder = useCallback(async (
@@ -221,6 +330,38 @@ export function useEntryOperations(
     }
   }, [entries, migrateTaskHandler, migrateNoteHandler, migrateEventHandler]);
 
+  // Phase 3: Multi-collection migration with mode (move vs add)
+  const handleMigrateWithMode = useCallback(async (entryId: string, targetCollectionId: string | null, mode: 'move' | 'add' = 'move') => {
+    // Handle null targetCollectionId (move to uncategorized)
+    const effectiveTargetId = targetCollectionId || UNCATEGORIZED_COLLECTION_ID;
+    
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry || entry.type !== 'task') {
+      // Currently only tasks support multi-collection
+      // For notes/events, fall back to old migration (which is effectively a move)
+      console.warn(
+        `[Migration] Entry ${entryId} is type ${entry?.type ?? 'undefined'}, falling back to legacy migrate. ` +
+        `Multi-collection migration only supports tasks.`
+      );
+      return handleMigrate(entryId, targetCollectionId);
+    }
+
+    if (mode === 'move') {
+      await moveTaskToCollectionHandler.handle({ taskId: entryId, targetCollectionId: effectiveTargetId });
+    } else {
+      await addTaskToCollectionHandler.handle({ taskId: entryId, collectionId: effectiveTargetId });
+    }
+  }, [entries, addTaskToCollectionHandler, moveTaskToCollectionHandler, handleMigrate]);
+
+  const handleBulkMigrateWithMode = useCallback(async (entryIds: string[], targetCollectionId: string | null, mode: 'move' | 'add' = 'move') => {
+    // Use bulk handler for atomic batch migration
+    await bulkMigrateEntriesHandler.handle({
+      entryIds,
+      targetCollectionId,
+      mode,
+    });
+  }, [bulkMigrateEntriesHandler]);
+
   const handleNavigateToMigrated = useCallback((targetCollectionId: string | null) => {
     if (targetCollectionId) {
       navigate(`/collection/${targetCollectionId}`);
@@ -229,7 +370,7 @@ export function useEntryOperations(
     }
   }, [navigate]);
 
-  const handleCreateCollection = useCallback(async (name: string, type?: import('@squickr/shared').CollectionType, date?: string): Promise<string> => {
+  const handleCreateCollection = useCallback(async (name: string, type?: import('@squickr/domain').CollectionType, date?: string): Promise<string> => {
     return await createCollectionHandler.handle({ name, type, date });
   }, [createCollectionHandler]);
 
@@ -281,6 +422,7 @@ export function useEntryOperations(
 
   return {
     handleCreateTask,
+    handleCreateSubTask,
     handleCreateNote,
     handleCreateEvent,
     handleCompleteTask,
@@ -293,6 +435,8 @@ export function useEntryOperations(
     handleReorder,
     handleMigrate,
     handleBulkMigrate,
+    handleMigrateWithMode,
+    handleBulkMigrateWithMode,
     handleNavigateToMigrated,
     handleCreateCollection,
     handleRenameCollection,

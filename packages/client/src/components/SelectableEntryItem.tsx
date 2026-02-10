@@ -10,7 +10,7 @@
  * - Prevents checkbox click from triggering entry actions
  */
 
-import type { Entry } from '@squickr/shared';
+import type { Entry } from '@squickr/domain';
 import { ReactNode } from 'react';
 
 interface SelectableEntryItemProps {

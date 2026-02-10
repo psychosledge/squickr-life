@@ -5,8 +5,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { UserPreferences } from '@squickr/shared';
-import { DEFAULT_USER_PREFERENCES, UserPreferencesProjection } from '@squickr/shared';
+import type { UserPreferences } from '@squickr/domain';
+import { DEFAULT_USER_PREFERENCES, UserPreferencesProjection } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 
 /**

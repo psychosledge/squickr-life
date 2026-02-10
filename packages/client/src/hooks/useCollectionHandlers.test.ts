@@ -5,16 +5,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useCollectionHandlers } from './useCollectionHandlers';
-import { EventStore, CollectionListProjection, EntryListProjection, TaskListProjection } from '@squickr/shared';
+import { CollectionListProjection, EntryListProjection, TaskListProjection } from '@squickr/domain';
+import { InMemoryEventStore } from '@squickr/infrastructure';
 
 describe('useCollectionHandlers', () => {
-  let eventStore: EventStore;
+  let eventStore: InMemoryEventStore;
   let collectionProjection: CollectionListProjection;
   let entryProjection: EntryListProjection;
   let taskProjection: TaskListProjection;
 
   beforeEach(() => {
-    eventStore = new EventStore();
+    eventStore = new InMemoryEventStore();
     collectionProjection = new CollectionListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     taskProjection = new TaskListProjection(eventStore);
@@ -111,7 +112,7 @@ describe('useCollectionHandlers', () => {
     const firstRender = result.current;
 
     // Change dependencies
-    const newEventStore = new EventStore();
+    const newEventStore = new InMemoryEventStore();
     const newCollectionProjection = new CollectionListProjection(newEventStore);
     const newEntryProjection = new EntryListProjection(newEventStore);
     const newTaskProjection = new TaskListProjection(newEventStore);

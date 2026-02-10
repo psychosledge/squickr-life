@@ -3,7 +3,7 @@
  * 
  * Toolbar that appears when in selection mode, showing:
  * - Selection count
- * - Quick filter buttons (All, Incomplete, Notes, Clear)
+ * - Quick filter buttons (All, Active, Notes, Clear)
  * - Action buttons (Migrate, Cancel)
  * 
  * Positioned at the bottom of the screen for mobile and top for desktop.
@@ -12,7 +12,7 @@
 interface SelectionToolbarProps {
   selectedCount: number;
   onSelectAll: () => void;
-  onSelectIncomplete: () => void;
+  onSelectActive: () => void;
   onSelectNotes: () => void;
   onClear: () => void;
   onMigrate: () => void;
@@ -22,7 +22,7 @@ interface SelectionToolbarProps {
 export function SelectionToolbar({
   selectedCount,
   onSelectAll,
-  onSelectIncomplete,
+  onSelectActive,
   onSelectNotes,
   onClear,
   onMigrate,
@@ -64,7 +64,7 @@ export function SelectionToolbar({
           </button>
 
           <button
-            onClick={onSelectIncomplete}
+            onClick={onSelectActive}
             className="
               px-3 py-1.5
               text-sm
@@ -77,7 +77,7 @@ export function SelectionToolbar({
             "
             type="button"
           >
-            Incomplete
+            Active
           </button>
 
           <button

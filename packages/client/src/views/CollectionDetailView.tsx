@@ -13,7 +13,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { Collection, Entry } from '@squickr/shared';
+import type { Collection, Entry } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useCollectionHandlers } from '../hooks/useCollectionHandlers';
@@ -27,7 +27,10 @@ import { EntryInputModal } from '../components/EntryInputModal';
 import { RenameCollectionModal } from '../components/RenameCollectionModal';
 import { DeleteCollectionModal } from '../components/DeleteCollectionModal';
 import { CollectionSettingsModal } from '../components/CollectionSettingsModal';
-import { MigrateEntryModal } from '../components/MigrateEntryModal';
+import { MigrateEntryDialog } from '../components/MigrateEntryDialog';
+import { CreateSubTaskModal } from '../components/CreateSubTaskModal';
+import { ConfirmCompleteParentModal } from '../components/ConfirmCompleteParentModal';
+import { ConfirmDeleteParentModal } from '../components/ConfirmDeleteParentModal';
 import { SelectionToolbar } from '../components/SelectionToolbar';
 import { SwipeIndicator } from '../components/SwipeIndicator';
 import { FAB } from '../components/FAB';
@@ -37,7 +40,19 @@ import { DEBOUNCE } from '../utils/constants';
 export function CollectionDetailView() {
   const { id: collectionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { eventStore, collectionProjection, entryProjection, taskProjection, migrateTaskHandler, migrateNoteHandler, migrateEventHandler, createCollectionHandler } = useApp();
+  const { 
+    eventStore, 
+    collectionProjection, 
+    entryProjection, 
+    taskProjection, 
+    migrateTaskHandler, 
+    migrateNoteHandler, 
+    migrateEventHandler, 
+    createCollectionHandler,
+    addTaskToCollectionHandler,
+    moveTaskToCollectionHandler,
+    bulkMigrateEntriesHandler, // Phase 4: Batch migration
+  } = useApp();
   const userPreferences = useUserPreferences();
 
   const [collection, setCollection] = useState<Collection | null>(null);
@@ -53,6 +68,11 @@ export function CollectionDetailView() {
 
   // Migration modal state for bulk migration
   const [isBulkMigrateModalOpen, setIsBulkMigrateModalOpen] = useState(false);
+  const [isBulkMigrating, setIsBulkMigrating] = useState(false); // Phase 4: Loading state
+
+  // Sub-task modal state
+  const [isSubTaskModalOpen, setIsSubTaskModalOpen] = useState(false);
+  const [subTaskParent, setSubTaskParent] = useState<Entry | null>(null);
 
   // Initialize all handlers (memoized to prevent recreation on every render)
   const handlers = useCollectionHandlers({
@@ -75,6 +95,10 @@ export function CollectionDetailView() {
       migrateNoteHandler,
       migrateEventHandler,
       createCollectionHandler,
+      entryProjection, // Phase 4: Pass entryProjection for sub-task queries
+      addTaskToCollectionHandler, // Phase 3: Multi-collection add
+      moveTaskToCollectionHandler, // Phase 3: Multi-collection move
+      bulkMigrateEntriesHandler, // Phase 4: Batch migration
     },
     {
       collectionId,
@@ -82,6 +106,14 @@ export function CollectionDetailView() {
       onCloseDeleteModal: modals.closeDeleteModal,
       onOpenDeleteModal: modals.openDeleteModal,
       onOpenSettingsModal: modals.openSettingsModal,
+      // Phase 4: Completion cascade confirmation dialog
+      onShowConfirmCompleteParent: (taskId, incompleteCount, onConfirm) => {
+        modals.openConfirmCompleteParent(taskId, incompleteCount, onConfirm);
+      },
+      // Phase 5: Deletion cascade confirmation dialog - FINAL PHASE!
+      onShowConfirmDeleteParent: (taskId, childCount, onConfirm) => {
+        modals.openConfirmDeleteParent(taskId, childCount, onConfirm);
+      },
     }
   );
 
@@ -107,6 +139,7 @@ export function CollectionDetailView() {
       });
       
       // Load orphaned entries (null collectionId)
+      // Note: Uncategorized collection doesn't support ghost entries (no collection history)
       const orphanedEntries = await entryProjection.getEntriesByCollection(null);
       setEntries(orphanedEntries);
       
@@ -118,7 +151,8 @@ export function CollectionDetailView() {
     const foundCollection = collections.find((c: Collection) => c.id === collectionId);
     setCollection(foundCollection || null);
 
-    const collectionEntries = await entryProjection.getEntriesByCollection(collectionId);
+    // Phase 2: Use getEntriesForCollectionView to get entries with ghost metadata
+    const collectionEntries = await entryProjection.getEntriesForCollectionView(collectionId);
     setEntries(collectionEntries);
 
     setIsLoading(false);
@@ -164,11 +198,11 @@ export function CollectionDetailView() {
     selection.selectAll(entries.map(e => e.id));
   };
 
-  const handleSelectIncomplete = () => {
-    const incompleteTasks = entries
-      .filter(e => e.type === 'task' && e.status !== 'completed')
+  const handleSelectActive = () => {
+    const activeEntries = entries
+      .filter(e => !e.migratedTo)
       .map(e => e.id);
-    selection.selectAll(incompleteTasks);
+    selection.selectAll(activeEntries);
   };
 
   const handleSelectNotes = () => {
@@ -185,14 +219,39 @@ export function CollectionDetailView() {
     }
   };
 
-  const handleBulkMigrateSubmit = async (entryIds: string[], targetCollectionId: string | null) => {
-    await operations.handleBulkMigrate(entryIds, targetCollectionId);
-    setIsBulkMigrateModalOpen(false);
-    selection.exitSelectionMode();
+  const handleBulkMigrateSubmit = async (entryIds: string[], targetCollectionId: string, mode: 'move' | 'add') => {
+    setIsBulkMigrating(true); // Add loading state
+    try {
+      await operations.handleBulkMigrateWithMode(entryIds, targetCollectionId, mode);
+      setIsBulkMigrateModalOpen(false);
+      selection.exitSelectionMode();
+    } catch (error) {
+      console.error('Bulk migration failed:', error);
+      // TODO: Show error toast to user
+    } finally {
+      setIsBulkMigrating(false); // Clear loading state
+    }
   };
 
   const handleCloseBulkMigrateModal = () => {
     setIsBulkMigrateModalOpen(false);
+  };
+
+  // Sub-task modal handlers
+  const handleOpenSubTaskModal = (parentEntry: Entry) => {
+    setSubTaskParent(parentEntry);
+    setIsSubTaskModalOpen(true);
+  };
+
+  const handleCloseSubTaskModal = () => {
+    setIsSubTaskModalOpen(false);
+    setSubTaskParent(null);
+  };
+
+  const handleCreateSubTask = async (title: string) => {
+    if (!subTaskParent || subTaskParent.type !== 'task') return;
+    await operations.handleCreateSubTask(subTaskParent.id, title);
+    handleCloseSubTaskModal();
   };
 
   // Success state - show collection and entries
@@ -273,8 +332,8 @@ export function CollectionDetailView() {
         onEnterSelectionMode={selection.enterSelectionMode}
       />
 
-      {/* Entry list */}
-      <div className="py-8 px-4 pb-20">
+      {/* Entry list - dynamic bottom padding when selection toolbar is visible */}
+      <div className={`py-8 px-4 ${selection.isSelectionMode ? 'pb-52' : 'pb-20'}`}>
         {/* Active entries (or all entries if not collapsed) */}
         <EntryList
           entries={activeTasks}
@@ -286,14 +345,19 @@ export function CollectionDetailView() {
           onUpdateEventDate={operations.handleUpdateEventDate}
           onDelete={operations.handleDelete}
           onReorder={operations.handleReorder}
-          onMigrate={operations.handleMigrate}
+          onMigrate={operations.handleMigrateWithMode}
           collections={allCollections}
           currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
           onNavigateToMigrated={operations.handleNavigateToMigrated}
           onCreateCollection={operations.handleCreateCollection}
+          onAddSubTask={handleOpenSubTaskModal}
           isSelectionMode={selection.isSelectionMode}
           selectedEntryIds={selection.selectedEntryIds}
           onToggleSelection={selection.toggleSelection}
+          getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
+          getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
+          getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
+          getParentTask={(task) => entryProjection.getParentTask(task)}
         />
 
         {/* Completed tasks section - Mode 2: Move to bottom */}
@@ -312,14 +376,19 @@ export function CollectionDetailView() {
               onUpdateEventDate={operations.handleUpdateEventDate}
               onDelete={operations.handleDelete}
               onReorder={operations.handleReorder}
-              onMigrate={operations.handleMigrate}
+              onMigrate={operations.handleMigrateWithMode}
               collections={allCollections}
               currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
               onNavigateToMigrated={operations.handleNavigateToMigrated}
               onCreateCollection={operations.handleCreateCollection}
+              onAddSubTask={handleOpenSubTaskModal}
               isSelectionMode={selection.isSelectionMode}
               selectedEntryIds={selection.selectedEntryIds}
               onToggleSelection={selection.toggleSelection}
+              getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
+              getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
+              getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
+              getParentTask={(task) => entryProjection.getParentTask(task)}
             />
           </div>
         )}
@@ -354,25 +423,30 @@ export function CollectionDetailView() {
             
             {modals.isCompletedExpanded && (
               <div className="mt-4">
-                <EntryList
-                  entries={completedTasks}
-                  onCompleteTask={operations.handleCompleteTask}
-                  onReopenTask={operations.handleReopenTask}
-                  onUpdateTaskTitle={operations.handleUpdateTaskTitle}
-                  onUpdateNoteContent={operations.handleUpdateNoteContent}
-                  onUpdateEventContent={operations.handleUpdateEventContent}
-                  onUpdateEventDate={operations.handleUpdateEventDate}
-                  onDelete={operations.handleDelete}
-                  onReorder={operations.handleReorder}
-                  onMigrate={operations.handleMigrate}
-                  collections={allCollections}
-                  currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
-                  onNavigateToMigrated={operations.handleNavigateToMigrated}
-                  onCreateCollection={operations.handleCreateCollection}
-                  isSelectionMode={selection.isSelectionMode}
-                  selectedEntryIds={selection.selectedEntryIds}
-                  onToggleSelection={selection.toggleSelection}
-                />
+              <EntryList
+                entries={completedTasks}
+                onCompleteTask={operations.handleCompleteTask}
+                onReopenTask={operations.handleReopenTask}
+                onUpdateTaskTitle={operations.handleUpdateTaskTitle}
+                onUpdateNoteContent={operations.handleUpdateNoteContent}
+                onUpdateEventContent={operations.handleUpdateEventContent}
+                onUpdateEventDate={operations.handleUpdateEventDate}
+                onDelete={operations.handleDelete}
+                onReorder={operations.handleReorder}
+                onMigrate={operations.handleMigrateWithMode}
+                collections={allCollections}
+                currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
+                onNavigateToMigrated={operations.handleNavigateToMigrated}
+                onCreateCollection={operations.handleCreateCollection}
+                onAddSubTask={handleOpenSubTaskModal}
+                isSelectionMode={selection.isSelectionMode}
+                selectedEntryIds={selection.selectedEntryIds}
+                onToggleSelection={selection.toggleSelection}
+                getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
+                getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
+                getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
+                getParentTask={(task) => entryProjection.getParentTask(task)}
+              />
               </div>
             )}
           </div>
@@ -416,17 +490,46 @@ export function CollectionDetailView() {
         onSubmit={operations.handleSettingsSubmit}
       />
 
+      {/* Create sub-task modal */}
+      <CreateSubTaskModal
+        isOpen={isSubTaskModalOpen}
+        parentTaskTitle={subTaskParent?.type === 'task' ? subTaskParent.title : ''}
+        onClose={handleCloseSubTaskModal}
+        onSubmit={handleCreateSubTask}
+      />
+
+      {/* Confirm complete parent modal (Phase 4: Completion Cascade) */}
+      {modals.confirmCompleteParentData && (
+        <ConfirmCompleteParentModal
+          isOpen={modals.isConfirmCompleteParentOpen}
+          incompleteCount={modals.confirmCompleteParentData.incompleteCount}
+          onConfirm={modals.confirmCompleteParentData.onConfirm}
+          onClose={modals.closeConfirmCompleteParent}
+        />
+      )}
+
+      {/* Confirm delete parent modal (Phase 5: Deletion Cascade - FINAL PHASE!) */}
+      {modals.confirmDeleteParentData && (
+        <ConfirmDeleteParentModal
+          isOpen={modals.isConfirmDeleteParentOpen}
+          childCount={modals.confirmDeleteParentData.childCount}
+          onConfirm={modals.confirmDeleteParentData.onConfirm}
+          onClose={modals.closeConfirmDeleteParent}
+        />
+      )}
+
       {/* Bulk migration modal */}
       {selection.isSelectionMode && selection.selectedCount > 0 && (
-        <MigrateEntryModal
+        <MigrateEntryDialog
           isOpen={isBulkMigrateModalOpen}
           onClose={handleCloseBulkMigrateModal}
           entries={entries.filter(e => selection.selectedEntryIds.has(e.id))}
           currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
           collections={allCollections}
-          onMigrate={operations.handleMigrate}
+          onMigrate={operations.handleMigrateWithMode}
           onBulkMigrate={handleBulkMigrateSubmit}
           onCreateCollection={operations.handleCreateCollection}
+          isBulkMigrating={isBulkMigrating} // Phase 4: Loading state
         />
       )}
 
@@ -435,7 +538,7 @@ export function CollectionDetailView() {
         <SelectionToolbar
           selectedCount={selection.selectedCount}
           onSelectAll={handleSelectAll}
-          onSelectIncomplete={handleSelectIncomplete}
+          onSelectActive={handleSelectActive}
           onSelectNotes={handleSelectNotes}
           onClear={selection.clearSelection}
           onMigrate={handleBulkMigrate}

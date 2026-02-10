@@ -7,15 +7,13 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 import { useUserPreferences } from './useUserPreferences';
 import { useSwipeProgress } from './useSwipeProgress';
-
-const SWIPE_THRESHOLD = 100; // Minimum pixels for horizontal swipe detection
-const VERTICAL_PRIORITY_RATIO = 1.5; // If vertical movement > horizontal * ratio, treat as scroll
+import { SWIPE } from '../utils/constants';
 
 export interface UseCollectionNavigationResult {
   previousCollection: Collection | null;
@@ -104,6 +102,9 @@ export function useCollectionNavigation(
   const navigateToPrevious = useCallback(() => {
     if (previousCollection) {
       navigate(`/collection/${previousCollection.id}`);
+    } else {
+      // If at the first collection and no previous, navigate back to index
+      navigate('/');
     }
   }, [previousCollection, navigate]);
 
@@ -175,16 +176,26 @@ export function useCollectionNavigation(
       // Only navigate if:
       // 1. Horizontal movement exceeds threshold
       // 2. Horizontal movement dominates vertical movement (not a scroll gesture)
-      const isHorizontalSwipe = absDeltaX > SWIPE_THRESHOLD && absDeltaX > absDeltaY * VERTICAL_PRIORITY_RATIO;
+      const isHorizontalSwipe = absDeltaX > SWIPE.THRESHOLD && absDeltaX > absDeltaY * SWIPE.VERTICAL_PRIORITY_RATIO;
 
       if (isHorizontalSwipe) {
-        // Swipe left = next (moving finger to the left)
+        // Carousel "Push Away" Metaphor:
+        // Collections are like pages in a carousel laid out horizontally
+        // Higher index = later page (further to the right)
+        // 
+        // Swipe left (finger moves left, deltaX < 0) = go to NEXT (higher index)
+        // - Like pushing the current page left to reveal the next page underneath
+        // - Matches Instagram, Photos app, and standard carousel behavior
+        // 
+        // Swipe right (finger moves right, deltaX > 0) = go to PREVIOUS (lower index)
+        // - Like pushing the current page right to reveal the previous page underneath
+        //
+        // This matches the "push away" mental model: swipe in the direction
+        // you want to push the current page to reveal what's behind it
         if (deltaX < 0) {
-          navigateToNext();
-        }
-        // Swipe right = previous (moving finger to the right)
-        else {
-          navigateToPrevious();
+          navigateToNext();  // Swipe left → next (higher index)
+        } else {
+          navigateToPrevious();  // Swipe right → previous (lower index)
         }
       }
 

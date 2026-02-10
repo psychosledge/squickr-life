@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CollectionStats } from './CollectionStats';
-import type { Entry } from '@squickr/shared';
+import type { Entry } from '@squickr/domain';
 
 describe('CollectionStats', () => {
   it('shows only non-zero counts', () => {

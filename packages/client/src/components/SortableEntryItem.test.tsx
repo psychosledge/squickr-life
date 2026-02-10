@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SortableEntryItem } from './SortableEntryItem';
-import type { Entry } from '@squickr/shared';
+import type { Entry } from '@squickr/domain';
 
 // Mock @dnd-kit/sortable
 vi.mock('@dnd-kit/sortable', () => ({

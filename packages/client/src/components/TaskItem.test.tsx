@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TaskItem } from './TaskItem';
-import type { Task } from '@squickr/shared';
+import type { Task } from '@squickr/domain';
 
 describe('TaskItem', () => {
   const mockOnComplete = vi.fn();

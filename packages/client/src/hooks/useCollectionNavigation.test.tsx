@@ -10,7 +10,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { useCollectionNavigation } from './useCollectionNavigation';
 import { AppProvider } from '../context/AppContext';
 import type { ReactNode } from 'react';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
 
 // Mock useNavigate
 const mockNavigate = vi.fn();
@@ -163,7 +163,7 @@ describe('useCollectionNavigation', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/collection/c2');
   });
 
-  it('should not navigate when at boundaries', async () => {
+  it('should navigate to index when navigating previous from first collection', async () => {
     collectionsData = [
       { id: 'c1', name: 'Only', type: 'custom', order: 'a', createdAt: '2024-01-01T00:00:00Z' },
     ];
@@ -178,9 +178,13 @@ describe('useCollectionNavigation', () => {
       expect(result.current.nextCollection).toBeNull();
     });
 
+    // Navigate previous from first collection should go to index
     result.current.navigateToPrevious();
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+    
+    // Navigate next from last collection should do nothing
+    mockNavigate.mockClear();
     result.current.navigateToNext();
-
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -221,21 +225,21 @@ describe('useCollectionNavigation', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('should match hierarchical ordering: favorited customs, daily logs (newest first), other customs', async () => {
+  it('should match hierarchical ordering: favorited customs, other customs, daily logs (newest first)', async () => {
     // Bug #2: Navigation order should match the collection index order
-    // Expected order: 1) Favorited customs (by order), 2) Daily logs (newest first), 3) Other customs (by order)
+    // Expected order (NEW): 1) Favorited customs (by order), 2) Other customs (by order), 3) Daily logs (newest first)
     
     collectionsData = [
       // Favorited customs (should appear first)
       { id: 'fav1', name: 'Favorite 1', type: 'custom', order: 'a0', isFavorite: true, createdAt: '2024-01-01T00:00:00Z' },
       { id: 'fav2', name: 'Favorite 2', type: 'custom', order: 'a1', isFavorite: true, createdAt: '2024-01-02T00:00:00Z' },
       
-      // Daily logs (should appear in date order, newest first)
+      // Daily logs (should appear last, in date order newest first)
       { id: 'daily1', name: 'Feb 1', type: 'daily', date: '2026-02-01', createdAt: '2024-01-03T00:00:00Z' },
       { id: 'daily2', name: 'Feb 2', type: 'daily', date: '2026-02-02', createdAt: '2024-01-04T00:00:00Z' },
       { id: 'daily3', name: 'Jan 31', type: 'daily', date: '2026-01-31', createdAt: '2024-01-05T00:00:00Z' },
       
-      // Other customs (should appear last)
+      // Other customs (should appear after favorited, before dailies)
       { id: 'custom1', name: 'Custom 1', type: 'custom', order: 'b0', isFavorite: false, createdAt: '2024-01-06T00:00:00Z' },
       { id: 'custom2', name: 'Custom 2', type: 'custom', order: 'b1', isFavorite: false, createdAt: '2024-01-07T00:00:00Z' },
     ];
@@ -259,61 +263,61 @@ describe('useCollectionNavigation', () => {
 
     await waitFor(() => {
       expect(result2.current.previousCollection?.id).toBe('fav1'); // Previous is fav1
-      expect(result2.current.nextCollection?.id).toBe('daily2'); // Next is daily2 (newest daily log)
+      expect(result2.current.nextCollection?.id).toBe('custom1'); // Next is custom1 (first unfavorited custom)
     });
 
-    // Test navigation from daily2 (newest daily log)
+    // Test navigation from custom1 (first other custom)
     const { result: result3 } = renderHook(
-      () => useCollectionNavigation('daily2'),
+      () => useCollectionNavigation('custom1'),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
       expect(result3.current.previousCollection?.id).toBe('fav2'); // Previous is fav2
-      expect(result3.current.nextCollection?.id).toBe('daily1'); // Next is daily1 (second newest)
+      expect(result3.current.nextCollection?.id).toBe('custom2'); // Next is custom2
     });
 
-    // Test navigation from daily1 (second newest daily log)
+    // Test navigation from custom2 (second other custom)
     const { result: result4 } = renderHook(
-      () => useCollectionNavigation('daily1'),
+      () => useCollectionNavigation('custom2'),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
-      expect(result4.current.previousCollection?.id).toBe('daily2'); // Previous is daily2
-      expect(result4.current.nextCollection?.id).toBe('daily3'); // Next is daily3 (third newest)
+      expect(result4.current.previousCollection?.id).toBe('custom1'); // Previous is custom1
+      expect(result4.current.nextCollection?.id).toBe('daily3'); // Next is daily3 (oldest daily log)
     });
 
-    // Test navigation from daily3 (third newest daily log)
+    // Test navigation from daily3 (oldest daily log)
     const { result: result5 } = renderHook(
       () => useCollectionNavigation('daily3'),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
-      expect(result5.current.previousCollection?.id).toBe('daily1'); // Previous is daily1
-      expect(result5.current.nextCollection?.id).toBe('custom1'); // Next is custom1 (first other custom)
+      expect(result5.current.previousCollection?.id).toBe('custom2'); // Previous is custom2
+      expect(result5.current.nextCollection?.id).toBe('daily1'); // Next is daily1 (second oldest)
     });
 
-    // Test navigation from custom1 (first other custom)
+    // Test navigation from daily1 (second oldest daily log)
     const { result: result6 } = renderHook(
-      () => useCollectionNavigation('custom1'),
+      () => useCollectionNavigation('daily1'),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
       expect(result6.current.previousCollection?.id).toBe('daily3'); // Previous is daily3
-      expect(result6.current.nextCollection?.id).toBe('custom2'); // Next is custom2
+      expect(result6.current.nextCollection?.id).toBe('daily2'); // Next is daily2 (newest/last)
     });
 
-    // Test navigation from custom2 (last collection)
+    // Test navigation from daily2 (last collection)
     const { result: result7 } = renderHook(
-      () => useCollectionNavigation('custom2'),
+      () => useCollectionNavigation('daily2'),
       { wrapper: createWrapper() }
     );
 
     await waitFor(() => {
-      expect(result7.current.previousCollection?.id).toBe('custom1'); // Previous is custom1
+      expect(result7.current.previousCollection?.id).toBe('daily1'); // Previous is daily1
       expect(result7.current.nextCollection).toBeNull(); // Last collection
     });
   });
@@ -357,6 +361,7 @@ describe('useCollectionNavigation', () => {
 
     it('should navigate when horizontal swipe clearly exceeds threshold', async () => {
       // Horizontal swipe (120px) should navigate when vertical movement is minimal
+      // Carousel metaphor: swipe left = next (higher index)
       
       const { result } = renderHook(
         () => useCollectionNavigation('c2'),
@@ -379,7 +384,7 @@ describe('useCollectionNavigation', () => {
       window.dispatchEvent(touchEnd);
 
       await new Promise(resolve => setTimeout(resolve, 100));
-      expect(mockNavigate).toHaveBeenCalledWith('/collection/c3');
+      expect(mockNavigate).toHaveBeenCalledWith('/collection/c3'); // Navigates to next
     });
 
     it('should not navigate when horizontal movement is below threshold', async () => {
@@ -411,6 +416,7 @@ describe('useCollectionNavigation', () => {
 
     it('should navigate when horizontal swipe is clearly intentional (diagonal)', async () => {
       // Diagonal swipe where horizontal > vertical should navigate
+      // Carousel metaphor: swipe right = previous (lower index)
       
       const { result } = renderHook(
         () => useCollectionNavigation('c2'),
@@ -433,7 +439,7 @@ describe('useCollectionNavigation', () => {
       window.dispatchEvent(touchEnd);
 
       await new Promise(resolve => setTimeout(resolve, 100));
-      expect(mockNavigate).toHaveBeenCalledWith('/collection/c1');
+      expect(mockNavigate).toHaveBeenCalledWith('/collection/c1'); // Navigates to previous
     });
   });
 });

@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
-import type { IndexedDBEventStore } from '@squickr/shared';
+import type { IndexedDBEventStore } from '@squickr/infrastructure';
 import { onAuthStateChanged } from 'firebase/auth';
 
 // Mock IndexedDBEventStore since we're in jsdom environment
-vi.mock('@squickr/shared', async () => {
-  const actual = await vi.importActual('@squickr/shared');
+vi.mock('@squickr/infrastructure', async () => {
+  const actual = await vi.importActual('@squickr/infrastructure');
   
   class MockIndexedDBEventStore {
     async initialize() {

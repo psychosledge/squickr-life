@@ -6,6 +6,7 @@
  * 
  * Phase 2A: Initial setup with CollectionListProjection
  * Phase 2B+: Will be used by Collection views
+ * Phase 4: Added userPreferences to eliminate 6-level props drilling
  */
 
 import { createContext, useContext } from 'react';
@@ -19,7 +20,12 @@ import type {
   MigrateTaskHandler,
   MigrateNoteHandler,
   MigrateEventHandler,
-} from '@squickr/shared';
+  AddTaskToCollectionHandler,
+  RemoveTaskFromCollectionHandler,
+  MoveTaskToCollectionHandler,
+  BulkMigrateEntriesHandler,
+  UserPreferences,
+} from '@squickr/domain';
 
 interface AppContextValue {
   eventStore: IEventStore;
@@ -31,6 +37,11 @@ interface AppContextValue {
   migrateTaskHandler: MigrateTaskHandler;
   migrateNoteHandler: MigrateNoteHandler;
   migrateEventHandler: MigrateEventHandler;
+  addTaskToCollectionHandler: AddTaskToCollectionHandler;
+  removeTaskFromCollectionHandler: RemoveTaskFromCollectionHandler;
+  moveTaskToCollectionHandler: MoveTaskToCollectionHandler;
+  bulkMigrateEntriesHandler: BulkMigrateEntriesHandler;
+  userPreferences: UserPreferences;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);

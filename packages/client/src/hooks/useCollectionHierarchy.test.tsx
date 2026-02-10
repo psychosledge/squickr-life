@@ -7,7 +7,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCollectionHierarchy, formatDayLabel, formatMonthLabel, formatYearLabel, getCurrentYearMonth } from './useCollectionHierarchy';
-import type { Collection } from '@squickr/shared';
+import type { Collection } from '@squickr/domain';
+import { DEFAULT_USER_PREFERENCES } from '@squickr/domain';
 
 describe('useCollectionHierarchy', () => {
   const STORAGE_KEY = 'collection-hierarchy-expanded';
@@ -84,7 +85,7 @@ describe('useCollectionHierarchy', () => {
         },
       ];
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       expect(result.current.nodes).toHaveLength(2);
       
@@ -134,23 +135,23 @@ describe('useCollectionHierarchy', () => {
         'month-2025-12',
       ]));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       // Should have 2 year nodes
       const yearNodes = result.current.nodes.filter(n => n.type === 'year');
       expect(yearNodes).toHaveLength(2);
 
-      // 2026 should come first (newest)
-      expect(yearNodes[0]?.id).toBe('year-2026');
-      expect(yearNodes[1]?.id).toBe('year-2025');
+      // 2025 should come first (oldest)
+      expect(yearNodes[0]?.id).toBe('year-2025');
+      expect(yearNodes[1]?.id).toBe('year-2026');
 
-      // 2026 should have 2 month nodes
-      const year2026 = yearNodes[0];
+      // 2026 should have 2 month nodes (now at index 1 since 2025 comes first)
+      const year2026 = yearNodes[1];
       expect(year2026?.children).toHaveLength(2);
 
-      // February should come first (newest)
-      expect(year2026?.children[0]?.id).toBe('month-2026-02');
-      expect(year2026?.children[1]?.id).toBe('month-2026-01');
+      // January should come first (oldest)
+      expect(year2026?.children[0]?.id).toBe('month-2026-01');
+      expect(year2026?.children[1]?.id).toBe('month-2026-02');
     });
 
     it('should place custom collections at root level', () => {
@@ -171,7 +172,7 @@ describe('useCollectionHierarchy', () => {
         },
       ];
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const customNodes = result.current.nodes.filter(n => n.type === 'custom');
       expect(customNodes).toHaveLength(2);
@@ -207,7 +208,7 @@ describe('useCollectionHierarchy', () => {
       // Auto-expand current year/month
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       expect(result.current.nodes).toHaveLength(3);
       
@@ -237,7 +238,7 @@ describe('useCollectionHierarchy', () => {
         },
       ];
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       expect(result.current.isExpanded(`year-${year}`)).toBe(true);
       expect(result.current.isExpanded(`month-${yearMonth}`)).toBe(true);
@@ -260,7 +261,7 @@ describe('useCollectionHierarchy', () => {
       // Clear localStorage to get auto-expand behavior
       localStorage.clear();
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       // Should have auto-expanded current year/month
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -293,7 +294,7 @@ describe('useCollectionHierarchy', () => {
         },
       ];
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const initialExpanded = result.current.isExpanded('year-2026');
 
@@ -333,7 +334,7 @@ describe('useCollectionHierarchy', () => {
       // Don't expand year
       localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       expect(yearNode?.count).toBe(2);
@@ -355,7 +356,7 @@ describe('useCollectionHierarchy', () => {
       // Expand year
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       expect(yearNode?.count).toBeUndefined();
@@ -387,7 +388,7 @@ describe('useCollectionHierarchy', () => {
       // Expand year to see children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       expect(yearNode).toBeDefined();
@@ -432,15 +433,15 @@ describe('useCollectionHierarchy', () => {
       // Expand year to see children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       expect(yearNode?.children).toHaveLength(3);
 
-      // Should be sorted newest first: March, February, January
-      expect(yearNode?.children[0]?.date).toBe('2026-03');
+      // Should be sorted oldest first: January, February, March
+      expect(yearNode?.children[0]?.date).toBe('2026-01');
       expect(yearNode?.children[1]?.date).toBe('2026-02');
-      expect(yearNode?.children[2]?.date).toBe('2026-01');
+      expect(yearNode?.children[2]?.date).toBe('2026-03');
     });
 
     it('should handle multiple monthly logs in same year', () => {
@@ -474,7 +475,7 @@ describe('useCollectionHierarchy', () => {
       // Expand year to see children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       
@@ -528,18 +529,18 @@ describe('useCollectionHierarchy', () => {
       // Expand year to see structure
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02', 'month-2026-01']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       
       // Should have 2 monthly logs + 2 month groups = 4 children
       expect(yearNode?.children).toHaveLength(4);
       
-      // First 2 should be monthly logs (newest first)
+      // First 2 should be monthly logs (oldest first)
       expect(yearNode?.children[0]?.type).toBe('monthly');
-      expect(yearNode?.children[0]?.date).toBe('2026-02');
+      expect(yearNode?.children[0]?.date).toBe('2026-01');
       expect(yearNode?.children[1]?.type).toBe('monthly');
-      expect(yearNode?.children[1]?.date).toBe('2026-01');
+      expect(yearNode?.children[1]?.date).toBe('2026-02');
       
       // Next 2 should be month groups
       expect(yearNode?.children[2]?.type).toBe('month');
@@ -569,7 +570,7 @@ describe('useCollectionHierarchy', () => {
       // Expand year to see children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2025']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       
@@ -577,9 +578,9 @@ describe('useCollectionHierarchy', () => {
       expect(yearNode?.children).toHaveLength(2);
       expect(yearNode?.children.every(n => n.type === 'monthly')).toBe(true);
       
-      // Sorted newest first
-      expect(yearNode?.children[0]?.date).toBe('2025-12');
-      expect(yearNode?.children[1]?.date).toBe('2025-01');
+      // Sorted oldest first
+      expect(yearNode?.children[0]?.date).toBe('2025-01');
+      expect(yearNode?.children[1]?.date).toBe('2025-12');
     });
 
     it('should include monthly logs in year count when collapsed', () => {
@@ -613,7 +614,7 @@ describe('useCollectionHierarchy', () => {
       // Don't expand year - should show count
       localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       
@@ -645,7 +646,7 @@ describe('useCollectionHierarchy', () => {
       // Expand years to see children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'year-2025']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const year2026 = result.current.nodes.find(n => n.id === 'year-2026');
       const year2025 = result.current.nodes.find(n => n.id === 'year-2025');
@@ -686,22 +687,22 @@ describe('useCollectionHierarchy', () => {
       // Expand all years
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'year-2025', 'year-2024']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNodes = result.current.nodes.filter(n => n.type === 'year');
       
       // Should have 3 year nodes
       expect(yearNodes).toHaveLength(3);
       
-      // Each year should have 1 monthly log child
-      expect(yearNodes[0]?.children).toHaveLength(1); // 2026
+      // Each year should have 1 monthly log child (oldest year first)
+      expect(yearNodes[0]?.children).toHaveLength(1); // 2024
       expect(yearNodes[1]?.children).toHaveLength(1); // 2025
-      expect(yearNodes[2]?.children).toHaveLength(1); // 2024
+      expect(yearNodes[2]?.children).toHaveLength(1); // 2026
       
-      // Verify correct monthly log in each year
-      expect(yearNodes[0]?.children[0]?.date).toBe('2026-03');
+      // Verify correct monthly log in each year (oldest year first)
+      expect(yearNodes[0]?.children[0]?.date).toBe('2024-01');
       expect(yearNodes[1]?.children[0]?.date).toBe('2025-12');
-      expect(yearNodes[2]?.children[0]?.date).toBe('2024-01');
+      expect(yearNodes[2]?.children[0]?.date).toBe('2026-03');
     });
   });
 });

@@ -1,22 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import {
-  IndexedDBEventStore,
   CreateCollectionHandler,
   ReorderCollectionHandler,
   MigrateTaskHandler,
   MigrateNoteHandler,
   MigrateEventHandler,
+  AddTaskToCollectionHandler,
+  RemoveTaskFromCollectionHandler,
+  MoveTaskToCollectionHandler,
+  BulkMigrateEntriesHandler,
   EntryListProjection,
   TaskListProjection,
-  CollectionListProjection
-} from '@squickr/shared';
+  CollectionListProjection,
+  UserPreferencesProjection,
+  DEFAULT_USER_PREFERENCES,
+  UserPreferences,
+} from '@squickr/domain';
+import { IndexedDBEventStore, FirestoreEventStore } from '@squickr/infrastructure';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
 import { SignInView } from './views/SignInView';
 import { SyncManager } from './firebase/SyncManager';
+import { firestore } from './firebase/config';
 import { ROUTES } from './routes';
 import { logger } from './utils/logger';
 
@@ -44,10 +52,25 @@ function AppContent() {
   const [createCollectionHandler] = useState(() => new CreateCollectionHandler(eventStore, collectionProjection));
   const [reorderCollectionHandler] = useState(() => new ReorderCollectionHandler(eventStore, collectionProjection));
   
-  // Migration handlers
+  // Migration handlers (legacy single-collection)
   const [migrateTaskHandler] = useState(() => new MigrateTaskHandler(eventStore, entryProjection));
   const [migrateNoteHandler] = useState(() => new MigrateNoteHandler(eventStore, entryProjection));
   const [migrateEventHandler] = useState(() => new MigrateEventHandler(eventStore, entryProjection));
+  
+  // Multi-collection handlers (Phase 3)
+  const [addTaskToCollectionHandler] = useState(() => new AddTaskToCollectionHandler(eventStore, entryProjection));
+  const [removeTaskFromCollectionHandler] = useState(() => new RemoveTaskFromCollectionHandler(eventStore, entryProjection));
+  const [moveTaskToCollectionHandler] = useState(() => {
+    const addHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
+    const removeHandler = new RemoveTaskFromCollectionHandler(eventStore, entryProjection);
+    return new MoveTaskToCollectionHandler(addHandler, removeHandler, entryProjection);
+  });
+  
+  // Bulk migration handler (Phase 4: ADR-013)
+  const [bulkMigrateEntriesHandler] = useState(() => new BulkMigrateEntriesHandler(eventStore, entryProjection));
+  
+  // User preferences (reactive)
+  const [userPreferences, setUserPreferences] = useState<UserPreferences>(DEFAULT_USER_PREFERENCES);
   
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
@@ -79,7 +102,8 @@ function AppContent() {
     }
     
     // User signed in - start background sync
-    const manager = new SyncManager(user.uid, eventStore);
+    const remoteStore = new FirestoreEventStore(firestore, user.uid);
+    const manager = new SyncManager(eventStore, remoteStore);
     manager.start();
     syncManagerRef.current = manager;
     
@@ -95,6 +119,19 @@ function AppContent() {
     try {
       // Initialize IndexedDB connection
       await eventStore.initialize();
+      
+      // Subscribe to user preferences changes
+      const userPrefsProjection = new UserPreferencesProjection(eventStore);
+      
+      // Load initial preferences
+      const prefs = await userPrefsProjection.getUserPreferences();
+      setUserPreferences(prefs);
+      
+      // Subscribe to changes
+      userPrefsProjection.subscribe(async () => {
+        const updatedPrefs = await userPrefsProjection.getUserPreferences();
+        setUserPreferences(updatedPrefs);
+      });
     } catch (error) {
       logger.error('Failed to initialize app:', error);
     } finally {
@@ -127,6 +164,11 @@ function AppContent() {
     migrateTaskHandler,
     migrateNoteHandler,
     migrateEventHandler,
+    addTaskToCollectionHandler,
+    removeTaskFromCollectionHandler,
+    moveTaskToCollectionHandler,
+    bulkMigrateEntriesHandler,
+    userPreferences,
   };
 
   // Show main app for authenticated users

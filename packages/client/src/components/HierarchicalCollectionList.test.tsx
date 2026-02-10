@@ -1,18 +1,14 @@
+import { renderWithAppProvider } from "./../test/test-utils";
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { HierarchicalCollectionList } from './HierarchicalCollectionList';
-import type { Collection, UserPreferences } from '@squickr/shared';
+import type { Collection, UserPreferences } from '@squickr/domain';
 
-// Mock user preferences for tests
-const mockUserPreferences: UserPreferences = {
-  autoFavoriteRecentDailyLogs: false,
-};
-
-// Helper to render with Router context
-const renderWithRouter = (ui: React.ReactElement) => {
-  return render(<BrowserRouter>{ui}</BrowserRouter>);
+// Helper to render with Router and App context
+const renderWithRouter = (ui: React.ReactElement, options?: { userPreferences?: UserPreferences }) => {
+  return renderWithAppProvider(<BrowserRouter>{ui}</BrowserRouter>, options);
 };
 
 describe('HierarchicalCollectionList', () => {
@@ -22,10 +18,7 @@ describe('HierarchicalCollectionList', () => {
 
   it('should render empty state when no collections exist', () => {
     renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={[]} 
-        userPreferences={mockUserPreferences}
-      />
+      <HierarchicalCollectionList collections={[]} />
     );
 
     expect(screen.getByText('No collections yet')).toBeInTheDocument();
@@ -48,10 +41,7 @@ describe('HierarchicalCollectionList', () => {
     localStorage.setItem('collection-hierarchy-expanded', JSON.stringify(['year-2026', 'month-2026-02']));
 
     renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={collections}
-        userPreferences={mockUserPreferences}
-      />
+      <HierarchicalCollectionList collections={collections} />
     );
 
     // Should show year node
@@ -86,7 +76,7 @@ describe('HierarchicalCollectionList', () => {
     const { container } = renderWithRouter(
       <HierarchicalCollectionList 
         collections={collections}
-        userPreferences={mockUserPreferences}
+        
       />
     );
 
@@ -116,14 +106,12 @@ describe('HierarchicalCollectionList', () => {
     localStorage.setItem('collection-hierarchy-expanded', JSON.stringify([]));
 
     renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={collections}
-        userPreferences={mockUserPreferences}
-      />
+      <HierarchicalCollectionList collections={collections} />
     );
 
     // Year should be collapsed, showing count
-    expect(screen.getByText(/2026 Logs \(1 log\)/)).toBeInTheDocument();
+    expect(screen.getByText('2026 Logs')).toBeInTheDocument();
+    expect(screen.getByText('(1 log)')).toBeInTheDocument();
     
     // Month should not be visible
     expect(screen.queryByText('February')).not.toBeInTheDocument();
@@ -147,10 +135,7 @@ describe('HierarchicalCollectionList', () => {
     ];
 
     renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={collections}
-        userPreferences={mockUserPreferences}
-      />
+      <HierarchicalCollectionList collections={collections} />
     );
 
     const link = screen.getByText('Ideas').closest('a');
@@ -173,10 +158,7 @@ describe('HierarchicalCollectionList', () => {
     localStorage.setItem('collection-hierarchy-expanded', JSON.stringify(['year-2026']));
 
     renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={collections}
-        userPreferences={mockUserPreferences}
-      />
+      <HierarchicalCollectionList collections={collections} />
     );
 
     // Year should be a button, not a link
@@ -210,7 +192,6 @@ describe('HierarchicalCollectionList', () => {
       <HierarchicalCollectionList 
         collections={collections}
         selectedCollectionId="selected-1"
-        userPreferences={mockUserPreferences}
       />
     );
 
@@ -222,7 +203,7 @@ describe('HierarchicalCollectionList', () => {
     expect(notSelectedLink?.className).not.toContain('bg-blue');
   });
 
-  it('should sort collections correctly: pinned first, then years, then unpinned', () => {
+  it('should sort collections correctly: pinned first, then unpinned, then years', () => {
     const collections: Collection[] = [
       {
         id: 'unpinned',
@@ -254,7 +235,7 @@ describe('HierarchicalCollectionList', () => {
     const { container } = renderWithRouter(
       <HierarchicalCollectionList 
         collections={collections}
-        userPreferences={mockUserPreferences}
+        
       />
     );
 
@@ -267,14 +248,12 @@ describe('HierarchicalCollectionList', () => {
     const yearIndex = texts.findIndex(t => t?.includes('2026 Logs'));
     const unpinnedIndex = texts.findIndex(t => t?.includes('Unpinned Custom'));
 
-    // Verify order: pinned < year < unpinned
-    expect(pinnedIndex).toBeLessThan(yearIndex);
-    expect(yearIndex).toBeLessThan(unpinnedIndex);
+    // Verify order: pinned < unpinned < year
+    expect(pinnedIndex).toBeLessThan(unpinnedIndex);
+    expect(unpinnedIndex).toBeLessThan(yearIndex);
   });
 
-  it('should show auto-favorited daily logs in favorites section even when year/month are collapsed', async () => {
-    const user = userEvent.setup();
-    
+  it('should show auto-favorited daily logs in favorites section even when year/month are collapsed', () => {
     // Create a daily log for today (which will be auto-favorited)
     const today = new Date();
     const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -297,11 +276,11 @@ describe('HierarchicalCollectionList', () => {
     // Start with year/month COLLAPSED
     localStorage.setItem('collection-hierarchy-expanded', JSON.stringify([]));
 
-    renderWithRouter(
-      <HierarchicalCollectionList 
-        collections={collections}
-        userPreferences={autoFavoritePreferences}
-      />
+    renderWithAppProvider(
+      <BrowserRouter>
+        <HierarchicalCollectionList collections={collections} />
+      </BrowserRouter>,
+      { userPreferences: autoFavoritePreferences }
     );
 
     // Today should appear in favorites section (at depth 0, no indentation)
@@ -318,14 +297,288 @@ describe('HierarchicalCollectionList', () => {
     
     // Today should appear before the year node (in favorites section)
     expect(todayIndex).toBeGreaterThan(-1);
-    expect(todayIndex).toBeLessThan(yearIndex);
+    // Year node should NOT be rendered when only collection is auto-favorited
+    expect(yearIndex).toBe(-1);
+  });
 
-    // Now expand the year
-    const yearButton = screen.getByText(new RegExp(`${today.getFullYear()} Logs`));
-    await user.click(yearButton);
+  describe('Visual Dividers', () => {
+    it('should render divider between favorites and other custom collections', () => {
+      const collections: Collection[] = [
+        {
+          id: 'fav-1',
+          name: 'Favorite Collection',
+          type: 'custom',
+          isFavorite: true,
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'custom-1',
+          name: 'Regular Collection',
+          type: 'custom',
+          order: 'b',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
 
-    // Today should still appear in favorites section AND in the hierarchy
-    const todayLinksAfterExpand = screen.getAllByText(/Today/);
-    expect(todayLinksAfterExpand.length).toBeGreaterThanOrEqual(1);
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          
+        />
+      );
+
+      // Find dividers (horizontal separators)
+      const dividers = container.querySelectorAll('.border-t');
+      
+      // Should have exactly 1 divider (between favorites and other customs)
+      expect(dividers.length).toBe(1);
+      
+      // Divider should have proper ARIA role
+      const separator = container.querySelector('[role="separator"]');
+      expect(separator).toBeInTheDocument();
+      expect(separator).toHaveAttribute('aria-orientation', 'horizontal');
+    });
+
+    it('should render divider between other custom collections and date hierarchy', () => {
+      const collections: Collection[] = [
+        {
+          id: 'custom-1',
+          name: 'Regular Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          
+        />
+      );
+
+      // Find dividers
+      const dividers = container.querySelectorAll('.border-t');
+      
+      // Should have exactly 1 divider (between customs and date hierarchy)
+      expect(dividers.length).toBe(1);
+    });
+
+    it('should render divider between favorites and date hierarchy when no other customs exist', () => {
+      const collections: Collection[] = [
+        {
+          id: 'fav-1',
+          name: 'Favorite Collection',
+          type: 'custom',
+          isFavorite: true,
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          
+        />
+      );
+
+      // Find dividers
+      const dividers = container.querySelectorAll('.border-t');
+      
+      // Should have exactly 1 divider (between favorites and date hierarchy, skipping other customs)
+      expect(dividers.length).toBe(1);
+    });
+
+    it('should render two dividers when all three sections exist', () => {
+      const collections: Collection[] = [
+        {
+          id: 'fav-1',
+          name: 'Favorite Collection',
+          type: 'custom',
+          isFavorite: true,
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'custom-1',
+          name: 'Regular Collection',
+          type: 'custom',
+          order: 'b',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'c',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          
+        />
+      );
+
+      // Find dividers
+      const dividers = container.querySelectorAll('.border-t');
+      
+      // Should have exactly 2 dividers (favorites -> other customs -> date hierarchy)
+      expect(dividers.length).toBe(2);
+    });
+
+    it('should not render any dividers when only one section exists', () => {
+      const collections: Collection[] = [
+        {
+          id: 'custom-1',
+          name: 'Only Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          
+        />
+      );
+
+      // Find dividers
+      const dividers = container.querySelectorAll('.border-t');
+      
+      // Should have no dividers when only one section exists
+      expect(dividers.length).toBe(0);
+    });
+  });
+
+  describe('ARIA Accessibility', () => {
+    it('should render ARIA live region for screen reader announcements', () => {
+      const collections: Collection[] = [
+        {
+          id: 'custom-1',
+          name: 'Test Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          
+        />
+      );
+
+      // Check for ARIA live region
+      const liveRegion = screen.getByRole('status');
+      expect(liveRegion).toBeInTheDocument();
+      expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+    });
+
+    it('should have screen-reader-only class on ARIA live region', () => {
+      const collections: Collection[] = [
+        {
+          id: 'custom-1',
+          name: 'Test Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          
+        />
+      );
+
+      // Check for sr-only class (screen reader only)
+      const liveRegion = screen.getByRole('status');
+      expect(liveRegion.className).toContain('sr-only');
+    });
+
+    it('should announce divider state to screen readers', () => {
+      const collections: Collection[] = [
+        {
+          id: 'custom-1',
+          name: 'Test Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          
+        />
+      );
+
+      // Check the announcement text
+      const liveRegion = screen.getByRole('status');
+      expect(liveRegion.textContent).toBe('Dividers shown between groups');
+    });
+
+    it('should render dividers with proper ARIA separator role', () => {
+      const collections: Collection[] = [
+        {
+          id: 'fav-1',
+          name: 'Favorite Collection',
+          type: 'custom',
+          isFavorite: true,
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'custom-1',
+          name: 'Regular Collection',
+          type: 'custom',
+          order: 'b',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList 
+          collections={collections}
+          
+        />
+      );
+
+      // Check for ARIA separator role
+      const separators = container.querySelectorAll('[role="separator"]');
+      expect(separators.length).toBeGreaterThan(0);
+      
+      // All separators should have horizontal orientation
+      separators.forEach(separator => {
+        expect(separator).toHaveAttribute('aria-orientation', 'horizontal');
+      });
+    });
   });
 });

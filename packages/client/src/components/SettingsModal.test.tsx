@@ -8,8 +8,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { SettingsModal } from './SettingsModal';
-import type { IEventStore, UserPreferences, CompletedTaskBehavior } from '@squickr/shared';
-import { EventStore } from '@squickr/shared';
+import type { IEventStore, UserPreferences, CompletedTaskBehavior } from '@squickr/domain';
+import { InMemoryEventStore } from '@squickr/infrastructure';
 
 // Mock hooks
 vi.mock('../hooks/useUserPreferences', () => ({
@@ -32,7 +32,7 @@ describe('SettingsModal', () => {
     vi.clearAllMocks();
     
     // Setup event store
-    mockEventStore = new EventStore();
+    mockEventStore = new InMemoryEventStore();
     
     // Mock useApp hook
     vi.mocked(useApp).mockReturnValue({

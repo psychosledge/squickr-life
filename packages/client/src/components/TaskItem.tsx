@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Task } from '@squickr/shared';
+import type { Task } from '@squickr/domain';
 import { formatTimestamp } from '../utils/formatters';
 
 interface TaskItemProps {

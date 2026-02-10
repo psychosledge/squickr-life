@@ -1,4 +1,4 @@
-import type { Entry, Collection } from '@squickr/shared';
+import type { Entry, Collection } from '@squickr/domain';
 import { TaskEntryItem } from './TaskEntryItem';
 import { NoteEntryItem } from './NoteEntryItem';
 import { EventEntryItem } from './EventEntryItem';
@@ -17,13 +17,28 @@ interface EntryItemProps {
   // Common handlers
   onDelete: (entryId: string) => void;
   // Migration handlers
-  onMigrate?: (entryId: string, targetCollectionId: string | null) => Promise<void>;
+  onMigrate?: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
   // Navigation handler for migrated entries
   onNavigateToMigrated?: (collectionId: string | null) => void;
   // Collection creation handler
   onCreateCollection?: (name: string) => Promise<string>;
+  // Sub-task handler
+  onAddSubTask?: (entry: Entry) => void;
+  // Phase 2: Completion status for parent tasks
+  completionStatus?: {
+    total: number;
+    completed: number;
+    allComplete: boolean;
+  };
+  // Phase 2: Sub-task navigation and migration indicators
+  onNavigateToParent?: () => void;
+  onNavigateToSubTaskCollection?: () => void;
+  isSubTaskMigrated?: boolean;
+  // Phase 4: Expand/collapse control for sub-tasks
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 /**
@@ -47,7 +62,14 @@ export function EntryItem({
   collections,
   currentCollectionId,
   onNavigateToMigrated,
-  onCreateCollection
+  onCreateCollection,
+  onAddSubTask,
+  completionStatus,
+  onNavigateToParent,
+  onNavigateToSubTaskCollection,
+  isSubTaskMigrated,
+  isCollapsed,
+  onToggleCollapse,
 }: EntryItemProps) {
   // Route to the appropriate type-specific component
   if (entry.type === 'task') {
@@ -63,6 +85,13 @@ export function EntryItem({
         currentCollectionId={currentCollectionId}
         onNavigateToMigrated={onNavigateToMigrated}
         onCreateCollection={onCreateCollection}
+        onAddSubTask={onAddSubTask}
+        completionStatus={completionStatus}
+        onNavigateToParent={onNavigateToParent}
+        onNavigateToSubTaskCollection={onNavigateToSubTaskCollection}
+        isSubTaskMigrated={isSubTaskMigrated}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={onToggleCollapse}
       />
     );
   }

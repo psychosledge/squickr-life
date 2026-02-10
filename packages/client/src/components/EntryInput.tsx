@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
-import type { EntryType } from '@squickr/shared';
+import type { EntryType } from '@squickr/domain';
 import { ENTRY_ICONS } from '../utils/constants';
 
 interface EntryInputProps {

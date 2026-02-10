@@ -12,18 +12,21 @@
  */
 
 import { useMemo } from 'react';
-import type { IEventStore, CollectionListProjection, EntryListProjection, TaskListProjection } from '@squickr/shared';
+import type { IEventStore, CollectionListProjection, EntryListProjection, TaskListProjection } from '@squickr/domain';
 import {
   CreateTaskHandler,
+  CreateSubTaskHandler,
   CreateNoteHandler,
   CreateEventHandler,
   CompleteTaskHandler,
+  CompleteParentTaskHandler,
   ReopenTaskHandler,
   UpdateTaskTitleHandler,
   UpdateNoteContentHandler,
   UpdateEventContentHandler,
   UpdateEventDateHandler,
   DeleteTaskHandler,
+  DeleteParentTaskHandler,
   DeleteNoteHandler,
   DeleteEventHandler,
   ReorderTaskHandler,
@@ -34,16 +37,18 @@ import {
   UpdateCollectionSettingsHandler,
   FavoriteCollectionHandler,
   UnfavoriteCollectionHandler,
-} from '@squickr/shared';
+} from '@squickr/domain';
 
 export interface CollectionHandlers {
   // Entry creation handlers
   createTaskHandler: CreateTaskHandler;
+  createSubTaskHandler: CreateSubTaskHandler; // Phase 1: Sub-Tasks
   createNoteHandler: CreateNoteHandler;
   createEventHandler: CreateEventHandler;
   
   // Task state handlers
   completeTaskHandler: CompleteTaskHandler;
+  completeParentTaskHandler: CompleteParentTaskHandler; // Phase 4: Completion cascade
   reopenTaskHandler: ReopenTaskHandler;
   
   // Entry update handlers
@@ -54,6 +59,7 @@ export interface CollectionHandlers {
   
   // Entry deletion handlers
   deleteTaskHandler: DeleteTaskHandler;
+  deleteParentTaskHandler: DeleteParentTaskHandler; // Phase 5: Deletion cascade
   deleteNoteHandler: DeleteNoteHandler;
   deleteEventHandler: DeleteEventHandler;
   
@@ -92,6 +98,12 @@ export function useCollectionHandlers({
     [eventStore, taskProjection, entryProjection]
   );
   
+  // Phase 1: Sub-Tasks handler
+  const createSubTaskHandler = useMemo(
+    () => new CreateSubTaskHandler(eventStore, taskProjection, entryProjection),
+    [eventStore, taskProjection, entryProjection]
+  );
+  
   const createNoteHandler = useMemo(
     () => new CreateNoteHandler(eventStore, entryProjection),
     [eventStore, entryProjection]
@@ -105,6 +117,12 @@ export function useCollectionHandlers({
   // Task state handlers
   const completeTaskHandler = useMemo(
     () => new CompleteTaskHandler(eventStore, entryProjection),
+    [eventStore, entryProjection]
+  );
+  
+  // Phase 4: Completion cascade handler
+  const completeParentTaskHandler = useMemo(
+    () => new CompleteParentTaskHandler(eventStore, entryProjection),
     [eventStore, entryProjection]
   );
   
@@ -137,6 +155,12 @@ export function useCollectionHandlers({
   // Entry deletion handlers
   const deleteTaskHandler = useMemo(
     () => new DeleteTaskHandler(eventStore, entryProjection),
+    [eventStore, entryProjection]
+  );
+  
+  // Phase 5: Deletion cascade handler - FINAL PHASE!
+  const deleteParentTaskHandler = useMemo(
+    () => new DeleteParentTaskHandler(eventStore, entryProjection),
     [eventStore, entryProjection]
   );
   
@@ -194,15 +218,18 @@ export function useCollectionHandlers({
 
   return {
     createTaskHandler,
+    createSubTaskHandler,
     createNoteHandler,
     createEventHandler,
     completeTaskHandler,
+    completeParentTaskHandler,
     reopenTaskHandler,
     updateTaskTitleHandler,
     updateNoteContentHandler,
     updateEventContentHandler,
     updateEventDateHandler,
     deleteTaskHandler,
+    deleteParentTaskHandler,
     deleteNoteHandler,
     deleteEventHandler,
     reorderTaskHandler,

@@ -13,8 +13,7 @@
  * ADR-011: Background Sync Strategy
  */
 
-import type { IEventStore } from '@squickr/shared';
-import { uploadLocalEvents, downloadRemoteEvents } from './syncEvents';
+import type { IEventStore } from '@squickr/domain';
 import { logger } from '../utils/logger';
 import { DEBOUNCE, SYNC_CONFIG } from '../utils/constants';
 
@@ -30,8 +29,8 @@ export class SyncManager {
   private handleFocus?: () => void;
   
   constructor(
-    private userId: string,
-    private eventStore: IEventStore,
+    private localStore: IEventStore,
+    private remoteStore: IEventStore,
     private onSyncStateChange?: (syncing: boolean) => void
   ) {}
   
@@ -79,8 +78,25 @@ export class SyncManager {
       this.isSyncing = true;
       this.onSyncStateChange?.(true);
       
-      await uploadLocalEvents(this.userId, this.eventStore);
-      await downloadRemoteEvents(this.userId, this.eventStore);
+      // Upload: Get events from localStore, append to remoteStore
+      const localEvents = await this.localStore.getAll();
+      const remoteEvents = await this.remoteStore.getAll();
+      const remoteIds = new Set(remoteEvents.map(e => e.id));
+      const newEvents = localEvents.filter(e => !remoteIds.has(e.id));
+      
+      logger.info('[SyncManager]', `Uploading ${newEvents.length} new events...`);
+      for (const event of newEvents) {
+        await this.remoteStore.append(event);
+      }
+      
+      // Download: Get events from remoteStore, append to localStore  
+      const localIds = new Set(localEvents.map(e => e.id));
+      const eventsToDownload = remoteEvents.filter(e => !localIds.has(e.id));
+      
+      logger.info('[SyncManager]', `Downloading ${eventsToDownload.length} new events...`);
+      for (const event of eventsToDownload) {
+        await this.localStore.append(event);
+      }
       
       this.lastSyncTime = Date.now();
     } catch (error) {

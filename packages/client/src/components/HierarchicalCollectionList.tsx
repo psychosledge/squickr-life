@@ -1,4 +1,4 @@
-import type { Collection, Entry, UserPreferences } from '@squickr/shared';
+import type { Collection, Entry } from '@squickr/domain';
 import { useMemo } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -6,13 +6,35 @@ import { useCollectionHierarchy, type HierarchyNode } from '../hooks/useCollecti
 import { CollectionTreeNode } from './CollectionTreeNode';
 import { DRAG_SENSOR_CONFIG } from '../utils/constants';
 import { isEffectivelyFavorited } from '../utils/collectionUtils';
+import { getCollectionDisplayName } from '../utils/formatters';
+import { sortDailyLogsByDate } from '../utils/collectionSorting';
+import { useApp } from '../context/AppContext';
 
 interface HierarchicalCollectionListProps {
   collections: Collection[];
   selectedCollectionId?: string;
   onReorder?: (collectionId: string, previousCollectionId: string | null, nextCollectionId: string | null) => void;
   entriesByCollection?: Map<string | null, Entry[]>;
-  userPreferences: UserPreferences;
+}
+
+/**
+ * Helper function to determine if a divider should be shown between two sections
+ */
+function shouldShowDivider(beforeSection: HierarchyNode[], afterSection: HierarchyNode[]): boolean {
+  return beforeSection.length > 0 && afterSection.length > 0;
+}
+
+/**
+ * SectionDivider component with proper ARIA semantics
+ */
+function SectionDivider() {
+  return (
+    <div 
+      className="border-t border-gray-200 dark:border-gray-700 my-2" 
+      role="separator"
+      aria-orientation="horizontal"
+    />
+  );
 }
 
 /**
@@ -23,7 +45,8 @@ interface HierarchicalCollectionListProps {
  * Features:
  * - Groups daily logs by year and month
  * - Drag-and-drop reordering for custom collections
- * - Visual separators between sections (Favorites / Date Hierarchy / Other Customs)
+ * - NO section headers (testing flat UI)
+ * - Visual dividers always shown between sections
  * - Touch-friendly with 48x48px tap targets and 250ms activation delay
  * - Shows custom collections at root level
  * - Pins favorited collections to top
@@ -37,9 +60,11 @@ export function HierarchicalCollectionList({
   selectedCollectionId,
   onReorder,
   entriesByCollection,
-  userPreferences,
 }: HierarchicalCollectionListProps) {
-  const { nodes, toggleExpand } = useCollectionHierarchy(collections);
+  // Get userPreferences from context
+  const { userPreferences } = useApp();
+  
+  const { nodes, toggleExpand } = useCollectionHierarchy(collections, userPreferences);
   
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -77,8 +102,8 @@ export function HierarchicalCollectionList({
       .filter(node => node.type === 'custom' && node.collection)
       .filter(node => 
         section === 'favorites' 
-          ? isEffectivelyFavorited(node.collection!, userPreferences)
-          : !isEffectivelyFavorited(node.collection!, userPreferences)
+          ? isEffectivelyFavorited(node.collection!, userPreferences, now)
+          : !isEffectivelyFavorited(node.collection!, userPreferences, now)
       );
     
     const activeId = String(active.id);
@@ -107,35 +132,47 @@ export function HierarchicalCollectionList({
   // Collection count header
   const collectionText = collections.length === 1 ? 'collection' : 'collections';
   
+  // Memoize reference date (MEDIUM PRIORITY - Casey's review #5)
+  const now = useMemo(() => new Date(), []);
+  
   // Separate nodes into sections for rendering with separators
   // Use isEffectivelyFavorited to include both manual and auto-favorited collections
   // For favorites, include both custom collections AND daily logs that are favorited
   const favoriteCustomNodes = nodes.filter(node => {
     // For custom collections, check if favorited
     if (node.type === 'custom' && node.collection) {
-      return isEffectivelyFavorited(node.collection, userPreferences);
+      return isEffectivelyFavorited(node.collection, userPreferences, now);
     }
     return false;
   });
   
-  // Find favorited daily/monthly logs from the original collections array
+  // Find favorited daily logs from the original collections array
   // This ensures they appear even when year/month are collapsed
+  // Note: Only daily logs are currently auto-favorited (Today/Yesterday/Tomorrow)
+  // Monthly/yearly auto-favorites are not yet implemented
+  //
+  
   const favoriteDayNodes = useMemo(() => {
-    return collections
+    const favoritedDailies = collections
       .filter(collection => 
-        (collection.type === 'daily' || collection.type === 'monthly') &&
-        isEffectivelyFavorited(collection, userPreferences)
-      )
-      .map(collection => ({
-        type: (collection.type === 'monthly' ? 'monthly' : 'day') as 'day' | 'monthly',
-        id: collection.id,
-        label: collection.name,
-        date: collection.date,
-        collection,
-        children: [],
-        isExpanded: false,
-      } as HierarchyNode));
-  }, [collections, userPreferences]);
+        collection.type === 'daily' &&
+        isEffectivelyFavorited(collection, userPreferences, now)
+      );
+    
+    // Use shared sorting utility (DRY - Casey's review #2)
+    const sortedDailies = sortDailyLogsByDate(favoritedDailies, now);
+    
+    // Map to HierarchyNode format
+    return sortedDailies.map(collection => ({
+      type: 'day' as const,
+      id: collection.id,
+      label: getCollectionDisplayName(collection, now), // Use relative dates (Today, Yesterday, Tomorrow)
+      date: collection.date,
+      collection,
+      children: [],
+      isExpanded: false,
+    } as HierarchyNode));
+  }, [collections, userPreferences, now]);
   
   const allFavoriteNodes = useMemo(
     () => [...favoriteCustomNodes, ...favoriteDayNodes], 
@@ -146,7 +183,7 @@ export function HierarchicalCollectionList({
   const otherCustomNodes = nodes.filter(node => 
     node.type === 'custom' && 
     node.collection &&
-    !isEffectivelyFavorited(node.collection, userPreferences)
+    !isEffectivelyFavorited(node.collection, userPreferences, now)
   );
   
   // Empty state
@@ -165,17 +202,19 @@ export function HierarchicalCollectionList({
   
   return (
     <div className="w-full max-w-2xl mx-auto pb-32">
-      <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-        {collections.length} {collectionText}
+      <div className="mb-4 text-sm text-gray-600 dark:text-gray-400 flex justify-between items-center">
+        <span>{collections.length} {collectionText}</span>
+      </div>
+      
+      {/* ARIA live region for accessibility - announces divider state */}
+      <div role="status" aria-live="polite" className="sr-only">
+        Dividers shown between groups
       </div>
       
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-visible md:ml-12">
-        {/* Favorites Section */}
+        {/* Favorites Section - NO HEADER */}
         {allFavoriteNodes.length > 0 && (
           <>
-            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Favorites
-            </div>
             {onReorder ? (
               <DndContext
                 sensors={sensors}
@@ -214,48 +253,12 @@ export function HierarchicalCollectionList({
           </>
         )}
         
-        {/* Separator between Favorites and Date Hierarchy */}
-        {allFavoriteNodes.length > 0 && dateHierarchyNodes.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-700" />
-        )}
+        {/* Conditional Divider after Favorites */}
+        {shouldShowDivider(allFavoriteNodes, otherCustomNodes) && <SectionDivider />}
         
-        {/* Date Hierarchy Section (not draggable) */}
-        {dateHierarchyNodes.length > 0 && (
-          <>
-            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Daily Logs
-            </div>
-            {dateHierarchyNodes.map(node => (
-              <CollectionTreeNode
-                key={node.id}
-                node={node}
-                depth={0}
-                onToggleExpand={toggleExpand}
-                selectedCollectionId={selectedCollectionId}
-                isDraggable={false}
-                entriesByCollection={entriesByCollection}
-                userPreferences={userPreferences}
-              />
-            ))}
-          </>
-        )}
-        
-        {/* Separator between Date Hierarchy and Other Customs */}
-        {dateHierarchyNodes.length > 0 && otherCustomNodes.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-700" />
-        )}
-        
-        {/* Separator between Favorites and Other Customs (when no date hierarchy) */}
-        {allFavoriteNodes.length > 0 && dateHierarchyNodes.length === 0 && otherCustomNodes.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-700" />
-        )}
-        
-        {/* Other Custom Collections Section */}
+        {/* Other Custom Collections Section - NO HEADER */}
         {otherCustomNodes.length > 0 && (
           <>
-            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Collections
-            </div>
             {onReorder ? (
               <DndContext
                 sensors={sensors}
@@ -291,6 +294,30 @@ export function HierarchicalCollectionList({
                 />
               ))
             )}
+          </>
+        )}
+        
+        {/* Conditional Divider after Other Custom Collections */}
+        {shouldShowDivider(otherCustomNodes, dateHierarchyNodes) && <SectionDivider />}
+        
+        {/* Conditional Divider between Favorites and Date Hierarchy (when no other customs) */}
+        {shouldShowDivider(allFavoriteNodes, dateHierarchyNodes) && otherCustomNodes.length === 0 && <SectionDivider />}
+        
+        {/* Date Hierarchy Section - NO HEADER */}
+        {dateHierarchyNodes.length > 0 && (
+          <>
+            {dateHierarchyNodes.map(node => (
+              <CollectionTreeNode
+                key={node.id}
+                node={node}
+                depth={0}
+                onToggleExpand={toggleExpand}
+                selectedCollectionId={selectedCollectionId}
+                isDraggable={false}
+                entriesByCollection={entriesByCollection}
+                userPreferences={userPreferences}
+              />
+            ))}
           </>
         )}
       </div>
