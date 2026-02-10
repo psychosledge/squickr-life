@@ -285,8 +285,8 @@ describe('sortCollectionsHierarchically', () => {
 
       const sorted = sortCollectionsHierarchically(collections, autoFavoritePreferences, now);
 
-      // All are auto-favorited, should sort: Yesterday → Today → Tomorrow (REVERSED to oldest first)
-      expect(sorted.map(c => c.id)).toEqual(['older', 'yesterday', 'today', 'tomorrow']);
+      // Auto-favorited dailies (Yesterday → Today → Tomorrow) come before older calendar (oldest first)
+      expect(sorted.map(c => c.id)).toEqual(['yesterday', 'today', 'tomorrow', 'older']);
     });
 
     it('should use bidirectional comparison (regression test for Casey bug #1)', () => {
@@ -345,8 +345,8 @@ describe('sortCollectionsHierarchically', () => {
 
       const sorted = sortCollectionsHierarchically(collections, autoFavoritePreferences, now);
 
-      // Unfav customs, then older calendar, then auto-favorited dailies (Y→T→T, oldest first)
-      expect(sorted.map(c => c.id)).toEqual(['custom', 'older', 'yesterday', 'today', 'tomorrow']);
+      // Auto-favorited dailies (Y→T→T, oldest first), then unfav customs, then older calendar
+      expect(sorted.map(c => c.id)).toEqual(['yesterday', 'today', 'tomorrow', 'custom', 'older']);
     });
   });
 });

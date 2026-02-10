@@ -99,17 +99,17 @@ describe('MigrateEntryDialog - Collection Sorting', () => {
 
       // Expected order (oldest-first):
       // 1. Favorited customs (fav-custom)
-      // 2. Other customs (other-custom)
-      // 3. Older calendar (monthly → older daily from Feb, before today)
-      // 4. Auto-favorited recent dailies (Today → Tomorrow, Yesterday filtered out as current)
+      // 2. Auto-favorited recent dailies (Yesterday/Today/Tomorrow, Yesterday filtered out as current)
+      // 3. Unfavorited customs (other-custom)
+      // 4. Older calendar (monthly → older daily from Feb, before today)
       expect(collectionOptions.map(opt => opt.value)).toEqual([
         'fav-custom',     // Favorited custom
-        'other-custom',   // Other custom
-        'monthly',        // Monthly log (February 2026, in older section)
-        'older',          // Older daily (not auto-favorited, before today)
         // 'yesterday' is filtered out (current collection)
         'today',          // Auto-favorited (Today)
         'tomorrow',       // Auto-favorited (Tomorrow)
+        'other-custom',   // Unfavorited custom
+        'monthly',        // Monthly log (February 2026, in older section)
+        'older',          // Older daily (not auto-favorited, before today)
       ]);
     });
 

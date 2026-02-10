@@ -108,11 +108,11 @@ export function sortCollectionsHierarchically(
   );
   
   // Separate favorited from non-favorited (for both customs and dailies)
-  const favoritedCustoms = customCollections.filter(c => isEffectivelyFavorited(c, userPreferences));
-  const unfavoritedCustoms = customCollections.filter(c => !isEffectivelyFavorited(c, userPreferences));
+  const favoritedCustoms = customCollections.filter(c => isEffectivelyFavorited(c, userPreferences, now));
+  const unfavoritedCustoms = customCollections.filter(c => !isEffectivelyFavorited(c, userPreferences, now));
   
-  const favoritedDailies = dailyLogs.filter(c => isEffectivelyFavorited(c, userPreferences));
-  const unfavoritedDailies = dailyLogs.filter(c => !isEffectivelyFavorited(c, userPreferences));
+  const favoritedDailies = dailyLogs.filter(c => isEffectivelyFavorited(c, userPreferences, now));
+  const unfavoritedDailies = dailyLogs.filter(c => !isEffectivelyFavorited(c, userPreferences, now));
   
   // Sort favorited customs by order field
   favoritedCustoms.sort((a, b) => (a.order || '').localeCompare(b.order || ''));
@@ -217,15 +217,15 @@ export function sortCollectionsHierarchically(
   
   // Return in hierarchical order:
   // 1. Favorited customs
-  // 2. Unfavorited customs  
-  // 3. Older calendar (before yesterday)
-  // 4. Auto-favorited recent dailies (Yesterday → Today → Tomorrow)
+  // 2. Auto-favorited recent dailies (Yesterday → Today → Tomorrow)
+  // 3. Unfavorited customs  
+  // 4. Older calendar (before yesterday)
   // 5. Future calendar (after tomorrow)
   return [
     ...favoritedCustoms,
+    ...sortedFavoritedDailies,
     ...unfavoritedCustoms,
     ...olderCalendarLogs,
-    ...sortedFavoritedDailies,
     ...futureCalendarLogs,
   ];
 }
