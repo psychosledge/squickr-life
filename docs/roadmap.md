@@ -1,6 +1,6 @@
 # Product Roadmap
-**Last Updated:** February 6, 2026  
-**Current Version:** v0.6.0  
+**Last Updated:** February 10, 2026  
+**Current Version:** v0.7.0  
 **Status:** Roadmap finalized through v1.0.0
 
 ---
@@ -43,27 +43,67 @@
 
 ---
 
-### v0.7.0 - Sub-tasks Feature
-**Target:** After v0.6.0  
-**Estimated Time:** TBD (requires design)  
-**Status:** Not yet designed
+### ✅ v0.7.0 - Sub-tasks Feature (COMPLETED)
+**Released:** February 7-10, 2026  
+**Actual Time:** ~12 hours (design + implementation + bug fixes)  
+**Status:** Deployed to production
 
-**Concept:**
-- Support hierarchical/nested tasks
-- Sub-tasks within parent tasks
-- Indentation or checkboxes for sub-items
+**Features Delivered:**
+1. ✅ Hierarchical task structure (two-level hierarchy for MVP)
+   - Sub-tasks are independent entries with `parentTaskId` link
+   - Sub-tasks created with same `collectionId` as parent initially
+   - Parent tasks show completion badge (e.g., "2/5 ✓")
+   - Indented rendering under parent tasks
+   - Expand/collapse functionality with keyboard accessibility
 
-**Design Needed:**
-- UX flow (how to create/edit sub-tasks)
-- Data model (event sourcing implications)
-- Migration strategy (existing tasks)
-- UI patterns (indentation, collapse/expand)
+2. ✅ Sub-task creation and management
+   - Add sub-task button appears on parent tasks
+   - Create sub-task via dedicated UI component
+   - Edit sub-task titles inline (same as regular tasks)
+   - Delete cascade: deleting parent deletes all sub-tasks
+   - Independent sub-task deletion (doesn't affect parent)
 
-**Questions to Answer:**
-- How many levels deep? (1 level? unlimited nesting?)
-- Should sub-tasks be separate entries or embedded in parent?
-- How does migration work with sub-tasks?
-- What happens when parent task is completed?
+3. ✅ Completion cascade behavior
+   - Parent completion requires all sub-tasks complete (soft warning)
+   - Option to complete parent and cascade to sub-tasks
+   - Completing last sub-task auto-completes parent (optional)
+   - Sub-tasks can be completed independently
+
+4. ✅ Migration "symlink" behavior
+   - Migrating parent cascades to all sub-tasks in same collection
+   - Sub-tasks appear in both original and migrated collections
+   - "Go to Parent" navigation for migrated sub-tasks
+   - "Go to Collection" navigation shows origin collection
+   - Sub-tasks display 🔗 icon when migrated separately from parent
+
+5. ✅ Event sourcing implementation
+   - `TaskCreated` with optional `parentTaskId` field
+   - `SubTaskAdded` event for parent linking
+   - `SubTaskRemoved` event for parent unlinking  
+   - Completion and deletion cascade handlers
+   - Migration cascade handlers
+
+**Architecture Decisions:**
+- Two-level hierarchy (parent → children) - can extend later with zero tech debt
+- Sub-tasks are independent entries (Liskov Substitution Principle)
+- Explicit collection membership (sub-tasks inherit parent's `collectionId`)
+- Migration creates symlink behavior (children appear in multiple collections)
+- Parent completion requires all children complete (cascade option available)
+
+**Design Document:**
+- `docs/sub-tasks-design.md` (comprehensive 900+ line spec)
+
+**Test Coverage:**
+- All 816+ client tests passing
+- Event sourcing projections tested
+- Cascade behaviors fully tested
+- Migration symlink behavior tested
+
+**Bug Fixes During Implementation:**
+- Fixed migrated sub-tasks not appearing in daily logs
+- Fixed "Go to Parent" navigation for migrated sub-tasks
+- Fixed race condition in completion cascade
+- Fixed expand/collapse keyboard accessibility
 
 ---
 
@@ -123,6 +163,21 @@
 
 ### Completed Versions
 
+**v0.7.0** (February 7-10, 2026)
+- Sub-tasks feature (hierarchical task structure)
+- Two-level hierarchy with parent/child relationships
+- Completion and deletion cascades
+- Migration symlink behavior
+- Expand/collapse with keyboard accessibility
+- 816+ tests passing
+
+**v0.6.0** (February 6, 2026)
+- User Preferences Enhancements
+- Global default for completed task behavior
+- Auto-favorite Today/Yesterday/Tomorrow daily logs
+- Settings modal with user preferences
+- 656+ client tests passing
+
 **v0.5.1** (February 6, 2026)
 - Fixed FAB covering bulk migrate UI
 - Changed "Add to Today" → "Add Entry"
@@ -154,69 +209,77 @@
 
 ## Next Steps
 
-### Immediate: v0.6.0 User Preferences
+### Immediate: v1.0.0 Intro Guide/Walkthrough
 
-**Step 1: Investigation (Sam)**
-- Verify if `defaultCompletedTaskBehavior` exists in user preferences types
-- Check Session 8 implementation status
-- Identify gaps in current implementation
+**Status:** Ready to implement (design complete ✅)  
+**Estimated Time:** 7-11 hours  
+**Target Release:** After v0.7.0
 
-**Step 2: Design (Alex - if needed)**
-- If not already implemented, design event sourcing approach
-- Define user preferences events
-- Plan Settings UI updates
+**Implementation Phases:**
+1. **Infrastructure** (2-3 hours)
+   - Install React Joyride or similar tutorial library
+   - Create tutorial state management
+   - Add help menu (?) icon to header
 
-**Step 3: Implementation (Sam)**
-- Feature 1: Global default for completed task behavior (2-3 hours)
-- Feature 2: Auto-favorite daily logs (2-3 hours)
-- Tests and documentation
+2. **Tutorial Steps** (2-3 hours)
+   - Implement 7-step interactive walkthrough
+   - Add spotlight overlays for key UI elements
+   - Mobile-optimized step positioning
 
-**Step 4: Review (Casey)**
-- Code quality review
-- Test coverage check
-- SOLID principles compliance
+3. **Help Menu** (2-3 hours)
+   - Restart Tutorial
+   - Bullet Journal Guide (modal with methodology)
+   - Keyboard Shortcuts (modal with shortcuts table)
+   - Report a Bug (pre-filled GitHub issue)
+   - Request a Feature (pre-filled GitHub issue)
+   - GitHub Discussions link
+   - About Squickr Life (version, credits)
 
-**Step 5: Deploy**
-- User testing
-- Deploy v0.6.0 to production
+4. **Polish** (1-2 hours)
+   - Dark mode support for tutorial
+   - Auto-trigger logic (once per session, zero collections)
+   - Accessibility (keyboard navigation, ARIA)
+   - Testing
 
----
-
-### Future: v0.7.0 Sub-tasks
-
-**Design Phase:**
-- User provides requirements and use cases
-- Alex designs event sourcing approach
-- Define UX patterns and data model
-
-**Implementation Phase:**
-- TBD based on design complexity
+**Design Documents:**
+- `docs/session-2026-02-06-intro-guide-final.md` (approved spec)
+- `docs/session-2026-02-06-intro-guide-design.md` (comprehensive design)
 
 ---
 
-### Future: v1.0.0 Intro Guide
+### Follow-up: ADR-014 Polish (Optional)
 
-**Implementation Phase:**
-- Design already complete
-- 4 phases: Infrastructure → Targeting → Help Menu → Polish
-- 7-11 hours total
-- Ready to execute when v0.7.0 complete
+**Casey's Recommendations from Recent Reviews:**
+
+**From Timezone Fix (9/10):**
+1. Import `getLocalDateKey` in tests instead of duplicating logic
+2. Add timezone edge case tests (late night EST, positive UTC offsets)
+3. Create ADR-014 documenting local timezone strategy
+4. Extract date comparison to reusable utility function
+
+**From ADR-014 Implementation (10/10):**
+1. Fix timezone inconsistencies in `DateHeader.tsx` and `formatters.ts`
+2. Add centralized date parsing utilities
+
+**Minor Code TODOs:**
+- Add tests for drag-and-drop functionality in `HierarchicalCollectionList.tsx`
+- Show error toast to user in `CollectionDetailView.tsx`
+
+**Estimated Time:** 2-4 hours (non-blocking, quality improvements)
 
 ---
 
 ## Timeline Estimate
 
-**Optimistic:**
-- v0.6.0: 1 week (4-6 hours)
-- v0.7.0: 2 weeks (8-12 hours, includes design)
-- v1.0.0: 2 weeks (7-11 hours)
-- **Total to v1.0.0:** ~5 weeks
+**Completed:**
+- v0.6.0: ✅ ~7 hours (February 6, 2026)
+- v0.7.0: ✅ ~12 hours (February 7-10, 2026)
 
-**Realistic:**
-- v0.6.0: 1-2 weeks
-- v0.7.0: 3-4 weeks (sub-tasks can be complex)
-- v1.0.0: 2-3 weeks
-- **Total to v1.0.0:** 6-9 weeks
+**Remaining to v1.0.0:**
+- v1.0.0 Intro Guide: 7-11 hours
+
+**Optimistic:** 1-2 weeks to v1.0.0  
+**Realistic:** 2-3 weeks to v1.0.0
 
 ---
 
@@ -249,6 +312,6 @@
 ---
 
 **Roadmap Status:** ✅ Finalized  
-**Next Milestone:** v0.6.0 User Preferences  
+**Next Milestone:** v1.0.0 Intro Guide/Walkthrough  
 **Ultimate Goal:** v1.0.0 Public Launch  
-**Date:** February 6, 2026
+**Date:** February 10, 2026
