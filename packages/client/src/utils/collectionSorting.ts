@@ -83,10 +83,12 @@ export function sortDailyLogsByDate(
  * 
  * This function ensures that navigation order matches the collection index:
  * - Favorited custom collections first (sorted by order)
- * - Auto-favorited daily logs second (Tomorrow → Today → Yesterday → Older)
- * - Other custom collections third (sorted by order)
+ * - Other custom collections second (sorted by order)
+ * - Older calendar daily logs (before yesterday)
+ * - Auto-favorited daily logs (Yesterday → Today → Tomorrow)
+ * - Future calendar daily logs (after tomorrow)
  * - Calendar hierarchy (interwoven by year/month):
- *   - For each month (newest first): monthly log, then daily logs for that month
+ *   - For each month (oldest first): monthly log, then daily logs for that month
  * 
  * @param collections - Array of collections to sort
  * @param userPreferences - User preferences (for auto-favorite logic)

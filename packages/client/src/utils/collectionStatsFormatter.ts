@@ -15,7 +15,9 @@ export function formatCollectionStats(
     return '';
   }
 
-  const entries = entriesByCollection?.get(node.collection.id) || [];
+  const allEntries = entriesByCollection?.get(node.collection.id) || [];
+  // Exclude migrated entries (ghost entries should not count in stats)
+  const entries = allEntries.filter(e => !e.migratedTo);
 
   if (node.type === 'monthly') {
     const count = entries.length;

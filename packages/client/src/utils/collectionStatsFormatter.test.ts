@@ -399,6 +399,47 @@ describe('formatCollectionStats', () => {
   });
 
   describe('edge cases', () => {
+    it('should exclude migrated entries from stats', () => {
+      const node: HierarchyNode = {
+        id: 'day-1',
+        label: 'Feb 7, 2026',
+        type: 'day',
+        isExpanded: false,
+        children: [],
+        collection: { id: '1', name: 'Feb 7', type: 'daily', createdAt: '2026-02-07T00:00:00.000Z', order: 'a', date: '2026-02-07' },
+      };
+      const entries: Entry[] = [
+        { 
+          id: '1', 
+          type: 'task' as const, 
+          title: 'Task 1', 
+          createdAt: '2026-02-07T00:00:00.000Z', 
+          status: 'open', 
+          collectionId: '1',
+          collections: [],
+        },
+        { 
+          id: '2', 
+          type: 'task' as const, 
+          title: 'Task 2 (migrated)', 
+          createdAt: '2026-02-07T00:00:00.000Z', 
+          status: 'open', 
+          collectionId: '1',
+          collections: [],
+          migratedTo: 'other-collection',
+        },
+        { 
+          id: '3', 
+          type: 'note' as const, 
+          content: 'Note 1', 
+          createdAt: '2026-02-07T00:00:00.000Z', 
+          collectionId: '1',
+        },
+      ];
+      // Should only count non-migrated entries (1 task, 1 note)
+      expect(formatCollectionStats(node, new Map([['1', entries]]))).toBe('(1 task, 1 note)');
+    });
+
     it('should handle missing entriesByCollection map', () => {
       const node: HierarchyNode = {
         type: 'day',
