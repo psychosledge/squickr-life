@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TaskListProjection } from './task.projections';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import type { TaskCreated, TaskCompleted, TaskReopened, TaskDeleted, TaskReordered, TaskTitleChanged, Task } from './task.types';
 
 describe('TaskListProjection', () => {

@@ -9,7 +9,7 @@ interface SortableEntryItemProps {
   // Task handlers
   onCompleteTask?: (taskId: string) => void;
   onReopenTask?: (taskId: string) => void;
-  onUpdateTaskTitle?: (taskId: string) => void;
+  onUpdateTaskTitle?: (taskId: string, newTitle: string) => void;
   // Note handlers
   onUpdateNoteContent?: (noteId: string, newContent: string) => void;
   // Event handlers

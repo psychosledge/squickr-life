@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { UpdateUserPreferencesHandler } from './user-preferences.handlers';
 import type { UserPreferencesUpdated, UpdateUserPreferencesCommand } from './user-preferences.types';
 

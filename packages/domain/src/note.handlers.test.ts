@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler } from './note.handlers';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import type { CreateNoteCommand, NoteCreated, UpdateNoteContentCommand, NoteContentChanged, DeleteNoteCommand, NoteDeleted } from './task.types';
 

@@ -10,7 +10,7 @@ import {
   AccessCollectionHandler
 } from './collection.handlers';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { CollectionListProjection } from './collection.projections';
 import type { 
   CreateCollectionCommand, 

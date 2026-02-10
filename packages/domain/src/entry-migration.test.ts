@@ -4,7 +4,7 @@ import { CreateTaskHandler } from './task.handlers';
 import { CreateNoteHandler } from './note.handlers';
 import { CreateEventHandler } from './event.handlers';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { TaskListProjection } from './task.projections';
 import { EntryListProjection } from './entry.projections';
 import type { MoveEntryToCollectionCommand, EntryMovedToCollection } from './task.types';

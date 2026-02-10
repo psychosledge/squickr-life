@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler } from './event.handlers';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import type { CreateEventCommand, EventCreated, UpdateEventContentCommand, EventContentChanged, UpdateEventDateCommand, EventDateChanged, DeleteEventCommand, EventDeleted } from './task.types';
 

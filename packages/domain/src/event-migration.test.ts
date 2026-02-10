@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { MigrateEventHandler } from './event.handlers';
 import { CreateEventHandler } from './event.handlers';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import type { MigrateEventCommand, EventMigrated } from './task.types';
 

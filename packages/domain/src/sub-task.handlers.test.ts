@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { CreateSubTaskHandler } from './sub-task.handlers';
 import { EntryListProjection } from './entry.projections';
 import { CreateTaskHandler } from './task.handlers';

@@ -11,7 +11,6 @@
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
-    "@squickr/infrastructure": "workspace:*",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
   },

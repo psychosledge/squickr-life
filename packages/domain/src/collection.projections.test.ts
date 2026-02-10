@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CollectionListProjection } from './collection.projections';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import type { CollectionCreated, CollectionRenamed, CollectionReordered, CollectionDeleted, CollectionSettingsUpdated } from './collection.types';
 import { generateEventMetadata } from './event-helpers';
 

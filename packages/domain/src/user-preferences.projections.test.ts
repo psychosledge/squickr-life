@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { UserPreferencesProjection } from './user-preferences.projections';
 import type { UserPreferencesUpdated } from './user-preferences.types';
 import { DEFAULT_USER_PREFERENCES } from './user-preferences.types';

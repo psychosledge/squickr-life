@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BulkMigrateEntriesHandler } from './bulk-migrate-entries.handler';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import { CreateTaskHandler } from './task.handlers';
 import { CreateNoteHandler } from './note.handlers';

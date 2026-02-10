@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { validateTaskExists, validateTaskStatus } from './task-validation';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { TaskListProjection } from './task.projections';
 import type { TaskCreated, TaskCompleted } from './task.types';
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CompleteParentTaskHandler } from './complete-parent-task.handler';
 import type { IEventStore } from './event-store';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import { CreateSubTaskHandler } from './sub-task.handlers';
 import { CreateTaskHandler, CompleteTaskHandler } from './task.handlers';

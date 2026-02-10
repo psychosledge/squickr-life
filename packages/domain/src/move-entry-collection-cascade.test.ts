@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InMemoryEventStore } from '@squickr/infrastructure';
+import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import { TaskListProjection } from './task.projections';
 import { CreateTaskHandler, MoveEntryToCollectionHandler } from './task.handlers';
