@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { HierarchyNode } from '../hooks/useCollectionHierarchy';
 import type { Entry, UserPreferences } from '@squickr/domain';
 import { buildCollectionPath } from '../routes';
-import { CollectionStats } from './CollectionStats';
+import { formatCollectionStats } from '../utils/collectionStatsFormatter';
 import { ENTRY_ICONS } from '../utils/constants';
 
 interface CollectionTreeNodeProps {
@@ -71,10 +71,8 @@ export function CollectionTreeNode({
     icon = ENTRY_ICONS.NOTE;
   }
   
-  // Label with count if collapsed
-  const label = node.count !== undefined 
-    ? `${node.label} (${node.count} ${node.count === 1 ? 'log' : 'logs'})`
-    : node.label;
+  // Calculate stats text for inline display
+  const statsText = formatCollectionStats(node, entriesByCollection);
   
   // Container nodes (year/month) - clickable but not navigable
   if (isContainer) {
@@ -83,12 +81,21 @@ export function CollectionTreeNode({
         <button
           onClick={() => onToggleExpand(node.id)}
           className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 
-                     transition-colors duration-150 flex items-center gap-2
+                     transition-colors duration-150
                      text-gray-700 dark:text-gray-300"
           style={{ paddingLeft }}
         >
-          <span className="text-sm w-5 flex-shrink-0">{icon}</span>
-          <span className="font-medium">{label}</span>
+          <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+            <div className="flex items-baseline gap-2 flex-shrink-0">
+              <span className="text-sm w-5">{icon}</span>
+              <span className="font-medium">{node.label}</span>
+            </div>
+            {statsText && (
+              <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                {statsText}
+              </span>
+            )}
+          </div>
         </button>
         
         {/* Render children if expanded */}
@@ -112,9 +119,6 @@ export function CollectionTreeNode({
   if (!node.collection) {
     return null; // Should not happen, but guard against it
   }
-  
-  // Get entries for this collection (if available)
-  const collectionEntries = entriesByCollection?.get(node.collection.id) || [];
   
   return (
     <div ref={shouldUseDrag ? setNodeRef : undefined} style={style} className="relative group">
@@ -151,30 +155,29 @@ export function CollectionTreeNode({
         </div>
       )}
       
-      <div>
-        <Link
-          to={buildCollectionPath(node.collection.id)}
-          className={`
-            block px-4 py-2 transition-colors duration-150 flex items-center gap-2
-            ${isSelected 
-              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }
-          `}
-          style={{ paddingLeft }}
-        >
-          <span className="text-sm w-5 flex-shrink-0">{icon}</span>
-          <span>{label}</span>
-        </Link>
-        
-        {/* Collection Stats - show below collection name, aligned with text */}
-        <CollectionStats 
-          entries={collectionEntries} 
-          style={{ 
-            paddingLeft: `calc(${paddingLeft} + 1.25rem + 0.5rem)` // paddingLeft + icon width (w-5 = 1.25rem) + gap (gap-2 = 0.5rem)
-          }} 
-        />
-      </div>
+      <Link
+        to={buildCollectionPath(node.collection.id)}
+        className={`
+          block px-4 py-2 transition-colors duration-150
+          ${isSelected 
+            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
+            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+          }
+        `}
+        style={{ paddingLeft }}
+      >
+        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+          <div className="flex items-baseline gap-2 flex-shrink-0">
+            <span className="text-sm w-5">{icon}</span>
+            <span>{node.label}</span>
+          </div>
+          {statsText && (
+            <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+              {statsText}
+            </span>
+          )}
+        </div>
+      </Link>
     </div>
   );
 }

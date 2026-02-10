@@ -1,3 +1,7 @@
+/**
+ * @deprecated Stats are now inline. See collectionStatsFormatter.ts
+ */
+
 import { useMemo } from 'react';
 import type { Entry } from '@squickr/domain';
 import { ENTRY_ICONS } from '../utils/constants';

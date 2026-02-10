@@ -110,7 +110,8 @@ describe('HierarchicalCollectionList', () => {
     );
 
     // Year should be collapsed, showing count
-    expect(screen.getByText(/2026 Logs \(1 log\)/)).toBeInTheDocument();
+    expect(screen.getByText('2026 Logs')).toBeInTheDocument();
+    expect(screen.getByText('(1 log)')).toBeInTheDocument();
     
     // Month should not be visible
     expect(screen.queryByText('February')).not.toBeInTheDocument();
