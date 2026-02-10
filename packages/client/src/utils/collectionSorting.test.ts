@@ -268,13 +268,22 @@ describe('sortCollectionsHierarchically', () => {
 
       // Use actual current time for the test
       const now = new Date();
-      const todayStr = now.toISOString().split('T')[0]!;
+      
+      // Create date strings in local timezone (matching how getLocalDateKey() works)
+      const getLocalDateString = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      const todayStr = getLocalDateString(now);
       const tomorrowDate = new Date(now.getTime() + 86400000);
-      const tomorrowStr = tomorrowDate.toISOString().split('T')[0]!;
+      const tomorrowStr = getLocalDateString(tomorrowDate);
       const yesterdayDate = new Date(now.getTime() - 86400000);
-      const yesterdayStr = yesterdayDate.toISOString().split('T')[0]!;
+      const yesterdayStr = getLocalDateString(yesterdayDate);
       const olderDate = new Date(now.getTime() - 5 * 86400000);
-      const olderStr = olderDate.toISOString().split('T')[0]!;
+      const olderStr = getLocalDateString(olderDate);
 
       const collections: Collection[] = [
         { id: 'older', name: 'Older', type: 'daily', date: olderStr, order: 'a', createdAt: olderStr + 'T00:00:00Z' },
@@ -297,10 +306,19 @@ describe('sortCollectionsHierarchically', () => {
 
       // Use actual current time for the test
       const now = new Date();
+      
+      // Create date strings in local timezone (matching how getLocalDateKey() works)
+      const getLocalDateString = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
       const tomorrowDate = new Date(now.getTime() + 86400000);
-      const tomorrowStr = tomorrowDate.toISOString().split('T')[0]!;
+      const tomorrowStr = getLocalDateString(tomorrowDate);
       const yesterdayDate = new Date(now.getTime() - 86400000);
-      const yesterdayStr = yesterdayDate.toISOString().split('T')[0]!;
+      const yesterdayStr = getLocalDateString(yesterdayDate);
 
       const collections: Collection[] = [
         { id: 'yesterday', name: 'Yesterday', type: 'daily', date: yesterdayStr, order: 'a', createdAt: yesterdayStr + 'T00:00:00Z' },
@@ -324,13 +342,22 @@ describe('sortCollectionsHierarchically', () => {
 
       // Use actual current time for the test
       const now = new Date();
-      const todayStr = now.toISOString().split('T')[0]!;
+      
+      // Create date strings in local timezone (matching how getLocalDateKey() works)
+      const getLocalDateString = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      const todayStr = getLocalDateString(now);
       const tomorrowDate = new Date(now.getTime() + 86400000);
-      const tomorrowStr = tomorrowDate.toISOString().split('T')[0]!;
+      const tomorrowStr = getLocalDateString(tomorrowDate);
       const yesterdayDate = new Date(now.getTime() - 86400000);
-      const yesterdayStr = yesterdayDate.toISOString().split('T')[0]!;
+      const yesterdayStr = getLocalDateString(yesterdayDate);
       const olderDate = new Date(now.getTime() - 5 * 86400000);
-      const olderStr = olderDate.toISOString().split('T')[0]!;
+      const olderStr = getLocalDateString(olderDate);
 
       const collections: Collection[] = [
         // Non-favorited older daily (should appear after customs)

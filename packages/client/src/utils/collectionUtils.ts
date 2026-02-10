@@ -8,7 +8,7 @@ import type { Collection, UserPreferences } from '@squickr/domain';
 
 /**
  * Checks if a daily collection is considered "recent" (Today, Yesterday, Tomorrow)
- * Uses UTC timezone to match date string format
+ * Uses local timezone to match how daily logs are created (via getLocalDateKey)
  * 
  * @param collection - The collection to check
  * @param now - Current date/time (defaults to new Date() if not provided)
@@ -18,12 +18,12 @@ export function isRecentDailyLog(collection: Collection, now: Date = new Date())
   if (collection.type !== 'daily') return false;
   if (!collection.date) return false;
   
-  // Get today's date at midnight in UTC timezone (to match how date strings are created)
+  // Get today's date at midnight in local timezone (to match how daily logs are created)
   const today = new Date(now);
-  today.setUTCHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
   
-  // Parse in UTC to match the timezone of `now`
-  const collectionDate = new Date(collection.date + 'T00:00:00Z');
+  // Parse in local timezone to match getLocalDateKey() behavior
+  const collectionDate = new Date(collection.date + 'T00:00:00');
   
   // Calculate difference in days
   const diffInMs = collectionDate.getTime() - today.getTime();

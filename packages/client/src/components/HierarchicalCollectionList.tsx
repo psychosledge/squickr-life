@@ -64,7 +64,7 @@ export function HierarchicalCollectionList({
   // Get userPreferences from context
   const { userPreferences } = useApp();
   
-  const { nodes, toggleExpand } = useCollectionHierarchy(collections);
+  const { nodes, toggleExpand } = useCollectionHierarchy(collections, userPreferences);
   
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);

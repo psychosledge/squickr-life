@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { Collection } from '@squickr/domain';
+import type { Collection, UserPreferences } from '@squickr/domain';
 import { formatMonthlyLogName, getCollectionDisplayName } from '../utils/formatters';
+import { isEffectivelyFavorited } from '../utils/collectionUtils';
 
 export interface HierarchyNode {
   type: 'year' | 'month' | 'monthly' | 'day' | 'custom';
@@ -79,12 +80,19 @@ export function getCurrentYearMonth(): { year: string; yearMonth: string } {
  */
 function buildHierarchy(
   collections: Collection[],
-  expandedSet: Set<string>
+  expandedSet: Set<string>,
+  userPreferences: UserPreferences,
+  now: Date
 ): HierarchyNode[] {
   const nodes: HierarchyNode[] = [];
   
   // Separate daily logs, monthly logs, and custom collections
-  const dailyLogs = collections.filter(c => c.type === 'daily' && c.date);
+  // Exclude auto-favorited dailies from calendar hierarchy (they appear in favorites section)
+  const dailyLogs = collections.filter(c => 
+    c.type === 'daily' && 
+    c.date &&
+    !isEffectivelyFavorited(c, userPreferences, now)
+  );
   const monthlyLogs = collections.filter(c => c.type === 'monthly' && c.date);
   const customCollections = collections.filter(c => 
     !c.type || c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
@@ -258,7 +266,10 @@ function buildHierarchy(
 /**
  * Hook to manage collection hierarchy state
  */
-export function useCollectionHierarchy(collections: Collection[]) {
+export function useCollectionHierarchy(
+  collections: Collection[],
+  userPreferences: UserPreferences
+) {
   // Load expanded state from localStorage
   const [expandedSet, setExpandedSet] = useState<Set<string>>(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -275,6 +286,9 @@ export function useCollectionHierarchy(collections: Collection[]) {
     const { year, yearMonth } = getCurrentYearMonth();
     return new Set([`year-${year}`, `month-${yearMonth}`]);
   });
+  
+  // Use current time for auto-favorite detection
+  const now = useMemo(() => new Date(), []);
   
   // Persist expanded state to localStorage
   useEffect(() => {
@@ -302,8 +316,8 @@ export function useCollectionHierarchy(collections: Collection[]) {
   
   // Build hierarchy (memoized)
   const nodes = useMemo(
-    () => buildHierarchy(collections, expandedSet),
-    [collections, expandedSet]
+    () => buildHierarchy(collections, expandedSet, userPreferences, now),
+    [collections, expandedSet, userPreferences, now]
   );
   
   return {
