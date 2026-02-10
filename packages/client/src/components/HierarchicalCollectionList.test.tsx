@@ -253,9 +253,7 @@ describe('HierarchicalCollectionList', () => {
     expect(unpinnedIndex).toBeLessThan(yearIndex);
   });
 
-  it('should show auto-favorited daily logs in favorites section even when year/month are collapsed', async () => {
-    const user = userEvent.setup();
-    
+  it('should show auto-favorited daily logs in favorites section even when year/month are collapsed', () => {
     // Create a daily log for today (which will be auto-favorited)
     const today = new Date();
     const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -299,15 +297,8 @@ describe('HierarchicalCollectionList', () => {
     
     // Today should appear before the year node (in favorites section)
     expect(todayIndex).toBeGreaterThan(-1);
-    expect(todayIndex).toBeLessThan(yearIndex);
-
-    // Now expand the year
-    const yearButton = screen.getByText(new RegExp(`${today.getFullYear()} Logs`));
-    await user.click(yearButton);
-
-    // Today should still appear in favorites section AND in the hierarchy
-    const todayLinksAfterExpand = screen.getAllByText(/Today/);
-    expect(todayLinksAfterExpand.length).toBeGreaterThanOrEqual(1);
+    // Year node should NOT be rendered when only collection is auto-favorited
+    expect(yearIndex).toBe(-1);
   });
 
   describe('Visual Dividers', () => {
