@@ -131,7 +131,6 @@ export function sortCollectionsHierarchically(
   const yesterday = now.toISOString().split('T')[0]!;
   const yesterdayDate = new Date(now.getTime() - 86400000);
   const yesterdayYearMonth = yesterdayDate.toISOString().substring(0, 7);
-  const tomorrow = new Date(now.getTime() + 86400000).toISOString().split('T')[0]!;
   const tomorrowDate = new Date(now.getTime() + 86400000);
   const tomorrowYearMonth = tomorrowDate.toISOString().substring(0, 7);
   

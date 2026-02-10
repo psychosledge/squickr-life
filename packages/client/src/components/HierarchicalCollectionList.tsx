@@ -102,8 +102,8 @@ export function HierarchicalCollectionList({
       .filter(node => node.type === 'custom' && node.collection)
       .filter(node => 
         section === 'favorites' 
-          ? isEffectivelyFavorited(node.collection!, userPreferences)
-          : !isEffectivelyFavorited(node.collection!, userPreferences)
+          ? isEffectivelyFavorited(node.collection!, userPreferences, now)
+          : !isEffectivelyFavorited(node.collection!, userPreferences, now)
       );
     
     const activeId = String(active.id);
@@ -132,13 +132,16 @@ export function HierarchicalCollectionList({
   // Collection count header
   const collectionText = collections.length === 1 ? 'collection' : 'collections';
   
+  // Memoize reference date (MEDIUM PRIORITY - Casey's review #5)
+  const now = useMemo(() => new Date(), []);
+  
   // Separate nodes into sections for rendering with separators
   // Use isEffectivelyFavorited to include both manual and auto-favorited collections
   // For favorites, include both custom collections AND daily logs that are favorited
   const favoriteCustomNodes = nodes.filter(node => {
     // For custom collections, check if favorited
     if (node.type === 'custom' && node.collection) {
-      return isEffectivelyFavorited(node.collection, userPreferences);
+      return isEffectivelyFavorited(node.collection, userPreferences, now);
     }
     return false;
   });
@@ -148,14 +151,12 @@ export function HierarchicalCollectionList({
   // Note: Only daily logs are currently auto-favorited (Today/Yesterday/Tomorrow)
   // Monthly/yearly auto-favorites are not yet implemented
   //
-  // Memoize reference date (MEDIUM PRIORITY - Casey's review #5)
-  const now = useMemo(() => new Date(), []);
   
   const favoriteDayNodes = useMemo(() => {
     const favoritedDailies = collections
       .filter(collection => 
         collection.type === 'daily' &&
-        isEffectivelyFavorited(collection, userPreferences)
+        isEffectivelyFavorited(collection, userPreferences, now)
       );
     
     // Use shared sorting utility (DRY - Casey's review #2)
@@ -182,7 +183,7 @@ export function HierarchicalCollectionList({
   const otherCustomNodes = nodes.filter(node => 
     node.type === 'custom' && 
     node.collection &&
-    !isEffectivelyFavorited(node.collection, userPreferences)
+    !isEffectivelyFavorited(node.collection, userPreferences, now)
   );
   
   // Empty state
