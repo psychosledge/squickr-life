@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCollectionHierarchy, formatDayLabel, formatMonthLabel, formatYearLabel, getCurrentYearMonth } from './useCollectionHierarchy';
 import type { Collection } from '@squickr/domain';
+import { DEFAULT_USER_PREFERENCES } from '@squickr/domain';
 
 describe('useCollectionHierarchy', () => {
   const STORAGE_KEY = 'collection-hierarchy-expanded';
@@ -84,7 +85,7 @@ describe('useCollectionHierarchy', () => {
         },
       ];
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       expect(result.current.nodes).toHaveLength(2);
       
@@ -134,7 +135,7 @@ describe('useCollectionHierarchy', () => {
         'month-2025-12',
       ]));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       // Should have 2 year nodes
       const yearNodes = result.current.nodes.filter(n => n.type === 'year');
@@ -171,7 +172,7 @@ describe('useCollectionHierarchy', () => {
         },
       ];
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const customNodes = result.current.nodes.filter(n => n.type === 'custom');
       expect(customNodes).toHaveLength(2);
@@ -207,7 +208,7 @@ describe('useCollectionHierarchy', () => {
       // Auto-expand current year/month
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       expect(result.current.nodes).toHaveLength(3);
       
@@ -237,7 +238,7 @@ describe('useCollectionHierarchy', () => {
         },
       ];
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       expect(result.current.isExpanded(`year-${year}`)).toBe(true);
       expect(result.current.isExpanded(`month-${yearMonth}`)).toBe(true);
@@ -260,7 +261,7 @@ describe('useCollectionHierarchy', () => {
       // Clear localStorage to get auto-expand behavior
       localStorage.clear();
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       // Should have auto-expanded current year/month
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -293,7 +294,7 @@ describe('useCollectionHierarchy', () => {
         },
       ];
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const initialExpanded = result.current.isExpanded('year-2026');
 
@@ -333,7 +334,7 @@ describe('useCollectionHierarchy', () => {
       // Don't expand year
       localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       expect(yearNode?.count).toBe(2);
@@ -355,7 +356,7 @@ describe('useCollectionHierarchy', () => {
       // Expand year
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       expect(yearNode?.count).toBeUndefined();
@@ -387,7 +388,7 @@ describe('useCollectionHierarchy', () => {
       // Expand year to see children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       expect(yearNode).toBeDefined();
@@ -432,7 +433,7 @@ describe('useCollectionHierarchy', () => {
       // Expand year to see children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       expect(yearNode?.children).toHaveLength(3);
@@ -474,7 +475,7 @@ describe('useCollectionHierarchy', () => {
       // Expand year to see children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       
@@ -528,7 +529,7 @@ describe('useCollectionHierarchy', () => {
       // Expand year to see structure
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02', 'month-2026-01']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       
@@ -569,7 +570,7 @@ describe('useCollectionHierarchy', () => {
       // Expand year to see children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2025']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       
@@ -613,7 +614,7 @@ describe('useCollectionHierarchy', () => {
       // Don't expand year - should show count
       localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       
@@ -645,7 +646,7 @@ describe('useCollectionHierarchy', () => {
       // Expand years to see children
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'year-2025']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const year2026 = result.current.nodes.find(n => n.id === 'year-2026');
       const year2025 = result.current.nodes.find(n => n.id === 'year-2025');
@@ -686,7 +687,7 @@ describe('useCollectionHierarchy', () => {
       // Expand all years
       localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'year-2025', 'year-2024']));
 
-      const { result } = renderHook(() => useCollectionHierarchy(collections));
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
 
       const yearNodes = result.current.nodes.filter(n => n.type === 'year');
       
