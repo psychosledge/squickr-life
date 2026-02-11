@@ -358,6 +358,7 @@ export function CollectionDetailView() {
           getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
           getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
           getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
+          getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
         />
 
         {/* Completed tasks section - Mode 2: Move to bottom */}
@@ -388,6 +389,7 @@ export function CollectionDetailView() {
               getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
               getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
               getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
+              getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
             />
           </div>
         )}
@@ -444,10 +446,11 @@ export function CollectionDetailView() {
                 getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
                 getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
                 getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
+                getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
               />
-              </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
         )}
       </div>
 

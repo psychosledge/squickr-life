@@ -47,6 +47,8 @@ interface EntryListProps {
   getSubTasks?: (parentTaskId: string) => Promise<Task[]>;
   // Phase 2: Optional batch sub-task fetcher (performance optimization)
   getSubTasksForMultipleParents?: (parentIds: string[]) => Promise<Map<string, Task[]>>;
+  // Phase 2 Feature: Optional parent title fetcher (for migrated sub-tasks)
+  getParentTitlesForSubTasks?: (subTaskIds: string[]) => Promise<Map<string, string>>;
 }
 
 /**
@@ -78,6 +80,7 @@ export function EntryList({
   getCompletionStatus,
   getSubTasks,
   getSubTasksForMultipleParents,
+  getParentTitlesForSubTasks,
 }: EntryListProps) {
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -140,6 +143,10 @@ export function EntryList({
   // Phase 3: Store sub-tasks for each parent task
   // This map stores sub-task arrays by parent task ID
   const [subTasksMap, setSubTasksMap] = useState<Map<string, Task[]>>(new Map());
+  
+  // Phase 2 Feature: Store parent titles for sub-tasks
+  // This map stores parent task title by sub-task ID (for migrated sub-tasks)
+  const [parentTitlesMap, setParentTitlesMap] = useState<Map<string, string>>(new Map());
   
   // Recalculate completion status and fetch sub-tasks when entries change
   useEffect(() => {
@@ -213,11 +220,32 @@ export function EntryList({
         });
       }
       
+      // Fetch parent titles for all task entries (if getParentTitlesForSubTasks provided)
+      // This is used to show parent context for migrated sub-tasks
+      const parentTitlesTemp = new Map<string, string>();
+      if (getParentTitlesForSubTasks) {
+        // Get all task IDs from task entries
+        const taskIds = taskEntries.map(e => e.id);
+        
+        if (taskIds.length > 0) {
+          const parentTitles = await getParentTitlesForSubTasks(taskIds);
+          
+          // Early exit if component unmounted during batch query
+          if (isCancelled) return;
+          
+          // Store parent titles
+          for (const [subTaskId, parentTitle] of parentTitles.entries()) {
+            parentTitlesTemp.set(subTaskId, parentTitle);
+          }
+        }
+      }
+      
       // Final check before updating state
       if (isCancelled) return;
       
       setCompletionStatusMap(statusMap);
       setSubTasksMap(subTasksMapTemp);
+      setParentTitlesMap(parentTitlesTemp);
     };
     
     calculateStatusAndFetchSubTasks();
@@ -226,7 +254,7 @@ export function EntryList({
     return () => {
       isCancelled = true;
     };
-  }, [topLevelEntries, getCompletionStatus, getSubTasks, getSubTasksForMultipleParents]);
+  }, [topLevelEntries, getCompletionStatus, getSubTasks, getSubTasksForMultipleParents, getParentTitlesForSubTasks]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -337,6 +365,8 @@ export function EntryList({
                     completionStatus={completionStatusMap.get(entry.id)}
                     // Phase 2: Pass sub-task props for migrated sub-tasks rendered as flat entries
                     isSubTaskMigrated={isMigratedSubTask}
+                    // Phase 2 Feature: Pass parent title for migrated sub-tasks
+                    parentTitle={parentTitlesMap.get(entry.id)}
                     // Phase 4: Pass collapse props
                     isCollapsed={collapsed}
                     onToggleCollapse={() => toggleCollapsed(entry.id)}

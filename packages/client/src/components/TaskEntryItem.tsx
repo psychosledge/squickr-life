@@ -27,6 +27,8 @@ interface TaskEntryItemProps {
   // Phase 2: Navigation and migration indicators for sub-tasks
   onNavigateToSubTaskCollection?: () => void; // Navigate to migrated sub-task's collection
   isSubTaskMigrated?: boolean; // Whether this sub-task is migrated to different collection
+  // Phase 2 Feature: Parent title for migrated sub-tasks
+  parentTitle?: string; // Parent task title to display inline
   // Phase 4: Expand/collapse control for sub-tasks
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
@@ -56,6 +58,7 @@ export function TaskEntryItem({
   completionStatus,
   onNavigateToSubTaskCollection,
   isSubTaskMigrated = false,
+  parentTitle,
   isCollapsed = false,
   onToggleCollapse,
 }: TaskEntryItemProps) {
@@ -219,6 +222,12 @@ export function TaskEntryItem({
                   style={{ whiteSpace: 'pre-wrap' }}
                 >
                   {entry.title}
+                  {/* Phase 2 Feature: Show parent title for migrated sub-tasks */}
+                  {parentTitle && isSubTaskMigrated && (
+                    <span className="ml-2 text-gray-500 dark:text-gray-400 text-sm font-normal">
+                      ({parentTitle})
+                    </span>
+                  )}
                 </div>
                 
                 {/* Phase 2: Completion Badge for parent tasks */}
