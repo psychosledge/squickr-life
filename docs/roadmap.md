@@ -166,6 +166,42 @@
 
 ---
 
+### v0.8.0 - UX Enhancements (NEXT)
+**Target:** After v0.7.2  
+**Estimated Time:** 7 hours (3 hours + 4 hours)  
+**Status:** ✅ Designs complete and approved by Alex
+
+**Features:**
+
+#### 1. Auto-favorite last/current/next month (~3 hours)
+- **Design:** Separate `autoFavoriteRecentMonthlyLogs: boolean` preference
+- **Behavior:** Auto-favorite monthly logs for last month, current month, next month
+- **Implementation:**
+  - Add to `packages/domain/src/user-preferences.types.ts`
+  - Create `isRecentMonthlyLog()` utility in `packages/client/src/utils/collectionUtils.ts`
+  - Add checkbox to `packages/client/src/components/SettingsModal.tsx`
+  - Update `useCollectionHierarchy` hook to check preference
+- **Visual:** Hollow star (✦) for auto-favorited, filled star (⭐) for manual favorites
+- **Why:** Reduces manual favoriting work for commonly accessed monthly logs
+
+#### 2. Show parent title for linked sub-tasks (~4 hours)
+- **Design:** Inline suffix format: "find hardware (Put together Bed Frame)"
+- **When to show:** Only for migrated sub-tasks (in different collection than parent)
+- **Where:** Entry list only (not in menus or modals)
+- **Implementation:**
+  - Modify `packages/client/src/views/CollectionDetailView.tsx` to fetch parent titles
+  - Update `packages/client/src/components/TaskEntryItem.tsx` to display parent title
+  - Thread `parentTitle` prop through component tree
+  - Add CSS for muted inline display
+- **Why:** Provides context for sub-tasks that appear in different collections (e.g., daily logs)
+
+**Value Proposition:**
+- Reduces friction for monthly log navigation
+- Improves clarity for migrated sub-tasks
+- Minimal UI changes with high user value
+
+---
+
 ### v1.0.0 - Intro Guide/Walkthrough
 **Target:** After v0.7.0 (Milestone release)  
 **Estimated Time:** 7-11 hours  
