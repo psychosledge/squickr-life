@@ -11,6 +11,13 @@ Quick navigation to find what you need.
 | **[Development Guide](development-guide.md)** | TDD workflow, testing patterns, common tasks | When implementing features |
 | **[Architecture Decisions](architecture-decisions.md)** | Design decisions and rationale (ADRs) | When making design choices |
 | **[Event Models Reference](event-models.md)** | Quick event sourcing reference | When designing new events |
+| **[Roadmap](roadmap.md)** | Version history and upcoming features | Planning next work |
+| **[Deployment Guide](deployment-guide.md)** | Release process and validation | Before merging to production |
+
+## 📦 Archive
+
+Completed feature designs (for reference):
+- [Archive: Designs](archive/designs/) - Sub-tasks, backend sync, collections implementation plans
 
 ---
 
@@ -142,5 +149,5 @@ Quick navigation to find what you need.
 
 ---
 
-**Last Updated:** 2026-01-25  
+**Last Updated:** 2026-02-11  
 **Maintainer:** OpenCode + User
