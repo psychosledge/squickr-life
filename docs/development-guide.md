@@ -217,6 +217,53 @@ describe('EntryInput', () => {
 });
 ```
 
+### Testing Date/Time-Dependent Code
+
+**Critical:** Tests that depend on the current date or time must mock the system clock. Never rely on `new Date()` returning "today's date" in tests.
+
+```typescript
+import { describe, it, expect, vi, afterEach } from 'vitest';
+
+describe('Auto-Favorited Daily Logs', () => {
+  afterEach(() => {
+    // ALWAYS restore real timers after each test
+    vi.useRealTimers();
+  });
+
+  it('should recognize today as a recent daily log', () => {
+    // Mock system time to a specific date
+    const testDate = new Date('2026-02-09T12:00:00.000Z');
+    vi.setSystemTime(testDate);
+
+    // Now new Date() will return Feb 9, 2026
+    const today = new Date();
+    expect(today.toISOString()).toContain('2026-02-09');
+
+    // Test your date-dependent logic
+    const isRecent = isRecentDailyLog('2026-02-09');
+    expect(isRecent).toBe(true);
+  });
+});
+```
+
+**Why this matters:**
+- A test written on Feb 9 with hardcoded `'2026-02-09'` will pass on Feb 9
+- The same test will fail on Feb 11 when `new Date()` returns Feb 11
+- This causes **intermittent CI failures** that are hard to debug
+
+**When to mock time:**
+- ✅ Any test with `new Date()` in production code
+- ✅ Tests comparing dates (today, yesterday, tomorrow)
+- ✅ Tests using `Date.now()` or `performance.now()`
+- ✅ Tests with timeouts or intervals
+
+**Cleanup is mandatory:**
+```typescript
+afterEach(() => {
+  vi.useRealTimers(); // Prevents time mocking from leaking to other tests
+});
+```
+
 ---
 
 ## Common Tasks
