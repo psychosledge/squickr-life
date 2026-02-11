@@ -374,6 +374,169 @@ describe('sortCollectionsHierarchically', () => {
 
       // Auto-favorited dailies (Y→T→T, oldest first), then unfav customs, then older calendar
       expect(sorted.map(c => c.id)).toEqual(['yesterday', 'today', 'tomorrow', 'custom', 'older']);
+  });
+
+  // Bug: Favorited monthly logs don't appear in navigation order
+  describe('Favorited monthly logs', () => {
+    it('should include auto-favorited monthly logs in navigation order', () => {
+      const autoFavoriteMonthlyPreferences: UserPreferences = {
+        ...DEFAULT_USER_PREFERENCES,
+        autoFavoriteRecentMonthlyLogs: true,
+      };
+
+      // Use actual current time for the test
+      const now = new Date();
+      
+      // Get current month in YYYY-MM format
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1; // 0-based
+      const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      
+      // Get last month
+      const lastMonthDate = new Date(now);
+      lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+      const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      // Get next month
+      const nextMonthDate = new Date(now);
+      nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+      const nextMonthStr = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
+      
+      // Get old month (not auto-favorited)
+      const oldMonthDate = new Date(now);
+      oldMonthDate.setMonth(oldMonthDate.getMonth() - 5);
+      const oldMonthStr = `${oldMonthDate.getFullYear()}-${String(oldMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+      const collections: Collection[] = [
+        // Old monthly log (should appear in calendar hierarchy)
+        { id: 'old-month', name: 'Old Month', type: 'monthly', date: oldMonthStr, order: 'z0', createdAt: '2024-01-01T00:00:00Z' },
+        // Auto-favorited monthly logs (should appear in favorites section)
+        { id: 'last-month', name: 'Last Month', type: 'monthly', date: lastMonthStr, order: 'z1', createdAt: '2024-01-02T00:00:00Z' },
+        { id: 'current-month', name: 'Current Month', type: 'monthly', date: currentMonthStr, order: 'z2', createdAt: '2024-01-03T00:00:00Z' },
+        { id: 'next-month', name: 'Next Month', type: 'monthly', date: nextMonthStr, order: 'z3', createdAt: '2024-01-04T00:00:00Z' },
+        // Custom collection (should appear after auto-favorited monthlies)
+        { id: 'custom', name: 'Custom', type: 'custom', order: 'a', createdAt: '2024-01-05T00:00:00Z' },
+      ];
+
+      const sorted = sortCollectionsHierarchically(collections, autoFavoriteMonthlyPreferences, now);
+
+      // Expected order: auto-favorited monthlies → unfav customs → old calendar
+      // Auto-favorited monthlies should be sorted chronologically (oldest first)
+      expect(sorted.map(c => c.id)).toEqual([
+        'last-month',
+        'current-month', 
+        'next-month',
+        'custom',
+        'old-month',
+      ]);
+    });
+
+    it('should include manually favorited monthly logs in navigation order', () => {
+      const collections: Collection[] = [
+        // Manually favorited monthly log
+        { id: 'fav-month', name: 'Favorite Month', type: 'monthly', date: '2026-01', isFavorite: true, order: 'a0', createdAt: '2024-01-01T00:00:00Z' },
+        // Unfavorited monthly log
+        { id: 'unfav-month', name: 'Unfavorited Month', type: 'monthly', date: '2026-02', order: 'z0', createdAt: '2024-01-02T00:00:00Z' },
+        // Custom collection
+        { id: 'custom', name: 'Custom', type: 'custom', order: 'a', createdAt: '2024-01-03T00:00:00Z' },
+      ];
+
+      const sorted = sortCollectionsHierarchically(collections, defaultPreferences);
+
+      // Expected order: fav monthly → unfav customs → unfav calendar
+      expect(sorted.map(c => c.id)).toEqual([
+        'fav-month',
+        'custom',
+        'unfav-month',
+      ]);
+    });
+
+    it('should sort favorited monthly logs chronologically with favorited dailies', () => {
+      const autoFavoriteAllPreferences: UserPreferences = {
+        ...DEFAULT_USER_PREFERENCES,
+        autoFavoriteRecentDailyLogs: true,
+        autoFavoriteRecentMonthlyLogs: true,
+      };
+
+      // Use actual current time for the test
+      const now = new Date();
+      
+      // Create date strings in local timezone
+      const getLocalDateString = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      const todayStr = getLocalDateString(now);
+      const yesterdayDate = new Date(now.getTime() - 86400000);
+      const yesterdayStr = getLocalDateString(yesterdayDate);
+      
+      // Get current month in YYYY-MM format
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+
+      const collections: Collection[] = [
+        // Auto-favorited daily logs
+        { id: 'yesterday', name: 'Yesterday', type: 'daily', date: yesterdayStr, order: 'y0', createdAt: yesterdayStr + 'T00:00:00Z' },
+        { id: 'today', name: 'Today', type: 'daily', date: todayStr, order: 'y1', createdAt: todayStr + 'T00:00:00Z' },
+        // Auto-favorited monthly log
+        { id: 'current-month', name: 'Current Month', type: 'monthly', date: currentMonthStr, order: 'z0', createdAt: '2024-01-01T00:00:00Z' },
+        // Custom collection
+        { id: 'custom', name: 'Custom', type: 'custom', order: 'a', createdAt: '2024-01-02T00:00:00Z' },
+      ];
+
+      const sorted = sortCollectionsHierarchically(collections, autoFavoriteAllPreferences, now);
+
+      // Expected: favorited dailies sorted first (Yesterday → Today), then favorited monthly (current month)
+      // Monthlies come after dailies in the favorited section
+      expect(sorted.map(c => c.id)).toEqual([
+        'yesterday',
+        'today',
+        'current-month',
+        'custom',
+      ]);
+    });
+
+    it('should handle mix of manually and auto-favorited monthly logs', () => {
+      const autoFavoriteMonthlyPreferences: UserPreferences = {
+        ...DEFAULT_USER_PREFERENCES,
+        autoFavoriteRecentMonthlyLogs: true,
+      };
+
+      // Use actual current time for the test
+      const now = new Date();
+      
+      // Get current month in YYYY-MM format
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
+      
+      // Get old month (not auto-favorited, but manually favorited)
+      const oldMonthDate = new Date(now);
+      oldMonthDate.setMonth(oldMonthDate.getMonth() - 5);
+      const oldMonthStr = `${oldMonthDate.getFullYear()}-${String(oldMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+      const collections: Collection[] = [
+        // Manually favorited old monthly log
+        { id: 'manual-fav', name: 'Manual Favorite', type: 'monthly', date: oldMonthStr, isFavorite: true, order: 'a', createdAt: '2024-01-01T00:00:00Z' },
+        // Auto-favorited current monthly log
+        { id: 'auto-fav', name: 'Auto Favorite', type: 'monthly', date: currentMonthStr, order: 'z0', createdAt: '2024-01-02T00:00:00Z' },
+        // Custom collection
+        { id: 'custom', name: 'Custom', type: 'custom', order: 'b', createdAt: '2024-01-03T00:00:00Z' },
+      ];
+
+      const sorted = sortCollectionsHierarchically(collections, autoFavoriteMonthlyPreferences, now);
+
+      // Manual favorites sorted by order, then auto-favorites sorted chronologically
+      expect(sorted.map(c => c.id)).toEqual([
+        'manual-fav',
+        'auto-fav',
+        'custom',
+      ]);
     });
   });
+});
 });

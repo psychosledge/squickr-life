@@ -37,7 +37,8 @@ export class UpdateUserPreferencesHandler {
     // Validate: at least one preference field must be provided
     const hasPreferenceField = 
       command.defaultCompletedTaskBehavior !== undefined ||
-      command.autoFavoriteRecentDailyLogs !== undefined;
+      command.autoFavoriteRecentDailyLogs !== undefined ||
+      command.autoFavoriteRecentMonthlyLogs !== undefined;
 
     if (!hasPreferenceField) {
       throw new Error('At least one preference field must be provided');
@@ -61,6 +62,7 @@ export class UpdateUserPreferencesHandler {
     const payload: {
       defaultCompletedTaskBehavior?: typeof command.defaultCompletedTaskBehavior;
       autoFavoriteRecentDailyLogs?: boolean;
+      autoFavoriteRecentMonthlyLogs?: boolean;
       updatedAt: string;
     } = {
       updatedAt: metadata.timestamp,
@@ -72,6 +74,10 @@ export class UpdateUserPreferencesHandler {
 
     if (command.autoFavoriteRecentDailyLogs !== undefined) {
       payload.autoFavoriteRecentDailyLogs = command.autoFavoriteRecentDailyLogs;
+    }
+
+    if (command.autoFavoriteRecentMonthlyLogs !== undefined) {
+      payload.autoFavoriteRecentMonthlyLogs = command.autoFavoriteRecentMonthlyLogs;
     }
 
     // Create UserPreferencesUpdated event

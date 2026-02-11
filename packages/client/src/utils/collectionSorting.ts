@@ -6,11 +6,12 @@
  * 
  * Ordering Rules (ADR-014 - oldest first, like physical bullet journal):
  * 1. Favorited customs (by order field, lexicographic)
- * 2. Older daily logs (calendar hierarchy, before recent days)
- * 3. Auto-favorited daily logs (Yesterday → Today → Tomorrow)
- * 4. Future daily logs (calendar hierarchy, after recent days)
- * 5. Other customs (by order field, lexicographic)
- * 6. Monthly logs (interwoven with daily logs in calendar hierarchy)
+ * 2. Auto-favorited daily logs (Yesterday → Today → Tomorrow)
+ * 3. Auto-favorited monthly logs (chronologically, oldest first)
+ * 4. Other customs (by order field, lexicographic)
+ * 5. Older daily logs (calendar hierarchy, before recent days)
+ * 6. Future daily logs (calendar hierarchy, after recent days)
+ * 7. Monthly logs (interwoven with daily logs in calendar hierarchy)
  */
 
 import type { Collection, UserPreferences } from '@squickr/domain';
@@ -83,9 +84,10 @@ export function sortDailyLogsByDate(
  * 
  * This function ensures that navigation order matches the collection index:
  * - Favorited custom collections first (sorted by order)
- * - Other custom collections second (sorted by order)
- * - Older calendar daily logs (before yesterday)
  * - Auto-favorited daily logs (Yesterday → Today → Tomorrow)
+ * - Auto-favorited monthly logs (chronologically, oldest first)
+ * - Other custom collections (sorted by order)
+ * - Older calendar daily logs (before yesterday)
  * - Future calendar daily logs (after tomorrow)
  * - Calendar hierarchy (interwoven by year/month):
  *   - For each month (oldest first): monthly log, then daily logs for that month
@@ -107,18 +109,24 @@ export function sortCollectionsHierarchically(
     !c.type || c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
   );
   
-  // Separate favorited from non-favorited (for both customs and dailies)
+  // Separate favorited from non-favorited (for customs, dailies, and monthlies)
   const favoritedCustoms = customCollections.filter(c => isEffectivelyFavorited(c, userPreferences, now));
   const unfavoritedCustoms = customCollections.filter(c => !isEffectivelyFavorited(c, userPreferences, now));
   
   const favoritedDailies = dailyLogs.filter(c => isEffectivelyFavorited(c, userPreferences, now));
   const unfavoritedDailies = dailyLogs.filter(c => !isEffectivelyFavorited(c, userPreferences, now));
   
+  const favoritedMonthlies = monthlyLogs.filter(c => isEffectivelyFavorited(c, userPreferences, now));
+  const unfavoritedMonthlies = monthlyLogs.filter(c => !isEffectivelyFavorited(c, userPreferences, now));
+  
   // Sort favorited customs by order field
   favoritedCustoms.sort((a, b) => (a.order || '').localeCompare(b.order || ''));
   
   // Sort favorited dailies: Yesterday → Today → Tomorrow (oldest first)
   const sortedFavoritedDailies = sortDailyLogsByDate(favoritedDailies, now);
+  
+  // Sort favorited monthlies by date (oldest first = ascending)
+  favoritedMonthlies.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   
   // Sort unfavorited customs by order field
   unfavoritedCustoms.sort((a, b) => (a.order || '').localeCompare(b.order || ''));
@@ -151,7 +159,7 @@ export function sortCollectionsHierarchically(
   // Group monthlies by year-month
   const monthliesByYearMonth = new Map<string, Collection>();
   const monthliesWithoutDate: Collection[] = [];
-  for (const monthly of monthlyLogs) {
+  for (const monthly of unfavoritedMonthlies) {
     const yearMonth = monthly.date?.substring(0, 7); // "2026-02"
     if (yearMonth) {
       monthliesByYearMonth.set(yearMonth, monthly);
@@ -217,12 +225,14 @@ export function sortCollectionsHierarchically(
   // Return in hierarchical order:
   // 1. Favorited customs
   // 2. Auto-favorited recent dailies (Yesterday → Today → Tomorrow)
-  // 3. Unfavorited customs  
-  // 4. Older calendar (before yesterday)
-  // 5. Future calendar (after tomorrow)
+  // 3. Auto-favorited recent monthlies (chronologically)
+  // 4. Unfavorited customs  
+  // 5. Older calendar (before yesterday)
+  // 6. Future calendar (after tomorrow)
   return [
     ...favoritedCustoms,
     ...sortedFavoritedDailies,
+    ...favoritedMonthlies,
     ...unfavoritedCustoms,
     ...olderCalendarLogs,
     ...futureCalendarLogs,
