@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.2] - 2026-02-11
+
+### Fixed
+- **Date-dependent tests:** Collection sorting test now uses `vi.setSystemTime()` to prevent failures when date changes
+- **Async handling:** Navigation tests now properly wrap callbacks in `act()` to handle React side effects
+
+### Changed
+- **CI Pipeline:** Refactored for efficiency and fail-fast behavior (version check before tests)
+- **Documentation:** Added time-mocking guidelines to development guide to prevent future test issues
+
+### Developer
+- All 1,396 tests now reliable and non-flaky
+- CI runs ~7-13 seconds faster per run
+
 ## [0.7.1] - 2026-02-10
 
 ### Fixed

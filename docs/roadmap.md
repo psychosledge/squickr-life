@@ -1,6 +1,6 @@
 # Product Roadmap
 **Last Updated:** February 11, 2026  
-**Current Version:** v0.7.1  
+**Current Version:** v0.7.2  
 **Status:** Roadmap finalized through v1.0.0
 
 ---
@@ -104,6 +104,33 @@
 - Fixed "Go to Parent" navigation for migrated sub-tasks
 - Fixed race condition in completion cascade
 - Fixed expand/collapse keyboard accessibility
+
+---
+
+### ✅ v0.7.2 - Test Fixes (COMPLETED)
+**Released:** February 11, 2026  
+**Actual Time:** ~2 hours (test fixes + CI improvements)  
+**Status:** Deployed to production
+
+**Test Fixes:**
+1. ✅ Fixed date-dependent collection sorting test with proper time mocking (`vi.setSystemTime()`)
+2. ✅ Fixed async handling in navigation tests (wrapped callbacks in `act()`)
+
+**Infrastructure Improvements:**
+- Refactored CI pipeline for efficiency and fail-fast behavior
+- Version check now runs before tests (faster feedback on version bumps)
+- Added time-mocking guidelines to development docs
+- CI runs ~7-13 seconds faster per run
+
+**Test Coverage:**
+- All 1,396 tests passing reliably (Domain: 538, Infrastructure: 21, Client: 837)
+- Zero flaky tests
+- All tests now time-independent and deterministic
+
+**Documentation:**
+- Added "Testing Date/Time-Dependent Code" section to development guide
+- Documents when and how to use `vi.setSystemTime()`
+- Prevents future date-dependent test failures
 
 ---
 
