@@ -8,7 +8,15 @@ export function formatCollectionStats(
   node: HierarchyNode,
   entriesByCollection?: Map<string | null, Entry[]>
 ): string {
-  // Handle container nodes (year/month)
+  // Handle month nodes with attached monthly log (Feature 3)
+  if (node.type === 'month' && node.monthlyLog) {
+    const allEntries = entriesByCollection?.get(node.monthlyLog.id) || [];
+    const entries = allEntries.filter(e => !e.migratedTo);
+    const count = entries.length;
+    return count > 0 ? `${count} ${count === 1 ? 'entry' : 'entries'}` : '';
+  }
+
+  // Handle container nodes (year/month without monthly log)
   if (node.type === 'year' || node.type === 'month') {
     if (node.count !== undefined) {
       return `(${node.count} ${node.count === 1 ? 'log' : 'logs'})`;
