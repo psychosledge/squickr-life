@@ -848,4 +848,191 @@ describe('EntryList', () => {
       expect(screen.getByText('Plan Vacation')).toBeInTheDocument();
     });
   });
+  // Regression Tests: Verify migration UI elements were removed
+  describe('Regression: No migration UI indicators', () => {
+    it('should not render arrow indicator (→) for sub-tasks in multiple collections', async () => {
+      // Arrange: Parent with sub-task that exists in multiple collections
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Schedule appointments',
+          status: 'open',
+          createdAt: '2026-02-10T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Find eye doctor',
+          status: 'open',
+          createdAt: '2026-02-10T10:01:00Z',
+          parentTaskId: 'parent-1',
+          collectionId: 'daily-log-feb-10',
+          collections: ['daily-log-feb-10', 'health-collection'], // Sub-task is in multiple collections
+        },
+      ]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+          currentCollectionId="daily-log-feb-10"
+        />
+      );
+
+      // Wait for sub-task to load
+      await screen.findByText('Find eye doctor');
+
+      // Assert: Arrow indicator should NOT be rendered
+      expect(screen.queryByText('→')).not.toBeInTheDocument();
+      
+      // Assert: No element with "absolute -left-6" positioning (the arrow container)
+      const arrowElement = container.querySelector('.absolute.-left-6');
+      expect(arrowElement).not.toBeInTheDocument();
+    });
+
+    it('should not render collection name link for sub-tasks in multiple collections', async () => {
+      // Arrange: Parent with sub-task that exists in multiple collections
+      const mockCollections = [
+        { id: 'daily-log-feb-10', name: 'Tuesday, February 10', type: 'daily' as const, createdAt: '2026-02-10T00:00:00Z' },
+        { id: 'health-collection', name: 'Health', type: 'custom' as const, createdAt: '2026-01-01T00:00:00Z' },
+      ];
+
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Schedule appointments',
+          status: 'open',
+          createdAt: '2026-02-10T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Find eye doctor',
+          status: 'open',
+          createdAt: '2026-02-10T10:01:00Z',
+          parentTaskId: 'parent-1',
+          collectionId: 'daily-log-feb-10',
+          collections: ['daily-log-feb-10', 'health-collection'], // Sub-task is in multiple collections
+        },
+      ]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+          collections={mockCollections}
+          currentCollectionId="daily-log-feb-10"
+        />
+      );
+
+      // Wait for sub-task to load
+      await screen.findByText('Find eye doctor');
+
+      // Assert: Collection name link should NOT be rendered
+      expect(screen.queryByText('→ Health')).not.toBeInTheDocument();
+      expect(screen.queryByText('→ Tuesday, February 10')).not.toBeInTheDocument();
+      
+      // Assert: No element with "ml-12 mt-1" styling (the collection name container)
+      const linkElements = container.querySelectorAll('.ml-12.mt-1');
+      expect(linkElements.length).toBe(0);
+    });
+
+    it('should render sub-tasks cleanly without any migration UI elements', async () => {
+      // Arrange
+      const mockCollections = [
+        { id: 'daily-log-feb-10', name: 'Tuesday, February 10', type: 'daily' as const, createdAt: '2026-02-10T00:00:00Z' },
+        { id: 'health-collection', name: 'Health', type: 'custom' as const, createdAt: '2026-01-01T00:00:00Z' },
+      ];
+
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Schedule appointments',
+          status: 'open',
+          createdAt: '2026-02-10T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Find eye doctor',
+          status: 'open',
+          createdAt: '2026-02-10T10:01:00Z',
+          parentTaskId: 'parent-1',
+          collectionId: 'daily-log-feb-10',
+          collections: ['daily-log-feb-10', 'health-collection'],
+        },
+      ]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+          collections={mockCollections}
+          currentCollectionId="daily-log-feb-10"
+        />
+      );
+
+      // Wait for sub-task to load
+      await screen.findByText('Find eye doctor');
+
+      // Assert: Sub-task should render normally
+      expect(screen.getByText('Schedule appointments')).toBeInTheDocument();
+      expect(screen.getByText('Find eye doctor')).toBeInTheDocument();
+      
+      // Assert: NO arrow indicators anywhere
+      expect(screen.queryByText('→')).not.toBeInTheDocument();
+      
+      // Assert: NO collection name links
+      expect(container.textContent).not.toContain('→ Health');
+      expect(container.textContent).not.toContain('→ Tuesday, February 10');
+      
+      // Assert: No absolute positioning elements (arrow container)
+      const absoluteElements = container.querySelectorAll('.absolute.-left-6');
+      expect(absoluteElements.length).toBe(0);
+      
+      // Assert: No margin-left collection name containers
+      const linkContainers = container.querySelectorAll('.ml-12.mt-1');
+      expect(linkContainers.length).toBe(0);
+    });
+  });
+
 });

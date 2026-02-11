@@ -25,7 +25,6 @@ interface TaskEntryItemProps {
     allComplete: boolean;
   };
   // Phase 2: Navigation and migration indicators for sub-tasks
-  onNavigateToParent?: () => void; // Navigate to parent's collection
   onNavigateToSubTaskCollection?: () => void; // Navigate to migrated sub-task's collection
   isSubTaskMigrated?: boolean; // Whether this sub-task is migrated to different collection
   // Phase 4: Expand/collapse control for sub-tasks
@@ -55,7 +54,6 @@ export function TaskEntryItem({
   onCreateCollection: _onCreateCollection, // Not used in new dialog
   onAddSubTask,
   completionStatus,
-  onNavigateToParent,
   onNavigateToSubTaskCollection,
   isSubTaskMigrated = false,
   isCollapsed = false,
@@ -261,8 +259,8 @@ export function TaskEntryItem({
           onDelete={handleDelete}
           onAddSubTask={onAddSubTask ? handleAddSubTask : undefined}
           collections={collections}
+          currentCollectionId={currentCollectionId}
           onNavigateToMigrated={onNavigateToMigrated}
-          onNavigateToParent={onNavigateToParent}
           onNavigateToSubTaskCollection={onNavigateToSubTaskCollection}
           isSubTask={isSubTask}
           isSubTaskMigrated={isSubTaskMigrated}

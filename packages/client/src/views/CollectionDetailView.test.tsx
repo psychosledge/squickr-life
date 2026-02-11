@@ -62,7 +62,6 @@ describe('CollectionDetailView', () => {
       getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
       getSubTasks: vi.fn().mockResolvedValue([]),
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
-      getParentTask: vi.fn().mockResolvedValue(null),
       isParentTask: vi.fn().mockResolvedValue(false),
     };
 
@@ -266,7 +265,6 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
       getSubTasks: vi.fn().mockResolvedValue([]),
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
-      getParentTask: vi.fn().mockResolvedValue(null),
       isParentTask: vi.fn().mockResolvedValue(false),
     };
 
@@ -458,7 +456,6 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
       getSubTasks: vi.fn().mockResolvedValue([]),
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
-      getParentTask: vi.fn().mockResolvedValue(null),
       isParentTask: vi.fn().mockResolvedValue(false),
     };
 
