@@ -199,8 +199,9 @@ export function CollectionDetailView() {
   };
 
   const handleSelectActive = () => {
+    // BUG FIX #2: Only select incomplete (open) tasks, not all non-migrated entries
     const activeEntries = entries
-      .filter(e => !e.migratedTo)
+      .filter(e => e.type === 'task' && e.status === 'open' && !e.migratedTo)
       .map(e => e.id);
     selection.selectAll(activeEntries);
   };

@@ -440,6 +440,69 @@ describe('formatCollectionStats', () => {
       expect(formatCollectionStats(node, new Map([['1', entries]]))).toBe('(1 task, 1 note)');
     });
 
+    it('should only count incomplete tasks (Bug 1 regression)', () => {
+      const node: HierarchyNode = {
+        type: 'day',
+        id: 'daily-2026-02-09',
+        label: 'Feb 9, 2026',
+        collection: {
+          id: 'daily-2026-02-09',
+          name: 'Feb 9, 2026',
+          type: 'daily',
+          date: '2026-02-09',
+          createdAt: '2026-02-09T00:00:00Z',
+          order: '2026-02-09',
+        },
+        children: [],
+        isExpanded: false,
+      };
+
+      const entries: Entry[] = [
+        {
+          id: '1',
+          type: 'task' as const,
+          title: 'Task 1 (open)',
+          status: 'open',
+          collectionId: 'daily-2026-02-09',
+          createdAt: '2026-02-09T10:00:00Z',
+          collections: [],
+        },
+        {
+          id: '2',
+          type: 'task' as const,
+          title: 'Task 2 (completed)',
+          status: 'completed',
+          completedAt: '2026-02-09T12:00:00Z',
+          collectionId: 'daily-2026-02-09',
+          createdAt: '2026-02-09T11:00:00Z',
+          collections: [],
+        },
+        {
+          id: '3',
+          type: 'task' as const,
+          title: 'Task 3 (open)',
+          status: 'open',
+          collectionId: 'daily-2026-02-09',
+          createdAt: '2026-02-09T13:00:00Z',
+          collections: [],
+        },
+        {
+          id: '4',
+          type: 'note' as const,
+          content: 'Note 1',
+          collectionId: 'daily-2026-02-09',
+          createdAt: '2026-02-09T14:00:00Z',
+        },
+      ];
+
+      const entriesByCollection = new Map<string | null, Entry[]>();
+      entriesByCollection.set('daily-2026-02-09', entries);
+
+      const result = formatCollectionStats(node, entriesByCollection);
+      // Should only count open tasks (2), not completed (1), plus note (1)
+      expect(result).toBe('(2 tasks, 1 note)');
+    });
+
     it('should handle missing entriesByCollection map', () => {
       const node: HierarchyNode = {
         type: 'day',

@@ -393,7 +393,19 @@ export function EntryList({
                     <div className="pl-8 space-y-2 mt-2">
                       {subTasks.map((subTask) => {
                         const isMigrated = subTaskMigrationMap.get(subTask.id) || false;
-                        const subTaskCollectionId = subTask.collectionId;
+                        
+                        // BUG FIX #4: For migrated sub-tasks, find the NEW collection (not the legacy collectionId)
+                        // If sub-task is in a different collection than the current view, find that collection
+                        // Use the first collection from the collections array that's NOT the current collection
+                        let subTaskCollectionId = subTask.collectionId;
+                        if (isMigrated && subTask.collections && subTask.collections.length > 0) {
+                          // Find the first collection that's not the current one
+                          const otherCollection = subTask.collections.find(c => c !== currentCollectionId);
+                          if (otherCollection) {
+                            subTaskCollectionId = otherCollection;
+                          }
+                        }
+                        
                         const subTaskCollection = collections?.find(c => c.id === subTaskCollectionId);
                         const subTaskCollectionName = subTaskCollection?.name || 'Uncategorized';
                         
