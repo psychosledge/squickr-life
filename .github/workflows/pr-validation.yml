@@ -18,9 +18,6 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for version comparison
 
-      - name: Fetch production branch
-        run: git fetch origin production:production
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -57,18 +54,16 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
-      - name: Run tests
-        run: pnpm test
-
       - name: Check version bump
         id: version_check
         run: |
           # Get version from PR branch (current checkout)
-          PR_VERSION=$(node -p "require('./package.json').version")
+          PR_VERSION=$(node -pe "require('./package.json').version")
+          echo "pr_version=$PR_VERSION" >> $GITHUB_OUTPUT
           echo "PR branch version: $PR_VERSION"
           
           # Try to get version from production branch on remote
-          if PROD_VERSION=$(git show origin/production:package.json 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin', 'utf8')).version"); then
+          if PROD_VERSION=$(git show origin/production:package.json 2>/dev/null | node -pe "JSON.parse(require('fs').readFileSync(0, 'utf8')).version" 2>/dev/null); then
             # Production branch exists, check version
             echo "Production branch version: $PROD_VERSION"
             echo "prod_version=$PROD_VERSION" >> $GITHUB_OUTPUT
@@ -94,14 +89,15 @@ jobs:
             echo "version_bumped=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Run tests
+        run: pnpm test
+
       - name: Comment PR with version info
         if: always()
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            const prVersion = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version;
-            
+            const prVersion = '${{ steps.version_check.outputs.pr_version }}';
             const prodVersion = '${{ steps.version_check.outputs.prod_version }}' || 'N/A';
             const prodExists = '${{ steps.version_check.outputs.prod_exists }}' === 'true';
             const versionBumped = '${{ steps.version_check.outputs.version_bumped }}' === 'true';
