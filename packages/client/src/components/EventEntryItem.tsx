@@ -203,6 +203,7 @@ export function EventEntryItem({
           onMove={handleMove}
           onDelete={handleDelete}
           collections={collections}
+          currentCollectionId={currentCollectionId}
           onNavigateToMigrated={onNavigateToMigrated}
         />
       </div>

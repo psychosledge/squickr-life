@@ -87,13 +87,19 @@ function buildHierarchy(
   const nodes: HierarchyNode[] = [];
   
   // Separate daily logs, monthly logs, and custom collections
-  // Exclude auto-favorited dailies from calendar hierarchy (they appear in favorites section)
+  // Exclude auto-favorited dailies and manually-favorited monthlies from calendar hierarchy
+  // (they appear in favorites section)
+  // BUG FIX #3: Filter out favorited monthly logs from date hierarchy
   const dailyLogs = collections.filter(c => 
     c.type === 'daily' && 
     c.date &&
     !isEffectivelyFavorited(c, userPreferences, now)
   );
-  const monthlyLogs = collections.filter(c => c.type === 'monthly' && c.date);
+  const monthlyLogs = collections.filter(c => 
+    c.type === 'monthly' && 
+    c.date &&
+    !isEffectivelyFavorited(c, userPreferences, now)
+  );
   const customCollections = collections.filter(c => 
     !c.type || c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
   );

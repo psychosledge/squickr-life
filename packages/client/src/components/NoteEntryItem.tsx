@@ -171,6 +171,7 @@ export function NoteEntryItem({
           onMove={handleMove}
           onDelete={handleDelete}
           collections={collections}
+          currentCollectionId={currentCollectionId}
           onNavigateToMigrated={onNavigateToMigrated}
         />
       </div>

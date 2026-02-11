@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-02-10
+
+### Fixed
+- **Collection Stats:** Task count now only includes open tasks (excludes completed and migrated tasks)
+- **Migrate Modal:** "Active" filter now correctly selects only open, non-migrated tasks
+- **Favorites:** Favorited monthly logs now appear in favorites section on index page
+- **Multi-Collection Navigation:** Sub-tasks in multiple collections now show "Go to [Collection Name]" menu option for easier navigation
+
+### Changed
+- **UX:** Removed redundant "Go to Parent" menu option - multi-collection navigation already provides this functionality with clearer collection names
+- **Context Menu:** Sub-task menu now shows "Go to [Collection Name]" instead of duplicate navigation options
+
 ## [0.7.0] - In Progress
 
 ### Added
@@ -16,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Phase 5: Deletion cascade with confirmation (delete parent → delete all children)
   - Two-level hierarchy for MVP (parent → sub-task, expandable to unlimited later)
   - Symlink behavior: migrated sub-tasks visible in both daily log and parent's collection
-  - Context menu: "Add Sub-Task", "Go to Parent", "Go to [Collection]"
+  - Context menu: "Add Sub-Task", "Go to [Collection]"
   - Visual indicators: 🔗 icon for migrated sub-tasks, completion badge on parents (e.g., "2/4")
 
 ### Design

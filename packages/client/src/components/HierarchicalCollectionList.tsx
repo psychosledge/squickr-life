@@ -146,32 +146,35 @@ export function HierarchicalCollectionList({
     return false;
   });
   
-  // Find favorited daily logs from the original collections array
+  // Find favorited daily and monthly logs from the original collections array
   // This ensures they appear even when year/month are collapsed
-  // Note: Only daily logs are currently auto-favorited (Today/Yesterday/Tomorrow)
-  // Monthly/yearly auto-favorites are not yet implemented
-  //
+  // Note: Only daily logs are auto-favorited (Today/Yesterday/Tomorrow)
+  // Monthly/yearly logs must be manually favorited by the user
+  // BUG FIX #3: Include monthly logs that are manually favorited
   
   const favoriteDayNodes = useMemo(() => {
-    const favoritedDailies = collections
+    const favoritedDateCollections = collections
       .filter(collection => 
-        collection.type === 'daily' &&
+        (collection.type === 'daily' || collection.type === 'monthly') &&
         isEffectivelyFavorited(collection, userPreferences, now)
       );
     
     // Use shared sorting utility (DRY - Casey's review #2)
-    const sortedDailies = sortDailyLogsByDate(favoritedDailies, now);
+    const sortedDailies = sortDailyLogsByDate(favoritedDateCollections, now);
     
     // Map to HierarchyNode format
-    return sortedDailies.map(collection => ({
-      type: 'day' as const,
-      id: collection.id,
-      label: getCollectionDisplayName(collection, now), // Use relative dates (Today, Yesterday, Tomorrow)
-      date: collection.date,
-      collection,
-      children: [],
-      isExpanded: false,
-    } as HierarchyNode));
+    return sortedDailies.map(collection => {
+      const nodeType = collection.type === 'monthly' ? 'monthly' : 'day';
+      return {
+        type: nodeType,
+        id: collection.id,
+        label: getCollectionDisplayName(collection, now), // Use relative dates (Today, Yesterday, Tomorrow)
+        date: collection.date,
+        collection,
+        children: [],
+        isExpanded: false,
+      } as HierarchyNode;
+    });
   }, [collections, userPreferences, now]);
   
   const allFavoriteNodes = useMemo(

@@ -47,8 +47,6 @@ interface EntryListProps {
   getSubTasks?: (parentTaskId: string) => Promise<Task[]>;
   // Phase 2: Optional batch sub-task fetcher (performance optimization)
   getSubTasksForMultipleParents?: (parentIds: string[]) => Promise<Map<string, Task[]>>;
-  // Phase 2: Optional parent task fetcher (for "Go to Parent" navigation)
-  getParentTask?: (task: Task) => Promise<Task | undefined>;
 }
 
 /**
@@ -80,7 +78,6 @@ export function EntryList({
   getCompletionStatus,
   getSubTasks,
   getSubTasksForMultipleParents,
-  getParentTask,
 }: EntryListProps) {
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -144,9 +141,6 @@ export function EntryList({
   // This map stores sub-task arrays by parent task ID
   const [subTasksMap, setSubTasksMap] = useState<Map<string, Task[]>>(new Map());
   
-  // Phase 2: Store migration status for each sub-task
-  const [subTaskMigrationMap, setSubTaskMigrationMap] = useState<Map<string, boolean>>(new Map());
-  
   // Recalculate completion status and fetch sub-tasks when entries change
   useEffect(() => {
     // Race condition guard: prevent state updates after unmount/re-render
@@ -159,8 +153,6 @@ export function EntryList({
         allComplete: boolean;
       }>();
       const subTasksMapTemp = new Map<string, Task[]>();
-      const migrationMapTemp = new Map<string, boolean>();
-      
       // Get all task entries
       const taskEntries = topLevelEntries.filter(entry => entry.type === 'task');
       
@@ -199,20 +191,6 @@ export function EntryList({
           const subTasks = subTasksMapBatch.get(entry.id) || [];
           if (subTasks.length > 0) {
             subTasksMapTemp.set(entry.id, subTasks);
-            
-            // Phase 2: Calculate migration status for each sub-task
-            // A sub-task is "migrated" if it's NOT in the current collection (parent's context)
-            subTasks.forEach(subTask => {
-              // Use collections array for multi-collection support
-              const subTaskCollections = subTask.collections || [];
-              // Check if sub-task is in the same collection as the parent (current view)
-              const isInCurrentCollection = currentCollectionId 
-                ? subTaskCollections.includes(currentCollectionId)
-                : subTaskCollections.length === 0; // Uncategorized context
-              const isMigrated = !isInCurrentCollection;
-              
-              migrationMapTemp.set(subTask.id, isMigrated);
-            });
           }
         }
       } else if (getSubTasks) {
@@ -231,20 +209,6 @@ export function EntryList({
         subTaskResults.forEach(({ parentId, subTasks }) => {
           if (subTasks.length > 0) {
             subTasksMapTemp.set(parentId, subTasks);
-            
-            // Phase 2: Calculate migration status for each sub-task
-            // A sub-task is "migrated" if it's NOT in the current collection
-            subTasks.forEach(subTask => {
-              // Use collections array for multi-collection support
-              const subTaskCollections = subTask.collections || [];
-              // Check if sub-task is in the same collection as the parent (current view)
-              const isInCurrentCollection = currentCollectionId 
-                ? subTaskCollections.includes(currentCollectionId)
-                : subTaskCollections.length === 0; // Uncategorized context
-              const isMigrated = !isInCurrentCollection;
-              
-              migrationMapTemp.set(subTask.id, isMigrated);
-            });
           }
         });
       }
@@ -254,7 +218,6 @@ export function EntryList({
       
       setCompletionStatusMap(statusMap);
       setSubTasksMap(subTasksMapTemp);
-      setSubTaskMigrationMap(migrationMapTemp);
     };
     
     calculateStatusAndFetchSubTasks();
@@ -374,14 +337,6 @@ export function EntryList({
                     completionStatus={completionStatusMap.get(entry.id)}
                     // Phase 2: Pass sub-task props for migrated sub-tasks rendered as flat entries
                     isSubTaskMigrated={isMigratedSubTask}
-                    onNavigateToParent={isMigratedSubTask && onNavigateToMigrated && getParentTask && entry.type === 'task' ? async () => {
-                      // Use getParentTask to fetch parent from projection (not from current entries)
-                      // This works even when parent is in a different collection
-                      const parent = await getParentTask(entry);
-                      if (parent && onNavigateToMigrated) {
-                        onNavigateToMigrated(parent.collectionId || null);
-                      }
-                    } : undefined}
                     // Phase 4: Pass collapse props
                     isCollapsed={collapsed}
                     onToggleCollapse={() => toggleCollapsed(entry.id)}
@@ -392,11 +347,6 @@ export function EntryList({
                   {subTasks.length > 0 && !collapsed && (
                     <div className="pl-8 space-y-2 mt-2">
                       {subTasks.map((subTask) => {
-                        const isMigrated = subTaskMigrationMap.get(subTask.id) || false;
-                        const subTaskCollectionId = subTask.collectionId;
-                        const subTaskCollection = collections?.find(c => c.id === subTaskCollectionId);
-                        const subTaskCollectionName = subTaskCollection?.name || 'Uncategorized';
-                        
                         // Phase 3: Detect migration chains
                         // A sub-task is part of a migration chain if it has migratedFrom pointing to a different collection
                         // than where the parent originally came from
@@ -405,14 +355,7 @@ export function EntryList({
                           subTask.migratedFromCollectionId !== entry.migratedFromCollectionId;
                         
                         return (
-                          <div key={subTask.id} className="relative">
-                            {/* Phase 2: Migration indicator for migrated sub-tasks */}
-                            {isMigrated && (
-                              <div className="absolute -left-6 top-0 text-xs text-blue-600 dark:text-blue-400" title={`Migrated to ${subTaskCollectionName}`}>
-                                →
-                              </div>
-                            )}
-                            
+                          <div key={subTask.id}>
                             <EntryItem
                               entry={{ ...subTask, type: 'task' as const }}
                               onCompleteTask={onCompleteTask}
@@ -431,20 +374,7 @@ export function EntryList({
                               // Phase 3: Show 🔗 icon if sub-task is part of a migration chain
                               // This happens when parent migrates after child was already migrated
                               isSubTaskMigrated={isPartOfMigrationChain}
-                              onNavigateToSubTaskCollection={isMigrated ? () => {
-                                // Navigate to sub-task's migrated collection
-                                if (onNavigateToMigrated) {
-                                  onNavigateToMigrated(subTaskCollectionId || null);
-                                }
-                              } : undefined}
                             />
-                            
-                            {/* Phase 2: Collection name indicator for migrated sub-tasks */}
-                            {isMigrated && (
-                              <div className="ml-12 mt-1 text-xs text-blue-600 dark:text-blue-400">
-                                → {subTaskCollectionName}
-                              </div>
-                            )}
                           </div>
                         );
                       })}

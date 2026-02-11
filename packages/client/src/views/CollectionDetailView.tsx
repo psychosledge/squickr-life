@@ -199,8 +199,9 @@ export function CollectionDetailView() {
   };
 
   const handleSelectActive = () => {
+    // BUG FIX #2: Only select incomplete (open) tasks, not all non-migrated entries
     const activeEntries = entries
-      .filter(e => !e.migratedTo)
+      .filter(e => e.type === 'task' && e.status === 'open' && !e.migratedTo)
       .map(e => e.id);
     selection.selectAll(activeEntries);
   };
@@ -357,7 +358,6 @@ export function CollectionDetailView() {
           getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
           getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
           getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
-          getParentTask={(task) => entryProjection.getParentTask(task)}
         />
 
         {/* Completed tasks section - Mode 2: Move to bottom */}
@@ -388,7 +388,6 @@ export function CollectionDetailView() {
               getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
               getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
               getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
-              getParentTask={(task) => entryProjection.getParentTask(task)}
             />
           </div>
         )}
@@ -445,7 +444,6 @@ export function CollectionDetailView() {
                 getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
                 getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
                 getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
-                getParentTask={(task) => entryProjection.getParentTask(task)}
               />
               </div>
             )}

@@ -581,4 +581,45 @@ describe('HierarchicalCollectionList', () => {
       });
     });
   });
+
+  it('should show manually favorited monthly logs in favorites section (Bug 3 regression)', () => {
+    const collections: Collection[] = [
+      {
+        id: 'feb-2026',
+        name: 'February 2026',
+        type: 'monthly',
+        date: '2026-02',
+        order: 'a',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'jan-2026',
+        name: 'January 2026',
+        type: 'monthly',
+        date: '2026-01',
+        order: 'b',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const preferencesWithFavoriteMonthly: UserPreferences = {
+      pinnedCollectionIds: ['feb-2026'], // Manually favorite feb-2026
+    };
+
+    renderWithAppProvider(
+      <BrowserRouter>
+        <HierarchicalCollectionList collections={collections} />
+      </BrowserRouter>,
+      { userPreferences: preferencesWithFavoriteMonthly }
+    );
+
+    // February 2026 should appear in favorites section
+    const febLinks = screen.getAllByText(/February 2026/);
+    // Should appear exactly once (in favorites section, NOT in date hierarchy)
+    expect(febLinks.length).toBe(1);
+    
+    // January should appear exactly once (in date hierarchy only, NOT in favorites)
+    const janLinks = screen.getAllByText(/January 2026/);
+    expect(janLinks.length).toBe(1);
+  });
 });

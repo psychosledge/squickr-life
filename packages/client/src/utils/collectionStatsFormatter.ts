@@ -25,7 +25,8 @@ export function formatCollectionStats(
   }
 
   // Daily and custom collections: breakdown by type
-  const tasks = entries.filter(e => e.type === 'task').length;
+  // BUG FIX #1: Only count incomplete (open) tasks, not completed ones
+  const tasks = entries.filter(e => e.type === 'task' && e.status === 'open').length;
   const notes = entries.filter(e => e.type === 'note').length;
   const events = entries.filter(e => e.type === 'event').length;
 

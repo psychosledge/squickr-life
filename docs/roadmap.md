@@ -1,6 +1,6 @@
 # Product Roadmap
-**Last Updated:** February 10, 2026  
-**Current Version:** v0.7.0  
+**Last Updated:** February 11, 2026  
+**Current Version:** v0.7.1  
 **Status:** Roadmap finalized through v1.0.0
 
 ---
@@ -107,6 +107,38 @@
 
 ---
 
+### ✅ v0.7.1 - Production Bug Fixes (COMPLETED)
+**Released:** February 11, 2026  
+**Actual Time:** ~4 hours (bug fixes + testing + code review)  
+**Status:** Deployed to production
+
+**Bug Fixes:**
+1. ✅ Collection stats now only count open tasks (exclude completed/migrated)
+2. ✅ "Active" filter in migrate modal correctly selects only open, non-migrated tasks
+3. ✅ Favorited monthly logs now appear in favorites section on index page
+4. ✅ Multi-collection sub-tasks show "Go to [Collection Name]" menu option for navigation
+
+**UX Improvements:**
+- Removed redundant "Go to Parent" menu option (covered by multi-collection navigation)
+- Removed visual clutter: arrows (→) and helper text for migrated entries
+- Cleaner navigation experience with single "Go to [Collection]" option
+
+**Code Quality:**
+- Cleaned up stale test mocks (getParentTask)
+- Updated CHANGELOG with v0.7.1 release notes
+- Version bumped across all packages
+
+**Test Coverage:**
+- 1,068 tests passing (Domain: 538, Infrastructure: 21, Client: 509)
+- Added 2 new test files for multi-collection navigation
+- All existing tests maintained
+
+**Code Review:**
+- Casey review: 9/10 rating - "Professional-grade bug fixing"
+- All changes approved for deployment
+
+---
+
 ### v1.0.0 - Intro Guide/Walkthrough
 **Target:** After v0.7.0 (Milestone release)  
 **Estimated Time:** 7-11 hours  
@@ -162,6 +194,15 @@
 ## Version History
 
 ### Completed Versions
+
+**v0.7.1** (February 11, 2026)
+- Production bug fixes from v0.7.0
+- Fixed collection stats counting
+- Fixed "Active" filter selection
+- Fixed favorited monthly logs display
+- Fixed multi-collection navigation
+- Removed redundant UI elements
+- 1,068 tests passing
 
 **v0.7.0** (February 7-10, 2026)
 - Sub-tasks feature (hierarchical task structure)

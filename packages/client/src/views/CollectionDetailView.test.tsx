@@ -62,7 +62,6 @@ describe('CollectionDetailView', () => {
       getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
       getSubTasks: vi.fn().mockResolvedValue([]),
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
-      getParentTask: vi.fn().mockResolvedValue(null),
       isParentTask: vi.fn().mockResolvedValue(false),
     };
 
@@ -266,7 +265,6 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
       getSubTasks: vi.fn().mockResolvedValue([]),
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
-      getParentTask: vi.fn().mockResolvedValue(null),
       isParentTask: vi.fn().mockResolvedValue(false),
     };
 
@@ -458,7 +456,6 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
       getSubTasks: vi.fn().mockResolvedValue([]),
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
-      getParentTask: vi.fn().mockResolvedValue(null),
       isParentTask: vi.fn().mockResolvedValue(false),
     };
 
@@ -680,5 +677,91 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
 
     // Settings modal should be open
     expect(screen.getByText(/collection settings/i)).toBeInTheDocument();
+  });
+
+  it('should only select incomplete tasks when "Active" filter is clicked (Bug 2 regression)', async () => {
+    const user = userEvent.setup();
+    
+    const mixedEntries: Entry[] = [
+      {
+        id: 'task-1',
+        type: 'task',
+        title: 'Open task 1',
+        status: 'open',
+        createdAt: '2026-01-27T10:00:00Z',
+        order: 'a0',
+        collectionId: 'col-1',
+        collections: [],
+      },
+      {
+        id: 'task-2',
+        type: 'task',
+        title: 'Completed task',
+        status: 'completed',
+        completedAt: '2026-01-27T11:00:00Z',
+        createdAt: '2026-01-27T11:00:00Z',
+        order: 'a1',
+        collectionId: 'col-1',
+        collections: [],
+      },
+      {
+        id: 'task-3',
+        type: 'task',
+        title: 'Migrated task',
+        status: 'open',
+        migratedTo: 'other-id',
+        createdAt: '2026-01-27T12:00:00Z',
+        order: 'a2',
+        collectionId: 'col-1',
+        collections: [],
+      },
+      {
+        id: 'task-4',
+        type: 'task',
+        title: 'Open task 2',
+        status: 'open',
+        createdAt: '2026-01-27T13:00:00Z',
+        order: 'a3',
+        collectionId: 'col-1',
+        collections: [],
+      },
+      {
+        id: 'note-1',
+        type: 'note',
+        content: 'A note',
+        createdAt: '2026-01-27T14:00:00Z',
+        order: 'a4',
+        collectionId: 'col-1',
+      },
+    ];
+
+    mockEntryProjection.getEntriesForCollectionView.mockResolvedValue(mixedEntries);
+    renderViewWithSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText('Open task 1')).toBeInTheDocument();
+    });
+
+    // Enter selection mode - first open the menu
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    // Click "Select Entries" option
+    const selectEntriesOption = screen.getByText(/^Select Entries$/i);
+    await user.click(selectEntriesOption);
+
+    await waitFor(() => {
+      expect(screen.getByText(/0 selected/i)).toBeInTheDocument();
+    });
+
+    // Click "Active" filter button
+    const activeButton = screen.getByRole('button', { name: /^Active$/i });
+    await user.click(activeButton);
+
+    // Should select only incomplete, non-migrated tasks (task-1 and task-4)
+    // Should NOT select completed (task-2) or migrated (task-3) or note (note-1)
+    await waitFor(() => {
+      expect(screen.getByText(/2 selected/i)).toBeInTheDocument();
+    });
   });
 });
