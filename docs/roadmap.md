@@ -1,6 +1,6 @@
 # Product Roadmap
 **Last Updated:** February 11, 2026  
-**Current Version:** v0.7.2  
+**Current Version:** v0.8.0  
 **Status:** Roadmap finalized through v1.0.0
 
 ---
@@ -166,7 +166,59 @@
 
 ---
 
-### v0.8.0 - UX Enhancements (NEXT)
+### ✅ v0.8.0 - UX Enhancements (COMPLETED)
+**Released:** February 11, 2026  
+**Actual Time:** ~9 hours (2.5h + 2h + 4.5h)  
+**Status:** Ready for deployment
+
+**Features Delivered:**
+
+#### ✅ Feature 1: Auto-favorite last/current/next month (~2.5 hours)
+- **Implementation:** Added `autoFavoriteRecentMonthlyLogs: boolean` preference
+- **Behavior:** Auto-favorite monthly logs for last month, current month, next month (3 months total)
+- **Navigation Fix:** Favorited monthly logs now appear in navigation order
+- **Year Boundaries:** Handles Dec→Jan transitions correctly
+- **Test Coverage:** 20 new tests (16 utility, 4 navigation)
+- **Files Changed:**
+  - Domain: user-preferences types, handlers, projections
+  - Client: collectionUtils, collectionSorting, SettingsModal
+
+#### ✅ Feature 2: Show parent title for migrated sub-tasks (~2 hours)
+- **Implementation:** Inline suffix format "find hardware (Put together Bed Frame)"
+- **Display Logic:** Only for migrated sub-tasks (different collection than parent)
+- **Performance:** O(n) batch query via `getParentTitlesForSubTasks()`
+- **Styling:** Gray text, smaller font, in parentheses
+- **Test Coverage:** 7 comprehensive tests
+- **Files Changed:**
+  - Domain: entry.projections (batch query method)
+  - Client: EntryList, EntryItem, SortableEntryItem, TaskEntryItem, CollectionDetailView
+
+#### ✅ Feature 3: Combined monthly log + month rollup (~4.5 hours)
+- **Implementation:** Unified UX with two-zone clickable interface
+  - Triangle button: Expands/collapses child daily logs
+  - Text/icon area: Navigates to monthly log collection
+- **Visual:** Calendar icon, year display, star icon for favorited monthlies
+- **Dual Appearance:** Favorited monthly logs appear in both favorites AND calendar hierarchy
+- **Type Safety:** Enhanced HierarchyNode with discriminated union
+- **Test Coverage:** 7 new tests for Feature 3 scenarios
+- **Files Changed:**
+  - Client: useCollectionHierarchy, CollectionTreeNode, collectionStatsFormatter, HierarchicalCollectionList
+
+**Technical Achievements:**
+- All 1,427 tests passing (545 domain, 21 infrastructure, 861 client)
+- Zero regressions across 3 major features
+- Comprehensive code reviews (9/10, 9.5/10, 9/10 ratings from Casey)
+- TDD approach followed throughout
+
+**Developer Efficiency:**
+- Feature 1: Under estimate (2.5h vs 3h)
+- Feature 2: Under estimate (2h vs 3.5h)
+- Feature 3: On estimate (4.5h)
+- Total: 9 hours for 3 production-ready features
+
+---
+
+### v0.9.0 - Advanced Task Management (NEXT)
 **Target:** After v0.7.2  
 **Estimated Time:** 7 hours (3 hours + 4 hours)  
 **Status:** ✅ Designs complete and approved by Alex

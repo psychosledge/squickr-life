@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-02-11
+
+### Added
+- **Auto-Favorite Monthly Logs:** Automatically favorite last month, current month, and next month in user preferences
+  - Checkbox in Settings: "Auto-favorite recent monthly logs"
+  - Favorited monthly logs appear in both favorites section AND calendar hierarchy
+  - Handles year boundaries correctly (Dec→Jan transitions)
+  - 20 comprehensive tests added (16 for utility functions, 4 for navigation)
+
+- **Combined Monthly Log + Month Rollup:** Unified UX for monthly logs with two-zone clickable interface
+  - Triangle button: Expands/collapses child daily logs
+  - Text/icon area: Navigates to monthly log collection
+  - Displays calendar icon, year, and star icon for favorited monthlies
+  - Favorited monthly logs appear in both locations (favorites + calendar)
+  - Enhanced type safety with discriminated union
+  - 7 new tests for Feature 3 scenarios
+
+- **Parent Title for Migrated Sub-Tasks:** Show parent task context for sub-tasks in different collections
+  - Format: "find hardware (Put together Bed Frame)"
+  - Only displays when sub-task is in different collection than parent
+  - Gray text, smaller font, in parentheses
+  - O(n) batch query for performance
+  - 7 comprehensive tests covering all edge cases
+
+### Technical
+- Enhanced `HierarchyNode` type with discriminated union for better type safety
+- Added `getParentTitlesForSubTasks()` batch query method to EntryListProjection
+- Refactored `buildHierarchy()` to attach monthly logs to month nodes
+- Fixed TypeScript errors in `collectionStatsFormatter` and `HierarchicalCollectionList`
+- All 1,427 tests passing (545 domain, 21 infrastructure, 861 client)
+
+### Developer
+- Feature 1 (auto-favorite monthly logs): ~2.5 hours (under 3h estimate)
+- Feature 2 (parent titles): ~2 hours (under 3.5h estimate)
+- Feature 3 (combined monthly log): ~4.5 hours (on estimate)
+- Total development time: ~9 hours with testing and reviews
+
 ## [0.7.2] - 2026-02-11
 
 ### Fixed
