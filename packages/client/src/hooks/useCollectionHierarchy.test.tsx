@@ -365,7 +365,7 @@ describe('useCollectionHierarchy', () => {
   });
 
   describe('monthly log integration', () => {
-    it('should place monthly logs at year level (not in month groups)', () => {
+    it('should attach monthly log to month node when monthly log exists for same month as daily logs', () => {
       const collections: Collection[] = [
         {
           id: 'monthly-1',
@@ -392,14 +392,17 @@ describe('useCollectionHierarchy', () => {
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       expect(yearNode).toBeDefined();
-      expect(yearNode?.children).toHaveLength(2); // 1 monthly log + 1 month node
+      expect(yearNode?.children).toHaveLength(1); // Only 1 month node (monthly log attached to it)
 
-      // First child should be monthly log (appears before month groups)
-      expect(yearNode?.children[0]?.type).toBe('monthly');
-      expect(yearNode?.children[0]?.label).toBe('February 2026');
+      // Should be a month node (not a standalone monthly)
+      expect(yearNode?.children[0]?.type).toBe('month');
       
-      // Second child should be month node
-      expect(yearNode?.children[1]?.type).toBe('month');
+      // Month node should have monthlyLog attached
+      const monthNode = yearNode?.children[0];
+      if (monthNode?.type === 'month') {
+        expect(monthNode.monthlyLog).toBeDefined();
+        expect(monthNode.monthlyLog?.id).toBe('monthly-1');
+      }
     });
 
     it('should sort monthly logs newest first within year', () => {
@@ -533,18 +536,28 @@ describe('useCollectionHierarchy', () => {
 
       const yearNode = result.current.nodes.find(n => n.type === 'year');
       
-      // Should have 2 monthly logs + 2 month groups = 4 children
-      expect(yearNode?.children).toHaveLength(4);
+      // Should have only 2 month nodes (monthly logs attached to them)
+      expect(yearNode?.children).toHaveLength(2);
       
-      // First 2 should be monthly logs (oldest first)
-      expect(yearNode?.children[0]?.type).toBe('monthly');
-      expect(yearNode?.children[0]?.date).toBe('2026-01');
-      expect(yearNode?.children[1]?.type).toBe('monthly');
-      expect(yearNode?.children[1]?.date).toBe('2026-02');
+      // Both should be month nodes (oldest first: Jan, Feb)
+      expect(yearNode?.children[0]?.type).toBe('month');
+      expect(yearNode?.children[0]?.id).toBe('month-2026-01');
+      expect(yearNode?.children[1]?.type).toBe('month');
+      expect(yearNode?.children[1]?.id).toBe('month-2026-02');
       
-      // Next 2 should be month groups
-      expect(yearNode?.children[2]?.type).toBe('month');
-      expect(yearNode?.children[3]?.type).toBe('month');
+      // January month node should have monthlyLog attached
+      const janNode = yearNode?.children[0];
+      if (janNode?.type === 'month') {
+        expect(janNode.monthlyLog).toBeDefined();
+        expect(janNode.monthlyLog?.id).toBe('monthly-2');
+      }
+      
+      // February month node should have monthlyLog attached
+      const febNode = yearNode?.children[1];
+      if (febNode?.type === 'month') {
+        expect(febNode.monthlyLog).toBeDefined();
+        expect(febNode.monthlyLog?.id).toBe('monthly-1');
+      }
     });
 
     it('should handle year with only monthly logs (no daily logs)', () => {
@@ -703,6 +716,351 @@ describe('useCollectionHierarchy', () => {
       expect(yearNodes[0]?.children[0]?.date).toBe('2024-01');
       expect(yearNodes[1]?.children[0]?.date).toBe('2025-12');
       expect(yearNodes[2]?.children[0]?.date).toBe('2026-03');
+    });
+  });
+
+  describe('Feature 3: Combined Monthly Log + Month Rollup', () => {
+    it('should attach monthly log to month node when both exist', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          order: 'a',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-2',
+          name: 'Monday, February 2',
+          type: 'daily',
+          date: '2026-02-02',
+          order: 'c',
+          createdAt: '2026-02-02T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see structure
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // Should have ONLY the month node (no standalone monthly node)
+      expect(yearNode?.children).toHaveLength(1);
+      expect(yearNode?.children[0]?.type).toBe('month');
+      
+      // Month node should have monthlyLog attached
+      const monthNode = yearNode?.children[0];
+      expect(monthNode).toMatchObject({
+        type: 'month',
+        id: 'month-2026-02',
+      });
+      
+      // TypeScript narrowing for month type
+      if (monthNode?.type === 'month') {
+        expect(monthNode.monthlyLog).toBeDefined();
+        expect(monthNode.monthlyLog?.id).toBe('monthly-1');
+        expect(monthNode.monthlyLog?.type).toBe('monthly');
+        
+        // Month node should still have daily logs as children when expanded
+        expect(monthNode.children).toHaveLength(2);
+        expect(monthNode.children[0]?.type).toBe('day');
+        expect(monthNode.children[1]?.type).toBe('day');
+      }
+    });
+
+    it('should not create standalone monthly node when monthly log exists for that month', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'January 2026',
+          type: 'monthly',
+          date: '2026-01',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'monthly-2',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'c',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see structure
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // Should have 2 children:
+      // 1. Standalone monthly log for January (no daily logs in that month)
+      // 2. Month node for February (has both monthly log AND daily logs)
+      expect(yearNode?.children).toHaveLength(2);
+      
+      // First should be standalone monthly log for January
+      expect(yearNode?.children[0]?.type).toBe('monthly');
+      expect(yearNode?.children[0]?.date).toBe('2026-01');
+      
+      // Second should be month node for February (not a standalone monthly node)
+      expect(yearNode?.children[1]?.type).toBe('month');
+      expect(yearNode?.children[1]?.id).toBe('month-2026-02');
+      
+      // February month node should have monthlyLog attached
+      const febMonthNode = yearNode?.children[1];
+      if (febMonthNode?.type === 'month') {
+        expect(febMonthNode.monthlyLog).toBeDefined();
+        expect(febMonthNode.monthlyLog?.id).toBe('monthly-2');
+      }
+    });
+
+    it('should handle month node without monthly log (daily logs only)', () => {
+      const collections: Collection[] = [
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'a',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-2',
+          name: 'Monday, February 2',
+          type: 'daily',
+          date: '2026-02-02',
+          order: 'b',
+          createdAt: '2026-02-02T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see structure
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // Should have 1 month node
+      expect(yearNode?.children).toHaveLength(1);
+      expect(yearNode?.children[0]?.type).toBe('month');
+      
+      // Month node should NOT have monthlyLog
+      const monthNode = yearNode?.children[0];
+      if (monthNode?.type === 'month') {
+        expect(monthNode.monthlyLog).toBeUndefined();
+        
+        // Should still have daily logs as children
+        expect(monthNode.children).toHaveLength(2);
+      }
+    });
+
+    it('should attach favorited monthly logs to month nodes (dual appearance)', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          isFavorite: true, // Manually favorited
+          order: 'a',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see structure
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // Should have ONLY the month node (no standalone monthly in year children)
+      // Note: Favorited monthly will appear in favorites section separately
+      expect(yearNode?.children).toHaveLength(1);
+      expect(yearNode?.children[0]?.type).toBe('month');
+      
+      // Month node should have monthlyLog attached (dual appearance)
+      const monthNode = yearNode?.children[0];
+      if (monthNode?.type === 'month') {
+        expect(monthNode.monthlyLog).toBeDefined();
+        expect(monthNode.monthlyLog?.id).toBe('monthly-1');
+        expect(monthNode.monthlyLog?.isFavorite).toBe(true);
+      }
+    });
+
+    it('should attach auto-favorited monthly logs to month nodes', () => {
+      const now = new Date('2026-02-15T12:00:00Z'); // Mid-February 2026
+      
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02', // Current month - will be auto-favorited
+          order: 'a',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see structure
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02']));
+
+      const prefs = {
+        ...DEFAULT_USER_PREFERENCES,
+        autoFavoriteRecentMonthlyLogs: true,
+      };
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections, prefs));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // Should have ONLY the month node (no standalone monthly in year children)
+      expect(yearNode?.children).toHaveLength(1);
+      expect(yearNode?.children[0]?.type).toBe('month');
+      
+      // Month node should have monthlyLog attached
+      const monthNode = yearNode?.children[0];
+      if (monthNode?.type === 'month') {
+        expect(monthNode.monthlyLog).toBeDefined();
+        expect(monthNode.monthlyLog?.id).toBe('monthly-1');
+      }
+    });
+
+    it('should handle multiple months with mixed monthly log presence', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          order: 'a',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        // No monthly log for January
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+        {
+          id: 'daily-2',
+          name: 'Saturday, January 31',
+          type: 'daily',
+          date: '2026-01-31',
+          order: 'c',
+          createdAt: '2026-01-31T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see structure
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02', 'month-2026-01']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // Should have 2 month nodes (oldest first)
+      expect(yearNode?.children).toHaveLength(2);
+      expect(yearNode?.children[0]?.type).toBe('month');
+      expect(yearNode?.children[0]?.id).toBe('month-2026-01');
+      expect(yearNode?.children[1]?.type).toBe('month');
+      expect(yearNode?.children[1]?.id).toBe('month-2026-02');
+      
+      // January month node should NOT have monthlyLog
+      const janNode = yearNode?.children[0];
+      if (janNode?.type === 'month') {
+        expect(janNode.monthlyLog).toBeUndefined();
+      }
+      
+      // February month node SHOULD have monthlyLog
+      const febNode = yearNode?.children[1];
+      if (febNode?.type === 'month') {
+        expect(febNode.monthlyLog).toBeDefined();
+        expect(febNode.monthlyLog?.id).toBe('monthly-1');
+      }
+    });
+
+    it('should keep monthly log as standalone if no daily logs exist for that month', () => {
+      const collections: Collection[] = [
+        {
+          id: 'monthly-1',
+          name: 'January 2026',
+          type: 'monthly',
+          date: '2026-01',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        // No daily logs for January, only for February
+        {
+          id: 'daily-1',
+          name: 'Sunday, February 1',
+          type: 'daily',
+          date: '2026-02-01',
+          order: 'b',
+          createdAt: '2026-02-01T00:00:00Z',
+        },
+      ];
+
+      // Expand year to see structure
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(['year-2026', 'month-2026-02']));
+
+      const { result } = renderHook(() => useCollectionHierarchy(collections, DEFAULT_USER_PREFERENCES));
+
+      const yearNode = result.current.nodes.find(n => n.type === 'year');
+      
+      // Should have 2 children:
+      // 1. Standalone monthly log for January (no daily logs)
+      // 2. Month node for February (has daily logs, no monthly log)
+      expect(yearNode?.children).toHaveLength(2);
+      
+      // First should be standalone monthly log
+      expect(yearNode?.children[0]?.type).toBe('monthly');
+      expect(yearNode?.children[0]?.date).toBe('2026-01');
+      
+      // Second should be month node
+      expect(yearNode?.children[1]?.type).toBe('month');
+      expect(yearNode?.children[1]?.id).toBe('month-2026-02');
     });
   });
 });

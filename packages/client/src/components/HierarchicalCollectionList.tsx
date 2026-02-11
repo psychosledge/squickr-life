@@ -99,12 +99,14 @@ export function HierarchicalCollectionList({
 
     // Get the collections in this section
     const sectionCollections = nodes
-      .filter(node => node.type === 'custom' && node.collection)
-      .filter(node => 
-        section === 'favorites' 
-          ? isEffectivelyFavorited(node.collection!, userPreferences, now)
-          : !isEffectivelyFavorited(node.collection!, userPreferences, now)
-      );
+      .filter(node => node.type === 'custom')
+      .filter(node => {
+        // Type narrowing ensures collection exists for custom nodes
+        if (node.type !== 'custom') return false;
+        return section === 'favorites' 
+          ? isEffectivelyFavorited(node.collection, userPreferences, now)
+          : !isEffectivelyFavorited(node.collection, userPreferences, now);
+      });
     
     const activeId = String(active.id);
     const overId = String(over.id);

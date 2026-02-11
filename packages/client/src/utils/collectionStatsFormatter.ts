@@ -8,10 +8,16 @@ export function formatCollectionStats(
   node: HierarchyNode,
   entriesByCollection?: Map<string | null, Entry[]>
 ): string {
-  if (!node.collection) {
+  // Handle container nodes (year/month)
+  if (node.type === 'year' || node.type === 'month') {
     if (node.count !== undefined) {
       return `(${node.count} ${node.count === 1 ? 'log' : 'logs'})`;
     }
+    return '';
+  }
+
+  // Handle leaf nodes (monthly/day/custom) - must have collection
+  if (!node.collection) {
     return '';
   }
 
