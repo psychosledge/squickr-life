@@ -1,5 +1,5 @@
 import { renderWithAppProvider } from "./../test/test-utils";
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen } from '@testing-library/react';
 import { MigrateEntryDialog } from './MigrateEntryDialog';
 import type { Entry, Collection } from '@squickr/domain';
@@ -35,7 +35,16 @@ describe('MigrateEntryDialog - Collection Sorting', () => {
   // ============================================================================
 
   describe('Auto-Favorited Daily Logs', () => {
+    afterEach(() => {
+      // Restore real timers after each test
+      vi.useRealTimers();
+    });
+
     it('should show auto-favorited dailies (Today, Tomorrow, Yesterday) at top when autoFavoriteRecentDailyLogs is enabled', () => {
+      // Mock the system time to Feb 9, 2026
+      const testDate = new Date('2026-02-09T12:00:00.000Z');
+      vi.setSystemTime(testDate);
+
       const mockTask: Entry = {
         type: 'task',
         id: 'task-1',
@@ -114,6 +123,10 @@ describe('MigrateEntryDialog - Collection Sorting', () => {
     });
 
     it('should NOT show Today/Tomorrow/Yesterday at top when autoFavoriteRecentDailyLogs is disabled (DEFAULT)', () => {
+      // Mock the system time to Feb 9, 2026
+      const testDate = new Date('2026-02-09T12:00:00.000Z');
+      vi.setSystemTime(testDate);
+
       const mockTask: Entry = {
         type: 'task',
         id: 'task-1',
