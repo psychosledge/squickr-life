@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { useCollectionNavigation } from './useCollectionNavigation';
 import { AppProvider } from '../context/AppContext';
@@ -138,7 +138,9 @@ describe('useCollectionNavigation', () => {
       expect(result.current.previousCollection).toBeDefined();
     });
 
-    result.current.navigateToPrevious();
+    act(() => {
+      result.current.navigateToPrevious();
+    });
 
     expect(mockNavigate).toHaveBeenCalledWith('/collection/c1');
   });
@@ -158,7 +160,9 @@ describe('useCollectionNavigation', () => {
       expect(result.current.nextCollection).toBeDefined();
     });
 
-    result.current.navigateToNext();
+    act(() => {
+      result.current.navigateToNext();
+    });
 
     expect(mockNavigate).toHaveBeenCalledWith('/collection/c2');
   });
@@ -179,12 +183,16 @@ describe('useCollectionNavigation', () => {
     });
 
     // Navigate previous from first collection should go to index
-    result.current.navigateToPrevious();
+    act(() => {
+      result.current.navigateToPrevious();
+    });
     expect(mockNavigate).toHaveBeenCalledWith('/');
     
     // Navigate next from last collection should do nothing
     mockNavigate.mockClear();
-    result.current.navigateToNext();
+    act(() => {
+      result.current.navigateToNext();
+    });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
