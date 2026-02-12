@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Planned for v0.9.0 - Code Quality & Polish
+
+**Timezone Utilities & Consistency:**
+- Extract date comparison to reusable utility function
+- Add centralized date parsing utilities
+- Fix timezone inconsistencies in `DateHeader.tsx` and `formatters.ts`
+- Create ADR-014 documenting local timezone strategy
+
+**Test Coverage Improvements:**
+- Add timezone edge case tests (late night EST, positive UTC offsets)
+- Add drag-and-drop tests for `HierarchicalCollectionList.tsx`
+- Import `getLocalDateKey` in tests instead of duplicating logic
+
+**Error Handling:**
+- Show error toast to user in `CollectionDetailView.tsx`
+
+**Estimated Time:** 2-4 hours  
+**Status:** Ready to implement (Casey's recommendations from v0.8.0 reviews)
+
+---
+
 ## [0.8.0] - 2026-02-11
 
 ### Added

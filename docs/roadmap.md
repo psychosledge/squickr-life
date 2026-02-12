@@ -236,14 +236,47 @@
 
 ---
 
-### v0.9.0 - To Be Determined (NEXT)
+### v0.9.0 - Code Quality & Polish (NEXT)
 **Target:** After v0.8.0  
-**Estimated Time:** TBD  
-**Status:** Planning phase
+**Estimated Time:** 2-4 hours  
+**Status:** Ready to implement
 
-**Notes:**
-- Features 1 and 2 originally planned for v0.9.0 were moved to v0.8.0 and completed
-- Next version features to be determined based on user feedback and priorities
+**Casey's Recommendations from Recent Reviews:**
+
+**From Timezone Fix (9/10):**
+1. ✅ Import `getLocalDateKey` in tests instead of duplicating logic
+2. Add timezone edge case tests (late night EST, positive UTC offsets)
+3. Create ADR-014 documenting local timezone strategy
+4. Extract date comparison to reusable utility function
+
+**From ADR-014 Implementation (10/10):**
+1. Fix timezone inconsistencies in `DateHeader.tsx` and `formatters.ts`
+2. Add centralized date parsing utilities
+
+**Minor Code TODOs:**
+- Add tests for drag-and-drop functionality in `HierarchicalCollectionList.tsx`
+- Show error toast to user in `CollectionDetailView.tsx`
+
+**Value Proposition:**
+- Eliminate timezone inconsistencies across the codebase
+- Improve test coverage for edge cases
+- Better developer experience with centralized utilities
+- Enhanced error handling for users
+
+**Implementation Plan:**
+1. **Timezone Utilities** (1 hour)
+   - Extract date comparison to reusable utility function
+   - Add centralized date parsing utilities
+   - Fix inconsistencies in `DateHeader.tsx` and `formatters.ts`
+
+2. **Test Coverage** (1-2 hours)
+   - Add timezone edge case tests (late night EST, positive UTC offsets)
+   - Add drag-and-drop tests for `HierarchicalCollectionList.tsx`
+   - Import `getLocalDateKey` in tests instead of duplicating logic
+
+3. **Documentation & Error Handling** (0.5-1 hour)
+   - Create ADR-014 documenting local timezone strategy
+   - Add error toast to user in `CollectionDetailView.tsx`
 
 ---
 
@@ -396,27 +429,7 @@
 
 ---
 
-### Follow-up: ADR-014 Polish (Optional)
 
-**Casey's Recommendations from Recent Reviews:**
-
-**From Timezone Fix (9/10):**
-1. Import `getLocalDateKey` in tests instead of duplicating logic
-2. Add timezone edge case tests (late night EST, positive UTC offsets)
-3. Create ADR-014 documenting local timezone strategy
-4. Extract date comparison to reusable utility function
-
-**From ADR-014 Implementation (10/10):**
-1. Fix timezone inconsistencies in `DateHeader.tsx` and `formatters.ts`
-2. Add centralized date parsing utilities
-
-**Minor Code TODOs:**
-- Add tests for drag-and-drop functionality in `HierarchicalCollectionList.tsx`
-- Show error toast to user in `CollectionDetailView.tsx`
-
-**Estimated Time:** 2-4 hours (non-blocking, quality improvements)
-
----
 
 ## Timeline Estimate
 
@@ -425,7 +438,9 @@
 - v0.7.0: ✅ ~12 hours (February 7-10, 2026)
 
 **Remaining to v1.0.0:**
+- v0.9.0 Code Quality & Polish: 2-4 hours
 - v1.0.0 Intro Guide: 7-11 hours
+- **Total:** 9-15 hours
 
 **Optimistic:** 1-2 weeks to v1.0.0  
 **Realistic:** 2-3 weeks to v1.0.0
@@ -461,6 +476,6 @@
 ---
 
 **Roadmap Status:** ✅ Finalized  
-**Next Milestone:** v1.0.0 Intro Guide/Walkthrough  
+**Next Milestone:** v0.9.0 Code Quality & Polish → v1.0.0 Intro Guide/Walkthrough  
 **Ultimate Goal:** v1.0.0 Public Launch  
-**Date:** February 10, 2026
+**Date:** February 11, 2026
