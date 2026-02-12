@@ -1,6 +1,6 @@
 # Product Roadmap
 **Last Updated:** February 11, 2026  
-**Current Version:** v0.7.1  
+**Current Version:** v0.8.0  
 **Status:** Roadmap finalized through v1.0.0
 
 ---
@@ -107,6 +107,33 @@
 
 ---
 
+### ✅ v0.7.2 - Test Fixes (COMPLETED)
+**Released:** February 11, 2026  
+**Actual Time:** ~2 hours (test fixes + CI improvements)  
+**Status:** Deployed to production
+
+**Test Fixes:**
+1. ✅ Fixed date-dependent collection sorting test with proper time mocking (`vi.setSystemTime()`)
+2. ✅ Fixed async handling in navigation tests (wrapped callbacks in `act()`)
+
+**Infrastructure Improvements:**
+- Refactored CI pipeline for efficiency and fail-fast behavior
+- Version check now runs before tests (faster feedback on version bumps)
+- Added time-mocking guidelines to development docs
+- CI runs ~7-13 seconds faster per run
+
+**Test Coverage:**
+- All 1,396 tests passing reliably (Domain: 538, Infrastructure: 21, Client: 837)
+- Zero flaky tests
+- All tests now time-independent and deterministic
+
+**Documentation:**
+- Added "Testing Date/Time-Dependent Code" section to development guide
+- Documents when and how to use `vi.setSystemTime()`
+- Prevents future date-dependent test failures
+
+---
+
 ### ✅ v0.7.1 - Production Bug Fixes (COMPLETED)
 **Released:** February 11, 2026  
 **Actual Time:** ~4 hours (bug fixes + testing + code review)  
@@ -136,6 +163,120 @@
 **Code Review:**
 - Casey review: 9/10 rating - "Professional-grade bug fixing"
 - All changes approved for deployment
+
+---
+
+### ✅ v0.8.0 - UX Enhancements (COMPLETED)
+**Released:** February 11, 2026  
+**Actual Time:** ~14 hours (2.5h + 2h + 4.5h + 5h)  
+**Status:** Deployed to production
+
+**Features Delivered:**
+
+#### ✅ Feature 1: Auto-favorite last/current/next month (~2.5 hours)
+- **Implementation:** Added `autoFavoriteRecentMonthlyLogs: boolean` preference
+- **Behavior:** Auto-favorite monthly logs for last month, current month, next month (3 months total)
+- **Navigation Fix:** Favorited monthly logs now appear in navigation order
+- **Year Boundaries:** Handles Dec→Jan transitions correctly
+- **Test Coverage:** 20 new tests (16 utility, 4 navigation)
+- **Files Changed:**
+  - Domain: user-preferences types, handlers, projections
+  - Client: collectionUtils, collectionSorting, SettingsModal
+
+#### ✅ Feature 2: Show parent title for migrated sub-tasks (~2 hours)
+- **Implementation:** Inline suffix format "find hardware (Put together Bed Frame)"
+- **Display Logic:** Only for migrated sub-tasks (different collection than parent)
+- **Performance:** O(n) batch query via `getParentTitlesForSubTasks()`
+- **Styling:** Gray text, smaller font, in parentheses
+- **Test Coverage:** 7 comprehensive tests
+- **Files Changed:**
+  - Domain: entry.projections (batch query method)
+  - Client: EntryList, EntryItem, SortableEntryItem, TaskEntryItem, CollectionDetailView
+
+#### ✅ Feature 3: Combined monthly log + month rollup (~4.5 hours)
+- **Implementation:** Unified UX with two-zone clickable interface
+  - Triangle button: Expands/collapses child daily logs
+  - Text/icon area: Navigates to monthly log collection
+- **Visual:** Calendar icon, year display, star icon for favorited monthlies
+- **Dual Appearance:** Favorited monthly logs appear in both favorites AND calendar hierarchy
+- **Type Safety:** Enhanced HierarchyNode with discriminated union
+- **Test Coverage:** 7 new tests for Feature 3 scenarios
+- **Files Changed:**
+  - Client: useCollectionHierarchy, CollectionTreeNode, collectionStatsFormatter, HierarchicalCollectionList
+
+#### ✅ Feature 4: Dual navigation with temporal URLs (~5 hours)
+- **Implementation:** Auto-favorited collections accessible via both temporal and stable URLs
+  - Temporal URLs: `/today`, `/yesterday`, `/tomorrow`, `/this-month`, `/last-month`, `/next-month`
+  - Stable URLs: `/collection/{uuid}` (always point to same collection)
+  - Auto-favorited collections appear twice in navigation
+- **Chronological Ordering:** Last Month → Current Month → Yesterday → Today → Tomorrow → Next Month
+  - Monthly logs appear BEFORE their daily logs
+  - Fixed timezone bug: `getSortKey()` now uses local timezone instead of UTC
+  - Navigation sidebar order matches Collection Index order
+- **Test Coverage:** 38 comprehensive tests
+  - 16 temporal utils tests (edge cases: month/year boundaries, timezones)
+  - 9 navigation entries tests (URL assignment, deduplication)
+  - 13 useCollectionNavigation tests (arrow keys, swipe gestures)
+  - Fixed 4 pre-existing test failures in collectionSorting
+- **Files Changed:**
+  - Client: temporalUtils, navigationEntries, App, CollectionDetailView, useCollectionNavigation, HierarchicalCollectionList, collectionSorting
+
+**Technical Achievements:**
+- All 1,496 tests passing (545 domain, 21 infrastructure, 930 client)
+- Zero regressions across 4 major features
+- Comprehensive code reviews (9/10, 9.5/10, 9/10, 9.5/10 ratings from Casey - average 9.25/10)
+- TDD approach followed throughout
+
+**Developer Efficiency:**
+- Feature 1: Under estimate (2.5h vs 3h)
+- Feature 2: Under estimate (2h vs 3.5h)
+- Feature 3: On estimate (4.5h)
+- Feature 4: 5 hours (including chronological sorting fix and timezone debugging)
+- Total: 14 hours for 4 production-ready features
+
+---
+
+### v0.9.0 - Code Quality & Polish (NEXT)
+**Target:** After v0.8.0  
+**Estimated Time:** 2-4 hours  
+**Status:** Ready to implement
+
+**Casey's Recommendations from Recent Reviews:**
+
+**From Timezone Fix (9/10):**
+1. ✅ Import `getLocalDateKey` in tests instead of duplicating logic
+2. Add timezone edge case tests (late night EST, positive UTC offsets)
+3. Create ADR-014 documenting local timezone strategy
+4. Extract date comparison to reusable utility function
+
+**From ADR-014 Implementation (10/10):**
+1. Fix timezone inconsistencies in `DateHeader.tsx` and `formatters.ts`
+2. Add centralized date parsing utilities
+
+**Minor Code TODOs:**
+- Add tests for drag-and-drop functionality in `HierarchicalCollectionList.tsx`
+- Show error toast to user in `CollectionDetailView.tsx`
+
+**Value Proposition:**
+- Eliminate timezone inconsistencies across the codebase
+- Improve test coverage for edge cases
+- Better developer experience with centralized utilities
+- Enhanced error handling for users
+
+**Implementation Plan:**
+1. **Timezone Utilities** (1 hour)
+   - Extract date comparison to reusable utility function
+   - Add centralized date parsing utilities
+   - Fix inconsistencies in `DateHeader.tsx` and `formatters.ts`
+
+2. **Test Coverage** (1-2 hours)
+   - Add timezone edge case tests (late night EST, positive UTC offsets)
+   - Add drag-and-drop tests for `HierarchicalCollectionList.tsx`
+   - Import `getLocalDateKey` in tests instead of duplicating logic
+
+3. **Documentation & Error Handling** (0.5-1 hour)
+   - Create ADR-014 documenting local timezone strategy
+   - Add error toast to user in `CollectionDetailView.tsx`
 
 ---
 
@@ -288,27 +429,7 @@
 
 ---
 
-### Follow-up: ADR-014 Polish (Optional)
 
-**Casey's Recommendations from Recent Reviews:**
-
-**From Timezone Fix (9/10):**
-1. Import `getLocalDateKey` in tests instead of duplicating logic
-2. Add timezone edge case tests (late night EST, positive UTC offsets)
-3. Create ADR-014 documenting local timezone strategy
-4. Extract date comparison to reusable utility function
-
-**From ADR-014 Implementation (10/10):**
-1. Fix timezone inconsistencies in `DateHeader.tsx` and `formatters.ts`
-2. Add centralized date parsing utilities
-
-**Minor Code TODOs:**
-- Add tests for drag-and-drop functionality in `HierarchicalCollectionList.tsx`
-- Show error toast to user in `CollectionDetailView.tsx`
-
-**Estimated Time:** 2-4 hours (non-blocking, quality improvements)
-
----
 
 ## Timeline Estimate
 
@@ -317,7 +438,9 @@
 - v0.7.0: ✅ ~12 hours (February 7-10, 2026)
 
 **Remaining to v1.0.0:**
+- v0.9.0 Code Quality & Polish: 2-4 hours
 - v1.0.0 Intro Guide: 7-11 hours
+- **Total:** 9-15 hours
 
 **Optimistic:** 1-2 weeks to v1.0.0  
 **Realistic:** 2-3 weeks to v1.0.0
@@ -353,6 +476,6 @@
 ---
 
 **Roadmap Status:** ✅ Finalized  
-**Next Milestone:** v1.0.0 Intro Guide/Walkthrough  
+**Next Milestone:** v0.9.0 Code Quality & Polish → v1.0.0 Intro Guide/Walkthrough  
 **Ultimate Goal:** v1.0.0 Public Launch  
-**Date:** February 10, 2026
+**Date:** February 11, 2026

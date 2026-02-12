@@ -31,6 +31,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   
   const [defaultCompletedTaskBehavior, setDefaultCompletedTaskBehavior] = useState<CompletedTaskBehavior>('move-to-bottom');
   const [autoFavoriteRecentDailyLogs, setAutoFavoriteRecentDailyLogs] = useState(false);
+  const [autoFavoriteRecentMonthlyLogs, setAutoFavoriteRecentMonthlyLogs] = useState(false);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -39,6 +40,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (isOpen && currentPreferences) {
       setDefaultCompletedTaskBehavior(currentPreferences.defaultCompletedTaskBehavior);
       setAutoFavoriteRecentDailyLogs(currentPreferences.autoFavoriteRecentDailyLogs);
+      setAutoFavoriteRecentMonthlyLogs(currentPreferences.autoFavoriteRecentMonthlyLogs);
       setError('');
       setIsSaving(false);
     }
@@ -107,6 +109,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       await handler.handle({
         defaultCompletedTaskBehavior,
         autoFavoriteRecentDailyLogs,
+        autoFavoriteRecentMonthlyLogs,
       });
       
       // Close modal on success
@@ -204,6 +207,35 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </span>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Automatically show Today, Yesterday, and Tomorrow daily logs in Favorites section.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {/* Auto-favorite Recent Monthly Logs */}
+          <div className="mb-6">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoFavoriteRecentMonthlyLogs}
+                onChange={(e) => setAutoFavoriteRecentMonthlyLogs(e.target.checked)}
+                disabled={isSaving}
+                className="
+                  mt-0.5
+                  w-4 h-4
+                  text-blue-600
+                  border-gray-300 dark:border-gray-600
+                  rounded
+                  focus:ring-2 focus:ring-blue-500
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                "
+              />
+              <div className="flex-1">
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  Auto-favorite recent monthly logs
+                </span>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Automatically show last month, current month, and next month in Favorites section.
                 </p>
               </div>
             </label>

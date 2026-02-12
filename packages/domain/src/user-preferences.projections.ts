@@ -91,6 +91,10 @@ export class UserPreferencesProjection {
             event.payload.autoFavoriteRecentDailyLogs !== undefined
               ? event.payload.autoFavoriteRecentDailyLogs
               : currentPreferences.autoFavoriteRecentDailyLogs,
+          autoFavoriteRecentMonthlyLogs:
+            event.payload.autoFavoriteRecentMonthlyLogs !== undefined
+              ? event.payload.autoFavoriteRecentMonthlyLogs
+              : currentPreferences.autoFavoriteRecentMonthlyLogs,
           userId: event.userId !== undefined ? event.userId : currentPreferences.userId,
           updatedAt: event.payload.updatedAt,
         };

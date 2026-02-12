@@ -902,4 +902,136 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       expect(batchResult.get(parent2Id)?.map(t => t.id)).toEqual(individual2.map(t => t.id));
     });
   });
+
+  describe('getParentTitlesForSubTasks', () => {
+    it('should return parent title for a sub-task with existing parent', async () => {
+      // Arrange
+      const parentId = await createTaskHandler.handle({ title: 'Put together Bed Frame' });
+      const subTaskId = await createSubTaskHandler.handle({
+        title: 'find hardware',
+        parentTaskId: parentId,
+      });
+
+      // Act
+      const result = await projection.getParentTitlesForSubTasks([subTaskId]);
+
+      // Assert
+      expect(result.size).toBe(1);
+      expect(result.get(subTaskId)).toBe('Put together Bed Frame');
+    });
+
+    it('should return empty map for non-existent sub-task', async () => {
+      // Arrange
+      const nonExistentId = 'non-existent-task-id';
+
+      // Act
+      const result = await projection.getParentTitlesForSubTasks([nonExistentId]);
+
+      // Assert
+      expect(result.size).toBe(0);
+    });
+
+    it('should return empty result for task with non-existent parent', async () => {
+      // Arrange
+      const parentId = await createTaskHandler.handle({ title: 'Parent Task' });
+      const subTaskId = await createSubTaskHandler.handle({
+        title: 'Sub-task',
+        parentTaskId: parentId,
+      });
+
+      // Delete the parent
+      const deleteHandler = await import('./task.handlers').then(m => new m.DeleteTaskHandler(eventStore, projection));
+      await deleteHandler.handle({ taskId: parentId });
+
+      // Act
+      const result = await projection.getParentTitlesForSubTasks([subTaskId]);
+
+      // Assert
+      expect(result.size).toBe(0); // No parent exists
+    });
+
+    it('should return empty result for non-sub-task (no parentTaskId)', async () => {
+      // Arrange
+      const taskId = await createTaskHandler.handle({ title: 'Regular task' });
+
+      // Act
+      const result = await projection.getParentTitlesForSubTasks([taskId]);
+
+      // Assert
+      expect(result.size).toBe(0); // Not a sub-task
+    });
+
+    it('should return parent titles for multiple sub-tasks in batch', async () => {
+      // Arrange
+      const parent1Id = await createTaskHandler.handle({ title: 'Project A' });
+      const parent2Id = await createTaskHandler.handle({ title: 'Project B' });
+
+      const subTask1Id = await createSubTaskHandler.handle({
+        title: 'Sub-task 1',
+        parentTaskId: parent1Id,
+      });
+      const subTask2Id = await createSubTaskHandler.handle({
+        title: 'Sub-task 2',
+        parentTaskId: parent2Id,
+      });
+      const subTask3Id = await createSubTaskHandler.handle({
+        title: 'Sub-task 3',
+        parentTaskId: parent1Id,
+      });
+
+      // Act
+      const result = await projection.getParentTitlesForSubTasks([subTask1Id, subTask2Id, subTask3Id]);
+
+      // Assert
+      expect(result.size).toBe(3);
+      expect(result.get(subTask1Id)).toBe('Project A');
+      expect(result.get(subTask2Id)).toBe('Project B');
+      expect(result.get(subTask3Id)).toBe('Project A');
+    });
+
+    it('should return parent title regardless of collection (does NOT filter by collection)', async () => {
+      // Arrange: Parent in 'work' collection
+      const parentId = await createTaskHandler.handle({ 
+        title: 'Work Project',
+        collectionId: 'work',
+      });
+
+      // Sub-task inherits parent's collection initially
+      const subTaskId = await createSubTaskHandler.handle({
+        title: 'Sub-task in work',
+        parentTaskId: parentId,
+      });
+
+      // Migrate sub-task to 'home' collection (different from parent)
+      const migratedSubTaskId = await migrateTaskHandler.handle({
+        taskId: subTaskId,
+        targetCollectionId: 'home',
+      });
+
+      // Act: Query the migrated sub-task
+      const result = await projection.getParentTitlesForSubTasks([migratedSubTaskId]);
+
+      // Assert: Should STILL return parent title (filtering happens in UI)
+      expect(result.size).toBe(1);
+      expect(result.get(migratedSubTaskId)).toBe('Work Project');
+    });
+
+    it('should handle mixed bag of sub-tasks and non-sub-tasks', async () => {
+      // Arrange
+      const parentId = await createTaskHandler.handle({ title: 'Parent Task' });
+      const subTaskId = await createSubTaskHandler.handle({
+        title: 'Sub-task',
+        parentTaskId: parentId,
+      });
+      const regularTaskId = await createTaskHandler.handle({ title: 'Regular Task' });
+
+      // Act
+      const result = await projection.getParentTitlesForSubTasks([subTaskId, regularTaskId]);
+
+      // Assert
+      expect(result.size).toBe(1); // Only sub-task has parent
+      expect(result.get(subTaskId)).toBe('Parent Task');
+      expect(result.has(regularTaskId)).toBe(false);
+    });
+  });
 });

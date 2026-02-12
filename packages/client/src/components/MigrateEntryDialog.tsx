@@ -103,10 +103,21 @@ export function MigrateEntryDialog({
   const entryCount = isBulkMode ? entries.length : 1;
 
   // Filter out current collection and sort hierarchically (DRY - Casey's review #2)
-  const availableCollections = sortCollectionsHierarchically(
+  // For migration picker, deduplicate collections (auto-favorited appear once)
+  const sortedCollections = sortCollectionsHierarchically(
     collections.filter((c: Collection) => c.id !== currentCollectionId),
     userPreferences
   );
+  
+  // Deduplicate collections (keep first occurrence only)
+  // Auto-favorited collections appear twice in hierarchical sort (favorites section + calendar)
+  // but for migration picker, we only want to show each collection once
+  const seenIds = new Set<string>();
+  const availableCollections = sortedCollections.filter(c => {
+    if (seenIds.has(c.id)) return false;
+    seenIds.add(c.id);
+    return true;
+  });
 
   // Get collection name for display in helper text
   const selectedCollection = availableCollections.find(c => c.id === selectedCollectionId);

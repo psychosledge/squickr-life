@@ -7,7 +7,8 @@ import { CollectionTreeNode } from './CollectionTreeNode';
 import { DRAG_SENSOR_CONFIG } from '../utils/constants';
 import { isEffectivelyFavorited } from '../utils/collectionUtils';
 import { getCollectionDisplayName } from '../utils/formatters';
-import { sortDailyLogsByDate } from '../utils/collectionSorting';
+import { sortAutoFavoritedChronologically } from '../utils/collectionSorting';
+import { buildNavigationEntries } from '../utils/navigationEntries';
 import { useApp } from '../context/AppContext';
 
 interface HierarchicalCollectionListProps {
@@ -99,12 +100,14 @@ export function HierarchicalCollectionList({
 
     // Get the collections in this section
     const sectionCollections = nodes
-      .filter(node => node.type === 'custom' && node.collection)
-      .filter(node => 
-        section === 'favorites' 
-          ? isEffectivelyFavorited(node.collection!, userPreferences, now)
-          : !isEffectivelyFavorited(node.collection!, userPreferences, now)
-      );
+      .filter(node => node.type === 'custom')
+      .filter(node => {
+        // Type narrowing ensures collection exists for custom nodes
+        if (node.type !== 'custom') return false;
+        return section === 'favorites' 
+          ? isEffectivelyFavorited(node.collection, userPreferences, now)
+          : !isEffectivelyFavorited(node.collection, userPreferences, now);
+      });
     
     const activeId = String(active.id);
     const overId = String(over.id);
@@ -135,6 +138,23 @@ export function HierarchicalCollectionList({
   // Memoize reference date (MEDIUM PRIORITY - Casey's review #5)
   const now = useMemo(() => new Date(), []);
   
+  // Build navigation entries to get URLs for each collection
+  const navigationEntries = useMemo(() => {
+    return buildNavigationEntries(collections, userPreferences, now);
+  }, [collections, userPreferences, now]);
+  
+  // Create a map of collection ID → URL for efficient lookup
+  const collectionUrlMap = useMemo(() => {
+    const map = new Map<string, string>();
+    navigationEntries.forEach(entry => {
+      // Use first occurrence URL (auto-favorites get temporal URLs)
+      if (!map.has(entry.collection.id)) {
+        map.set(entry.collection.id, entry.url);
+      }
+    });
+    return map;
+  }, [navigationEntries]);
+  
   // Separate nodes into sections for rendering with separators
   // Use isEffectivelyFavorited to include both manual and auto-favorited collections
   // For favorites, include both custom collections AND daily logs that are favorited
@@ -159,11 +179,11 @@ export function HierarchicalCollectionList({
         isEffectivelyFavorited(collection, userPreferences, now)
       );
     
-    // Use shared sorting utility (DRY - Casey's review #2)
-    const sortedDailies = sortDailyLogsByDate(favoritedDateCollections, now);
+    // Sort both daily and monthly logs chronologically (Feature 1: chronological auto-favorites)
+    const sortedTemporals = sortAutoFavoritedChronologically(favoritedDateCollections, now);
     
     // Map to HierarchyNode format
-    return sortedDailies.map(collection => {
+    return sortedTemporals.map(collection => {
       const nodeType = collection.type === 'monthly' ? 'monthly' : 'day';
       return {
         type: nodeType,
@@ -235,6 +255,7 @@ export function HierarchicalCollectionList({
                       isDraggable={node.type === 'custom'}
                       entriesByCollection={entriesByCollection}
                       userPreferences={userPreferences}
+                      url={'collection' in node && node.collection ? collectionUrlMap.get(node.collection.id) : undefined}
                     />
                   ))}
                 </SortableContext>
@@ -250,6 +271,7 @@ export function HierarchicalCollectionList({
                   isDraggable={false}
                   entriesByCollection={entriesByCollection}
                   userPreferences={userPreferences}
+                  url={'collection' in node && node.collection ? collectionUrlMap.get(node.collection.id) : undefined}
                 />
               ))
             )}
@@ -279,6 +301,7 @@ export function HierarchicalCollectionList({
                       isDraggable={true}
                       entriesByCollection={entriesByCollection}
                       userPreferences={userPreferences}
+                      url={'collection' in node && node.collection ? collectionUrlMap.get(node.collection.id) : undefined}
                     />
                   ))}
                 </SortableContext>
@@ -294,6 +317,7 @@ export function HierarchicalCollectionList({
                   isDraggable={false}
                   entriesByCollection={entriesByCollection}
                   userPreferences={userPreferences}
+                  url={'collection' in node && node.collection ? collectionUrlMap.get(node.collection.id) : undefined}
                 />
               ))
             )}
@@ -309,18 +333,24 @@ export function HierarchicalCollectionList({
         {/* Date Hierarchy Section - NO HEADER */}
         {dateHierarchyNodes.length > 0 && (
           <>
-            {dateHierarchyNodes.map(node => (
-              <CollectionTreeNode
-                key={node.id}
-                node={node}
-                depth={0}
-                onToggleExpand={toggleExpand}
-                selectedCollectionId={selectedCollectionId}
-                isDraggable={false}
-                entriesByCollection={entriesByCollection}
-                userPreferences={userPreferences}
-              />
-            ))}
+            {dateHierarchyNodes.map(node => {
+              const hasCollection = 'collection' in node;
+              const collectionId = hasCollection ? (node as any).collection?.id : undefined;
+              const url = collectionId ? (collectionUrlMap.get(collectionId) ?? undefined) : undefined;
+              return (
+                <CollectionTreeNode
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  onToggleExpand={toggleExpand}
+                  selectedCollectionId={selectedCollectionId}
+                  isDraggable={false}
+                  entriesByCollection={entriesByCollection}
+                  userPreferences={userPreferences}
+                  url={url}
+                />
+              );
+            })}
           </>
         )}
       </div>

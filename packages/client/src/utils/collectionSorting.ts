@@ -6,15 +6,16 @@
  * 
  * Ordering Rules (ADR-014 - oldest first, like physical bullet journal):
  * 1. Favorited customs (by order field, lexicographic)
- * 2. Older daily logs (calendar hierarchy, before recent days)
- * 3. Auto-favorited daily logs (Yesterday → Today → Tomorrow)
- * 4. Future daily logs (calendar hierarchy, after recent days)
- * 5. Other customs (by order field, lexicographic)
- * 6. Monthly logs (interwoven with daily logs in calendar hierarchy)
+ * 2. Auto-favorited daily logs (Yesterday → Today → Tomorrow)
+ * 3. Auto-favorited monthly logs (chronologically, oldest first)
+ * 4. Other customs (by order field, lexicographic)
+ * 5. Older daily logs (calendar hierarchy, before recent days)
+ * 6. Future daily logs (calendar hierarchy, after recent days)
+ * 7. Monthly logs (interwoven with daily logs in calendar hierarchy)
  */
 
 import type { Collection, UserPreferences } from '@squickr/domain';
-import { isEffectivelyFavorited } from './collectionUtils';
+import { isEffectivelyFavorited, isAutoFavorited } from './collectionUtils';
 
 /**
  * Sort daily logs with Older → Yesterday → Today → Tomorrow → Future priority.
@@ -79,13 +80,137 @@ export function sortDailyLogsByDate(
 }
 
 /**
+ * Get sort key for auto-favorited temporal collection (daily or monthly log).
+ * 
+ * Priority tiers ensure chronological ordering with monthly logs before their days:
+ * - 0: Last Month
+ * - 1: Current Month
+ * - 2: Yesterday
+ * - 3: Today
+ * - 4: Tomorrow (unless tomorrow is in next month, then it gets priority 6)
+ * - 5: Next Month
+ * - 6: Tomorrow (when tomorrow is in next month, comes AFTER next month)
+ * 
+ * Key format: "{priority}-{date}" ensures stable lexicographic sorting.
+ * 
+ * @param collection - Daily or monthly log collection
+ * @param now - Current date for calculating relative positions
+ * @returns Sort key string (e.g., "1-2026-02" for current month, "3-2026-02-10" for today)
+ */
+function getSortKey(collection: Collection, now: Date): string {
+  // Use local timezone (not UTC) to match how collections are created
+  const getLocalDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  const todayStr = getLocalDateString(now);
+  const tomorrowDate = new Date(now.getTime() + 86400000);
+  const tomorrowStr = getLocalDateString(tomorrowDate);
+  const yesterdayDate = new Date(now.getTime() - 86400000);
+  const yesterdayStr = getLocalDateString(yesterdayDate);
+  
+  const currentYearMonth = todayStr.substring(0, 7); // "2026-02"
+  const tomorrowYearMonth = tomorrowStr.substring(0, 7); // "2026-02" or "2026-03" if month boundary
+  
+  // Calculate last month and next month year-months
+  const currentDate = new Date(now);
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth(); // 0-based
+  
+  // Last month: handle year boundary
+  let lastYear = currentYear;
+  let lastMonth = currentMonth - 1;
+  if (lastMonth < 0) {
+    lastMonth = 11;
+    lastYear--;
+  }
+  const lastYearMonth = `${lastYear}-${String(lastMonth + 1).padStart(2, '0')}`;
+  
+  // Next month: handle year boundary
+  let nextYear = currentYear;
+  let nextMonth = currentMonth + 1;
+  if (nextMonth > 11) {
+    nextMonth = 0;
+    nextYear++;
+  }
+  const nextYearMonth = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}`;
+  
+  const date = collection.date || '';
+  
+  // Handle monthly logs
+  if (collection.type === 'monthly') {
+    if (date === lastYearMonth) return `0-${date}`;
+    if (date === currentYearMonth) return `1-${date}`;
+    if (date === nextYearMonth) return `5-${date}`;
+    // Shouldn't happen for auto-favorited, but fallback
+    return `9-${date}`;
+  }
+  
+  // Handle daily logs
+  if (collection.type === 'daily') {
+    if (date === yesterdayStr) return `2-${date}`;
+    if (date === todayStr) return `3-${date}`;
+    if (date === tomorrowStr) {
+      // Edge case: If tomorrow is in next month, it should come AFTER next month
+      // This ensures monthly log appears before days of that month
+      if (tomorrowYearMonth !== currentYearMonth) {
+        return `6-${date}`; // After next month (priority 5)
+      }
+      return `4-${date}`; // Normal tomorrow priority
+    }
+    // Shouldn't happen for auto-favorited, but fallback
+    return `9-${date}`;
+  }
+  
+  // Fallback (shouldn't happen)
+  return `9-${date}`;
+}
+
+/**
+ * Sort auto-favorited collections (daily + monthly logs) chronologically.
+ * 
+ * This combines favorited dailies and monthlies into a single chronological order
+ * with monthly logs appearing BEFORE the days of that month.
+ * 
+ * Priority order (oldest first):
+ * 1. Last Month (Jan)
+ * 2. Current Month (Feb)
+ * 3. Yesterday (Feb 9)
+ * 4. Today (Feb 10)
+ * 5. Tomorrow (Feb 11)
+ * 6. Next Month (Mar)
+ * 
+ * Edge case: When tomorrow is in next month (Jan 31 → Feb 1):
+ * - Next Month (Feb) comes BEFORE Tomorrow (Feb 1)
+ * - This ensures monthly log appears before days of that month
+ * 
+ * @param collections - Array of auto-favorited daily and monthly logs
+ * @param now - Current date for calculating relative positions
+ * @returns Sorted array (does not mutate input)
+ */
+export function sortAutoFavoritedChronologically(
+  collections: Collection[],
+  now: Date
+): Collection[] {
+  return [...collections].sort((a, b) => {
+    const aKey = getSortKey(a, now);
+    const bKey = getSortKey(b, now);
+    return aKey.localeCompare(bKey);
+  });
+}
+
+/**
  * Sort collections according to the hierarchical display order.
  * 
  * This function ensures that navigation order matches the collection index:
  * - Favorited custom collections first (sorted by order)
- * - Other custom collections second (sorted by order)
- * - Older calendar daily logs (before yesterday)
  * - Auto-favorited daily logs (Yesterday → Today → Tomorrow)
+ * - Auto-favorited monthly logs (chronologically, oldest first)
+ * - Other custom collections (sorted by order)
+ * - Older calendar daily logs (before yesterday)
  * - Future calendar daily logs (after tomorrow)
  * - Calendar hierarchy (interwoven by year/month):
  *   - For each month (oldest first): monthly log, then daily logs for that month
@@ -107,24 +232,46 @@ export function sortCollectionsHierarchically(
     !c.type || c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
   );
   
-  // Separate favorited from non-favorited (for both customs and dailies)
+  // Separate favorited from non-favorited (for customs, dailies, and monthlies)
   const favoritedCustoms = customCollections.filter(c => isEffectivelyFavorited(c, userPreferences, now));
   const unfavoritedCustoms = customCollections.filter(c => !isEffectivelyFavorited(c, userPreferences, now));
   
   const favoritedDailies = dailyLogs.filter(c => isEffectivelyFavorited(c, userPreferences, now));
-  const unfavoritedDailies = dailyLogs.filter(c => !isEffectivelyFavorited(c, userPreferences, now));
+  // For calendar: include all dailies EXCEPT manually favorited ones
+  // (manually favorited appear once in favorites section, auto-favorited appear twice)
+  const allDailiesForCalendar = dailyLogs.filter(c => !c.isFavorite);
   
-  // Sort favorited customs by order field
-  favoritedCustoms.sort((a, b) => (a.order || '').localeCompare(b.order || ''));
+  const favoritedMonthlies = monthlyLogs.filter(c => isEffectivelyFavorited(c, userPreferences, now));
+  // For calendar: include all monthlies EXCEPT manually favorited ones
+  const allMonthliesForCalendar = monthlyLogs.filter(c => !c.isFavorite);
   
-  // Sort favorited dailies: Yesterday → Today → Tomorrow (oldest first)
-  const sortedFavoritedDailies = sortDailyLogsByDate(favoritedDailies, now);
+  // Separate manually favorited temporal collections from auto-favorited
+  const manuallyFavoritedTemporals = [
+    ...favoritedDailies.filter(c => c.isFavorite),
+    ...favoritedMonthlies.filter(c => c.isFavorite)
+  ];
+  const autoFavoritedTemporals = [
+    ...favoritedDailies.filter(c => isAutoFavorited(c, userPreferences, now)),
+    ...favoritedMonthlies.filter(c => isAutoFavorited(c, userPreferences, now))
+  ];
+  
+  // Sort favorited customs by order field (includes manually favorited temporal collections)
+  // Combine favorited customs with manually favorited temporal collections
+  const allManuallyFavorited = [...favoritedCustoms, ...manuallyFavoritedTemporals];
+  allManuallyFavorited.sort((a, b) => (a.order || '').localeCompare(b.order || ''));
+  
+  // Sort auto-favorited temporal collections (dailies + monthlies) chronologically
+  // This ensures: Last Month → Current Month → Yesterday → Today → Tomorrow → Next Month
+  const sortedAutoFavoritedTemporals = sortAutoFavoritedChronologically(
+    autoFavoritedTemporals,
+    now
+  );
   
   // Sort unfavorited customs by order field
   unfavoritedCustoms.sort((a, b) => (a.order || '').localeCompare(b.order || ''));
   
-  // Sort unfavorited daily logs by date (oldest first = ascending)
-  unfavoritedDailies.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  // Sort all daily logs for calendar by date (oldest first = ascending)
+  allDailiesForCalendar.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   
   // Build calendar hierarchy (interwoven monthly and daily logs)
   // Split into: older (before yesterday), and future (after tomorrow)
@@ -139,7 +286,7 @@ export function sortCollectionsHierarchically(
   
   // Group dailies by year-month
   const dailiesByYearMonth = new Map<string, Collection[]>();
-  for (const daily of unfavoritedDailies) {
+  for (const daily of allDailiesForCalendar) {
     const yearMonth = daily.date?.substring(0, 7); // "2026-02"
     if (!yearMonth) continue;
     if (!dailiesByYearMonth.has(yearMonth)) {
@@ -151,7 +298,7 @@ export function sortCollectionsHierarchically(
   // Group monthlies by year-month
   const monthliesByYearMonth = new Map<string, Collection>();
   const monthliesWithoutDate: Collection[] = [];
-  for (const monthly of monthlyLogs) {
+  for (const monthly of allMonthliesForCalendar) {
     const yearMonth = monthly.date?.substring(0, 7); // "2026-02"
     if (yearMonth) {
       monthliesByYearMonth.set(yearMonth, monthly);
@@ -215,14 +362,14 @@ export function sortCollectionsHierarchically(
   futureCalendarLogs.push(...monthliesWithoutDate);
   
   // Return in hierarchical order:
-  // 1. Favorited customs
-  // 2. Auto-favorited recent dailies (Yesterday → Today → Tomorrow)
+  // 1. Manually favorited collections (customs + manually favorited temporals, sorted by order)
+  // 2. Auto-favorited temporal collections (dailies + monthlies, sorted chronologically)
   // 3. Unfavorited customs  
   // 4. Older calendar (before yesterday)
   // 5. Future calendar (after tomorrow)
   return [
-    ...favoritedCustoms,
-    ...sortedFavoritedDailies,
+    ...allManuallyFavorited,
+    ...sortedAutoFavoritedTemporals,
     ...unfavoritedCustoms,
     ...olderCalendarLogs,
     ...futureCalendarLogs,

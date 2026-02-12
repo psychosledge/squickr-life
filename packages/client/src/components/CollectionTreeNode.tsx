@@ -15,6 +15,7 @@ interface CollectionTreeNodeProps {
   isDraggable: boolean;
   entriesByCollection?: Map<string | null, Entry[]>;
   userPreferences: UserPreferences;
+  url?: string; // Optional URL override for navigation
 }
 
 /**
@@ -31,8 +32,15 @@ export function CollectionTreeNode({
   isDraggable,
   entriesByCollection,
   userPreferences,
+  url,
 }: CollectionTreeNodeProps) {
-  const isSelected = node.collection?.id === selectedCollectionId;
+  // Check if this is a month node with monthlyLog attached
+  const monthlyLog = node.type === 'month' ? node.monthlyLog : undefined;
+  const isMonthlyLogSelected = monthlyLog?.id === selectedCollectionId;
+  
+  // For leaf nodes, check if selected
+  const isSelected = node.type !== 'year' && node.type !== 'month' && node.collection?.id === selectedCollectionId;
+  
   const isContainer = node.type === 'year' || node.type === 'month';
   
   // Setup drag-and-drop only for draggable custom collections
@@ -74,8 +82,68 @@ export function CollectionTreeNode({
   // Calculate stats text for inline display
   const statsText = formatCollectionStats(node, entriesByCollection);
   
-  // Container nodes (year/month) - clickable but not navigable
+  // Container nodes (year/month)
   if (isContainer) {
+    // Special case: month node with monthly log (Feature 3)
+    if (node.type === 'month' && monthlyLog) {
+      return (
+        <>
+          <div className="flex items-stretch" style={{ paddingLeft }}>
+            {/* Triangle button - expand/collapse */}
+            <button
+              onClick={() => onToggleExpand(node.id)}
+              className="px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 
+                         transition-colors duration-150
+                         text-gray-700 dark:text-gray-300 flex-shrink-0"
+              aria-label={node.isExpanded ? 'Collapse month' : 'Expand month'}
+            >
+              <span className="text-sm w-5 inline-block">{icon}</span>
+            </button>
+            
+            {/* Clickable text/icon - navigate to monthly log */}
+            <Link
+              to={buildCollectionPath(monthlyLog.id)}
+              className={`
+                flex-1 px-2 py-2 transition-colors duration-150
+                ${isMonthlyLogSelected 
+                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }
+              `}
+            >
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                <div className="flex items-baseline gap-2 flex-shrink-0">
+                  <span className="text-sm">{ENTRY_ICONS.CALENDAR}</span>
+                  <span className="font-medium">{node.label} {new Date(node.date).getFullYear()}</span>
+                  {monthlyLog.isFavorite && <span className="text-sm">⭐</span>}
+                </div>
+                {statsText && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {statsText}
+                  </span>
+                )}
+              </div>
+            </Link>
+          </div>
+          
+          {/* Render children if expanded */}
+          {node.isExpanded && node.children.map(child => (
+            <CollectionTreeNode
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              onToggleExpand={onToggleExpand}
+              selectedCollectionId={selectedCollectionId}
+              isDraggable={false}
+              entriesByCollection={entriesByCollection}
+              userPreferences={userPreferences}
+            />
+          ))}
+        </>
+      );
+    }
+    
+    // Regular container node (year or month without monthly log)
     return (
       <>
         <button
@@ -115,9 +183,12 @@ export function CollectionTreeNode({
     );
   }
   
-  // Leaf nodes (day/custom) - navigable
-  if (!node.collection) {
-    return null; // Should not happen, but guard against it
+  // Leaf nodes (day/monthly/custom) - navigable
+  // Type narrowing: if not a container, must be a leaf node with collection
+  if (node.type === 'monthly' || node.type === 'day' || node.type === 'custom') {
+    if (!node.collection) {
+      return null; // Should not happen, but guard against it
+    }
   }
   
   return (
@@ -156,7 +227,7 @@ export function CollectionTreeNode({
       )}
       
       <Link
-        to={buildCollectionPath(node.collection.id)}
+        to={url ?? buildCollectionPath(node.collection.id)}
         className={`
           block px-4 py-2 transition-colors duration-150
           ${isSelected 

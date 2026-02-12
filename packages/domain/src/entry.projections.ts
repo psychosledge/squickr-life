@@ -521,6 +521,57 @@ export class EntryListProjection {
   }
 
   /**
+   * Get parent task titles for a list of sub-task IDs (Phase 2: Batch Query for Parent Titles)
+   * 
+   * This is a performance optimization for displaying parent context in entry lists.
+   * Returns a Map<subTaskId, parentTitle> only for entries where:
+   * - Entry is a task
+   * - Entry has a parentTaskId
+   * - Parent task exists and is a task
+   * 
+   * This does NOT filter by collection - filtering happens in the UI layer.
+   * UI decides whether to show parent title based on whether sub-task is migrated.
+   * 
+   * @param subTaskIds - Array of task IDs to check for parent titles
+   * @returns Map of sub-task ID to parent title (only includes entries with valid parents)
+   */
+  async getParentTitlesForSubTasks(subTaskIds: string[]): Promise<Map<string, string>> {
+    const parentTitles = new Map<string, string>();
+    
+    // Get all events and build entries map (reuse projection logic)
+    const events = await this.eventStore.getAll();
+    const entries = this.applyEvents(events);
+    
+    // Build a lookup map for fast access
+    const entriesMap = new Map<string, Entry>();
+    for (const entry of entries) {
+      entriesMap.set(entry.id, entry);
+    }
+    
+    // For each sub-task ID, find parent and extract title
+    for (const subTaskId of subTaskIds) {
+      const subTask = entriesMap.get(subTaskId);
+      
+      // Skip if entry doesn't exist or is not a task
+      if (!subTask || subTask.type !== 'task') continue;
+      
+      // Skip if task has no parent
+      if (!subTask.parentTaskId) continue;
+      
+      // Find parent task
+      const parent = entriesMap.get(subTask.parentTaskId);
+      
+      // Skip if parent doesn't exist or is not a task
+      if (!parent || parent.type !== 'task') continue;
+      
+      // Add parent title to map
+      parentTitles.set(subTaskId, parent.title);
+    }
+    
+    return parentTitles;
+  }
+
+  /**
    * Get entries for collection view (includes ghosts)
    * 
    * Returns active entries + ghost entries for a specific collection.

@@ -1,18 +1,35 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Collection, UserPreferences } from '@squickr/domain';
 import { formatMonthlyLogName, getCollectionDisplayName } from '../utils/formatters';
-import { isEffectivelyFavorited } from '../utils/collectionUtils';
 
-export interface HierarchyNode {
-  type: 'year' | 'month' | 'monthly' | 'day' | 'custom';
-  id: string; // Unique ID for React keys (e.g., "year-2026", "month-2026-02", collection.id)
-  label: string; // Display name (e.g., "2026 Logs", "February", "Saturday, February 1")
-  date?: string; // Original date for temporal nodes
-  collection?: Collection; // Only for leaf nodes (monthly/day/custom)
-  children: HierarchyNode[];
-  isExpanded: boolean;
-  count?: number; // For collapsed nodes: "January (31 logs)"
-}
+export type HierarchyNode =
+  | {
+      type: 'year';
+      id: string;
+      label: string;
+      children: HierarchyNode[];
+      isExpanded: boolean;
+      count?: number;
+    }
+  | {
+      type: 'month';
+      id: string;
+      label: string;
+      date: string; // YYYY-MM format
+      monthlyLog?: Collection; // Optional monthly log collection for this month
+      children: HierarchyNode[];
+      isExpanded: boolean;
+      count?: number;
+    }
+  | {
+      type: 'monthly' | 'day' | 'custom';
+      id: string;
+      label: string;
+      date?: string;
+      collection: Collection;
+      children: HierarchyNode[];
+      isExpanded: boolean;
+    };
 
 const STORAGE_KEY = 'collection-hierarchy-expanded';
 
@@ -81,24 +98,20 @@ export function getCurrentYearMonth(): { year: string; yearMonth: string } {
 function buildHierarchy(
   collections: Collection[],
   expandedSet: Set<string>,
-  userPreferences: UserPreferences,
-  now: Date
+  _userPreferences: UserPreferences,
+  _now: Date
 ): HierarchyNode[] {
   const nodes: HierarchyNode[] = [];
   
   // Separate daily logs, monthly logs, and custom collections
-  // Exclude auto-favorited dailies and manually-favorited monthlies from calendar hierarchy
-  // (they appear in favorites section)
-  // BUG FIX #3: Filter out favorited monthly logs from date hierarchy
+  // Include ALL daily logs in calendar hierarchy (even auto-favorited ones will appear twice)
   const dailyLogs = collections.filter(c => 
     c.type === 'daily' && 
-    c.date &&
-    !isEffectivelyFavorited(c, userPreferences, now)
+    c.date
   );
-  const monthlyLogs = collections.filter(c => 
+  const allMonthlyLogs = collections.filter(c => 
     c.type === 'monthly' && 
-    c.date &&
-    !isEffectivelyFavorited(c, userPreferences, now)
+    c.date
   );
   const customCollections = collections.filter(c => 
     !c.type || c.type === 'custom' || c.type === 'log' || c.type === 'tracker'
@@ -145,10 +158,18 @@ function buildHierarchy(
     monthMap.get(yearMonth)!.push(log);
   });
   
-  // Group monthly logs by year
+  // Create a map of monthly logs by yearMonth for easy lookup
+  const monthlyLogMap = new Map<string, Collection>();
+  allMonthlyLogs.forEach(log => {
+    if (log.date) {
+      monthlyLogMap.set(log.date, log); // date is YYYY-MM format
+    }
+  });
+  
+  // Group monthly logs by year (only for standalone monthly logs)
   const monthlyLogsByYear = new Map<string, Collection[]>();
   
-  monthlyLogs.forEach(log => {
+  allMonthlyLogs.forEach(log => {
     if (!log.date) return;
     
     const year = log.date.substring(0, 4); // "2026" from "2026-02"
@@ -191,21 +212,30 @@ function buildHierarchy(
     };
     
     if (isYearExpanded) {
-      // Add monthly logs FIRST (sorted oldest first by date)
+      // Build a set of yearMonths that have daily logs (will get month nodes)
+      const yearMonthsWithDailyLogs = monthMap ? new Set(monthMap.keys()) : new Set<string>();
+      
+      // Add standalone monthly logs FIRST (sorted oldest first by date)
+      // Only for months that DON'T have daily logs
       const sortedMonthlyLogs = [...monthlyLogsForYear].sort((a, b) => 
         (a.date || '').localeCompare(b.date || '')
       );
       
       sortedMonthlyLogs.forEach(log => {
-        yearNode.children.push({
-          type: 'monthly',
-          id: log.id,
-          label: formatMonthlyLogName(log.date!),
-          date: log.date,
-          collection: log,
-          children: [],
-          isExpanded: false, // Leaf nodes don't expand
-        });
+        const yearMonth = log.date!; // YYYY-MM format
+        
+        // Only add as standalone if no daily logs exist for this month
+        if (!yearMonthsWithDailyLogs.has(yearMonth)) {
+          yearNode.children.push({
+            type: 'monthly',
+            id: log.id,
+            label: formatMonthlyLogName(log.date!),
+            date: log.date,
+            collection: log,
+            children: [],
+            isExpanded: false, // Leaf nodes don't expand
+          });
+        }
       });
       
       // Then build month nodes for daily logs (sorted oldest first)
@@ -217,11 +247,15 @@ function buildHierarchy(
           const monthId = `month-${yearMonth}`;
           const isMonthExpanded = expandedSet.has(monthId);
           
+          // Check if there's a monthly log for this month
+          const monthlyLog = monthlyLogMap.get(yearMonth);
+          
           const monthNode: HierarchyNode = {
             type: 'month',
             id: monthId,
             label: formatMonthLabel(yearMonth),
             date: yearMonth,
+            monthlyLog, // Attach monthly log if it exists (even if favorited)
             children: [],
             isExpanded: isMonthExpanded,
             count: isMonthExpanded ? undefined : logs.length,

@@ -34,6 +34,39 @@ export function isRecentDailyLog(collection: Collection, now: Date = new Date())
 }
 
 /**
+ * Checks if a monthly collection is considered "recent" (Last month, Current month, Next month)
+ * Uses local timezone to match how monthly logs are created
+ * 
+ * @param collection - The collection to check
+ * @param now - Current date/time (defaults to new Date() if not provided)
+ * @returns true if the collection is a recent monthly log (last month, current month, or next month)
+ */
+export function isRecentMonthlyLog(collection: Collection, now: Date = new Date()): boolean {
+  if (collection.type !== 'monthly') return false;
+  if (!collection.date) return false;
+  
+  // Parse collection date (format: YYYY-MM)
+  const parts = collection.date.split('-');
+  if (parts.length !== 2) return false;
+  
+  const collectionYear = parseInt(parts[0]!, 10);
+  const collectionMonth = parseInt(parts[1]!, 10);
+  
+  if (isNaN(collectionYear) || isNaN(collectionMonth)) return false;
+  if (collectionMonth < 1 || collectionMonth > 12) return false;
+  
+  // Get current month and year in local timezone
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // getMonth() is 0-based
+  
+  // Calculate difference in months
+  const monthsDiff = (collectionYear - currentYear) * 12 + (collectionMonth - currentMonth);
+  
+  // Recent = last month (-1), current month (0), next month (+1)
+  return monthsDiff >= -1 && monthsDiff <= 1;
+}
+
+/**
  * Determines if a collection should be shown as favorited
  * Combines manual favorites with auto-favorite logic
  * 
@@ -53,6 +86,11 @@ export function isEffectivelyFavorited(
   // Auto-favorite if enabled and is recent daily log
   if (userPreferences.autoFavoriteRecentDailyLogs && collection.type === 'daily') {
     return isRecentDailyLog(collection, now);
+  }
+  
+  // Auto-favorite if enabled and is recent monthly log
+  if (userPreferences.autoFavoriteRecentMonthlyLogs && collection.type === 'monthly') {
+    return isRecentMonthlyLog(collection, now);
   }
   
   return false;
@@ -75,10 +113,23 @@ export function isAutoFavorited(
   // Manual favorite takes precedence
   if (collection.isFavorite) return false;
   
-  // Check if it would be auto-favorited
-  return (
+  // Check if it would be auto-favorited (daily logs)
+  if (
     userPreferences.autoFavoriteRecentDailyLogs &&
     collection.type === 'daily' &&
     isRecentDailyLog(collection, now)
-  );
+  ) {
+    return true;
+  }
+  
+  // Check if it would be auto-favorited (monthly logs)
+  if (
+    userPreferences.autoFavoriteRecentMonthlyLogs &&
+    collection.type === 'monthly' &&
+    isRecentMonthlyLog(collection, now)
+  ) {
+    return true;
+  }
+  
+  return false;
 }

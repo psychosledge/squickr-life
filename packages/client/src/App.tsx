@@ -176,6 +176,14 @@ function AppContent() {
     <AppProvider value={contextValue}>
       <BrowserRouter>
         <Routes>
+          {/* Temporal paths - use date prop instead of TemporalRoute components */}
+          <Route path="/today" element={<CollectionDetailView date="today" />} />
+          <Route path="/yesterday" element={<CollectionDetailView date="yesterday" />} />
+          <Route path="/tomorrow" element={<CollectionDetailView date="tomorrow" />} />
+          <Route path="/this-month" element={<CollectionDetailView date="this-month" />} />
+          <Route path="/last-month" element={<CollectionDetailView date="last-month" />} />
+          <Route path="/next-month" element={<CollectionDetailView date="next-month" />} />
+          
           {/* Phase 2D: Collection Index is now the default */}
           <Route path={ROUTES.index} element={<CollectionIndexView />} />
           <Route path={ROUTES.collection} element={<CollectionDetailView />} />
