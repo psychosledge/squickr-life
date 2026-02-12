@@ -9,11 +9,11 @@
 
 ## Overview
 
-Squickr Life uses a **single-branch workflow** with tag-based releases.
+Squickr Life uses a **tag-based deployment workflow** with continuous integration.
 
 - **Development:** Work directly on `master` branch
-- **Production:** Push to `master` triggers automatic deployment
-- **Releases:** Tag releases with `git tag v0.x.0` for version tracking
+- **CI Validation:** Every push to `master` runs build + tests automatically
+- **Production:** Tag releases with `git tag v0.x.0` to deploy
 - **Deploy Target:** GitHub Pages at squickr.com
 
 ---
@@ -30,7 +30,7 @@ git checkout master
 git push origin master
 ```
 
-**Deployment:** Pushing to `master` automatically triggers deployment to production.
+**CI Validation:** Every push triggers automatic build + test validation (does NOT deploy).
 
 ---
 
@@ -86,30 +86,47 @@ Test Coverage: 1,500+ tests"
 git push origin v0.9.0
 ```
 
-**Tag will trigger deployment** (in addition to the automatic master deployment).
+**This triggers deployment to production!** Tags are the ONLY way to deploy.
 
 ---
 
 ## Branch Structure
 
-| Branch | Purpose | Auto-Deploy |
-|--------|---------|-------------|
-| `master` | Main development and production code | ✅ Yes |
+| Branch | Purpose | CI Checks | Auto-Deploy |
+|--------|---------|-----------|-------------|
+| `master` | Main development and production code | ✅ Yes | ❌ No (tags only) |
 
 **Notes:**
 - ✅ All work happens on `master`
-- ✅ Tags track releases (`v0.8.0`, `v0.9.0`, etc.)
-- ✅ Continuous deployment on every push
+- ✅ Every push runs CI validation (build + tests)
+- ✅ Tags trigger deployment (`v0.8.0`, `v0.9.0`, etc.)
+- ❌ Pushing to master does NOT deploy (only validates)
 
 ---
 
 ## GitHub Actions Workflows
 
-### Deploy to GitHub Pages
+### CI Validation
 
 **Trigger:** 
 - Push to `master` branch
-- Push version tag (`v*`)
+- Pull requests to `master`
+
+**Steps:**
+1. Checkout code
+2. Setup Node.js + pnpm
+3. Install dependencies
+4. **Build production bundle**
+5. **Run all tests**
+
+**Purpose:** Ensure all code pushed to master is tested and builds successfully
+
+---
+
+### Deploy to GitHub Pages
+
+**Trigger:** 
+- Push version tag (`v*`) **← ONLY WAY TO DEPLOY**
 - Manual workflow dispatch
 
 **Steps:**
@@ -149,11 +166,12 @@ Tags automatically appear in GitHub Releases section:
 
 ## Deployment Checklist
 
-Before pushing to master:
+Before creating a release tag:
 
 - [ ] ✅ All tests passing (`npm test`)
 - [ ] ✅ Build succeeds (`npm run build`)
-- [ ] ✅ Version bumped in package.json (if releasing)
+- [ ] ✅ CI checks passing on master
+- [ ] ✅ Version bumped in package.json
 - [ ] ✅ CHANGELOG.md updated
 - [ ] ✅ Commit message follows convention
 
