@@ -12,13 +12,15 @@ import { AppProvider } from '../context/AppContext';
 import type { ReactNode } from 'react';
 import type { Collection } from '@squickr/domain';
 
-// Mock useNavigate
+// Mock useNavigate and useLocation
 const mockNavigate = vi.fn();
+let mockPathname = '/';
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useLocation: () => ({ pathname: mockPathname }),
   };
 });
 
@@ -30,6 +32,7 @@ describe('useCollectionNavigation', () => {
   beforeEach(() => {
     collectionsData = [];
     mockNavigate.mockClear();
+    mockPathname = '/';
     
     mockCollectionProjection = {
       getCollections: vi.fn(async () => collectionsData),
@@ -74,6 +77,7 @@ describe('useCollectionNavigation', () => {
       { id: 'c3', name: 'Third', type: 'custom', order: 'c', createdAt: '2024-01-03T00:00:00Z' },
     ];
 
+    mockPathname = '/collection/c2';
     const { result } = renderHook(
       () => useCollectionNavigation('c2'),
       { wrapper: createWrapper() }
@@ -91,6 +95,7 @@ describe('useCollectionNavigation', () => {
       { id: 'c2', name: 'Second', type: 'custom', order: 'b', createdAt: '2024-01-02T00:00:00Z' },
     ];
 
+    mockPathname = '/collection/c1';
     const { result } = renderHook(
       () => useCollectionNavigation('c1'),
       { wrapper: createWrapper() }
@@ -110,6 +115,7 @@ describe('useCollectionNavigation', () => {
       { id: 'c2', name: 'Second', type: 'custom', order: 'b', createdAt: '2024-01-02T00:00:00Z' },
     ];
 
+    mockPathname = '/collection/c2';
     const { result } = renderHook(
       () => useCollectionNavigation('c2'),
       { wrapper: createWrapper() }
@@ -129,6 +135,7 @@ describe('useCollectionNavigation', () => {
       { id: 'c2', name: 'Second', type: 'custom', order: 'b', createdAt: '2024-01-02T00:00:00Z' },
     ];
 
+    mockPathname = '/collection/c2';
     const { result } = renderHook(
       () => useCollectionNavigation('c2'),
       { wrapper: createWrapper() }
@@ -151,6 +158,7 @@ describe('useCollectionNavigation', () => {
       { id: 'c2', name: 'Second', type: 'custom', order: 'b', createdAt: '2024-01-02T00:00:00Z' },
     ];
 
+    mockPathname = '/collection/c1';
     const { result } = renderHook(
       () => useCollectionNavigation('c1'),
       { wrapper: createWrapper() }
@@ -172,6 +180,7 @@ describe('useCollectionNavigation', () => {
       { id: 'c1', name: 'Only', type: 'custom', order: 'a', createdAt: '2024-01-01T00:00:00Z' },
     ];
 
+    mockPathname = '/collection/c1';
     const { result } = renderHook(
       () => useCollectionNavigation('c1'),
       { wrapper: createWrapper() }
@@ -201,6 +210,7 @@ describe('useCollectionNavigation', () => {
       { id: 'c1', name: 'Only', type: 'custom', order: 'a', createdAt: '2024-01-01T00:00:00Z' },
     ];
 
+    mockPathname = '/collection/c1';
     const { result } = renderHook(
       () => useCollectionNavigation('c1'),
       { wrapper: createWrapper() }
@@ -217,6 +227,7 @@ describe('useCollectionNavigation', () => {
       { id: 'c1', name: 'First', type: 'custom', order: 'a', createdAt: '2024-01-01T00:00:00Z' },
     ];
 
+    mockPathname = '/collection/c1';
     const { unmount } = renderHook(
       () => useCollectionNavigation('c1'),
       { wrapper: createWrapper() }
@@ -243,9 +254,9 @@ describe('useCollectionNavigation', () => {
       { id: 'fav2', name: 'Favorite 2', type: 'custom', order: 'a1', isFavorite: true, createdAt: '2024-01-02T00:00:00Z' },
       
       // Daily logs (should appear last, in date order newest first)
-      { id: 'daily1', name: 'Feb 1', type: 'daily', date: '2026-02-01', createdAt: '2024-01-03T00:00:00Z' },
-      { id: 'daily2', name: 'Feb 2', type: 'daily', date: '2026-02-02', createdAt: '2024-01-04T00:00:00Z' },
-      { id: 'daily3', name: 'Jan 31', type: 'daily', date: '2026-01-31', createdAt: '2024-01-05T00:00:00Z' },
+      { id: 'daily1', name: 'Feb 1', type: 'daily', date: '2026-02-01', order: 'auto', createdAt: '2024-01-03T00:00:00Z' },
+      { id: 'daily2', name: 'Feb 2', type: 'daily', date: '2026-02-02', order: 'auto', createdAt: '2024-01-04T00:00:00Z' },
+      { id: 'daily3', name: 'Jan 31', type: 'daily', date: '2026-01-31', order: 'auto', createdAt: '2024-01-05T00:00:00Z' },
       
       // Other customs (should appear after favorited, before dailies)
       { id: 'custom1', name: 'Custom 1', type: 'custom', order: 'b0', isFavorite: false, createdAt: '2024-01-06T00:00:00Z' },
@@ -253,6 +264,7 @@ describe('useCollectionNavigation', () => {
     ];
 
     // Test navigation from fav1 (first favorited custom)
+    mockPathname = '/collection/fav1';
     const { result: result1 } = renderHook(
       () => useCollectionNavigation('fav1'),
       { wrapper: createWrapper() }
@@ -264,6 +276,7 @@ describe('useCollectionNavigation', () => {
     });
 
     // Test navigation from fav2 (second favorited custom)
+    mockPathname = '/collection/fav2';
     const { result: result2 } = renderHook(
       () => useCollectionNavigation('fav2'),
       { wrapper: createWrapper() }
@@ -275,6 +288,7 @@ describe('useCollectionNavigation', () => {
     });
 
     // Test navigation from custom1 (first other custom)
+    mockPathname = '/collection/custom1';
     const { result: result3 } = renderHook(
       () => useCollectionNavigation('custom1'),
       { wrapper: createWrapper() }
@@ -286,6 +300,7 @@ describe('useCollectionNavigation', () => {
     });
 
     // Test navigation from custom2 (second other custom)
+    mockPathname = '/collection/custom2';
     const { result: result4 } = renderHook(
       () => useCollectionNavigation('custom2'),
       { wrapper: createWrapper() }
@@ -297,6 +312,7 @@ describe('useCollectionNavigation', () => {
     });
 
     // Test navigation from daily3 (oldest daily log)
+    mockPathname = '/collection/daily3';
     const { result: result5 } = renderHook(
       () => useCollectionNavigation('daily3'),
       { wrapper: createWrapper() }
@@ -308,6 +324,7 @@ describe('useCollectionNavigation', () => {
     });
 
     // Test navigation from daily1 (second oldest daily log)
+    mockPathname = '/collection/daily1';
     const { result: result6 } = renderHook(
       () => useCollectionNavigation('daily1'),
       { wrapper: createWrapper() }
@@ -319,6 +336,7 @@ describe('useCollectionNavigation', () => {
     });
 
     // Test navigation from daily2 (last collection)
+    mockPathname = '/collection/daily2';
     const { result: result7 } = renderHook(
       () => useCollectionNavigation('daily2'),
       { wrapper: createWrapper() }
@@ -343,6 +361,7 @@ describe('useCollectionNavigation', () => {
       // Bug #1: Vertical scrolling triggers horizontal navigation
       // Expected: If vertical movement > horizontal movement, don't navigate
       
+      mockPathname = '/collection/c2';
       const { result } = renderHook(
         () => useCollectionNavigation('c2'),
         { wrapper: createWrapper() }
@@ -371,6 +390,7 @@ describe('useCollectionNavigation', () => {
       // Horizontal swipe (120px) should navigate when vertical movement is minimal
       // Carousel metaphor: swipe left = next (higher index)
       
+      mockPathname = '/collection/c2';
       const { result } = renderHook(
         () => useCollectionNavigation('c2'),
         { wrapper: createWrapper() }
@@ -398,6 +418,7 @@ describe('useCollectionNavigation', () => {
     it('should not navigate when horizontal movement is below threshold', async () => {
       // Small horizontal movement (60px) below new threshold should not navigate
       
+      mockPathname = '/collection/c2';
       const { result } = renderHook(
         () => useCollectionNavigation('c2'),
         { wrapper: createWrapper() }
@@ -426,6 +447,7 @@ describe('useCollectionNavigation', () => {
       // Diagonal swipe where horizontal > vertical should navigate
       // Carousel metaphor: swipe right = previous (lower index)
       
+      mockPathname = '/collection/c2';
       const { result } = renderHook(
         () => useCollectionNavigation('c2'),
         { wrapper: createWrapper() }

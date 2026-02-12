@@ -284,21 +284,23 @@ describe('HierarchicalCollectionList', () => {
     );
 
     // Today should appear in favorites section (at depth 0, no indentation)
+    // With dual navigation, Today appears TWICE in the data (once in favorites, once in calendar)
+    // However, year/month are COLLAPSED, so only the favorites occurrence is visible
     const todayLinks = screen.getAllByText(/Today/);
-    expect(todayLinks.length).toBeGreaterThanOrEqual(1);
+    expect(todayLinks.length).toBe(1); // Only favorites occurrence visible (calendar is collapsed)
     
     // Verify today is showing in the favorites section
-    // (it should appear BEFORE the year node)
     const allElements = document.querySelectorAll('a, button');
     const texts = Array.from(allElements).map(el => el.textContent);
     
     const todayIndex = texts.findIndex(t => t?.includes('Today'));
     const yearIndex = texts.findIndex(t => t?.includes(`${today.getFullYear()} Logs`));
     
-    // Today should appear before the year node (in favorites section)
+    // Today should appear in favorites section
     expect(todayIndex).toBeGreaterThan(-1);
-    // Year node should NOT be rendered when only collection is auto-favorited
-    expect(yearIndex).toBe(-1);
+    // Year node SHOULD exist (even if collapsed) because auto-favorited collections also appear in calendar
+    expect(yearIndex).toBeGreaterThan(-1);
+    expect(todayIndex).toBeLessThan(yearIndex); // Today comes before year node
   });
 
   describe('Visual Dividers', () => {

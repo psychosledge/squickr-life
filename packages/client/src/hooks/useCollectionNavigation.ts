@@ -6,11 +6,11 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import type { Collection } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
-import { sortCollectionsHierarchically } from '../utils/collectionSorting';
+import { buildNavigationEntries } from '../utils/navigationEntries';
 import { useUserPreferences } from './useUserPreferences';
 import { useSwipeProgress } from './useSwipeProgress';
 import { SWIPE } from '../utils/constants';
@@ -30,6 +30,7 @@ export function useCollectionNavigation(
 ): UseCollectionNavigationResult {
   const { collectionProjection, entryProjection } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
   const userPreferences = useUserPreferences();
   const [collections, setCollections] = useState<Collection[]>([]);
   const touchStartX = useRef<number | null>(null);
@@ -60,11 +61,8 @@ export function useCollectionNavigation(
       allCollections = realCollections;
     }
     
-    // Sort collections hierarchically to match index page order
-    // Order: 1) Favorited customs, 2) Monthly logs, 3) Daily logs (newest first), 4) Other customs
-    const sortedCollections = sortCollectionsHierarchically(allCollections, userPreferences);
-    setCollections(sortedCollections);
-  }, [collectionProjection, entryProjection, userPreferences]);
+    setCollections(allCollections);
+  }, [collectionProjection, entryProjection]);
 
   // Load collections on mount and when they change
   useEffect(() => {
@@ -84,35 +82,57 @@ export function useCollectionNavigation(
     };
   }, [collectionProjection, entryProjection, loadCollections]);
 
-  // Calculate previous and next collections
-  const { previousCollection, nextCollection } = useMemo(() => {
-    const currentIndex = collections.findIndex(c => c.id === currentCollectionId);
-    
-    if (currentIndex === -1) {
-      return { previousCollection: null, nextCollection: null };
+  // Memoize current time to ensure consistent calculations
+  const now = useMemo(() => new Date(), []);
+
+  // Build navigation entries with URL metadata
+  const navigationEntries = useMemo(() => {
+    return buildNavigationEntries(collections, userPreferences, now);
+  }, [collections, userPreferences, now]);
+
+  // Find current entry by URL (not collection ID!)
+  const currentEntry = useMemo(() => {
+    return navigationEntries.find(entry => entry.url === location.pathname);
+  }, [navigationEntries, location.pathname]);
+
+  // Calculate previous and next collections based on URL-based navigation
+  const { previousCollection, nextCollection, previousUrl, nextUrl } = useMemo(() => {
+    if (!currentEntry) {
+      return { 
+        previousCollection: null, 
+        nextCollection: null,
+        previousUrl: null,
+        nextUrl: null,
+      };
     }
-
+    
+    const currentIndex = navigationEntries.indexOf(currentEntry);
+    const previousEntry = currentIndex > 0 ? navigationEntries[currentIndex - 1] : null;
+    const nextEntry = currentIndex < navigationEntries.length - 1 ? navigationEntries[currentIndex + 1] : null;
+    
     return {
-      previousCollection: currentIndex > 0 ? (collections[currentIndex - 1] ?? null) : null,
-      nextCollection: currentIndex < collections.length - 1 ? (collections[currentIndex + 1] ?? null) : null,
+      previousCollection: previousEntry?.collection ?? null,
+      nextCollection: nextEntry?.collection ?? null,
+      previousUrl: previousEntry?.url ?? null,
+      nextUrl: nextEntry?.url ?? null,
     };
-  }, [collections, currentCollectionId]);
+  }, [currentEntry, navigationEntries]);
 
-  // Navigation functions
+  // Navigation functions using URLs from entries
   const navigateToPrevious = useCallback(() => {
-    if (previousCollection) {
-      navigate(`/collection/${previousCollection.id}`);
+    if (previousUrl) {
+      navigate(previousUrl);
     } else {
       // If at the first collection and no previous, navigate back to index
       navigate('/');
     }
-  }, [previousCollection, navigate]);
+  }, [previousUrl, navigate]);
 
   const navigateToNext = useCallback(() => {
-    if (nextCollection) {
-      navigate(`/collection/${nextCollection.id}`);
+    if (nextUrl) {
+      navigate(nextUrl);
     }
-  }, [nextCollection, navigate]);
+  }, [nextUrl, navigate]);
 
   // Keyboard shortcuts
   useEffect(() => {

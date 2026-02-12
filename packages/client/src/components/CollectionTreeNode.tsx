@@ -15,6 +15,7 @@ interface CollectionTreeNodeProps {
   isDraggable: boolean;
   entriesByCollection?: Map<string | null, Entry[]>;
   userPreferences: UserPreferences;
+  url?: string; // Optional URL override for navigation
 }
 
 /**
@@ -31,6 +32,7 @@ export function CollectionTreeNode({
   isDraggable,
   entriesByCollection,
   userPreferences,
+  url,
 }: CollectionTreeNodeProps) {
   // Check if this is a month node with monthlyLog attached
   const monthlyLog = node.type === 'month' ? node.monthlyLog : undefined;
@@ -225,7 +227,7 @@ export function CollectionTreeNode({
       )}
       
       <Link
-        to={buildCollectionPath(node.collection.id)}
+        to={url ?? buildCollectionPath(node.collection.id)}
         className={`
           block px-4 py-2 transition-colors duration-150
           ${isSelected 

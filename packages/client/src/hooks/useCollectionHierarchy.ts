@@ -105,12 +105,10 @@ function buildHierarchy(
   const nodes: HierarchyNode[] = [];
   
   // Separate daily logs, monthly logs, and custom collections
-  // For daily logs: exclude auto-favorited dailies from calendar hierarchy (they appear in favorites section)
-  // For monthly logs: include ALL monthly logs (even favorited ones) for potential attachment to month nodes
+  // Include ALL daily logs in calendar hierarchy (even auto-favorited ones will appear twice)
   const dailyLogs = collections.filter(c => 
     c.type === 'daily' && 
-    c.date &&
-    !isEffectivelyFavorited(c, userPreferences, now)
+    c.date
   );
   const allMonthlyLogs = collections.filter(c => 
     c.type === 'monthly' && 

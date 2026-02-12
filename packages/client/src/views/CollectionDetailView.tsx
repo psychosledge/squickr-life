@@ -36,10 +36,18 @@ import { SwipeIndicator } from '../components/SwipeIndicator';
 import { FAB } from '../components/FAB';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { DEBOUNCE } from '../utils/constants';
+import { getDateKeyForTemporal, getMonthKeyForTemporal } from '../utils/temporalUtils';
 
-export function CollectionDetailView() {
-  const { id: collectionId } = useParams<{ id: string }>();
+export function CollectionDetailView({ 
+  collectionId: propCollectionId,
+  date: temporalDate
+}: { 
+  collectionId?: string;
+  date?: 'today' | 'yesterday' | 'tomorrow' | 'this-month' | 'last-month' | 'next-month';
+} = {}) {
+  const { id: paramId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const collectionId = propCollectionId ?? paramId;
   const { 
     eventStore, 
     collectionProjection, 
@@ -119,16 +127,40 @@ export function CollectionDetailView() {
 
   // Load collection and entries
   const loadData = async () => {
-    if (!collectionId) return;
+    if (!collectionId && !temporalDate) return;
 
+    console.log('🔍 [CollectionDetailView] loadData called with collectionId:', collectionId, 'temporalDate:', temporalDate);
     setIsLoading(true);
     
     // Load all collections (for migration modal)
     const collections = await collectionProjection.getCollections();
+    console.log('📚 [CollectionDetailView] All collections from projection:', collections.map(c => ({ id: c.id, name: c.name, type: c.type })));
     setAllCollections(collections);
     
-    // Handle virtual "uncategorized" collection
-    if (collectionId === UNCATEGORIZED_COLLECTION_ID) {
+    let foundCollection: Collection | null = null;
+    
+    // Strategy 1: Temporal date lookup (NEW)
+    if (temporalDate) {
+      let targetDate: string;
+      let targetType: 'daily' | 'monthly';
+      
+      if (temporalDate === 'this-month' || temporalDate === 'last-month' || temporalDate === 'next-month') {
+        targetDate = getMonthKeyForTemporal(temporalDate);
+        targetType = 'monthly';
+      } else {
+        targetDate = getDateKeyForTemporal(temporalDate);
+        targetType = 'daily';
+      }
+      
+      console.log(`📅 [CollectionDetailView] Looking for ${targetType} collection with date:`, targetDate);
+      foundCollection = collections.find(c => 
+        c.type === targetType && c.date === targetDate
+      ) || null;
+      console.log('📅 [CollectionDetailView] Found temporal collection:', foundCollection ? { id: foundCollection.id, name: foundCollection.name } : null);
+    }
+    // Strategy 2: Virtual "uncategorized" collection (EXISTING)
+    else if (collectionId === UNCATEGORIZED_COLLECTION_ID) {
+      console.log('🗂️ [CollectionDetailView] Handling uncategorized collection');
       // Synthesize virtual collection
       setCollection({
         id: UNCATEGORIZED_COLLECTION_ID,
@@ -141,19 +173,29 @@ export function CollectionDetailView() {
       // Load orphaned entries (null collectionId)
       // Note: Uncategorized collection doesn't support ghost entries (no collection history)
       const orphanedEntries = await entryProjection.getEntriesByCollection(null);
+      console.log('📝 [CollectionDetailView] Orphaned entries:', orphanedEntries.length);
       setEntries(orphanedEntries);
       
       setIsLoading(false);
       return;
     }
+    // Strategy 3: Regular UUID lookup (EXISTING)
+    else if (collectionId) {
+      foundCollection = collections.find((c: Collection) => c.id === collectionId) || null;
+      console.log('🔎 [CollectionDetailView] Found collection:', foundCollection ? { id: foundCollection.id, name: foundCollection.name, type: foundCollection.type } : null);
+    }
     
-    // Handle real collections
-    const foundCollection = collections.find((c: Collection) => c.id === collectionId);
-    setCollection(foundCollection || null);
+    setCollection(foundCollection);
 
-    // Phase 2: Use getEntriesForCollectionView to get entries with ghost metadata
-    const collectionEntries = await entryProjection.getEntriesForCollectionView(collectionId);
-    setEntries(collectionEntries);
+    // Fetch entries (use collectionId if available, else use found collection's id)
+    const idForEntries = collectionId || foundCollection?.id;
+    if (idForEntries) {
+      // Phase 2: Use getEntriesForCollectionView to get entries with ghost metadata
+      const collectionEntries = await entryProjection.getEntriesForCollectionView(idForEntries);
+      console.log('📋 [CollectionDetailView] Entries for collection:', collectionEntries.length, 'entries');
+      console.log('📋 [CollectionDetailView] Entry details:', collectionEntries.map(e => ({ id: e.id, type: e.type, title: e.type === 'task' ? e.title : e.type === 'note' ? e.content.substring(0, 30) : 'event' })));
+      setEntries(collectionEntries);
+    }
 
     setIsLoading(false);
   };
@@ -182,7 +224,7 @@ export function CollectionDetailView() {
       unsubscribeCollection();
       unsubscribeEntry();
     };
-  }, [collectionId, collectionProjection, entryProjection]);
+  }, [collectionId, temporalDate, collectionProjection, entryProjection]);
 
   // Clear selection when navigating to different collection
   useEffect(() => {

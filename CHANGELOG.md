@@ -29,18 +29,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - O(n) batch query for performance
   - 7 comprehensive tests covering all edge cases
 
+- **Dual Navigation with Temporal URLs:** Auto-favorited collections accessible via both temporal and stable URLs
+  - Temporal URLs: `/today`, `/yesterday`, `/tomorrow`, `/this-month`, `/last-month`, `/next-month`
+  - Stable URLs: `/collection/{uuid}` (always point to same collection)
+  - Auto-favorited collections appear twice in navigation (temporal URL first, stable URL in calendar)
+  - Chronological ordering: Last Month → Current Month → Yesterday → Today → Tomorrow → Next Month
+  - Monthly logs appear BEFORE their daily logs in sort order
+  - Navigation sidebar order matches Collection Index order
+  - 38 comprehensive tests added (16 temporal utils, 9 navigation entries, 13 navigation hook)
+
+### Fixed
+- **Chronological Sorting:** Auto-favorited daily and monthly logs now sort correctly in chronological order
+  - Fixed timezone bug: `getSortKey()` now uses local timezone instead of UTC
+  - Yesterday → Today → Tomorrow order now works correctly across all timezones
+  - All 31 collectionSorting tests passing (was 27/31)
+
 ### Technical
 - Enhanced `HierarchyNode` type with discriminated union for better type safety
 - Added `getParentTitlesForSubTasks()` batch query method to EntryListProjection
 - Refactored `buildHierarchy()` to attach monthly logs to month nodes
+- Added `temporalUtils.ts` for temporal URL date/month key conversion
+- Added `navigationEntries.ts` for URL metadata layer (wraps collections with URLs)
+- Exported `sortAutoFavoritedChronologically()` for consistent chronological sorting
+- Fixed timezone handling in `getSortKey()` to use local timezone
 - Fixed TypeScript errors in `collectionStatsFormatter` and `HierarchicalCollectionList`
-- All 1,427 tests passing (545 domain, 21 infrastructure, 861 client)
+- All 1,496 tests passing (545 domain, 21 infrastructure, 930 client)
 
 ### Developer
 - Feature 1 (auto-favorite monthly logs): ~2.5 hours (under 3h estimate)
 - Feature 2 (parent titles): ~2 hours (under 3.5h estimate)
 - Feature 3 (combined monthly log): ~4.5 hours (on estimate)
-- Total development time: ~9 hours with testing and reviews
+- Feature 4 (dual navigation with temporal URLs): ~5 hours (including chronological sorting fix)
+- Total development time: ~14 hours with testing and reviews
+- Casey review ratings: 9/10, 9.5/10, 9/10, 9.5/10 (average 9.25/10)
 
 ## [0.7.2] - 2026-02-11
 
