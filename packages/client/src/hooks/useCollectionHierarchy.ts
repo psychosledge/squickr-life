@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Collection, UserPreferences } from '@squickr/domain';
 import { formatMonthlyLogName, getCollectionDisplayName } from '../utils/formatters';
-import { isEffectivelyFavorited } from '../utils/collectionUtils';
 
 export type HierarchyNode =
   | {
@@ -99,8 +98,8 @@ export function getCurrentYearMonth(): { year: string; yearMonth: string } {
 function buildHierarchy(
   collections: Collection[],
   expandedSet: Set<string>,
-  userPreferences: UserPreferences,
-  now: Date
+  _userPreferences: UserPreferences,
+  _now: Date
 ): HierarchyNode[] {
   const nodes: HierarchyNode[] = [];
   

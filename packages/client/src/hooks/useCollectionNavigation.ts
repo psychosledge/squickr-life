@@ -26,7 +26,7 @@ export interface UseCollectionNavigationResult {
 }
 
 export function useCollectionNavigation(
-  currentCollectionId: string
+  _currentCollectionId: string
 ): UseCollectionNavigationResult {
   const { collectionProjection, entryProjection } = useApp();
   const navigate = useNavigate();

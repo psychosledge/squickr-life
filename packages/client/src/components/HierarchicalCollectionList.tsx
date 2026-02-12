@@ -333,19 +333,24 @@ export function HierarchicalCollectionList({
         {/* Date Hierarchy Section - NO HEADER */}
         {dateHierarchyNodes.length > 0 && (
           <>
-            {dateHierarchyNodes.map(node => (
-              <CollectionTreeNode
-                key={node.id}
-                node={node}
-                depth={0}
-                onToggleExpand={toggleExpand}
-                selectedCollectionId={selectedCollectionId}
-                isDraggable={false}
-                entriesByCollection={entriesByCollection}
-                userPreferences={userPreferences}
-                url={'collection' in node && node.collection ? collectionUrlMap.get(node.collection.id) : undefined}
-              />
-            ))}
+            {dateHierarchyNodes.map(node => {
+              const hasCollection = 'collection' in node;
+              const collectionId = hasCollection ? (node as any).collection?.id : undefined;
+              const url = collectionId ? (collectionUrlMap.get(collectionId) ?? undefined) : undefined;
+              return (
+                <CollectionTreeNode
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  onToggleExpand={toggleExpand}
+                  selectedCollectionId={selectedCollectionId}
+                  isDraggable={false}
+                  entriesByCollection={entriesByCollection}
+                  userPreferences={userPreferences}
+                  url={url}
+                />
+              );
+            })}
           </>
         )}
       </div>
