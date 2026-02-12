@@ -168,8 +168,8 @@
 
 ### ✅ v0.8.0 - UX Enhancements (COMPLETED)
 **Released:** February 11, 2026  
-**Actual Time:** ~9 hours (2.5h + 2h + 4.5h)  
-**Status:** Ready for deployment
+**Actual Time:** ~14 hours (2.5h + 2h + 4.5h + 5h)  
+**Status:** Deployed to production
 
 **Features Delivered:**
 
@@ -204,53 +204,46 @@
 - **Files Changed:**
   - Client: useCollectionHierarchy, CollectionTreeNode, collectionStatsFormatter, HierarchicalCollectionList
 
+#### ✅ Feature 4: Dual navigation with temporal URLs (~5 hours)
+- **Implementation:** Auto-favorited collections accessible via both temporal and stable URLs
+  - Temporal URLs: `/today`, `/yesterday`, `/tomorrow`, `/this-month`, `/last-month`, `/next-month`
+  - Stable URLs: `/collection/{uuid}` (always point to same collection)
+  - Auto-favorited collections appear twice in navigation
+- **Chronological Ordering:** Last Month → Current Month → Yesterday → Today → Tomorrow → Next Month
+  - Monthly logs appear BEFORE their daily logs
+  - Fixed timezone bug: `getSortKey()` now uses local timezone instead of UTC
+  - Navigation sidebar order matches Collection Index order
+- **Test Coverage:** 38 comprehensive tests
+  - 16 temporal utils tests (edge cases: month/year boundaries, timezones)
+  - 9 navigation entries tests (URL assignment, deduplication)
+  - 13 useCollectionNavigation tests (arrow keys, swipe gestures)
+  - Fixed 4 pre-existing test failures in collectionSorting
+- **Files Changed:**
+  - Client: temporalUtils, navigationEntries, App, CollectionDetailView, useCollectionNavigation, HierarchicalCollectionList, collectionSorting
+
 **Technical Achievements:**
-- All 1,427 tests passing (545 domain, 21 infrastructure, 861 client)
-- Zero regressions across 3 major features
-- Comprehensive code reviews (9/10, 9.5/10, 9/10 ratings from Casey)
+- All 1,496 tests passing (545 domain, 21 infrastructure, 930 client)
+- Zero regressions across 4 major features
+- Comprehensive code reviews (9/10, 9.5/10, 9/10, 9.5/10 ratings from Casey - average 9.25/10)
 - TDD approach followed throughout
 
 **Developer Efficiency:**
 - Feature 1: Under estimate (2.5h vs 3h)
 - Feature 2: Under estimate (2h vs 3.5h)
 - Feature 3: On estimate (4.5h)
-- Total: 9 hours for 3 production-ready features
+- Feature 4: 5 hours (including chronological sorting fix and timezone debugging)
+- Total: 14 hours for 4 production-ready features
 
 ---
 
-### v0.9.0 - Advanced Task Management (NEXT)
-**Target:** After v0.7.2  
-**Estimated Time:** 7 hours (3 hours + 4 hours)  
-**Status:** ✅ Designs complete and approved by Alex
+### v0.9.0 - To Be Determined (NEXT)
+**Target:** After v0.8.0  
+**Estimated Time:** TBD  
+**Status:** Planning phase
 
-**Features:**
-
-#### 1. Auto-favorite last/current/next month (~3 hours)
-- **Design:** Separate `autoFavoriteRecentMonthlyLogs: boolean` preference
-- **Behavior:** Auto-favorite monthly logs for last month, current month, next month
-- **Implementation:**
-  - Add to `packages/domain/src/user-preferences.types.ts`
-  - Create `isRecentMonthlyLog()` utility in `packages/client/src/utils/collectionUtils.ts`
-  - Add checkbox to `packages/client/src/components/SettingsModal.tsx`
-  - Update `useCollectionHierarchy` hook to check preference
-- **Visual:** Hollow star (✦) for auto-favorited, filled star (⭐) for manual favorites
-- **Why:** Reduces manual favoriting work for commonly accessed monthly logs
-
-#### 2. Show parent title for linked sub-tasks (~4 hours)
-- **Design:** Inline suffix format: "find hardware (Put together Bed Frame)"
-- **When to show:** Only for migrated sub-tasks (in different collection than parent)
-- **Where:** Entry list only (not in menus or modals)
-- **Implementation:**
-  - Modify `packages/client/src/views/CollectionDetailView.tsx` to fetch parent titles
-  - Update `packages/client/src/components/TaskEntryItem.tsx` to display parent title
-  - Thread `parentTitle` prop through component tree
-  - Add CSS for muted inline display
-- **Why:** Provides context for sub-tasks that appear in different collections (e.g., daily logs)
-
-**Value Proposition:**
-- Reduces friction for monthly log navigation
-- Improves clarity for migrated sub-tasks
-- Minimal UI changes with high user value
+**Notes:**
+- Features 1 and 2 originally planned for v0.9.0 were moved to v0.8.0 and completed
+- Next version features to be determined based on user feedback and priorities
 
 ---
 
