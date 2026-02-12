@@ -1,6 +1,6 @@
 # Deployment Guide
 
-**Last Updated:** 2026-02-02  
+**Last Updated:** 2026-02-12  
 **Current Platform:** GitHub Pages  
 **Domain:** squickr.com  
 **Status:** ✅ Live in production
@@ -9,11 +9,11 @@
 
 ## Overview
 
-Squickr Life uses a **PR-based deployment workflow** with automated version validation.
+Squickr Life uses a **single-branch workflow** with tag-based releases.
 
-- **Development:** Work freely on `master` branch
-- **Production:** Merge to `production` branch triggers deployment
-- **Validation:** GitHub Actions ensures version was bumped before deployment
+- **Development:** Work directly on `master` branch
+- **Production:** Push to `master` triggers automatic deployment
+- **Releases:** Tag releases with `git tag v0.x.0` for version tracking
 - **Deploy Target:** GitHub Pages at squickr.com
 
 ---
@@ -22,7 +22,7 @@ Squickr Life uses a **PR-based deployment workflow** with automated version vali
 
 ### Step 1: Work on Master Branch
 
-Continue working as normal on the `master` branch:
+Work directly on the `master` branch:
 
 ```bash
 git checkout master
@@ -30,13 +30,13 @@ git checkout master
 git push origin master
 ```
 
-**Note:** Pushing to `master` does NOT trigger deployment.
+**Deployment:** Pushing to `master` automatically triggers deployment to production.
 
 ---
 
-### Step 2: Prepare for Production Release
+### Step 2: Tag Releases
 
-When you're ready to deploy changes to production:
+When you complete a version, tag it for tracking:
 
 #### 2a. Bump the Version
 
@@ -44,427 +44,250 @@ Edit `package.json` and increment the version:
 
 ```json
 {
-  "version": "0.3.0"  // Was 0.2.0
+  "version": "0.9.0"  // Was 0.8.0
 }
 ```
 
-**Version Convention:**
-- **Patch (0.2.0 → 0.2.1):** Bug fixes, minor tweaks
-- **Minor (0.2.0 → 0.3.0):** New features, UX improvements
-- **Major (0.2.0 → 1.0.0):** Breaking changes, major releases
+**Version Bumping Guidelines:**
+- **Major version (1.0.0):** Breaking changes, major milestones
+- **Minor version (0.9.0):** New features, enhancements
+- **Patch version (0.8.1):** Bug fixes, small tweaks
 
-Commit the version bump:
+Also update all package versions to match:
+```bash
+# Update all packages at once
+npm version 0.9.0 --workspaces
+```
+
+#### 2b. Commit Version Bump
 
 ```bash
-git add package.json
-git commit -m "chore: bump version to 0.3.0"
+git add package.json packages/*/package.json
+git commit -m "chore: bump version to 0.9.0"
 git push origin master
 ```
 
----
+#### 2c. Create Release Tag
 
-### Step 3: Create Pull Request
+```bash
+# Create annotated tag with release notes
+git tag -a v0.9.0 -m "v0.9.0 - Code Quality & Polish
 
-1. Go to https://github.com/psychosledge/squickr-life/pulls
-2. Click **"New Pull Request"**
-3. Set:
-   - **base:** `production`
-   - **compare:** `master`
-4. Add title and description explaining what's being deployed
-5. Click **"Create Pull Request"**
+Features:
+- Centralized timezone utilities
+- Enhanced test coverage
+- ADR-014 documentation
 
----
+Released: $(date +%Y-%m-%d)
+Development Time: ~3 hours
+Test Coverage: 1,500+ tests"
 
-### Step 4: Automated Validation
-
-GitHub Actions automatically runs the **PR Validation workflow** which:
-
-✅ Runs all tests (`pnpm test`)  
-✅ Runs production build (`pnpm build`)  
-✅ **Validates version was bumped** (compares `package.json` on production vs PR)  
-✅ Posts comment to PR with validation results
-
-**If validation fails:**
-- ❌ Version not bumped → Update `package.json` and push to master
-- ❌ Tests failing → Fix tests and push to master
-- ❌ Build failing → Fix build errors and push to master
-
-**If validation passes:**
-- ✅ PR is ready to merge!
-
----
-
-### Step 5: Merge and Deploy
-
-Once the PR validation passes:
-
-1. Click **"Merge pull request"**
-2. Confirm the merge
-3. **GitHub Actions automatically deploys to squickr.com** 🚀
-
-**Timeline:**
-- Merge → ~2-3 minutes → Live on squickr.com
-
----
-
-## Verification
-
-### Check Deployed Version
-
-After deployment, visit https://squickr.com and check the version displayed below the tagline:
-
-```
-Squickr Life
-Get shit done quicker with Squickr!
-v0.3.0  ← Should show the new version
+# Push tag to remote
+git push origin v0.9.0
 ```
 
+**Tag will trigger deployment** (in addition to the automatic master deployment).
+
 ---
 
-## Branch Strategy
+## Branch Structure
 
-| Branch | Purpose | Deploy? | Push Freely? |
-|--------|---------|---------|--------------|
-| `master` | Development, work-in-progress | ❌ No | ✅ Yes |
-| `production` | Production code, requires PR | ✅ Yes | ❌ No (PR only) |
+| Branch | Purpose | Auto-Deploy |
+|--------|---------|-------------|
+| `master` | Main development and production code | ✅ Yes |
 
-**Rules:**
-- ✅ Push to `master` anytime (no deployment)
-- ❌ Never push directly to `production` (use PRs)
-- ✅ Only merge to `production` after PR validation passes
+**Notes:**
+- ✅ All work happens on `master`
+- ✅ Tags track releases (`v0.8.0`, `v0.9.0`, etc.)
+- ✅ Continuous deployment on every push
 
 ---
 
 ## GitHub Actions Workflows
 
-### `.github/workflows/pr-validation.yml`
+### Deploy to GitHub Pages
 
-**Trigger:** Pull request to `production` branch  
-**Purpose:** Validate PR before allowing merge
-
-**Steps:**
-1. Checkout PR branch
-2. Install dependencies
-3. Run tests
-4. Run production build
-5. **Check version bump** (fails if version unchanged)
-6. Post comment to PR with results
-
-**Key Feature:** Version validation prevents accidental deployments without version bumps.
-
----
-
-### `.github/workflows/deploy.yml`
-
-**Trigger:** Push to `production` branch (via PR merge)  
-**Purpose:** Build and deploy to GitHub Pages
+**Trigger:** 
+- Push to `master` branch
+- Push version tag (`v*`)
+- Manual workflow dispatch
 
 **Steps:**
-1. Checkout production branch
-2. Install dependencies
-3. Run tests
+1. Checkout code
+2. Setup Node.js + pnpm
+3. Install dependencies
 4. Build production bundle
-5. Deploy to GitHub Pages (squickr.com)
+5. Run tests
+6. Deploy to GitHub Pages
 
-**Environment Variables:**
-- Firebase config secrets (set in GitHub repo settings)
+**URL:** [squickr.com](https://squickr.com)
 
 ---
 
 ## Version Management
 
-### How Versioning Works
-
-**Single Source of Truth:** `package.json`
-
-The version is read from `package.json` at build time and injected into the application:
-
-```typescript
-// In the built app
-console.log(__APP_VERSION__); // "0.3.0"
-```
-
-**No manual updates needed** - just bump `package.json` and the version appears in the UI automatically.
-
----
-
-### Manual Version Check
-
-To see what version is in each branch:
+### Viewing Releases
 
 ```bash
-# Check master branch version
-git show master:package.json | grep version
+# List all release tags
+git tag -l
 
-# Check production branch version  
-git show production:package.json | grep version
+# View tag details
+git show v0.8.0
+
+# Checkout specific version
+git checkout v0.8.0
 ```
 
----
+### GitHub Releases
 
-## Common Scenarios
-
-### Scenario 1: Forgot to Bump Version
-
-**What happens:**
-- Create PR: master → production
-- ❌ PR validation fails with "Version not bumped" error
-- Bot comments on PR with failure details
-
-**How to fix:**
-```bash
-# Update version in package.json
-git add package.json
-git commit -m "chore: bump version to 0.3.0"
-git push origin master
-
-# PR automatically re-runs validation
-# ✅ Now passes
-```
+Tags automatically appear in GitHub Releases section:
+- Go to: https://github.com/psychosledge/squickr-life/releases
+- Each tag shows commit, date, and release notes
 
 ---
 
-### Scenario 2: Tests Fail in PR
-
-**What happens:**
-- Create PR: master → production  
-- ❌ PR validation fails due to test failures
-
-**How to fix:**
-```bash
-# Fix the failing tests
-# Commit and push to master
-git push origin master
-
-# PR automatically re-runs validation
-```
-
----
-
-### Scenario 3: Emergency Hotfix
-
-**Need to deploy quickly:**
-
-```bash
-# 1. Make the fix on master
-git checkout master
-# ... make changes ...
-git commit -m "fix: critical bug"
-
-# 2. Bump version (patch)
-# package.json: 0.2.0 → 0.2.1
-git commit -m "chore: bump version to 0.2.1"
-git push origin master
-
-# 3. Create PR immediately
-# Go to GitHub → New PR → master → production
-
-# 4. Once validated, merge
-# Deploys in ~2-3 minutes
-```
-
----
-
-## Rollback Procedure
-
-If a deployment introduces a critical bug:
-
-### Option 1: Quick Rollback (Revert on Production)
-
-```bash
-# 1. Checkout production branch
-git checkout production
-
-# 2. Revert the bad merge commit
-git revert HEAD -m 1
-
-# 3. Push to production (triggers deployment)
-git push origin production
-
-# Reverted version deploys in ~2-3 minutes
-```
-
-### Option 2: Fix Forward (Recommended)
-
-```bash
-# 1. Fix the bug on master
-git checkout master
-# ... make fixes ...
-git commit -m "fix: resolve production issue"
-
-# 2. Bump version (patch)
-git commit -m "chore: bump version to 0.3.1"
-git push origin master
-
-# 3. Create PR and merge
-# New fixed version deploys
-```
-
----
-
-## First-Time Setup (Already Completed)
-
-This section documents the initial setup for future reference:
-
-### 1. Created `production` Branch
-```bash
-git checkout -b production
-git push origin production
-```
-
-### 2. Updated GitHub Pages Settings
-- Repo Settings → Pages
-- Source: Deploy from a branch
-- Branch: `production` / root
-- Custom domain: squickr.com
-
-### 3. Configured DNS
-- Domain provider: Point squickr.com to GitHub Pages
-- CNAME record → `psychosledge.github.io`
-
-### 4. Set Up GitHub Actions
-- Created `.github/workflows/pr-validation.yml`
-- Updated `.github/workflows/deploy.yml`
-- Added Firebase secrets to repo settings
-
-**Status:** ✅ All setup complete
-
----
-
-## Monitoring
-
-### Check Deployment Status
-
-**GitHub Actions:**
-- Go to repo → Actions tab
-- View workflow runs
-- Check deploy.yml for deployment status
-
-**Live Site:**
-- Visit https://squickr.com
-- Check version number in UI
-- Verify functionality
-
----
-
-## Troubleshooting
-
-### PR Validation Won't Run
-
-**Possible causes:**
-- GitHub Actions disabled → Enable in repo settings
-- Workflow file syntax error → Check `.github/workflows/pr-validation.yml`
-- Branch protection rules → Check repo settings
-
----
-
-### Deployment Fails
-
-**Check:**
-1. GitHub Actions workflow logs
-2. Build errors in log output
-3. Firebase secrets configured correctly
-4. DNS propagation (can take 24-48 hours initially)
-
----
-
-### Version Not Updating in UI
-
-**Possible causes:**
-- Browser cache → Hard refresh (Ctrl+Shift+R)
-- Service worker caching → Clear site data in DevTools
-- Build didn't include new version → Check built files in deployment
-
----
-
-## Cost
-
-**Current Cost:** $0 (FREE)
-
-- GitHub Pages: Free for public repos
-- GitHub Actions: 2,000 minutes/month (free tier, plenty for our usage)
-- Domain (squickr.com): Paid separately
-
-**No usage limits to worry about** - unlimited deployments, unlimited bandwidth.
-
----
-
-## Future Considerations
-
-### When Backend is Added
-
-The deployment process stays the same, but:
-
-- May need additional secrets (Supabase keys, etc.)
-- Could split frontend/backend deployments
-- Same PR-based workflow applies
-
-### Scaling
-
-If traffic grows significantly:
-- GitHub Pages handles 100GB/month bandwidth (plenty for now)
-- Can migrate to Cloudflare Pages for unlimited bandwidth
-- Same workflow principles apply
-
----
-
-## Historical Context: Platform Selection
-
-**Why GitHub Pages?** (Decision made Jan 2026)
-
-We evaluated several platforms before choosing GitHub Pages:
-
-**Alternatives considered:**
-- **Vercel Free Tier:** 100 deployments/month, serverless functions included
-- **Cloudflare Pages:** Unlimited bandwidth, most generous free tier
-- **Netlify:** Previous platform, hit 300 builds/month limit
-
-**GitHub Pages chosen because:**
-- ✅ Completely free, no build limits
-- ✅ Perfect for static frontend (current architecture)
-- ✅ Custom domain support (squickr.com)
-- ✅ Easy integration with existing GitHub workflow
-- ✅ No commercial use restrictions
-
-**Migration path:** When backend is added, can either:
-1. Keep frontend on GitHub Pages + add backend separately (Cloudflare Workers/Vercel)
-2. Migrate everything to Cloudflare Pages (unlimited bandwidth, Workers for API)
+## Deployment Checklist
+
+Before pushing to master:
+
+- [ ] ✅ All tests passing (`npm test`)
+- [ ] ✅ Build succeeds (`npm run build`)
+- [ ] ✅ Version bumped in package.json (if releasing)
+- [ ] ✅ CHANGELOG.md updated
+- [ ] ✅ Commit message follows convention
 
 ---
 
 ## Quick Reference
 
-**Deploy to Production:**
+### Standard Release
+
 ```bash
-# 1. Bump version in package.json
-# 2. Commit and push to master
-git add package.json
-git commit -m "chore: bump version to X.Y.Z"
+# 1. Complete your work
+git add .
+git commit -m "feat: add new feature"
+
+# 2. Bump version
+npm version minor  # or major/patch
 git push origin master
 
-# 3. Create PR on GitHub: master → production
-# 4. Wait for validation ✅
-# 5. Merge PR → Deploys automatically 🚀
+# 3. Create release tag
+git tag -a v0.9.0 -m "v0.9.0 - Feature Name"
+git push origin v0.9.0
 ```
 
-**Check what's deployed:**
+### Hotfix Release
+
 ```bash
-git show production:package.json | grep version
+# 1. Fix the bug
+git add .
+git commit -m "fix: resolve critical issue"
+
+# 2. Bump patch version
+npm version patch
+git push origin master
+
+# 3. Tag hotfix
+git tag -a v0.8.1 -m "v0.8.1 - Hotfix: description"
+git push origin v0.8.1
 ```
 
-**Visit production:**
-https://squickr.com
+### Rollback (Emergency)
+
+```bash
+# 1. Checkout previous version
+git checkout v0.8.0
+
+# 2. Create rollback branch
+git checkout -b rollback-to-v0.8.0
+
+# 3. Force push to master (if absolutely necessary)
+git push origin rollback-to-v0.8.0:master --force
+
+# 4. Tag as emergency release
+git tag -a v0.8.2 -m "v0.8.2 - Emergency rollback"
+git push origin v0.8.2
+```
+
+**⚠️ Warning:** Force push should be rare and only for critical issues.
 
 ---
 
-## References
+## Monitoring Deployments
 
-- **GitHub Pages Docs:** https://docs.github.com/en/pages
-- **GitHub Actions Docs:** https://docs.github.com/en/actions
-- **Semantic Versioning:** https://semver.org/
+### GitHub Actions
+
+View deployment status:
+- Go to: https://github.com/psychosledge/squickr-life/actions
+- Filter by "Deploy to GitHub Pages" workflow
+
+### Deployment Logs
+
+```bash
+# Using GitHub CLI
+gh run list --workflow=deploy.yml
+
+# View specific run
+gh run view <run-id> --log
+```
+
+### Verify Deployment
+
+```bash
+# Check deployed version
+curl https://squickr.com | grep version
+
+# Or visit in browser
+open https://squickr.com
+```
 
 ---
 
-**Questions?** Check workflow files:
-- `.github/workflows/pr-validation.yml` - PR validation logic
-- `.github/workflows/deploy.yml` - Deployment logic
+## Troubleshooting
+
+### Deployment Failed
+
+1. Check GitHub Actions logs
+2. Look for build errors
+3. Verify all tests pass locally: `npm test`
+4. Check environment variables in GitHub Secrets
+
+### Wrong Version Deployed
+
+1. Tag correct version: `git tag -a v0.x.x <commit-sha>`
+2. Push tag: `git push origin v0.x.x`
+3. GitHub Pages will deploy from latest push to master
+
+### Cache Issues
+
+GitHub Pages may cache for 5-10 minutes:
+- Wait for cache to clear
+- Hard refresh in browser (Ctrl+Shift+R)
+- Check deployment timestamp in GitHub Actions
+
+---
+
+## Migration Notes
+
+**Previous Workflow:** Two-branch (master → production via PR)  
+**Current Workflow:** Single-branch (master with tags)  
+**Migration Date:** 2026-02-12
+
+**Changes Made:**
+- ✅ Merged production branch into master
+- ✅ Updated deploy.yml to deploy from master
+- ✅ Removed pr-validation.yml workflow
+- ✅ Set master as default branch
+- ✅ Archived production branch as `archive/production` tag
+- ✅ Created v0.8.0 tag for current release
+
+**Benefits:**
+- Simpler workflow (no PRs needed)
+- Faster deployments
+- Clear version history via tags
+- Less cognitive overhead
+
+---
+
+**For questions or issues, see:** [docs/README.md](README.md)

@@ -141,7 +141,7 @@ After completing v0.9.0:
 - [ ] CHANGELOG.md updated
 - [ ] Version bumped to 0.9.0
 - [ ] Committed and pushed to master
-- [ ] PR created to production
+- [ ] Tagged release with v0.9.0
 - [ ] Ready for v1.0.0 (Intro Guide)
 
 ---
