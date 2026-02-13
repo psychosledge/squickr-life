@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Entry, Collection } from '@squickr/domain';
 
 interface EntryActionsMenuProps {
@@ -46,6 +47,8 @@ export function EntryActionsMenu({
 }: EntryActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
   // Determine if entry is migrated and get target collection name
   const isMigrated = !!entry.migratedTo;
@@ -118,7 +121,13 @@ export function EntryActionsMenu({
     if (!isOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      // Close if clicking outside both menu and button
+      if (
+        menuRef.current && 
+        !menuRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -136,6 +145,17 @@ export function EntryActionsMenu({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
+  }, [isOpen]);
+
+  // Calculate menu position when opened
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + window.scrollY + 4, // 4px gap (mt-1)
+        left: rect.right + window.scrollX - 160, // 160px = w-40 (menu width)
+      });
+    }
   }, [isOpen]);
 
   const handleToggle = () => {
@@ -193,9 +213,10 @@ export function EntryActionsMenu({
   };
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative">
       {/* Trigger Button */}
       <button
+        ref={buttonRef}
         onClick={handleToggle}
         className="text-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
         aria-label="Entry actions"
@@ -205,11 +226,16 @@ export function EntryActionsMenu({
         ⋯
       </button>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
+      {/* Dropdown Menu - Rendered in Portal */}
+      {isOpen && createPortal(
         <div
+          ref={menuRef}
           role="menu"
-          className="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[100]"
+          className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[100] w-40"
+          style={{
+            top: `${menuPosition.top}px`,
+            left: `${menuPosition.left}px`,
+          }}
         >
           {/* Go To option for migrated entries */}
           {showGoTo && (
@@ -301,7 +327,8 @@ export function EntryActionsMenu({
           >
             Delete
           </button>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -409,8 +409,8 @@ describe('EntryActionsMenu', () => {
     fireEvent.click(trigger);
 
     const menu = screen.getByRole('menu');
-    // Menu should be positioned absolutely
-    expect(menu).toHaveClass('absolute');
+    // Menu should be positioned with fixed positioning (rendered in portal)
+    expect(menu).toHaveClass('fixed');
   });
 
   // ============================================================================
