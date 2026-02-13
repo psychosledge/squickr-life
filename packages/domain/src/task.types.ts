@@ -75,6 +75,16 @@ export interface Task {
   /** Optional: Collection ID where this task was migrated from (for "Go back" navigation) */
   readonly migratedFromCollectionId?: string;
   
+  /** Optional: ID of task this was moved from (for movement tracking, not migration)
+   * When a task is MOVED (not migrated) between collections, this is set to self-reference.
+   * This distinguishes movement (same task ID) from migration (new task created). */
+  readonly movedFrom?: string;
+  
+  /** Optional: Collection ID where this task was moved from (for "Go back" after movement)
+   * Set when task is moved between collections using MoveTaskToCollectionHandler.
+   * Distinct from migratedFromCollectionId which is for TaskMigrated events. */
+  readonly movedFromCollectionId?: string;
+  
   /** Optional: Parent entry ID (if this is a sub-task)
    * NOTE: Use parentEntryId (not parentTaskId) to enable future sub-notes/events */
   readonly parentEntryId?: string;

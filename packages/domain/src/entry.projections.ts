@@ -875,6 +875,13 @@ export class EntryListProjection {
             })
           : undefined;
         
+        // CRITICAL FIX (Issue #2): Preserve existing migratedTo pointer
+        // If task has migratedTo/migratedToCollectionId (from TaskMigrated event),
+        // we MUST preserve it. TaskAddedToCollection should NOT overwrite it.
+        //
+        // Note: We use migratedFrom (with self-reference) for movement tracking,
+        // and preserve migratedTo for migration tracking.
+        
         // Build the updated task - if this is a MOVE, set migratedFrom properties
         const updatedTask: Task = recentRemoval ? {
           ...task,
@@ -886,8 +893,15 @@ export class EntryListProjection {
               addedAt: event.timestamp,
             }
           ],
+          // PRESERVE existing migratedTo pointer (don't overwrite!)
+          migratedTo: task.migratedTo,
+          migratedToCollectionId: task.migratedToCollectionId,
+          // SET migratedFrom for movement tracking (self-reference = moved, not migrated)
           migratedFrom: task.id, // Use task's own ID (indicates moved, not migrated)
           migratedFromCollectionId: recentRemoval.collectionId,
+          // ALSO SET movedFrom for explicit movement tracking
+          movedFrom: task.id,
+          movedFromCollectionId: recentRemoval.collectionId,
         } : {
           ...task,
           collections: [...task.collections, event.payload.collectionId],
@@ -898,6 +912,10 @@ export class EntryListProjection {
               addedAt: event.timestamp,
             }
           ],
+          // PRESERVE existing migration pointers even when NOT a move
+          migratedTo: task.migratedTo,
+          migratedToCollectionId: task.migratedToCollectionId,
+          migratedFrom: task.migratedFrom, // Preserve existing migratedFrom
         };
         
         tasks.set(task.id, updatedTask);
