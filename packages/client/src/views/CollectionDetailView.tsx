@@ -37,6 +37,7 @@ import { FAB } from '../components/FAB';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { DEBOUNCE } from '../utils/constants';
 import { getDateKeyForTemporal, getMonthKeyForTemporal } from '../utils/temporalUtils';
+import { getCollectionDisplayName } from '../utils/formatters';
 
 export function CollectionDetailView({ 
   collectionId: propCollectionId,
@@ -364,7 +365,7 @@ export function CollectionDetailView({
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header with back button and menu */}
       <CollectionHeader
-        collectionName={collection.name}
+        collectionName={getCollectionDisplayName(collection, new Date())}
         collectionId={collection.id}
         onRename={operations.handleRenameCollection}
         onDelete={operations.handleDeleteCollection}

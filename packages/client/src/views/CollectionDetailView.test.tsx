@@ -768,3 +768,166 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
     });
   });
 });
+
+describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+
+  beforeEach(() => {
+    mockCollectionProjection = {
+      getCollections: vi.fn(),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+  });
+
+  function renderViewWithDate(collection: Collection) {
+    mockCollectionProjection.getCollections.mockResolvedValue([collection]);
+
+    const mockAppContext = {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: {} as any,
+      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    };
+
+    return render(
+      <MemoryRouter initialEntries={[`/collection/${collection.id}`]}>
+        <AppProvider value={mockAppContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it('should display "Today, February 14, 2026" when viewing today\'s collection', async () => {
+    // Today is February 14, 2026 (from env)
+    const todayCollection: Collection = {
+      id: 'col-today',
+      name: 'Friday, February 14',
+      type: 'daily',
+      date: '2026-02-14',
+      order: 'a0',
+      createdAt: '2026-02-14T00:00:00Z',
+    };
+
+    renderViewWithDate(todayCollection);
+
+    await waitFor(() => {
+      expect(screen.getByText('Today, February 14, 2026')).toBeInTheDocument();
+    });
+  });
+
+  it('should display "Yesterday, February 13, 2026" when viewing yesterday\'s collection', async () => {
+    const yesterdayCollection: Collection = {
+      id: 'col-yesterday',
+      name: 'Thursday, February 13',
+      type: 'daily',
+      date: '2026-02-13',
+      order: 'a0',
+      createdAt: '2026-02-13T00:00:00Z',
+    };
+
+    renderViewWithDate(yesterdayCollection);
+
+    await waitFor(() => {
+      expect(screen.getByText('Yesterday, February 13, 2026')).toBeInTheDocument();
+    });
+  });
+
+  it('should display "Tomorrow, February 15, 2026" when viewing tomorrow\'s collection', async () => {
+    const tomorrowCollection: Collection = {
+      id: 'col-tomorrow',
+      name: 'Saturday, February 15',
+      type: 'daily',
+      date: '2026-02-15',
+      order: 'a0',
+      createdAt: '2026-02-15T00:00:00Z',
+    };
+
+    renderViewWithDate(tomorrowCollection);
+
+    await waitFor(() => {
+      expect(screen.getByText('Tomorrow, February 15, 2026')).toBeInTheDocument();
+    });
+  });
+
+  it('should display weekday and date for other dates without temporal prefix', async () => {
+    const otherDateCollection: Collection = {
+      id: 'col-other',
+      name: 'Monday, February 10',
+      type: 'daily',
+      date: '2026-02-10',
+      order: 'a0',
+      createdAt: '2026-02-10T00:00:00Z',
+    };
+
+    renderViewWithDate(otherDateCollection);
+
+    await waitFor(() => {
+      expect(screen.getByText('Tuesday, February 10, 2026')).toBeInTheDocument();
+    });
+  });
+
+  it('should display monthly collection name as "Month Year" without temporal prefix', async () => {
+    const monthlyCollection: Collection = {
+      id: 'col-monthly',
+      name: 'February 2026',
+      type: 'monthly',
+      date: '2026-02',
+      order: 'a0',
+      createdAt: '2026-02-01T00:00:00Z',
+    };
+
+    renderViewWithDate(monthlyCollection);
+
+    await waitFor(() => {
+      expect(screen.getByText('February 2026')).toBeInTheDocument();
+    });
+  });
+
+  it('should display custom collection name without modification', async () => {
+    const customCollection: Collection = {
+      id: 'col-custom',
+      name: 'My Custom Collection',
+      type: 'custom',
+      order: 'a0',
+      createdAt: '2026-02-14T00:00:00Z',
+    };
+
+    renderViewWithDate(customCollection);
+
+    await waitFor(() => {
+      expect(screen.getByText('My Custom Collection')).toBeInTheDocument();
+    });
+  });
+});
+
