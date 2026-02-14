@@ -1,15 +1,25 @@
 # Session: UX Fixes & Navigation Refactor
 
 **Date:** February 14, 2026  
-**Current Version:** v0.8.0 (deployed)  
-**Session Type:** Bug fixes and UX improvements  
-**Estimated Time:** TBD (depends on ADR-015 scope)
+**Version:** v0.9.0 (ready for deployment)  
+**Session Type:** UX improvements and bug fixes  
+**Total Time:** ~11 hours
 
 ---
 
 ## Session Goals
 
 Fix 5 UX issues identified by the user during daily usage of the Squickr Life PWA.
+
+**Final Results:**
+- ✅ Issue #1: Menu coverage (COMPLETED)
+- ⏸️ Issue #2: Navigation refactor (DEFERRED - ADR-015 ready for future session)
+- ✅ Issue #3: Temporal labels (COMPLETED)
+- ✅ Issue #4: Sub-task styling (COMPLETED)
+- ✅ Issue #5: Link icon repositioning (COMPLETED)
+
+**Total Development Time:** ~11 hours (Issue #1: 6h, Issue #3: 1h, Issue #4: 2h, Issue #5: 2h)
+**Average Casey Rating:** 9.1/10 (Issue #1: 9/10, Issue #3: 9/10, Issue #4: 9/10, Issue #5: 9.5/10)
 
 ---
 
@@ -133,93 +143,102 @@ Fix 5 UX issues identified by the user during daily usage of the Squickr Life PW
 
 ---
 
-### ⏸️ Issue #3: Auto-Fav Labels in Collection Titles (PENDING)
-**Status:** ⏸️ Not started  
-**Priority:** Medium  
-**Estimated Time:** TBD
+### ✅ Issue #3: Auto-Fav Labels in Collection Titles (COMPLETED)
+**Status:** ✅ Committed  
+**Time Spent:** ~1 hour  
+**Commit:** 58ccd11
+**Casey Rating:** 9/10 - Excellent
 
 **Problem:**
-- Collection titles like "Today - Friday, February 13" need auto-fav labels
-- User wants to see which collections are auto-favorited vs manually favorited
+- Collection titles didn't show temporal labels (Today, Yesterday, Tomorrow)
+- User clarified: "The star collection list indicators no longer exist and should have been removed from any documentation"
+- Actual need was temporal labels like "Today - Friday, February 14" in collection detail view
 
-**Current Behavior:**
-- Auto-favorited daily logs show hollow star (✦) in collection list
-- Manually favorited collections show filled star (⭐)
+**Solution:**
+- Modified `CollectionDetailView.tsx` to use existing `getCollectionDisplayName()` formatter
+- Function already implemented temporal logic, just needed to be used with current date
+- Changed from `collection.name` to `getCollectionDisplayName(collection, new Date())`
+- 2 lines modified in production code
 
-**Desired Behavior:**
-- Collection detail view should show similar indicators in the title
-- Or some other label/badge to indicate auto-fav status
+**Test Coverage:**
+- 6 new tests covering all temporal label scenarios
+- All 925 tests passing
+- Zero regressions
 
-**Files Likely Affected:**
-- `packages/client/src/views/CollectionDetailView.tsx`
-- `packages/client/src/utils/formatters.ts` (collection title formatting)
-- `packages/client/src/components/CollectionHeader.tsx` (if it exists)
-
-**Design Questions:**
-- What format? "(Auto-favorited)" suffix? Badge? Icon?
-- Should it match the hollow star (✦) from collection list?
-- Mobile vs desktop considerations?
+**Files Changed:**
+- `packages/client/src/views/CollectionDetailView.tsx` (2 lines)
+- `packages/client/src/views/CollectionDetailView.test.tsx` (163 lines added, 6 tests)
 
 ---
 
-### ⏸️ Issue #4: Improve Sub-Task Nesting Visual Styling (PENDING)
-**Status:** ⏸️ Not started  
-**Priority:** Medium  
-**Estimated Time:** TBD
+### ✅ Issue #4: Improve Sub-Task Nesting Visual Styling (COMPLETED)
+**Status:** ✅ Committed  
+**Time Spent:** ~2 hours  
+**Commit:** 81e1295
+**Casey Rating:** 9/10 - Excellent
 
 **Problem:**
-- Current sub-task indentation/styling could be improved
-- User wants better visual hierarchy
+- Current sub-task indentation/styling lacked visual hierarchy
+- User requested: "I don't think more indentation is helpful"
 
-**Current Behavior:**
-- Sub-tasks are indented under parent tasks
-- Uses standard indentation (likely `ml-4` or similar)
+**Solution (Alex's Option 4A):**
+- Added subtle background tinting: `bg-gray-50/50` (light), `bg-gray-900/30` (dark)
+- Added 2px left border: `border-l-2 border-gray-200 dark:border-gray-700`
+- Added bottom-right rounded corner: `rounded-br-lg`
+- Preserved existing `pl-8` indentation (no change per user request)
+- Only 4 lines modified in production code
 
-**Desired Behavior:**
-- TBD - need user input on specific improvements
-- Possible options:
-  - More indentation?
-  - Connecting lines (like a tree view)?
-  - Different background color?
-  - Border or visual separator?
+**Design Rationale:**
+- WCAG AA compliant colors
+- Subtle professional appearance (used by VSCode, Notion, Linear)
+- Prevents "boxy" look in dark mode with low opacity values
+- Left border provides "tree branch" visual metaphor
 
-**Files Likely Affected:**
-- `packages/client/src/components/TaskEntryItem.tsx`
-- `packages/client/src/components/EntryList.tsx`
-- CSS/Tailwind classes for sub-task styling
+**Test Coverage:**
+- 9 new tests covering light/dark modes, borders, collapse interaction
+- All 934 tests passing
+- Zero regressions
 
-**Design Questions:**
-- What specific improvements does the user want?
-- Reference designs or examples to follow?
-- Mobile vs desktop considerations?
+**Files Changed:**
+- `packages/client/src/components/EntryList.tsx` (4 lines, 378-381)
+- `packages/client/src/components/EntryList.test.tsx` (454 lines added, 9 tests)
 
 ---
 
-### ⏸️ Issue #5: Reposition Linked Sub-Task Icons (PENDING)
-**Status:** ⏸️ Not started  
-**Priority:** Low  
-**Estimated Time:** TBD
+### ✅ Issue #5: Reposition Linked Sub-Task Icons (COMPLETED)
+**Status:** ✅ Committed  
+**Time Spent:** ~2 hours  
+**Commit:** 5c1d33a
+**Casey Rating:** 9.5/10 - Excellent
 
 **Problem:**
-- Linked sub-task icons (🔗) need repositioning
-- Current position is unclear or confusing
+- Link icon (🔗) was embedded in bullet icon, making it inflexible
+- Current: `🔗☐ Buy groceries (Shopping List)`
+- User preference: Option 2 (after title) or Option 3 (actions area)
 
-**Current Behavior:**
-- Sub-tasks show 🔗 icon when migrated separately from parent
-- Icon position is TBD (need to verify current implementation)
+**Solution (Alex's Option 5.2):**
+- Refactored link icon out of `BulletIcon` component
+- Added Lucide `Link2` icon after task title in `TaskEntryItem`
+- New layout: `☐ Buy groceries 🔗 (Shopping List)`
+- Icon positioned inline after title, before parent title reference
 
-**Desired Behavior:**
-- Icon should be repositioned to a more intuitive location
-- TBD - need user input on where it should go
+**Icon Specifications:**
+- Lucide React `Link2` component (consistent with chevron icons)
+- Size: 16px (w-4 h-4)
+- Color: blue-600 (light mode), blue-400 (dark mode)
+- Alignment: `align-text-bottom` (baseline alignment)
+- Accessibility: aria-label and title tooltip
 
-**Files Likely Affected:**
-- `packages/client/src/components/TaskEntryItem.tsx`
-- Icon rendering logic for linked sub-tasks
+**Test Coverage:**
+- 8 new tests (2 for BulletIcon, 6 for TaskEntryItem)
+- All 942 tests passing
+- Zero regressions
 
-**Design Questions:**
-- Where should the icon be positioned?
-- Should it replace another icon or be additional?
-- Mobile vs desktop considerations?
+**Files Changed:**
+- `packages/client/src/components/BulletIcon.tsx` (removed link prefix)
+- `packages/client/src/components/BulletIcon.test.tsx` (2 new tests)
+- `packages/client/src/components/TaskEntryItem.tsx` (added Link2 icon)
+- `packages/client/src/components/TaskEntryItem.test.tsx` (6 new tests)
 
 ---
 
@@ -354,12 +373,13 @@ Need to design solutions for:
 - ⏸️ Implementation deferred to future session
 
 **For Issues #3-5:**
-- 🔄 Design phase in progress
-- ⏸️ Implementation pending design completion
+- ✅ Issue #3: Temporal labels in collection titles (COMPLETED)
+- ✅ Issue #4: Sub-task visual hierarchy (COMPLETED)
+- ✅ Issue #5: Link icon repositioning (COMPLETED)
 
 ---
 
-**Session Status:** In Progress  
-**Current Focus:** Designing solutions for Issues #3-5  
+**Session Status:** ✅ Complete  
+**Current Focus:** Issues #3, #4, #5 all completed and committed  
 **Prepared by:** OpenCode  
-**Last Updated:** February 14, 2026 - 14:30
+**Last Updated:** February 14, 2026 - Session Complete

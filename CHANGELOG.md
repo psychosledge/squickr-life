@@ -7,7 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Planned for v0.9.0 - Code Quality & Polish
+## [0.9.0] - 2026-02-14
+
+### Added
+- **Temporal Labels in Collection Titles (Issue #3):** Collection detail view now shows contextual date labels
+  - Today's collection: "Today, February 14, 2026"
+  - Yesterday's collection: "Yesterday, February 13, 2026"
+  - Tomorrow's collection: "Tomorrow, February 15, 2026"
+  - Monthly collections: "February 2026"
+  - Uses existing `getCollectionDisplayName()` formatter for consistency
+  - 6 new tests added
+
+- **Sub-Task Visual Hierarchy (Issue #4):** Improved visual grouping of sub-tasks under parent tasks
+  - Subtle background tinting (gray-50/50 light mode, gray-900/30 dark mode)
+  - 2px left border (gray-200/700) for clear grouping
+  - Bottom-right rounded corner for visual polish
+  - Preserves existing pl-8 indentation (no additional indentation added)
+  - WCAG AA compliant colors
+  - 9 new tests covering light/dark modes and edge cases
+
+### Changed
+- **Link Icon Repositioning (Issue #5):** Migrated sub-task link indicators moved from bullet to after task title
+  - Before: `🔗☐ Buy groceries (Shopping List)`
+  - After: `☐ Buy groceries 🔗 (Shopping List)`
+  - Uses Lucide React `Link2` icon (16px, blue) for consistency with other UI elements
+  - Icon appears inline after title, before parent title reference
+  - Includes accessibility attributes (aria-label, title tooltip)
+  - 8 new tests (2 for BulletIcon, 6 for TaskEntryItem)
+
+### Fixed
+- **Menu Coverage by Long Sub-Task Text (Issue #1):** Three-dot actions menu now stays accessible
+  - Portal-based rendering with position: fixed (viewport-relative)
+  - Added pr-8 padding to prevent text wrapping under menu button
+  - Fixed sub-task menu closing immediately after opening
+  - Scroll-to-close behavior with passive listeners
+  - 8 new tests for menu positioning
+  - Documented in ADR-014
+
+### Technical
+- EventHistoryDebugTool (ADR-015 Phase 7) for development debugging
+  - Dev-mode only debug tool for viewing event history
+  - React Context pattern (eliminates 7-layer prop drilling)
+  - Positioned top-right to avoid FAB overlap
+  - 23 unit tests (100% passing)
+- All 942 tests passing (63 test files)
+- Zero regressions across all features
+
+### Developer
+- Issue #1 (menu coverage): ~6 hours
+- Issue #3 (temporal labels): ~1 hour
+- Issue #4 (sub-task styling): ~2 hours
+- Issue #5 (link icon): ~2 hours
+- Total development time: ~11 hours with testing and reviews
+- Casey review ratings: 9/10, 9/10, 9/10, 9.5/10 (average 9.1/10)
+
+### Planned for v1.0.0 - Code Quality & Polish
 
 **Timezone Utilities & Consistency:**
 - Extract date comparison to reusable utility function
