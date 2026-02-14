@@ -4,6 +4,7 @@ import { formatTimestamp } from '../utils/formatters';
 import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
+import { EventHistoryDebugTool } from './EventHistoryDebugTool';
 
 interface NoteEntryItemProps {
   entry: Entry & { type: 'note' };
@@ -188,6 +189,9 @@ export function NoteEntryItem({
           onCreateCollection={_onCreateCollection}
         />
       )}
+      
+      {/* Debug tool (dev mode only) */}
+      <EventHistoryDebugTool entry={entry} />
     </div>
   );
 }

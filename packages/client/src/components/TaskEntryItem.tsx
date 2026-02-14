@@ -4,6 +4,7 @@ import { formatTimestamp } from '../utils/formatters';
 import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
+import { EventHistoryDebugTool } from './EventHistoryDebugTool';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 
 interface TaskEntryItemProps {
@@ -288,6 +289,9 @@ export function TaskEntryItem({
           onCreateCollection={_onCreateCollection}
         />
       )}
+      
+      {/* Debug tool (dev mode only) */}
+      <EventHistoryDebugTool entry={entry} />
     </div>
   );
 }

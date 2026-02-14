@@ -20,6 +20,7 @@ import {
 import { IndexedDBEventStore, FirestoreEventStore } from '@squickr/infrastructure';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { DebugProvider } from './context/DebugContext';
 import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
 import { SignInView } from './views/SignInView';
@@ -174,21 +175,23 @@ function AppContent() {
   // Show main app for authenticated users
   return (
     <AppProvider value={contextValue}>
-      <BrowserRouter>
-        <Routes>
-          {/* Temporal paths - use date prop instead of TemporalRoute components */}
-          <Route path="/today" element={<CollectionDetailView date="today" />} />
-          <Route path="/yesterday" element={<CollectionDetailView date="yesterday" />} />
-          <Route path="/tomorrow" element={<CollectionDetailView date="tomorrow" />} />
-          <Route path="/this-month" element={<CollectionDetailView date="this-month" />} />
-          <Route path="/last-month" element={<CollectionDetailView date="last-month" />} />
-          <Route path="/next-month" element={<CollectionDetailView date="next-month" />} />
-          
-          {/* Phase 2D: Collection Index is now the default */}
-          <Route path={ROUTES.index} element={<CollectionIndexView />} />
-          <Route path={ROUTES.collection} element={<CollectionDetailView />} />
-        </Routes>
-      </BrowserRouter>
+      <DebugProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Temporal paths - use date prop instead of TemporalRoute components */}
+            <Route path="/today" element={<CollectionDetailView date="today" />} />
+            <Route path="/yesterday" element={<CollectionDetailView date="yesterday" />} />
+            <Route path="/tomorrow" element={<CollectionDetailView date="tomorrow" />} />
+            <Route path="/this-month" element={<CollectionDetailView date="this-month" />} />
+            <Route path="/last-month" element={<CollectionDetailView date="last-month" />} />
+            <Route path="/next-month" element={<CollectionDetailView date="next-month" />} />
+            
+            {/* Phase 2D: Collection Index is now the default */}
+            <Route path={ROUTES.index} element={<CollectionIndexView />} />
+            <Route path={ROUTES.collection} element={<CollectionDetailView />} />
+          </Routes>
+        </BrowserRouter>
+      </DebugProvider>
     </AppProvider>
   );
 }
