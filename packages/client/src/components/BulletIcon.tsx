@@ -28,10 +28,12 @@ function getBulletStyle(entry: Entry, isSubTaskMigrated: boolean = false, isGhos
   /**
    * Icon Precedence Order (first match wins):
    * 1. Ghost (removed from collection) - ➜
-   * 2. Migrated sub-task - 🔗☐ or 🔗✓
-   * 3. Old-style migrated - ➜
-   * 4. Completion status - ✓
-   * 5. Entry type default - ☐, 📝, 📅
+   * 2. Old-style migrated - ➜
+   * 3. Completion status - ✓
+   * 4. Entry type default - ☐, 📝, 📅
+   * 
+   * Note: Issue #5 - Link icon (🔗) no longer shown in bullet, 
+   *       now rendered separately in TaskEntryItem after title
    */
   
   // Multi-collection ghost (removed from current collection) - takes precedence
@@ -46,21 +48,8 @@ function getBulletStyle(entry: Entry, isSubTaskMigrated: boolean = false, isGhos
   
   // Task bullets
   if (entry.type === 'task') {
-    // Phase 2: Migrated sub-task (has parent + different collection) - show 🔗 icon
-    if (isSubTaskMigrated) {
-      const baseIcon = entry.status === 'completed' 
-        ? ENTRY_ICONS.TASK_COMPLETED 
-        : ENTRY_ICONS.TASK_OPEN;
-      
-      return {
-        icon: `🔗${baseIcon}`,
-        color: 'text-blue-600 dark:text-blue-400', // Blue to indicate migration
-        isInteractive: !entry.migratedTo, // Can interact if not already migrated (original)
-        ariaLabel: entry.status === 'completed' 
-          ? 'Migrated sub-task (completed) - click to reopen'
-          : 'Migrated sub-task (open) - click to complete',
-      };
-    }
+    // Issue #5: Removed link icon from bullet (now shown separately in TaskEntryItem)
+    // isSubTaskMigrated no longer affects the bullet icon
     
     if (entry.migratedTo) {
       // Migrated task (OLD-STYLE migration, legacy system)

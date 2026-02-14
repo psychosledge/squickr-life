@@ -5,7 +5,7 @@ import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
 import { EventHistoryDebugTool } from './EventHistoryDebugTool';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronRight, ChevronDown, Link2 } from 'lucide-react';
 
 interface TaskEntryItemProps {
   entry: Entry & { type: 'task' };
@@ -223,6 +223,20 @@ export function TaskEntryItem({
                   style={{ whiteSpace: 'pre-wrap' }}
                 >
                   {entry.title}
+                  
+                  {/* Issue #5: Link icon after title for migrated sub-tasks */}
+                  {isSubTaskMigrated && (
+                    <span 
+                      className="inline-block ml-1.5"
+                      title="This sub-task is in a different collection than its parent"
+                    >
+                      <Link2 
+                        className="w-4 h-4 align-text-bottom text-blue-600 dark:text-blue-400"
+                        aria-label="Linked to different collection"
+                      />
+                    </span>
+                  )}
+                  
                   {/* Phase 2 Feature: Show parent title for migrated sub-tasks */}
                   {parentTitle && isSubTaskMigrated && (
                     <span className="ml-2 text-gray-500 dark:text-gray-400 text-sm font-normal">

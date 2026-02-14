@@ -108,6 +108,44 @@ describe('BulletIcon', () => {
       expect(screen.getByText('➜')).toBeInTheDocument();
       expect(screen.queryByText('🔗')).not.toBeInTheDocument();
     });
+
+    // Issue #5: Refactored link icon tests (NO longer in BulletIcon)
+    it('should NOT show link icon for migrated sub-task (open)', () => {
+      const entry: Entry = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Test',
+        status: 'open',
+        parentTaskId: 'parent-1',
+        createdAt: '2026-01-27T10:00:00.000Z'
+      };
+      
+      render(<BulletIcon entry={entry} isSubTaskMigrated={true} />);
+      
+      // Should show standard open task bullet (NO link prefix)
+      const bullet = screen.getByRole('button');
+      expect(bullet).toHaveTextContent('☐');
+      expect(bullet).not.toHaveTextContent('🔗');
+    });
+
+    it('should NOT show link icon for migrated sub-task (completed)', () => {
+      const entry: Entry = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Test',
+        status: 'completed',
+        completedAt: '2026-01-27T10:00:00.000Z',
+        parentTaskId: 'parent-1',
+        createdAt: '2026-01-27T09:00:00.000Z'
+      };
+      
+      render(<BulletIcon entry={entry} isSubTaskMigrated={true} />);
+      
+      // Should show standard completed task bullet (NO link prefix)
+      const bullet = screen.getByRole('button');
+      expect(bullet).toHaveTextContent('✓');
+      expect(bullet).not.toHaveTextContent('🔗');
+    });
   });
 
   describe('Note Bullets', () => {

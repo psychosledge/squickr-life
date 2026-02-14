@@ -217,4 +217,165 @@ describe('TaskEntryItem', () => {
     expect(screen.queryByText('Open')).not.toBeInTheDocument();
     expect(screen.queryByText('Completed')).not.toBeInTheDocument();
   });
+
+  describe('Issue #5: Link Icon Positioning', () => {
+    it('should show Link2 icon after task title for migrated sub-task', () => {
+      const migratedSubTask: Entry & { type: 'task' } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy groceries',
+        status: 'open',
+        parentTaskId: 'parent-1',
+        createdAt: '2026-01-27T10:00:00.000Z',
+      };
+
+      render(
+        <TaskEntryItem 
+          entry={migratedSubTask}
+          onDelete={mockOnDelete}
+          isSubTaskMigrated={true}
+        />
+      );
+      
+      // Should have Link2 icon with proper attributes
+      const linkIcon = screen.getByLabelText('Linked to different collection');
+      expect(linkIcon).toBeInTheDocument();
+      
+      // Check that wrapper span has title attribute
+      const wrapper = linkIcon.parentElement;
+      expect(wrapper).toHaveAttribute('title', 'This sub-task is in a different collection than its parent');
+    });
+
+    it('should NOT show Link2 icon for non-migrated sub-task', () => {
+      const regularSubTask: Entry & { type: 'task' } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Regular sub-task',
+        status: 'open',
+        parentTaskId: 'parent-1',
+        createdAt: '2026-01-27T10:00:00.000Z',
+      };
+
+      render(
+        <TaskEntryItem 
+          entry={regularSubTask}
+          onDelete={mockOnDelete}
+          isSubTaskMigrated={false}
+        />
+      );
+      
+      expect(screen.queryByLabelText('Linked to different collection')).not.toBeInTheDocument();
+    });
+
+    it('should NOT show Link2 icon for regular task (no parent)', () => {
+      render(
+        <TaskEntryItem 
+          entry={mockOpenTask}
+          onDelete={mockOnDelete}
+          isSubTaskMigrated={false}
+        />
+      );
+      
+      expect(screen.queryByLabelText('Linked to different collection')).not.toBeInTheDocument();
+    });
+
+    it('should show Link2 icon BEFORE parent title reference', () => {
+      const migratedSubTask: Entry & { type: 'task' } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy groceries',
+        status: 'open',
+        parentTaskId: 'parent-1',
+        createdAt: '2026-01-27T10:00:00.000Z',
+      };
+
+      const { container } = render(
+        <TaskEntryItem 
+          entry={migratedSubTask}
+          onDelete={mockOnDelete}
+          isSubTaskMigrated={true}
+          parentTitle="Shopping List"
+        />
+      );
+      
+      // Find the title div
+      const titleDiv = screen.getByText('Buy groceries').parentElement;
+      expect(titleDiv).toBeInTheDocument();
+      
+      // Check that link icon exists
+      const linkIcon = screen.getByLabelText('Linked to different collection');
+      expect(linkIcon).toBeInTheDocument();
+      
+      // Check that parent title exists
+      const parentTitle = screen.getByText(/\(Shopping List\)/);
+      expect(parentTitle).toBeInTheDocument();
+      
+      // Verify order in DOM: title text, then link icon, then parent title
+      const innerHTML = titleDiv?.innerHTML || '';
+      const titleIndex = innerHTML.indexOf('Buy groceries');
+      const linkIndex = innerHTML.indexOf('svg'); // Link2 renders as svg
+      const parentIndex = innerHTML.indexOf('(Shopping List)');
+      
+      expect(titleIndex).toBeLessThan(linkIndex);
+      expect(linkIndex).toBeLessThan(parentIndex);
+    });
+
+    it('should show Link2 icon for completed migrated sub-task', () => {
+      const completedMigratedSubTask: Entry & { type: 'task' } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy groceries',
+        status: 'completed',
+        completedAt: '2026-01-27T11:00:00.000Z',
+        parentTaskId: 'parent-1',
+        createdAt: '2026-01-27T10:00:00.000Z',
+      };
+
+      render(
+        <TaskEntryItem 
+          entry={completedMigratedSubTask}
+          onDelete={mockOnDelete}
+          isSubTaskMigrated={true}
+        />
+      );
+      
+      const linkIcon = screen.getByLabelText('Linked to different collection');
+      expect(linkIcon).toBeInTheDocument();
+    });
+
+    it('should apply correct CSS classes to Link2 icon', () => {
+      const migratedSubTask: Entry & { type: 'task' } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy groceries',
+        status: 'open',
+        parentTaskId: 'parent-1',
+        createdAt: '2026-01-27T10:00:00.000Z',
+      };
+
+      render(
+        <TaskEntryItem 
+          entry={migratedSubTask}
+          onDelete={mockOnDelete}
+          isSubTaskMigrated={true}
+        />
+      );
+      
+      const linkIcon = screen.getByLabelText('Linked to different collection');
+      
+      // Check SVG has required classes
+      expect(linkIcon).toHaveClass('w-4');
+      expect(linkIcon).toHaveClass('h-4');
+      expect(linkIcon).toHaveClass('align-text-bottom');
+      // Blue color for light mode
+      expect(linkIcon).toHaveClass('text-blue-600');
+      // Blue color for dark mode
+      expect(linkIcon).toHaveClass('dark:text-blue-400');
+      
+      // Check wrapper span has inline-block and margin classes
+      const wrapper = linkIcon.parentElement;
+      expect(wrapper).toHaveClass('inline-block');
+      expect(wrapper).toHaveClass('ml-1.5');
+    });
+  });
 });
