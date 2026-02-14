@@ -1035,4 +1035,454 @@ describe('EntryList', () => {
     });
   });
 
+  // ============================================================================
+  // Phase 4: Sub-Task Nesting Visual Styling Tests (Issue #4)
+  // ============================================================================
+  describe('Phase 4: Sub-Task Nesting Visual Styling', () => {
+    it('should apply subtle background tint to sub-task container in light mode', async () => {
+      // Arrange
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Parent Task',
+          status: 'open',
+          createdAt: '2026-02-14T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Buy groceries',
+          status: 'open',
+          createdAt: '2026-02-14T10:01:00Z',
+          parentTaskId: 'parent-1',
+        },
+      ]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+        />
+      );
+
+      // Wait for sub-task to load
+      await screen.findByText('Buy groceries');
+
+      // Assert: Sub-task container should have light mode background
+      const subTaskContainer = container.querySelector('.pl-8.space-y-2.mt-2');
+      expect(subTaskContainer).toBeInTheDocument();
+      expect(subTaskContainer).toHaveClass('bg-gray-50/50');
+    });
+
+    it('should apply dark mode background to sub-task container', async () => {
+      // Arrange
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Parent Task',
+          status: 'open',
+          createdAt: '2026-02-14T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Pack for trip',
+          status: 'open',
+          createdAt: '2026-02-14T10:01:00Z',
+          parentTaskId: 'parent-1',
+        },
+      ]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+        />
+      );
+
+      // Wait for sub-task to load
+      await screen.findByText('Pack for trip');
+
+      // Assert: Sub-task container should have dark mode background class
+      const subTaskContainer = container.querySelector('.pl-8.space-y-2.mt-2');
+      expect(subTaskContainer).toBeInTheDocument();
+      expect(subTaskContainer).toHaveClass('dark:bg-gray-900/30');
+    });
+
+    it('should apply left border to sub-task container in light mode', async () => {
+      // Arrange
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Parent Task',
+          status: 'open',
+          createdAt: '2026-02-14T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Sub-task 1',
+          status: 'open',
+          createdAt: '2026-02-14T10:01:00Z',
+          parentTaskId: 'parent-1',
+        },
+      ]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+        />
+      );
+
+      // Wait for sub-task to load
+      await screen.findByText('Sub-task 1');
+
+      // Assert: Sub-task container should have left border
+      const subTaskContainer = container.querySelector('.pl-8.space-y-2.mt-2');
+      expect(subTaskContainer).toBeInTheDocument();
+      expect(subTaskContainer).toHaveClass('border-l-2');
+      expect(subTaskContainer).toHaveClass('border-gray-200');
+    });
+
+    it('should apply dark mode left border to sub-task container', async () => {
+      // Arrange
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Parent Task',
+          status: 'open',
+          createdAt: '2026-02-14T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Sub-task 1',
+          status: 'open',
+          createdAt: '2026-02-14T10:01:00Z',
+          parentTaskId: 'parent-1',
+        },
+      ]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+        />
+      );
+
+      // Wait for sub-task to load
+      await screen.findByText('Sub-task 1');
+
+      // Assert: Sub-task container should have dark mode border class
+      const subTaskContainer = container.querySelector('.pl-8.space-y-2.mt-2');
+      expect(subTaskContainer).toBeInTheDocument();
+      expect(subTaskContainer).toHaveClass('dark:border-gray-700');
+    });
+
+    it('should apply rounded corner and padding to sub-task container', async () => {
+      // Arrange
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Parent Task',
+          status: 'open',
+          createdAt: '2026-02-14T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Sub-task 1',
+          status: 'open',
+          createdAt: '2026-02-14T10:01:00Z',
+          parentTaskId: 'parent-1',
+        },
+      ]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+        />
+      );
+
+      // Wait for sub-task to load
+      await screen.findByText('Sub-task 1');
+
+      // Assert: Sub-task container should have rounded corner and bottom padding
+      const subTaskContainer = container.querySelector('.pl-8.space-y-2.mt-2');
+      expect(subTaskContainer).toBeInTheDocument();
+      expect(subTaskContainer).toHaveClass('rounded-br-lg');
+      expect(subTaskContainer).toHaveClass('pb-2');
+    });
+
+    it('should NOT apply styling to parent tasks without sub-tasks', async () => {
+      // Arrange
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Standalone Task',
+          status: 'open',
+          createdAt: '2026-02-14T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+        />
+      );
+
+      // Assert: No sub-task container should be rendered
+      const subTaskContainer = container.querySelector('.pl-8.space-y-2.mt-2');
+      expect(subTaskContainer).not.toBeInTheDocument();
+    });
+
+    it('should maintain existing indentation (pl-8) with new styling', async () => {
+      // Arrange
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Parent Task',
+          status: 'open',
+          createdAt: '2026-02-14T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Sub-task 1',
+          status: 'open',
+          createdAt: '2026-02-14T10:01:00Z',
+          parentTaskId: 'parent-1',
+        },
+      ]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+        />
+      );
+
+      // Wait for sub-task to load
+      await screen.findByText('Sub-task 1');
+
+      // Assert: Sub-task container should maintain pl-8 indentation
+      const subTaskContainer = container.querySelector('.pl-8.space-y-2.mt-2');
+      expect(subTaskContainer).toBeInTheDocument();
+      expect(subTaskContainer).toHaveClass('pl-8');
+    });
+
+    it('should hide sub-task styling when parent is collapsed', async () => {
+      // Arrange
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Parent Task',
+          status: 'open',
+          createdAt: '2026-02-14T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Sub-task 1',
+          status: 'open',
+          createdAt: '2026-02-14T10:01:00Z',
+          parentTaskId: 'parent-1',
+        },
+      ]);
+
+      // Mock collapsed state using localStorage
+      window.localStorage.setItem('collapsedTasks', JSON.stringify(['parent-1']));
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+        />
+      );
+
+      // Assert: Sub-task container should NOT be rendered when collapsed
+      const subTaskContainer = container.querySelector('.pl-8.space-y-2.mt-2');
+      expect(subTaskContainer).not.toBeInTheDocument();
+      expect(screen.queryByText('Sub-task 1')).not.toBeInTheDocument();
+
+      // Cleanup
+      window.localStorage.clear();
+    });
+
+    it('should apply all styling classes together on sub-task container', async () => {
+      // Arrange
+      const entries: Entry[] = [
+        {
+          id: 'parent-1',
+          type: 'task',
+          title: 'Plan Vacation',
+          status: 'open',
+          createdAt: '2026-02-14T10:00:00Z',
+        },
+      ];
+
+      const mockGetSubTasks = vi.fn().mockResolvedValue([
+        {
+          id: 'subtask-1',
+          type: 'task',
+          title: 'Book flights',
+          status: 'open',
+          createdAt: '2026-02-14T10:01:00Z',
+          parentTaskId: 'parent-1',
+        },
+        {
+          id: 'subtask-2',
+          type: 'task',
+          title: 'Book hotel',
+          status: 'open',
+          createdAt: '2026-02-14T10:02:00Z',
+          parentTaskId: 'parent-1',
+        },
+      ]);
+
+      // Act
+      const { container } = render(
+        <EntryList 
+          entries={entries}
+          onCompleteTask={mockOnCompleteTask}
+          onReopenTask={mockOnReopenTask}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onUpdateEventDate={mockOnUpdateEventDate}
+          onDelete={mockOnDelete}
+          onReorder={mockOnReorder}
+          getSubTasks={mockGetSubTasks}
+        />
+      );
+
+      // Wait for sub-tasks to load
+      await screen.findByText('Book flights');
+
+      // Assert: All styling classes should be present
+      const subTaskContainer = container.querySelector('.pl-8.space-y-2.mt-2');
+      expect(subTaskContainer).toBeInTheDocument();
+      
+      // Existing classes (unchanged)
+      expect(subTaskContainer).toHaveClass('pl-8');
+      expect(subTaskContainer).toHaveClass('space-y-2');
+      expect(subTaskContainer).toHaveClass('mt-2');
+      
+      // New styling classes (Issue #4)
+      expect(subTaskContainer).toHaveClass('bg-gray-50/50');
+      expect(subTaskContainer).toHaveClass('dark:bg-gray-900/30');
+      expect(subTaskContainer).toHaveClass('border-l-2');
+      expect(subTaskContainer).toHaveClass('border-gray-200');
+      expect(subTaskContainer).toHaveClass('dark:border-gray-700');
+      expect(subTaskContainer).toHaveClass('rounded-br-lg');
+      expect(subTaskContainer).toHaveClass('pb-2');
+    });
+  });
+
 });

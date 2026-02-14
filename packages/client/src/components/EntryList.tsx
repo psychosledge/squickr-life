@@ -375,7 +375,10 @@ export function EntryList({
                   {/* Render sub-tasks indented (non-draggable) - Phase 3 */}
                   {/* Phase 4: Only show sub-tasks if parent is not collapsed */}
                   {subTasks.length > 0 && !collapsed && (
-                    <div className="pl-8 space-y-2 mt-2">
+                    <div className="pl-8 space-y-2 mt-2 
+                                    bg-gray-50/50 dark:bg-gray-900/30 
+                                    border-l-2 border-gray-200 dark:border-gray-700 
+                                    rounded-br-lg pb-2">
                       {subTasks.map((subTask) => {
                         // Phase 3: Detect migration chains
                         // A sub-task is part of a migration chain if it has migratedFrom pointing to a different collection
