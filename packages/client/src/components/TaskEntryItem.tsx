@@ -167,7 +167,7 @@ export function TaskEntryItem({
           />
           
           {/* Content Area */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-8">
           {isEditing ? (
             <div className="space-y-2">
               <input

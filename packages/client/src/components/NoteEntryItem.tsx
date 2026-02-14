@@ -116,7 +116,7 @@ export function NoteEntryItem({
                       }`}>
         <div className="flex items-start justify-between gap-3">
           {/* Bullet and Content */}
-          <div className="flex-1 flex gap-3 min-w-0">
+          <div className="flex-1 flex gap-3 min-w-0 pr-8">
             <BulletIcon entry={entry} />
             <div className="flex-1">
             {isEditing ? (

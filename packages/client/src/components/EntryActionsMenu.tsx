@@ -48,7 +48,7 @@ export function EntryActionsMenu({
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
 
   // Determine if entry is migrated and get target collection name
   const isMigrated = !!entry.migratedTo;
@@ -121,15 +121,35 @@ export function EntryActionsMenu({
     if (!isOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      // Close if clicking outside both menu and button
-      if (
-        menuRef.current && 
-        !menuRef.current.contains(event.target as Node) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
+      const target = event.target as Node;
+      
+      // Don't close if clicking on the menu
+      if (menuRef.current && menuRef.current.contains(target)) {
+        return;
       }
+      
+      // Don't close if clicking on the button or any of its parent containers
+      // CRITICAL FIX for sub-tasks: Check if target is the button OR if button contains/is contained by target
+      // This handles cases where the click bubbles from wrapper divs (common in sub-task rendering)
+      if (buttonRef.current) {
+        // Check if click is on button or its children
+        if (buttonRef.current.contains(target)) {
+          return;
+        }
+        
+        // Check if click is on a parent container of the button (for sub-tasks with wrapper divs)
+        // Walk up the DOM tree to see if we hit the button
+        let node: Node | null = target;
+        while (node) {
+          if (node === buttonRef.current) {
+            return;
+          }
+          node = node.parentNode;
+        }
+      }
+      
+      // If we get here, the click was outside both menu and button - close the menu
+      setIsOpen(false);
     };
 
     const handleEscape = (event: KeyboardEvent) => {
@@ -138,12 +158,26 @@ export function EntryActionsMenu({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
+    const handleScroll = () => {
+      setIsOpen(false);
+    };
+
+    // CRITICAL FIX: Defer event listener registration to next tick
+    // This prevents the click that opened the menu from immediately closing it
+    // The opening click's mousedown event will have already bubbled by the time we register
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+      // Use capture phase to catch scroll events on all elements
+      // Use passive: true for better scroll performance (handler won't call preventDefault)
+      window.addEventListener('scroll', handleScroll, { capture: true, passive: true } as AddEventListenerOptions);
+    }, 0);
     
     return () => {
+      clearTimeout(timeoutId);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
+      window.removeEventListener('scroll', handleScroll, { capture: true, passive: true } as AddEventListenerOptions);
     };
   }, [isOpen]);
 
@@ -151,14 +185,25 @@ export function EntryActionsMenu({
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
+      
+      // CRITICAL FIX: Don't add window.scrollY/scrollX
+      // getBoundingClientRect() returns viewport-relative coords
+      // position: fixed is ALSO viewport-relative
+      // Adding scroll offset would double-count the scroll
       setMenuPosition({
-        top: rect.bottom + window.scrollY + 4, // 4px gap (mt-1)
-        left: rect.right + window.scrollX - 160, // 160px = w-40 (menu width)
+        top: rect.bottom + 4, // 4px gap (mt-1)
+        left: rect.right - 160, // 160px = w-40 (menu width)
       });
+    } else {
+      // Reset position when closed to prevent flash on next open
+      setMenuPosition(null);
     }
   }, [isOpen]);
 
-  const handleToggle = () => {
+  const handleToggle = (e: React.MouseEvent) => {
+    // CRITICAL FIX: Stop event propagation to prevent parent containers
+    // from interfering with click-outside detection (especially for sub-tasks)
+    e.stopPropagation();
     setIsOpen(!isOpen);
   };
 
@@ -227,11 +272,13 @@ export function EntryActionsMenu({
       </button>
 
       {/* Dropdown Menu - Rendered in Portal */}
-      {isOpen && createPortal(
+      {isOpen && menuPosition && createPortal(
         <div
           ref={menuRef}
           role="menu"
-          className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[100] w-40"
+          // z-[150]: Higher than entry items (z-[100]) but lower than full-page modals (z-200+)
+          // transition-opacity duration-75: Quick fade-in to prevent flash
+          className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-[150] w-40 transition-opacity duration-75"
           style={{
             top: `${menuPosition.top}px`,
             left: `${menuPosition.left}px`,

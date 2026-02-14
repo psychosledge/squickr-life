@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { EntryActionsMenu } from './EntryActionsMenu';
 import type { Entry } from '@squickr/domain';
 
@@ -244,6 +244,29 @@ describe('EntryActionsMenu', () => {
     });
   });
 
+  it('should NOT close immediately after opening (regression test)', async () => {
+    render(
+      <EntryActionsMenu
+        entry={mockEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    // Menu should be open immediately after clicking
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    // Wait a bit to ensure it doesn't close immediately
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // Menu should STILL be open
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
   it('should close menu when clicking outside', async () => {
     render(
       <div>
@@ -261,6 +284,9 @@ describe('EntryActionsMenu', () => {
     fireEvent.click(trigger);
 
     expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    // Wait for event listeners to be registered (setTimeout in useEffect)
+    await new Promise(resolve => setTimeout(resolve, 10));
 
     const outside = screen.getByTestId('outside');
     fireEvent.mouseDown(outside);
@@ -285,7 +311,73 @@ describe('EntryActionsMenu', () => {
 
     expect(screen.getByRole('menu')).toBeInTheDocument();
 
+    // Wait for event listeners to be registered (setTimeout in useEffect)
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+
     fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should close menu when scrolling starts', async () => {
+    render(
+      <EntryActionsMenu
+        entry={mockEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    // Wait for event listeners to be registered (setTimeout in useEffect)
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+
+    // Simulate scroll event on window
+    fireEvent.scroll(window);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should close menu when scrolling on a scrollable element', async () => {
+    const { container } = render(
+      <div style={{ height: '200px', overflow: 'auto' }} data-testid="scrollable">
+        <div style={{ height: '500px' }}>
+          <EntryActionsMenu
+            entry={mockEntry}
+            onEdit={mockOnEdit}
+            onMove={mockOnMove}
+            onDelete={mockOnDelete}
+          />
+        </div>
+      </div>
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    // Wait for event listeners to be registered (setTimeout in useEffect)
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+
+    // Simulate scroll event on scrollable container
+    const scrollable = screen.getByTestId('scrollable');
+    fireEvent.scroll(scrollable);
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument();
@@ -411,6 +503,43 @@ describe('EntryActionsMenu', () => {
     const menu = screen.getByRole('menu');
     // Menu should be positioned with fixed positioning (rendered in portal)
     expect(menu).toHaveClass('fixed');
+  });
+
+  it('should render menu with high z-index to prevent overlapping', () => {
+    render(
+      <EntryActionsMenu
+        entry={mockEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    const menu = screen.getByRole('menu');
+    // Menu should have z-[150] to appear above entry items but below full-page modals
+    expect(menu).toHaveClass('z-[150]');
+  });
+
+  it('should render menu in document.body portal', () => {
+    const { container } = render(
+      <EntryActionsMenu
+        entry={mockEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    const menu = screen.getByRole('menu');
+    // Menu should be rendered in document.body (not in the component's container)
+    expect(container.contains(menu)).toBe(false);
+    expect(document.body.contains(menu)).toBe(true);
   });
 
   // ============================================================================
@@ -577,8 +706,173 @@ describe('EntryActionsMenu', () => {
 
       await waitFor(() => {
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  // ============================================================================
+  // Sub-Task Menu Tests (Regression: Sub-task menus closing immediately)
+  // ============================================================================
+
+  describe('Sub-task menus', () => {
+    const mockSubTask: Entry & { type: 'task' } = {
+      type: 'task',
+      id: 'subtask-1',
+      title: 'Sub-task',
+      createdAt: '2026-01-24T10:00:00.000Z',
+      status: 'open',
+      parentTaskId: 'parent-1', // This makes it a sub-task
+    };
+
+    it('should open menu for sub-task entries', () => {
+      render(
+        <EntryActionsMenu
+          entry={mockSubTask}
+          onEdit={mockOnEdit}
+          onMove={mockOnMove}
+          onDelete={mockOnDelete}
+          isSubTask={true}
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+    });
+
+    it('should NOT close immediately after opening for sub-tasks (regression test)', async () => {
+      render(
+        <EntryActionsMenu
+          entry={mockSubTask}
+          onEdit={mockOnEdit}
+          onMove={mockOnMove}
+          onDelete={mockOnDelete}
+          isSubTask={true}
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      // Menu should be open immediately after clicking
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+
+      // Wait for event listeners to be registered and any potential side effects
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Menu should STILL be open (regression: used to close immediately for sub-tasks)
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+    });
+
+    it('should handle clicks on sub-task menu when rendered with wrapper divs', async () => {
+      // Simulate the actual DOM structure from EntryList.tsx where sub-tasks are wrapped
+      const { container } = render(
+        <div className="pl-8 space-y-2 mt-2">
+          <div>
+            <EntryActionsMenu
+              entry={mockSubTask}
+              onEdit={mockOnEdit}
+              onMove={mockOnMove}
+              onDelete={mockOnDelete}
+              isSubTask={true}
+            />
+          </div>
+        </div>
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+
+      // Wait for event listeners to be registered
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Click on the wrapper div (not the button itself)
+      const wrapperDiv = container.querySelector('div.pl-8');
+      if (wrapperDiv) {
+        fireEvent.mouseDown(wrapperDiv);
+      }
+
+      // Menu should close when clicking the wrapper (outside the menu/button)
+      await waitFor(() => {
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
       });
     });
+
+    it('should NOT show "Add Sub-Task" option for sub-tasks (2-level limit)', () => {
+      const mockOnAddSubTask = vi.fn();
+      
+      render(
+        <EntryActionsMenu
+          entry={mockSubTask}
+          onEdit={mockOnEdit}
+          onMove={mockOnMove}
+          onDelete={mockOnDelete}
+          isSubTask={true}
+          onAddSubTask={mockOnAddSubTask}
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      // Sub-tasks should NOT have "Add Sub-Task" option (2-level limit)
+      expect(screen.queryByRole('menuitem', { name: /add sub-task/i })).not.toBeInTheDocument();
+    });
+
+    it('should show all standard options for sub-tasks', () => {
+      render(
+        <EntryActionsMenu
+          entry={mockSubTask}
+          onEdit={mockOnEdit}
+          onMove={mockOnMove}
+          onDelete={mockOnDelete}
+          isSubTask={true}
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      // Sub-tasks should still have Edit, Migrate, and Delete
+      expect(screen.getByRole('menuitem', { name: /edit/i })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: /^migrate$/i })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: /delete/i })).toBeInTheDocument();
+    });
+
+    it('should handle migrated sub-tasks correctly', () => {
+      const mockCollections = [
+        { id: 'col-1', name: 'Work', type: 'log' as const, order: 'a0', createdAt: '2026-01-20T10:00:00.000Z' },
+      ];
+      const mockOnNavigateToMigrated = vi.fn();
+
+      const migratedSubTask: Entry & { type: 'task' } = {
+        ...mockSubTask,
+        collectionId: 'col-1',
+      };
+
+      render(
+        <EntryActionsMenu
+          entry={migratedSubTask}
+          onEdit={mockOnEdit}
+          onMove={mockOnMove}
+          onDelete={mockOnDelete}
+          isSubTask={true}
+          isSubTaskMigrated={true}
+          collections={mockCollections}
+          onNavigateToSubTaskCollection={() => mockOnNavigateToMigrated('col-1')}
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      // Should show "Go to [Collection]" for migrated sub-tasks
+      expect(screen.getByRole('menuitem', { name: /go to work/i })).toBeInTheDocument();
+    });
+  });
+});
+
 
     it('should work with migrated notes', () => {
       const migratedNote: Entry & { type: 'note' } = {
