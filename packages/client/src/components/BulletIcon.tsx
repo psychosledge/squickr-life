@@ -5,8 +5,6 @@ interface BulletIconProps {
   entry: Entry;
   onClick?: () => void;
   className?: string;
-  /** Phase 2: Indicates if this is a migrated sub-task (show 🔗 icon) */
-  isSubTaskMigrated?: boolean;
   /** 
    * Multi-collection: Indicates if this is a ghost entry (show ➜ icon)
    * NOTE: Should be true when entry has renderAsGhost: true
@@ -24,7 +22,7 @@ interface BulletStyle {
   ariaLabel: string;
 }
 
-function getBulletStyle(entry: Entry, isSubTaskMigrated: boolean = false, isGhost: boolean = false): BulletStyle {
+function getBulletStyle(entry: Entry, isGhost: boolean = false): BulletStyle {
   /**
    * Icon Precedence Order (first match wins):
    * 1. Ghost (removed from collection) - ➜
@@ -127,8 +125,8 @@ function getBulletStyle(entry: Entry, isSubTaskMigrated: boolean = false, isGhos
   };
 }
 
-export function BulletIcon({ entry, onClick, className = '', isSubTaskMigrated = false, isGhost = false, title }: BulletIconProps) {
-  const { icon, color, isInteractive, ariaLabel } = getBulletStyle(entry, isSubTaskMigrated, isGhost);
+export function BulletIcon({ entry, onClick, className = '', isGhost = false, title }: BulletIconProps) {
+  const { icon, color, isInteractive, ariaLabel } = getBulletStyle(entry, isGhost);
 
   const baseStyles = `
     text-2xl leading-none pt-1 flex-shrink-0 select-none font-mono

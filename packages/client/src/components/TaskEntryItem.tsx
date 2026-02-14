@@ -164,7 +164,6 @@ export function TaskEntryItem({
           <BulletIcon 
             entry={entry} 
             onClick={entry.migratedTo ? undefined : handleToggleComplete}
-            isSubTaskMigrated={isSubTaskMigrated}
           />
           
           {/* Content Area */}
