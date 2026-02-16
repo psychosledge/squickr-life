@@ -4,7 +4,7 @@
  * Phase 2C: Collection Detail View - Main view component
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -829,7 +829,10 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
   }
 
   it('should display "Today, February 15, 2026" when viewing today\'s collection', async () => {
-    // Today is February 15, 2026 (from env)
+    // Mock Date to return February 15, 2026
+    const mockDate = new Date('2026-02-15T12:00:00.000Z');
+    vi.setSystemTime(mockDate);
+    
     const todayCollection: Collection = {
       id: 'col-today',
       name: 'Saturday, February 15',
@@ -844,9 +847,15 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
     await waitFor(() => {
       expect(screen.getByText('Today, February 15, 2026')).toBeInTheDocument();
     });
+    
+    vi.useRealTimers();
   });
 
   it('should display "Yesterday, February 14, 2026" when viewing yesterday\'s collection', async () => {
+    // Mock Date to return February 15, 2026 (so yesterday is Feb 14)
+    const mockDate = new Date('2026-02-15T12:00:00.000Z');
+    vi.setSystemTime(mockDate);
+    
     const yesterdayCollection: Collection = {
       id: 'col-yesterday',
       name: 'Friday, February 14',
@@ -861,9 +870,15 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
     await waitFor(() => {
       expect(screen.getByText('Yesterday, February 14, 2026')).toBeInTheDocument();
     });
+    
+    vi.useRealTimers();
   });
 
   it('should display "Tomorrow, February 16, 2026" when viewing tomorrow\'s collection', async () => {
+    // Mock Date to return February 15, 2026 (so tomorrow is Feb 16)
+    const mockDate = new Date('2026-02-15T12:00:00.000Z');
+    vi.setSystemTime(mockDate);
+    
     const tomorrowCollection: Collection = {
       id: 'col-tomorrow',
       name: 'Sunday, February 16',
@@ -878,6 +893,8 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
     await waitFor(() => {
       expect(screen.getByText('Tomorrow, February 16, 2026')).toBeInTheDocument();
     });
+    
+    vi.useRealTimers();
   });
 
   it('should display weekday and date for other dates without temporal prefix', async () => {

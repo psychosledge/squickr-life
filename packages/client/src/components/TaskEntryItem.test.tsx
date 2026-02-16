@@ -255,12 +255,15 @@ describe('TaskEntryItem', () => {
         status: 'open',
         parentTaskId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
+        collectionId: 'col-parent',
+        collections: ['col-parent'], // Sub-task is in same collection as parent
       };
 
       render(
         <TaskEntryItem 
-          entry={migratedSubTask}
+          entry={regularSubTask}
           onDelete={mockOnDelete}
+          currentCollectionId="col-parent" // Same collection = not migrated
         />
       );
       
@@ -268,9 +271,18 @@ describe('TaskEntryItem', () => {
     });
 
     it('should NOT show Link2 icon for regular task (no parent)', () => {
+      const regularTask: Entry & { type: 'task' } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Regular task',
+        status: 'open',
+        createdAt: '2026-01-27T10:00:00.000Z',
+        collections: [],
+      };
+      
       render(
         <TaskEntryItem 
-          entry={regularSubTask}
+          entry={regularTask}
           onDelete={mockOnDelete}
         />
       );
@@ -286,6 +298,8 @@ describe('TaskEntryItem', () => {
         status: 'open',
         parentTaskId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
+        collectionId: 'col-other',
+        collections: ['col-other'], // Sub-task is in different collection
       };
 
       const { container } = render(
@@ -293,6 +307,7 @@ describe('TaskEntryItem', () => {
           entry={migratedSubTask}
           onDelete={mockOnDelete}
           parentTitle="Shopping List"
+          currentCollectionId="col-parent" // Parent is in this collection
         />
       );
       
@@ -327,12 +342,15 @@ describe('TaskEntryItem', () => {
         completedAt: '2026-01-27T11:00:00.000Z',
         parentTaskId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
+        collectionId: 'col-other',
+        collections: ['col-other'], // Sub-task is in different collection
       };
 
       render(
         <TaskEntryItem 
           entry={completedMigratedSubTask}
           onDelete={mockOnDelete}
+          currentCollectionId="col-parent" // Parent is in this collection
         />
       );
       
