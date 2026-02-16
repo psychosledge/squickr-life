@@ -4,7 +4,7 @@
  * Tests for the collection navigation hook that enables page flipping between collections.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { useCollectionNavigation } from './useCollectionNavigation';
@@ -43,6 +43,11 @@ describe('useCollectionNavigation', () => {
       getEntriesByCollection: vi.fn(async () => []),
       subscribe: vi.fn(() => () => {}),
     };
+  });
+
+  afterEach(() => {
+    // Ensure we use real timers to prevent test pollution
+    vi.useRealTimers();
   });
 
   function createWrapper() {
