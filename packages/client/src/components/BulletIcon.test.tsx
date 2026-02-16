@@ -102,7 +102,7 @@ describe('BulletIcon', () => {
         collections: []
       };
       
-      render(<BulletIcon entry={entry} isGhost={true} isSubTaskMigrated={true} />);
+      render(<BulletIcon entry={entry} isGhost={true} />);
       
       // Ghost takes precedence over sub-task migration
       expect(screen.getByText('➜')).toBeInTheDocument();
@@ -120,7 +120,7 @@ describe('BulletIcon', () => {
         createdAt: '2026-01-27T10:00:00.000Z'
       };
       
-      render(<BulletIcon entry={entry} isSubTaskMigrated={true} />);
+      render(<BulletIcon entry={entry} />);
       
       // Should show standard open task bullet (NO link prefix)
       const bullet = screen.getByRole('button');
@@ -139,7 +139,7 @@ describe('BulletIcon', () => {
         createdAt: '2026-01-27T09:00:00.000Z'
       };
       
-      render(<BulletIcon entry={entry} isSubTaskMigrated={true} />);
+      render(<BulletIcon entry={entry} />);
       
       // Should show standard completed task bullet (NO link prefix)
       const bullet = screen.getByRole('button');

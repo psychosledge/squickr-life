@@ -37,8 +37,6 @@ interface SortableEntryItemProps {
     completed: number;
     allComplete: boolean;
   };
-  // Phase 2: Sub-task migration indicators and navigation
-  isSubTaskMigrated?: boolean;
   // Phase 2 Feature: Parent title for migrated sub-tasks
   parentTitle?: string;
   // Phase 4: Expand/collapse control for sub-tasks
@@ -71,7 +69,6 @@ export function SortableEntryItem({
   onToggleSelection,
   onAddSubTask,
   completionStatus,
-  isSubTaskMigrated,
   parentTitle,
   isCollapsed,
   onToggleCollapse,
@@ -147,7 +144,6 @@ export function SortableEntryItem({
           onCreateCollection={onCreateCollection}
           onAddSubTask={onAddSubTask}
           completionStatus={completionStatus}
-          isSubTaskMigrated={isSubTaskMigrated}
           parentTitle={parentTitle}
           isCollapsed={isCollapsed}
           onToggleCollapse={onToggleCollapse}

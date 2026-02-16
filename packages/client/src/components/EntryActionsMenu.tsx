@@ -12,10 +12,7 @@ interface EntryActionsMenuProps {
   collections?: Collection[];
   currentCollectionId?: string; // Current collection we're viewing from
   onNavigateToMigrated?: (collectionId: string | null) => void;
-  // Phase 2: Navigation for sub-tasks and migrated sub-tasks
-  onNavigateToSubTaskCollection?: () => void; // Navigate to migrated sub-task's collection (from parent view)
   isSubTask?: boolean; // Whether this entry is a sub-task
-  isSubTaskMigrated?: boolean; // Whether this sub-task is migrated to a different collection
   // Phase 4: Ghost entries
   isGhost?: boolean; // Whether this entry is a ghost (show only "Go to" and "Delete")
 }
@@ -42,7 +39,6 @@ export function EntryActionsMenu({
   collections,
   currentCollectionId,
   onNavigateToMigrated,
-  onNavigateToSubTaskCollection,
   isSubTask = false,
   isGhost = false,
 }: EntryActionsMenuProps) {

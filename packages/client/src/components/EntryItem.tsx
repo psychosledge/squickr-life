@@ -32,9 +32,6 @@ interface EntryItemProps {
     completed: number;
     allComplete: boolean;
   };
-  // Phase 2: Sub-task navigation and migration indicators
-  onNavigateToSubTaskCollection?: () => void;
-  isSubTaskMigrated?: boolean;
   // Phase 2 Feature: Parent title for migrated sub-tasks
   parentTitle?: string;
   // Phase 4: Expand/collapse control for sub-tasks
@@ -66,8 +63,6 @@ export function EntryItem({
   onCreateCollection,
   onAddSubTask,
   completionStatus,
-  onNavigateToSubTaskCollection,
-  isSubTaskMigrated,
   parentTitle,
   isCollapsed,
   onToggleCollapse,
@@ -88,8 +83,6 @@ export function EntryItem({
         onCreateCollection={onCreateCollection}
         onAddSubTask={onAddSubTask}
         completionStatus={completionStatus}
-        onNavigateToSubTaskCollection={onNavigateToSubTaskCollection}
-        isSubTaskMigrated={isSubTaskMigrated}
         parentTitle={parentTitle}
         isCollapsed={isCollapsed}
         onToggleCollapse={onToggleCollapse}

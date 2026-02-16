@@ -334,10 +334,6 @@ export function EntryList({
               // Get sub-tasks for this entry (if it's a task)
               const subTasks = entry.type === 'task' ? (subTasksMap.get(entry.id) || []) : [];
               
-              // Check if this top-level entry is actually a migrated sub-task
-              const isSubTask = entry.type === 'task' && !!entry.parentTaskId;
-              const isMigratedSubTask = isSubTask; // If it's in topLevelEntries, parent is NOT in list (migrated)
-              
               // Phase 4: Check collapse state
               const collapsed = isCollapsed(entry.id);
               
@@ -363,8 +359,6 @@ export function EntryList({
                     isSelected={selectedEntryIds.has(entry.id)}
                     onToggleSelection={onToggleSelection}
                     completionStatus={completionStatusMap.get(entry.id)}
-                    // Phase 2: Pass sub-task props for migrated sub-tasks rendered as flat entries
-                    isSubTaskMigrated={isMigratedSubTask}
                     // Phase 2 Feature: Pass parent title for migrated sub-tasks
                     parentTitle={parentTitlesMap.get(entry.id)}
                     // Phase 4: Pass collapse props
@@ -380,13 +374,6 @@ export function EntryList({
                                     border-l-2 border-gray-200 dark:border-gray-700 
                                     rounded-br-lg pb-2">
                       {subTasks.map((subTask) => {
-                        // Phase 3: Detect migration chains
-                        // A sub-task is part of a migration chain if it has migratedFrom pointing to a different collection
-                        // than where the parent originally came from
-                        const hasIncomingMigration = !!subTask.migratedFrom && !!subTask.migratedFromCollectionId;
-                        const isPartOfMigrationChain = hasIncomingMigration && 
-                          subTask.migratedFromCollectionId !== entry.migratedFromCollectionId;
-                        
                         return (
                           <div key={subTask.id}>
                             <EntryItem
@@ -404,9 +391,6 @@ export function EntryList({
                               onNavigateToMigrated={onNavigateToMigrated}
                               onCreateCollection={onCreateCollection}
                               onAddSubTask={onAddSubTask}
-                              // Phase 3: Show 🔗 icon if sub-task is part of a migration chain
-                              // This happens when parent migrates after child was already migrated
-                              isSubTaskMigrated={isPartOfMigrationChain}
                             />
                           </div>
                         );

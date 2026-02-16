@@ -858,9 +858,8 @@ describe('EntryActionsMenu', () => {
           onMove={mockOnMove}
           onDelete={mockOnDelete}
           isSubTask={true}
-          isSubTaskMigrated={true}
           collections={mockCollections}
-          onNavigateToSubTaskCollection={() => mockOnNavigateToMigrated('col-1')}
+          onNavigateToMigrated={mockOnNavigateToMigrated}
         />
       );
 

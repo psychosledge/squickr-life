@@ -154,13 +154,12 @@ describe('TaskEntryItem', () => {
   });
 
   it('should enter edit mode on double-click when update handler provided', () => {
-    render(
-      <TaskEntryItem 
-        entry={mockOpenTask} 
-        onUpdateTaskTitle={mockOnUpdateTaskTitle}
-        onDelete={mockOnDelete}
-      />
-    );
+      render(
+        <TaskEntryItem 
+          entry={mockOpenTask}
+          onDelete={mockOnDelete}
+        />
+      );
     
     const title = screen.getByText('Buy milk');
     fireEvent.doubleClick(title);
@@ -227,13 +226,15 @@ describe('TaskEntryItem', () => {
         status: 'open',
         parentTaskId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
+        collectionId: 'col-other',
+        collections: ['col-other'], // Sub-task is in different collection
       };
 
       render(
         <TaskEntryItem 
           entry={migratedSubTask}
           onDelete={mockOnDelete}
-          isSubTaskMigrated={true}
+          currentCollectionId="col-parent" // Parent is in this collection
         />
       );
       
@@ -258,9 +259,8 @@ describe('TaskEntryItem', () => {
 
       render(
         <TaskEntryItem 
-          entry={regularSubTask}
+          entry={migratedSubTask}
           onDelete={mockOnDelete}
-          isSubTaskMigrated={false}
         />
       );
       
@@ -270,9 +270,8 @@ describe('TaskEntryItem', () => {
     it('should NOT show Link2 icon for regular task (no parent)', () => {
       render(
         <TaskEntryItem 
-          entry={mockOpenTask}
+          entry={regularSubTask}
           onDelete={mockOnDelete}
-          isSubTaskMigrated={false}
         />
       );
       
@@ -293,7 +292,6 @@ describe('TaskEntryItem', () => {
         <TaskEntryItem 
           entry={migratedSubTask}
           onDelete={mockOnDelete}
-          isSubTaskMigrated={true}
           parentTitle="Shopping List"
         />
       );
@@ -335,7 +333,6 @@ describe('TaskEntryItem', () => {
         <TaskEntryItem 
           entry={completedMigratedSubTask}
           onDelete={mockOnDelete}
-          isSubTaskMigrated={true}
         />
       );
       
@@ -351,13 +348,15 @@ describe('TaskEntryItem', () => {
         status: 'open',
         parentTaskId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
+        collectionId: 'col-other',
+        collections: ['col-other'], // Sub-task is in different collection
       };
 
       render(
         <TaskEntryItem 
           entry={migratedSubTask}
           onDelete={mockOnDelete}
-          isSubTaskMigrated={true}
+          currentCollectionId="col-parent" // Parent is in this collection
         />
       );
       

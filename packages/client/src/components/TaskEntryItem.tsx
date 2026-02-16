@@ -25,9 +25,6 @@ interface TaskEntryItemProps {
     completed: number;
     allComplete: boolean;
   };
-  // Phase 2: Navigation and migration indicators for sub-tasks
-  onNavigateToSubTaskCollection?: () => void; // Navigate to migrated sub-task's collection
-  isSubTaskMigrated?: boolean; // Whether this sub-task is migrated to different collection
   // Phase 2 Feature: Parent title for migrated sub-tasks
   parentTitle?: string; // Parent task title to display inline
   // Phase 4: Expand/collapse control for sub-tasks
@@ -57,8 +54,6 @@ export function TaskEntryItem({
   onCreateCollection: _onCreateCollection, // Not used in new dialog
   onAddSubTask,
   completionStatus,
-  onNavigateToSubTaskCollection,
-  isSubTaskMigrated = false,
   parentTitle,
   isCollapsed = false,
   onToggleCollapse,
@@ -152,6 +147,12 @@ export function TaskEntryItem({
   const isSubTask = !!entry.parentTaskId;
   const hasSubTasks = completionStatus && completionStatus.total > 0;
   const isLegacyMigrated = !!entry.migratedTo;
+  
+  // Check if sub-task is in a different collection than the current view
+  // (which would be the parent's collection)
+  const isSubTaskMigrated = isSubTask && currentCollectionId 
+    ? !(entry.collections || [entry.collectionId]).includes(currentCollectionId)
+    : false;
 
   return (
     <div className="relative">
@@ -284,9 +285,8 @@ export function TaskEntryItem({
           collections={collections}
           currentCollectionId={currentCollectionId}
           onNavigateToMigrated={onNavigateToMigrated}
-          onNavigateToSubTaskCollection={onNavigateToSubTaskCollection}
           isSubTask={isSubTask}
-          isSubTaskMigrated={isSubTaskMigrated}
+          isGhost={false}
         />
       </div>
       
