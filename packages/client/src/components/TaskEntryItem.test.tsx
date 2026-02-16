@@ -158,6 +158,7 @@ describe('TaskEntryItem', () => {
         <TaskEntryItem 
           entry={mockOpenTask}
           onDelete={mockOnDelete}
+          onUpdateTaskTitle={mockOnUpdateTaskTitle}
         />
       );
     
