@@ -167,6 +167,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
       // Act: Move (not migrate) from Collection A to Collection B
       await moveHandler.handle({
         taskId,
+        currentCollectionId: 'collection-a',
         targetCollectionId: 'collection-b',
       });
 
@@ -219,6 +220,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
 
       await moveHandler.handle({
         taskId: task2Id,
+        currentCollectionId: 'collection-c',
         targetCollectionId: 'collection-d',
       });
 

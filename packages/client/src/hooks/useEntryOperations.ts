@@ -347,11 +347,20 @@ export function useEntryOperations(
     }
 
     if (mode === 'move') {
-      await moveTaskToCollectionHandler.handle({ taskId: entryId, targetCollectionId: effectiveTargetId });
+      // Validate we're in a specific collection (not uncategorized)
+      if (!collectionId) {
+        throw new Error('Cannot move tasks from uncategorized view - must be in a specific collection');
+      }
+      
+      await moveTaskToCollectionHandler.handle({ 
+        taskId: entryId, 
+        currentCollectionId: collectionId, // Safe to use after validation
+        targetCollectionId: effectiveTargetId 
+      });
     } else {
       await addTaskToCollectionHandler.handle({ taskId: entryId, collectionId: effectiveTargetId });
     }
-  }, [entries, addTaskToCollectionHandler, moveTaskToCollectionHandler, handleMigrate]);
+  }, [entries, addTaskToCollectionHandler, moveTaskToCollectionHandler, handleMigrate, collectionId]);
 
   const handleBulkMigrateWithMode = useCallback(async (entryIds: string[], targetCollectionId: string | null, mode: 'move' | 'add' = 'move') => {
     // Use bulk handler for atomic batch migration

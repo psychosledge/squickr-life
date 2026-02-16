@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-02-15
+
+### Fixed
+- **Collection History Preservation (Issue #7G):** Multi-collection task migrations now preserve full collection history
+  - Root cause: Deprecated `TaskMigrated` events created new task IDs, losing collection history
+  - Solution: Migrated `BulkMigrateEntriesHandler` to use modern multi-collection pattern (`TaskAddedToCollection` + `TaskRemovedFromCollection`)
+  - Task IDs now preserved across migrations, maintaining complete `collectionHistory`
+  - Example: "Find eye doctor" sub-task now shows all 3 history entries (Monthly created, Yesterday added/removed, Today added)
+  - Documented in ADR-015
+
+- **Temporal Route Circular Navigation (Issue #7G Follow-up):** Fixed navigation menu showing current collection
+  - Problem: Temporal routes like `/this-month` showed "Go to February 2026" when already viewing February
+  - Root cause: Temporal identifiers (`"this-month"`) passed to navigation instead of actual collection UUIDs
+  - Solution: Added `resolvedCollectionId` state to track actual UUID after temporal route resolution
+  - Entry action menus now correctly exclude current collection from navigation options
+  - Casey review: 8.5/10 - Production ready with excellent architecture
+  - 2 new tests added for temporal route resolution
+
+- **Ghost Entry Debug Tool Consistency:** Debug buttons now appear on all ghost entries
+  - Added `EventHistoryDebugTool` to `GhostEntry` component
+  - Multi-collection ghost entries now show debug buttons like legacy migrated entries
+  - Consistent debugging experience across all entry types
+  - 31/31 GhostEntry tests passing
+
+- **Move Semantics:** `MoveTaskToCollectionHandler` now correctly removes from current collection only
+  - Previous behavior: Incorrectly removed task from ALL collections in a loop
+  - New behavior: Requires `currentCollectionId` parameter, removes from specified collection only
+  - Added comprehensive validation (empty checks, task-in-collection verification, same-collection no-op)
+  - Added null safety check in UI before move operations
+
+### Technical
+- **Multi-Collection Pattern Migration:**
+  - `BulkMigrateEntriesHandler` refactored to eliminate `TaskMigrated` event generation for tasks
+  - Added idempotency checks to prevent duplicate events if migration runs twice
+  - Uses `generateEventMetadata()` helper for consistency across handlers
+  - Notes and Events still use legacy migration pattern (out of scope)
+
+- **Command Interface Enhancement:**
+  - `MoveTaskToCollectionCommand` now includes `currentCollectionId` parameter
+  - Enhanced JSDoc documentation for command interfaces
+  - Improved type safety and validation in collection management
+
+- **Integration Testing:**
+  - Added 19 comprehensive integration tests (`multi-collection-integration.test.ts`)
+  - Coverage areas: ID preservation, history preservation, move vs add modes, idempotency, atomicity, edge cases
+  - All 1,540 tests passing (577 domain + 21 infrastructure + 942 client)
+
+### Changed
+- **Handler Updates:**
+  - `MoveTaskToCollectionHandler` - Added `currentCollectionId` parameter, enhanced validation
+  - `BulkMigrateEntriesHandler` - Removed `TaskMigrated` events for tasks, added idempotency
+  - All multi-collection tests updated to pass `currentCollectionId`
+
+- **Bug Fixes:**
+  - Fixed dependency array bug in `useEntryOperations.ts` (added missing `collectionId`)
+  - Fixed 3 date/time mocking issues in `CollectionDetailView.test.tsx` (system time configuration)
+
+### Developer
+- Implementation time: ~12 hours (under 18-22 hour estimate)
+- 5-phase implementation: Move semantics, bulk migration, UI wiring, integration tests, documentation
+- Casey review ratings: 9.5/10 (Phase 1), 9.2/10 (Phase 2)
+- Zero regressions across all features
+- Documented in ADR-015 with implementation details, testing strategy, and SOLID principles alignment
+
 ## [0.9.0] - 2026-02-14
 
 ### Added

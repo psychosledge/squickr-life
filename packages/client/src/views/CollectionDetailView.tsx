@@ -68,12 +68,17 @@ export function CollectionDetailView({
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Track resolved collection ID (actual UUID after temporal route resolution)
+  // This ensures navigation and child components use the actual UUID, not temporal identifiers
+  const [resolvedCollectionId, setResolvedCollectionId] = useState<string>('');
 
   // Selection mode state
   const selection = useSelectionMode();
 
   // Collection navigation with swipe feedback
-  const navigation = useCollectionNavigation(collectionId || '');
+  // Use resolved ID (actual UUID) instead of temporal identifier like "this-month"
+  const navigation = useCollectionNavigation(resolvedCollectionId);
 
   // Migration modal state for bulk migration
   const [isBulkMigrateModalOpen, setIsBulkMigrateModalOpen] = useState(false);
@@ -171,6 +176,9 @@ export function CollectionDetailView({
         createdAt: new Date().toISOString(),
       });
       
+      // Set resolved ID for uncategorized
+      setResolvedCollectionId(UNCATEGORIZED_COLLECTION_ID);
+      
       // Load orphaned entries (null collectionId)
       // Note: Uncategorized collection doesn't support ghost entries (no collection history)
       const orphanedEntries = await entryProjection.getEntriesByCollection(null);
@@ -187,6 +195,14 @@ export function CollectionDetailView({
     }
     
     setCollection(foundCollection);
+    
+    // Set resolved collection ID (actual UUID after temporal/UUID resolution)
+    // This is critical for navigation to work correctly with temporal routes
+    if (foundCollection) {
+      setResolvedCollectionId(foundCollection.id);
+    } else {
+      setResolvedCollectionId('');
+    }
 
     // Fetch entries (use collectionId if available, else use found collection's id)
     const idForEntries = collectionId || foundCollection?.id;
@@ -391,7 +407,7 @@ export function CollectionDetailView({
           onReorder={operations.handleReorder}
           onMigrate={operations.handleMigrateWithMode}
           collections={allCollections}
-          currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
+          currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
           onNavigateToMigrated={operations.handleNavigateToMigrated}
           onCreateCollection={operations.handleCreateCollection}
           onAddSubTask={handleOpenSubTaskModal}
@@ -422,7 +438,7 @@ export function CollectionDetailView({
               onReorder={operations.handleReorder}
               onMigrate={operations.handleMigrateWithMode}
               collections={allCollections}
-              currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
+              currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
               onNavigateToMigrated={operations.handleNavigateToMigrated}
               onCreateCollection={operations.handleCreateCollection}
               onAddSubTask={handleOpenSubTaskModal}
@@ -479,7 +495,7 @@ export function CollectionDetailView({
                 onReorder={operations.handleReorder}
                 onMigrate={operations.handleMigrateWithMode}
                 collections={allCollections}
-                currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
+                currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
                 onNavigateToMigrated={operations.handleNavigateToMigrated}
                 onCreateCollection={operations.handleCreateCollection}
                 onAddSubTask={handleOpenSubTaskModal}
@@ -568,7 +584,7 @@ export function CollectionDetailView({
           isOpen={isBulkMigrateModalOpen}
           onClose={handleCloseBulkMigrateModal}
           entries={entries.filter(e => selection.selectedEntryIds.has(e.id))}
-          currentCollectionId={collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId}
+          currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
           collections={allCollections}
           onMigrate={operations.handleMigrateWithMode}
           onBulkMigrate={handleBulkMigrateSubmit}

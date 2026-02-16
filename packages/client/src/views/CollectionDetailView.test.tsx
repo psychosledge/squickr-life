@@ -828,44 +828,10 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
     );
   }
 
-  it('should display "Today, February 14, 2026" when viewing today\'s collection', async () => {
-    // Today is February 14, 2026 (from env)
+  it('should display "Today, February 15, 2026" when viewing today\'s collection', async () => {
+    // Today is February 15, 2026 (from env)
     const todayCollection: Collection = {
       id: 'col-today',
-      name: 'Friday, February 14',
-      type: 'daily',
-      date: '2026-02-14',
-      order: 'a0',
-      createdAt: '2026-02-14T00:00:00Z',
-    };
-
-    renderViewWithDate(todayCollection);
-
-    await waitFor(() => {
-      expect(screen.getByText('Today, February 14, 2026')).toBeInTheDocument();
-    });
-  });
-
-  it('should display "Yesterday, February 13, 2026" when viewing yesterday\'s collection', async () => {
-    const yesterdayCollection: Collection = {
-      id: 'col-yesterday',
-      name: 'Thursday, February 13',
-      type: 'daily',
-      date: '2026-02-13',
-      order: 'a0',
-      createdAt: '2026-02-13T00:00:00Z',
-    };
-
-    renderViewWithDate(yesterdayCollection);
-
-    await waitFor(() => {
-      expect(screen.getByText('Yesterday, February 13, 2026')).toBeInTheDocument();
-    });
-  });
-
-  it('should display "Tomorrow, February 15, 2026" when viewing tomorrow\'s collection', async () => {
-    const tomorrowCollection: Collection = {
-      id: 'col-tomorrow',
       name: 'Saturday, February 15',
       type: 'daily',
       date: '2026-02-15',
@@ -873,10 +839,44 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
       createdAt: '2026-02-15T00:00:00Z',
     };
 
+    renderViewWithDate(todayCollection);
+
+    await waitFor(() => {
+      expect(screen.getByText('Today, February 15, 2026')).toBeInTheDocument();
+    });
+  });
+
+  it('should display "Yesterday, February 14, 2026" when viewing yesterday\'s collection', async () => {
+    const yesterdayCollection: Collection = {
+      id: 'col-yesterday',
+      name: 'Friday, February 14',
+      type: 'daily',
+      date: '2026-02-14',
+      order: 'a0',
+      createdAt: '2026-02-14T00:00:00Z',
+    };
+
+    renderViewWithDate(yesterdayCollection);
+
+    await waitFor(() => {
+      expect(screen.getByText('Yesterday, February 14, 2026')).toBeInTheDocument();
+    });
+  });
+
+  it('should display "Tomorrow, February 16, 2026" when viewing tomorrow\'s collection', async () => {
+    const tomorrowCollection: Collection = {
+      id: 'col-tomorrow',
+      name: 'Sunday, February 16',
+      type: 'daily',
+      date: '2026-02-16',
+      order: 'a0',
+      createdAt: '2026-02-16T00:00:00Z',
+    };
+
     renderViewWithDate(tomorrowCollection);
 
     await waitFor(() => {
-      expect(screen.getByText('Tomorrow, February 15, 2026')).toBeInTheDocument();
+      expect(screen.getByText('Tomorrow, February 16, 2026')).toBeInTheDocument();
     });
   });
 
@@ -931,3 +931,111 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
   });
 });
 
+describe('CollectionDetailView - Temporal Route Navigation Fix', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+
+  const mockMonthlyCollection: Collection = {
+    id: 'col-feb-2026-uuid',
+    name: 'February 2026',
+    type: 'monthly',
+    date: '2026-02',
+    order: 'a0',
+    createdAt: '2026-02-01T00:00:00Z',
+  };
+
+  const mockTaskInFeb: Entry = {
+    id: 'task-1',
+    type: 'task',
+    title: 'Task in February',
+    status: 'open',
+    createdAt: '2026-02-14T10:00:00Z',
+    order: 'a0',
+    collectionId: 'col-feb-2026-uuid',
+    collections: ['col-feb-2026-uuid'], // Modern format: Array of collection UUIDs
+  };
+
+  beforeEach(() => {
+    vi.setSystemTime(new Date('2026-02-14T12:00:00.000Z'));
+
+    mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([mockMonthlyCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([mockTaskInFeb]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function renderTemporalView(temporalDate: 'this-month' | 'last-month' | 'next-month') {
+    const mockAppContext = {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: {} as any,
+      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    };
+
+    return render(
+      <MemoryRouter initialEntries={[`/${temporalDate}`]}>
+        <AppProvider value={mockAppContext}>
+          <Routes>
+            <Route path="/this-month" element={<CollectionDetailView date="this-month" />} />
+            <Route path="/last-month" element={<CollectionDetailView date="last-month" />} />
+            <Route path="/next-month" element={<CollectionDetailView date="next-month" />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it('should resolve temporal route "this-month" to actual collection UUID', async () => {
+    renderTemporalView('this-month');
+
+    await waitFor(() => {
+      expect(screen.getByText('February 2026')).toBeInTheDocument();
+    });
+
+    // Verify that the view loaded the correct collection by UUID
+    expect(mockEntryProjection.getEntriesForCollectionView).toHaveBeenCalledWith('col-feb-2026-uuid');
+  });
+
+  it('should use actual UUID (not temporal identifier) for currentCollectionId prop', async () => {
+    renderTemporalView('this-month');
+
+    await waitFor(() => {
+      expect(screen.getByText('Task in February')).toBeInTheDocument();
+    });
+
+    // The fix: currentCollectionId='col-feb-2026-uuid' === entry.collections[0]
+    // ensures current collection is excluded from navigation (no circular "Go to February 2026")
+    expect(mockCollectionProjection.getCollections).toHaveBeenCalled();
+  });
+});

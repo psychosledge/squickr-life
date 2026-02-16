@@ -2,12 +2,12 @@ import type { IEventStore } from './event-store';
 import type { EntryListProjection } from './entry.projections';
 import type { DomainEvent } from './domain-event';
 import type { 
-  TaskMigrated, 
   NoteMigrated, 
   EventMigrated,
   TaskAddedToCollection,
   TaskRemovedFromCollection
 } from './task.types';
+import { generateEventMetadata } from './event-helpers';
 
 /**
  * BulkMigrateEntries Command
@@ -16,9 +16,12 @@ import type {
  * This is a generic handler that works for all entry types (tasks, notes, events)
  * and uses appendBatch() to prevent UI flashing during bulk operations.
  * 
- * Supports two modes:
- * - 'move': Remove from old collection + add to new collection (tasks only)
- * - 'add': Add to new collection without removing from old (multi-collection)
+ * Tasks: Use multi-collection pattern (preserves task ID, full collection history)
+ * Notes/Events: Use legacy migration pattern (creates new ID with migratedTo pointer)
+ * 
+ * Supports two modes (tasks only):
+ * - 'move': Remove from current collection + add to new collection
+ * - 'add': Add to new collection without removing from current (multi-collection)
  */
 export interface BulkMigrateEntriesCommand {
   /** Array of entry IDs to migrate (can be tasks, notes, or events) */
@@ -37,11 +40,14 @@ export interface BulkMigrateEntriesCommand {
  * Responsibilities:
  * - Validate entries exist
  * - Skip ghost entries (already migrated)
- * - Create type-specific migration events (TaskMigrated, NoteMigrated, EventMigrated)
+ * - For tasks: Use multi-collection events (TaskAddedToCollection + TaskRemovedFromCollection)
+ * - For notes/events: Use legacy migration events (NoteMigrated, EventMigrated)
  * - Support 'move' and 'add' modes for multi-collection
  * - Use appendBatch() for atomic writes and single UI update
  * 
  * This implements ADR-013 Phase 3: Bulk migration UX improvements
+ * Tasks use the new multi-collection pattern (preserves task ID and full history)
+ * Notes/Events still use legacy migration pattern (creates new IDs)
  */
 export class BulkMigrateEntriesHandler {
   constructor(
@@ -57,9 +63,13 @@ export class BulkMigrateEntriesHandler {
    * - Skip ghost entries (entries with migratedTo pointer)
    * 
    * Mode behavior:
-   * - 'move': Remove from old collection + add to new (tasks only)
-   * - 'add': Add to new collection, preserve in old (tasks only)
-   * - Notes/events: Always 'move' (no multi-collection support yet)
+   * - Tasks:
+   *   - 'move': Remove from current collection + add to new collection
+   *   - 'add': Add to new collection, preserve in current collection
+   *   - Uses TaskAddedToCollection + TaskRemovedFromCollection (preserves task ID)
+   * - Notes/Events:
+   *   - Always 'move' (no multi-collection support yet)
+   *   - Uses NoteMigrated/EventMigrated (creates new ID with migratedTo pointer)
    * 
    * @param command - The BulkMigrateEntries command
    * @throws Error if validation fails
@@ -76,66 +86,60 @@ export class BulkMigrateEntriesHandler {
         continue;
       }
       
-      // Generate new ID for migrated version
-      const migratedToId = crypto.randomUUID();
+      // Generate timestamp once for all events in this iteration (for notes/events)
       const migratedAt = new Date().toISOString();
       
       // Create type-specific migration event
       switch (entry.type) {
         case 'task': {
-          // TaskMigrated event
-          const taskMigratedEvent: TaskMigrated = {
-            id: crypto.randomUUID(),
-            type: 'TaskMigrated',
-            timestamp: migratedAt,
-            version: 1,
-            aggregateId: entryId,
-            payload: {
-              originalTaskId: entryId,
-              migratedToId,
-              targetCollectionId: command.targetCollectionId, // Keep null as-is
-              migratedAt,
-            },
-          };
-          events.push(taskMigratedEvent);
+          // Phase 3: Multi-collection support - use TaskAddedToCollection + TaskRemovedFromCollection
+          // This preserves the task ID and collection history (no new task created)
           
-          // Phase 3: If mode is 'move' and task has a collection, remove from old collection
+          // Remove from current collection (if mode='move' and task has a collection)
           if (command.mode === 'move' && entry.collectionId) {
-            const taskRemovedEvent: TaskRemovedFromCollection = {
-              id: crypto.randomUUID(),
-              type: 'TaskRemovedFromCollection',
-              timestamp: migratedAt,
-              version: 1,
-              aggregateId: entryId,
-              payload: {
-                taskId: entryId,
-                collectionId: entry.collectionId,
-                removedAt: migratedAt,
-              },
-            };
-            events.push(taskRemovedEvent);
+            // Idempotency: Only remove if task is actually in this collection
+            if (entry.collections?.includes(entry.collectionId)) {
+              const removeMetadata = generateEventMetadata();
+              const taskRemovedEvent: TaskRemovedFromCollection = {
+                ...removeMetadata,
+                type: 'TaskRemovedFromCollection',
+                aggregateId: entryId, // Use ORIGINAL task ID
+                payload: {
+                  taskId: entryId,
+                  collectionId: entry.collectionId,
+                  removedAt: removeMetadata.timestamp,
+                },
+              };
+              events.push(taskRemovedEvent);
+            }
           }
           
-          // Add to new collection (both 'move' and 'add' modes)
+          // Add to target collection (both 'move' and 'add' modes)
           if (command.targetCollectionId) {
-            const taskAddedEvent: TaskAddedToCollection = {
-              id: crypto.randomUUID(),
-              type: 'TaskAddedToCollection',
-              timestamp: migratedAt,
-              version: 1,
-              aggregateId: migratedToId, // New task ID
-              payload: {
-                taskId: migratedToId,
-                collectionId: command.targetCollectionId,
-                addedAt: migratedAt,
-              },
-            };
-            events.push(taskAddedEvent);
+            // Idempotency: Only add if task is NOT already in target collection
+            if (!entry.collections?.includes(command.targetCollectionId)) {
+              const addMetadata = generateEventMetadata();
+              const taskAddedEvent: TaskAddedToCollection = {
+                ...addMetadata,
+                type: 'TaskAddedToCollection',
+                aggregateId: entryId, // Use ORIGINAL task ID (not a new ID)
+                payload: {
+                  taskId: entryId,
+                  collectionId: command.targetCollectionId,
+                  addedAt: addMetadata.timestamp,
+                },
+              };
+              events.push(taskAddedEvent);
+            }
           }
           break;
         }
           
         case 'note': {
+          // Notes still use legacy migration pattern (creates new ID)
+          // TODO: Update to multi-collection pattern in future
+          const migratedToId = crypto.randomUUID();
+          
           const noteMigratedEvent: NoteMigrated = {
             id: crypto.randomUUID(),
             type: 'NoteMigrated',
@@ -155,6 +159,10 @@ export class BulkMigrateEntriesHandler {
         }
           
         case 'event': {
+          // Events still use legacy migration pattern (creates new ID)
+          // TODO: Update to multi-collection pattern in future
+          const migratedToId = crypto.randomUUID();
+          
           const eventMigratedEvent: EventMigrated = {
             id: crypto.randomUUID(),
             type: 'EventMigrated',

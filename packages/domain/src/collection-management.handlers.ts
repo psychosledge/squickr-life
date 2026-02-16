@@ -97,7 +97,17 @@ export class RemoveTaskFromCollectionHandler {
 
 /**
  * MoveTaskToCollectionHandler
- * Moves a task to a different collection (removes from all current, adds to target)
+ * Moves a task from current collection to target collection
+ * 
+ * Multi-collection behavior:
+ * - Removes task from CURRENT collection only (not all collections)
+ * - Preserves task in any other collections it belongs to
+ * - Example: Task in [A, B, C] moved from B → D results in [A, C, D]
+ * 
+ * Validation:
+ * - Task must exist
+ * - Task must be in currentCollectionId
+ * - currentCollectionId ≠ targetCollectionId (otherwise no-op)
  */
 export class MoveTaskToCollectionHandler {
   constructor(
@@ -107,18 +117,36 @@ export class MoveTaskToCollectionHandler {
   ) {}
   
   async handle(command: MoveTaskToCollectionCommand): Promise<void> {
+    // Validate command parameters
+    if (!command.currentCollectionId?.trim()) {
+      throw new Error('Current collection ID cannot be empty');
+    }
+    if (!command.targetCollectionId?.trim()) {
+      throw new Error('Target collection ID cannot be empty');
+    }
+    
+    // No-op if moving to same collection (idempotent)
+    if (command.currentCollectionId === command.targetCollectionId) {
+      return;
+    }
+    
     const task = await this.entryProjection.getTaskById(command.taskId);
     if (!task) {
       throw new Error(`Task ${command.taskId} not found`);
     }
     
-    // Remove from ALL current collections
-    for (const collectionId of task.collections || []) {
-      await this.removeHandler.handle({
-        taskId: command.taskId,
-        collectionId,
-      });
+    // Validate task is actually in current collection
+    if (!task.collections?.includes(command.currentCollectionId)) {
+      throw new Error(
+        `Task ${command.taskId} is not in collection ${command.currentCollectionId}`
+      );
     }
+    
+    // Remove from current collection only (not all collections)
+    await this.removeHandler.handle({
+      taskId: command.taskId,
+      collectionId: command.currentCollectionId,
+    });
     
     // Add to target collection
     await this.addHandler.handle({

@@ -1,6 +1,7 @@
 import type { Entry, Collection } from '@squickr/domain';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
+import { EventHistoryDebugTool } from './EventHistoryDebugTool';
 
 interface GhostEntryProps {
   entry: Entry & { 
@@ -118,6 +119,9 @@ export function GhostEntry({
           isGhost={true}
         />
       </div>
+      
+      {/* Debug tool (dev mode only) */}
+      <EventHistoryDebugTool entry={entry} />
     </div>
   );
 }

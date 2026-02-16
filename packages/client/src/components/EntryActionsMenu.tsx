@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { Entry, Collection } from '@squickr/domain';
+import { getNavigationCollections, getCollectionName } from '../utils/collectionNavigation';
 
 interface EntryActionsMenuProps {
   entry: Entry;
@@ -50,67 +51,14 @@ export function EntryActionsMenu({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
 
-  // Determine if entry is migrated and get target collection name
-  const isMigrated = !!entry.migratedTo;
-  const targetCollectionId = entry.migratedToCollectionId;
-  const targetCollection = collections?.find(c => c.id === targetCollectionId);
-  const targetCollectionName = targetCollection?.name || 'Unknown Collection';
-  const showGoTo = isMigrated && collections && onNavigateToMigrated;
-
-  // Phase 3: "Go back" option for migrated entries (showing where they came from)
-  // Support BOTH legacy migration (migratedFrom) AND multi-collection moves (collectionHistory)
-  let sourceCollectionId: string | undefined | null = undefined;
-  let showGoBack = false;
-  
-  if (entry.migratedFrom && entry.migratedFromCollectionId !== undefined) {
-    // Legacy migration: Use migratedFrom pointers
-    sourceCollectionId = entry.migratedFromCollectionId;
-    showGoBack = !!collections && !!onNavigateToMigrated;
-  } else if ('collectionHistory' in entry && entry.collectionHistory) {
-    // Multi-collection move: Find most recent "removedFrom" collection
-    // Look for collections that this entry was removed from (has removedAt timestamp)
-    const removedCollections = entry.collectionHistory
-      .filter(h => h.removedAt !== undefined)
-      .sort((a, b) => (b.removedAt || '').localeCompare(a.removedAt || '')); // Most recent first
-    
-    if (removedCollections.length > 0 && removedCollections[0]) {
-      sourceCollectionId = removedCollections[0].collectionId;
-      showGoBack = !!collections && !!onNavigateToMigrated;
-    }
-  }
-  
-  const sourceCollection = sourceCollectionId !== undefined 
-    ? collections?.find(c => c.id === sourceCollectionId) 
-    : undefined;
-  const sourceCollectionName = sourceCollection?.name || 'Uncategorized';
+  // Get ALL navigation collections (active + ghost) using utility function
+  const navigationCollections = getNavigationCollections(entry, currentCollectionId);
 
   // Phase 1: Sub-Tasks - Check if "Add Sub-Task" should be available
   // Only show for tasks that are NOT already sub-tasks (enforce 2-level limit)
   // Do NOT show for ghost entries
   const isTask = entry.type === 'task';
   const canAddSubTask = isTask && !isSubTask && !isGhost && onAddSubTask;
-
-  // Phase 2: Sub-Task navigation
-  // Show "Go to Sub-Task Collection" if the handler is provided (indicates migration)
-  const showGoToSubTaskCollection = onNavigateToSubTaskCollection && collections;
-  
-  // Get sub-task's collection name (for "Go to Collection" option)
-  const subTaskCollectionId = entry.collectionId;
-  const subTaskCollection = collections?.find(c => c.id === subTaskCollectionId);
-  const subTaskCollectionName = subTaskCollection?.name || 'Uncategorized';
-  
-  // Multi-collection support: Check if entry is in multiple collections
-  // If viewing from one collection and entry is in another, show "Go to [Other Collection]"
-  const entryCollections = entry.type === 'task' ? entry.collections || [] : [];
-  const isInMultipleCollections = entryCollections.length > 1;
-  const otherCollectionId = isInMultipleCollections 
-    ? entryCollections.find(id => id !== currentCollectionId) 
-    : undefined;
-  const otherCollection = otherCollectionId 
-    ? collections?.find(c => c.id === otherCollectionId) 
-    : undefined;
-  const otherCollectionName = otherCollection?.name || 'Uncategorized';
-  const showGoToOtherCollection = isInMultipleCollections && otherCollectionId && onNavigateToMigrated;
   
   // Phase 4: Ghost entries - Hide Edit/Migrate for ghost entries
   const showEdit = !isGhost;
@@ -222,37 +170,9 @@ export function EntryActionsMenu({
     setIsOpen(false);
   };
 
-  const handleGoTo = () => {
-    if (onNavigateToMigrated) {
-      onNavigateToMigrated(targetCollectionId || null);
-      setIsOpen(false);
-    }
-  };
-
   const handleAddSubTask = () => {
     if (onAddSubTask) {
       onAddSubTask();
-      setIsOpen(false);
-    }
-  };
-
-  const handleGoToSubTaskCollection = () => {
-    if (onNavigateToSubTaskCollection) {
-      onNavigateToSubTaskCollection();
-      setIsOpen(false);
-    }
-  };
-
-  const handleGoBack = () => {
-    if (onNavigateToMigrated) {
-      onNavigateToMigrated(sourceCollectionId || null);
-      setIsOpen(false);
-    }
-  };
-
-  const handleGoToOtherCollection = () => {
-    if (onNavigateToMigrated && otherCollectionId) {
-      onNavigateToMigrated(otherCollectionId);
       setIsOpen(false);
     }
   };
@@ -284,55 +204,26 @@ export function EntryActionsMenu({
             left: `${menuPosition.left}px`,
           }}
         >
-          {/* Go To option for migrated entries */}
-          {showGoTo && (
+          {/* Navigation: Show ALL collections where entry appears (active or ghost) */}
+          {onNavigateToMigrated && collections && navigationCollections.map(({ collectionId, isGhost }, index) => (
             <button
+              key={collectionId ?? 'uncategorized'}
               role="menuitem"
-              onClick={handleGoTo}
-              className="w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg transition-colors"
-            >
-              Go to {targetCollectionId ? targetCollectionName : 'Uncategorized'}
-            </button>
-          )}
-          
-          {/* Phase 3: "Go back" option for entries with migratedFrom */}
-          {showGoBack && (
-            <button
-              role="menuitem"
-              onClick={handleGoBack}
-              className={`w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                showGoTo ? '' : 'rounded-t-lg'
+              onClick={() => {
+                onNavigateToMigrated?.(collectionId);
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2 text-sm ${
+                isGhost
+                  ? 'text-gray-500 dark:text-gray-400'  // Ghost location (removed from)
+                  : 'text-blue-600 dark:text-blue-400'   // Active location (currently in)
+              } hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                index === 0 && !showEdit && !showMigrate && !canAddSubTask ? 'rounded-t-lg' : ''
               }`}
             >
-              Go back to {sourceCollectionId ? sourceCollectionName : 'Uncategorized'}
+              Go to {getCollectionName(collectionId, collections)}
             </button>
-          )}
-          
-          {/* Phase 2: "Go to [Collection]" for migrated sub-tasks when viewed in parent's collection */}
-          {showGoToSubTaskCollection && (
-            <button
-              role="menuitem"
-              onClick={handleGoToSubTaskCollection}
-              className={`w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                showGoTo || showGoBack ? '' : 'rounded-t-lg'
-              }`}
-            >
-              Go to {subTaskCollectionName}
-            </button>
-          )}
-          
-          {/* Multi-collection: "Go to [Other Collection]" for entries in multiple collections */}
-          {showGoToOtherCollection && (
-            <button
-              role="menuitem"
-              onClick={handleGoToOtherCollection}
-              className={`w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                showGoTo || showGoBack || showGoToSubTaskCollection ? '' : 'rounded-t-lg'
-              }`}
-            >
-              Go to {otherCollectionName}
-            </button>
-          )}
+          ))}
           
           {/* Edit - Hidden for ghost entries */}
           {showEdit && (
@@ -340,7 +231,7 @@ export function EntryActionsMenu({
               role="menuitem"
               onClick={handleEdit}
               className={`w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                showGoTo || showGoBack || showGoToSubTaskCollection || showGoToOtherCollection ? '' : 'rounded-t-lg'
+                navigationCollections.length === 0 ? 'rounded-t-lg' : ''
               }`}
             >
               Edit

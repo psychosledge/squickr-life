@@ -1,8 +1,24 @@
 # ADR-015 Implementation Plan: "Entries Appear on Collections" Model
 
 **Date**: 2026-02-14  
-**Status**: Planned  
-**Estimated Time**: 18-22 hours across 8 phases
+**Status**: ⚠️ **SUPERSEDED** - Replaced by actual implementation (see ADR-015 in architecture-decisions.md)  
+**Estimated Time**: 18-22 hours across 8 phases  
+**Actual Implementation**: 5 phases completed in ~12 hours (2026-02-15)
+
+---
+
+## ⚠️ Implementation Note
+
+This original implementation plan was superseded by the actual implementation completed on 2026-02-15. The team took a different approach that focused on:
+
+1. **Fixing critical Issue #7G first** (collection history preservation)
+2. **Deferring full terminology refactor** (Task→Entry) to future work
+3. **Incremental 5-phase approach** instead of the planned 8 phases
+
+For the actual implementation details, see:
+- **ADR-015** in `docs/architecture-decisions.md` (lines 1276-1700+)
+- **CHANGELOG v0.10.0** - Complete implementation summary
+- **Test files**: `multi-collection-integration.test.ts` (19 comprehensive tests)
 
 ---
 

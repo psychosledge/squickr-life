@@ -42,6 +42,7 @@ describe('Multi-Collection Migration - Bidirectional Navigation', () => {
     // Act: Move task from "work-projects" → "todays-log"
     await moveHandler.handle({
       taskId,
+      currentCollectionId: 'work-projects',
       targetCollectionId: 'todays-log',
     });
 
@@ -71,6 +72,7 @@ describe('Multi-Collection Migration - Bidirectional Navigation', () => {
     // Act: Move task to "monthly-log"
     await moveHandler.handle({
       taskId,
+      currentCollectionId: 'work-projects',
       targetCollectionId: 'monthly-log',
     });
 
@@ -108,6 +110,7 @@ describe('Multi-Collection Migration - Bidirectional Navigation', () => {
     // Act 1: Move A → B
     await moveHandler.handle({
       taskId,
+      currentCollectionId: 'collection-a',
       targetCollectionId: 'collection-b',
     });
 
@@ -119,6 +122,7 @@ describe('Multi-Collection Migration - Bidirectional Navigation', () => {
     // Act 2: Move B → C
     await moveHandler.handle({
       taskId,
+      currentCollectionId: 'collection-b',
       targetCollectionId: 'collection-c',
     });
 

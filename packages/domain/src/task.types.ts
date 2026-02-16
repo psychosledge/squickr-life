@@ -450,10 +450,26 @@ export interface RemoveTaskFromCollectionCommand {
 /**
  * MoveTaskToCollection Command
  * Represents the user's intent to move a task to a different collection
- * This removes the task from ALL current collections and adds it to the target
+ * This removes the task from the current collection only and adds it to the target
+ * 
+ * Multi-collection behavior:
+ * - If task is in [A, B, C] and you move from B → D
+ * - Result: Task is in [A, C, D]
+ * - Only the currentCollectionId is removed, other collections are preserved
+ * 
+ * Validation rules:
+ * - taskId: Must reference an existing task
+ * - currentCollectionId: Required, task must be in this collection
+ * - targetCollectionId: Required, must differ from currentCollectionId
+ * 
+ * Idempotent: Moving from A → A is a no-op (no events generated)
  */
 export interface MoveTaskToCollectionCommand {
+  /** ID of the task to move */
   readonly taskId: string;
+  /** Source collection to remove from (task must be in this collection) */
+  readonly currentCollectionId: string;
+  /** Target collection to add to (must differ from currentCollectionId) */
   readonly targetCollectionId: string;
 }
 
