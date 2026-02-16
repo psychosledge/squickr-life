@@ -799,6 +799,11 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
     };
   });
 
+  afterEach(() => {
+    // Clean up any system time mocking
+    vi.useRealTimers();
+  });
+
   function renderViewWithDate(collection: Collection) {
     mockCollectionProjection.getCollections.mockResolvedValue([collection]);
 
@@ -847,8 +852,6 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
     await waitFor(() => {
       expect(screen.getByText('Today, February 15, 2026')).toBeInTheDocument();
     });
-    
-    vi.useRealTimers();
   });
 
   it('should display "Yesterday, February 14, 2026" when viewing yesterday\'s collection', async () => {
@@ -870,8 +873,6 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
     await waitFor(() => {
       expect(screen.getByText('Yesterday, February 14, 2026')).toBeInTheDocument();
     });
-    
-    vi.useRealTimers();
   });
 
   it('should display "Tomorrow, February 16, 2026" when viewing tomorrow\'s collection', async () => {
@@ -893,8 +894,6 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
     await waitFor(() => {
       expect(screen.getByText('Tomorrow, February 16, 2026')).toBeInTheDocument();
     });
-    
-    vi.useRealTimers();
   });
 
   it('should display weekday and date for other dates without temporal prefix', async () => {
