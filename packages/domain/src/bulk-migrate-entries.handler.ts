@@ -27,6 +27,15 @@ export interface BulkMigrateEntriesCommand {
   /** Array of entry IDs to migrate (can be tasks, notes, or events) */
   readonly entryIds: string[];
   
+  /**
+   * Source collection ID - the collection to remove from (required for 'move' mode)
+   * 
+   * IMPORTANT: For tasks, this should be the ACTUAL collection the task is in
+   * (from task.collections array), NOT the display collection (task.collectionId).
+   * For migrated sub-tasks, these may differ.
+   */
+  readonly sourceCollectionId?: string | null;
+  
   /** Target collection ID (null = uncategorized) */
   readonly targetCollectionId: string | null;
   
@@ -75,6 +84,13 @@ export class BulkMigrateEntriesHandler {
    * @throws Error if validation fails
    */
   async handle(command: BulkMigrateEntriesCommand): Promise<void> {
+    // Validation: sourceCollectionId is required when using mode='move'
+    if (command.mode === 'move' && command.sourceCollectionId === undefined) {
+      throw new Error(
+        'sourceCollectionId is required when using mode="move". Pass the actual collection ID to remove tasks from.'
+      );
+    }
+    
     const events: DomainEvent[] = [];
     
     for (const entryId of command.entryIds) {
@@ -95,10 +111,16 @@ export class BulkMigrateEntriesHandler {
           // Phase 3: Multi-collection support - use TaskAddedToCollection + TaskRemovedFromCollection
           // This preserves the task ID and collection history (no new task created)
           
-          // Remove from current collection (if mode='move' and task has a collection)
-          if (command.mode === 'move' && entry.collectionId) {
-            // Idempotency: Only remove if task is actually in this collection
-            if (entry.collections?.includes(entry.collectionId)) {
+          // Idempotency: Skip if source and target are the same (no-op)
+          if (command.mode === 'move' && 
+              command.sourceCollectionId === command.targetCollectionId) {
+            continue;
+          }
+          
+          // Remove from source collection (if mode='move' and source collection provided)
+          if (command.mode === 'move' && command.sourceCollectionId) {
+            // Idempotency: Only remove if task is actually in the source collection
+            if (entry.collections?.includes(command.sourceCollectionId)) {
               const removeMetadata = generateEventMetadata();
               const taskRemovedEvent: TaskRemovedFromCollection = {
                 ...removeMetadata,
@@ -106,7 +128,7 @@ export class BulkMigrateEntriesHandler {
                 aggregateId: entryId, // Use ORIGINAL task ID
                 payload: {
                   taskId: entryId,
-                  collectionId: entry.collectionId,
+                  collectionId: command.sourceCollectionId, // Remove from SOURCE collection
                   removedAt: removeMetadata.timestamp,
                 },
               };

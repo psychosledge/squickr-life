@@ -191,7 +191,7 @@ export function CollectionHeader({
                   rounded-lg
                   shadow-lg
                   py-1
-                  z-50
+                  z-[200]
                 "
               >
                 {onEnterSelectionMode && (

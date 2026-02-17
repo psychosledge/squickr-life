@@ -364,12 +364,15 @@ export function useEntryOperations(
 
   const handleBulkMigrateWithMode = useCallback(async (entryIds: string[], targetCollectionId: string | null, mode: 'move' | 'add' = 'move') => {
     // Use bulk handler for atomic batch migration
+    // Pass sourceCollectionId so handler knows which collection to remove from
+    const sourceCollectionId = collectionId === UNCATEGORIZED_COLLECTION_ID ? null : collectionId;
     await bulkMigrateEntriesHandler.handle({
       entryIds,
+      sourceCollectionId, // NEW: Pass source collection for proper removal
       targetCollectionId,
       mode,
     });
-  }, [bulkMigrateEntriesHandler]);
+  }, [bulkMigrateEntriesHandler, collectionId]);
 
   const handleNavigateToMigrated = useCallback((targetCollectionId: string | null) => {
     if (targetCollectionId) {

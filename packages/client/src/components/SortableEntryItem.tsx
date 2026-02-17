@@ -42,6 +42,8 @@ interface SortableEntryItemProps {
   // Phase 4: Expand/collapse control for sub-tasks
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  // Phase 5: Parent collections for smart migration defaults (Issue #4)
+  parentCollections?: string[];
 }
 
 /**
@@ -72,6 +74,7 @@ export function SortableEntryItem({
   parentTitle,
   isCollapsed,
   onToggleCollapse,
+  parentCollections,
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -147,6 +150,7 @@ export function SortableEntryItem({
           parentTitle={parentTitle}
           isCollapsed={isCollapsed}
           onToggleCollapse={onToggleCollapse}
+          parentCollections={parentCollections}
         />
       </SelectableEntryItem>
     </div>

@@ -31,6 +31,7 @@ interface MigrateEntryDialogProps {
   onBulkMigrate?: (entryIds: string[], targetCollectionId: string, mode: 'move' | 'add') => Promise<void>;
   onCreateCollection?: (name: string, type?: CollectionType, date?: string) => Promise<string>;
   isBulkMigrating?: boolean; // Phase 4: Loading state
+  parentCollections?: string[]; // Phase 5: For smart migration defaults (Issue #4)
 }
 
 /**
@@ -42,13 +43,40 @@ function isSubTask(entry: Entry): boolean {
 }
 
 /**
- * Get smart default mode based on entry type
+ * Get smart default mode based on entry type and parent location
  * - Top-level tasks/notes/events: 'move' (default behavior)
- * - Sub-tasks: 'add' (stay with parent)
+ * - Sub-tasks when parent IS in current collection: 'add' (keep with parent)
+ * - Sub-tasks when parent NOT in current collection: 'move' (already separated)
+ * - Sub-tasks when parent not found (undefined): 'move' (orphaned)
  */
-function getDefaultMode(entry: Entry | undefined | null): 'move' | 'add' {
-  if (!entry) return 'move';
-  return isSubTask(entry) ? 'add' : 'move';
+function getDefaultMode(
+  entry: Entry | undefined | null, 
+  currentCollectionId: string | undefined,
+  parentCollections?: string[]
+): 'move' | 'add' {
+  if (!entry) {
+    return 'move';
+  }
+  
+  // For sub-tasks, check if parent is in the current collection
+  if (isSubTask(entry)) {
+    // If we don't have parent collection info or current collection ID,
+    // parent is not found in current collection = orphaned = default to 'move'
+    if (!parentCollections || !currentCollectionId) {
+      return 'move';
+    }
+    
+    // Parent found, check if it's in current collection
+    const isParentInCurrentCollection = parentCollections.includes(currentCollectionId);
+    
+    // If current collection contains the parent, default to 'add' (keep with parent)
+    // If current collection doesn't contain parent, default to 'move' (already separated)
+    const result = isParentInCurrentCollection ? 'add' : 'move';
+    return result;
+  }
+  
+  // Top-level entries default to 'move'
+  return 'move';
 }
 
 /**
@@ -84,6 +112,7 @@ export function MigrateEntryDialog({
   onBulkMigrate,
   onCreateCollection,
   isBulkMigrating = false, // Phase 4: Loading state with default
+  parentCollections,
 }: MigrateEntryDialogProps) {
   // Get userPreferences from context instead of props
   const { userPreferences } = useApp();
@@ -148,14 +177,14 @@ export function MigrateEntryDialog({
       return;
     }
 
-    // Set smart default for mode based on entry type
-    const defaultMode = getDefaultMode(singleEntry);
+    // Set smart default for mode based on entry type and parent location
+    const defaultMode = getDefaultMode(singleEntry, currentCollectionId, parentCollections);
     setMode(defaultMode);
 
     // DO NOT pre-select collection - user must choose explicitly
     // Note: We intentionally omit selectedCollectionId from deps to avoid infinite loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, singleEntry, availableCollections.length]);
+  }, [isOpen, singleEntry, currentCollectionId, parentCollections, availableCollections.length]);
 
   // Handle Escape key to close modal (only when no nested modal is open)
   useEffect(() => {

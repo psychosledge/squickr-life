@@ -3,12 +3,14 @@ import { BulkMigrateEntriesHandler } from './bulk-migrate-entries.handler';
 import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
+import { TaskListProjection } from './task.projections';
 import { CreateTaskHandler } from './task.handlers';
 import { CreateNoteHandler } from './note.handlers';
 import { CreateEventHandler } from './event.handlers';
 import { AddTaskToCollectionHandler } from './collection-management.handlers';
+import { CreateSubTaskHandler } from './sub-task.handlers';
 import type { BulkMigrateEntriesCommand } from './bulk-migrate-entries.handler';
-import type { TaskMigrated, NoteMigrated, EventMigrated, TaskAddedToCollection, TaskRemovedFromCollection } from './task.types';
+import type { TaskAddedToCollection, TaskRemovedFromCollection, Entry } from './task.types';
 
 describe('BulkMigrateEntriesHandler', () => {
   let eventStore: IEventStore;
@@ -41,6 +43,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [task1Id, task2Id, note1Id, note2Id, event1Id],
+        sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
         mode: 'move',
       };
@@ -110,6 +113,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [activeTask1Id, activeTask2Id, ghostTaskId],
+        sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
         mode: 'move',
       };
@@ -143,6 +147,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [task1Id, task2Id, task3Id],
+        sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
         mode: 'move',
       };
@@ -182,6 +187,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [task1Id, task2Id],
+        sourceCollectionId: null, // Tasks are in uncategorized (null source)
         targetCollectionId: 'col-b',
         mode: 'move',
       };
@@ -214,6 +220,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [task1Id, task2Id, task3Id],
+        sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
         mode: 'add',
       };
@@ -243,6 +250,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [noteId, eventId],
+        sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
         mode: 'add', // Mode doesn't affect notes/events (they don't support multi-collection)
       };
@@ -264,6 +272,23 @@ describe('BulkMigrateEntriesHandler', () => {
   });
 
   describe('Edge cases', () => {
+    it('should throw error when mode=move but sourceCollectionId is missing', async () => {
+      // Arrange: Create a task
+      const taskId = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
+
+      const command: BulkMigrateEntriesCommand = {
+        entryIds: [taskId],
+        sourceCollectionId: undefined, // Missing sourceCollectionId
+        targetCollectionId: 'col-b',
+        mode: 'move',
+      };
+
+      // Act & Assert: Should throw validation error
+      await expect(handler.handle(command)).rejects.toThrow(
+        'sourceCollectionId is required when using mode="move". Pass the actual collection ID to remove tasks from.'
+      );
+    });
+
     it('should call appendBatch once (not N times)', async () => {
       // Arrange: 3 entries
       const task1Id = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
@@ -273,7 +298,8 @@ describe('BulkMigrateEntriesHandler', () => {
       const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
 
       const command: BulkMigrateEntriesCommand = {
-        entryIds: [task1Id, task2Id, noteId],
+        entryIds: [task1Id, task2Id],
+        sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
         mode: 'move',
       };
@@ -290,7 +316,8 @@ describe('BulkMigrateEntriesHandler', () => {
       const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
 
       const command: BulkMigrateEntriesCommand = {
-        entryIds: [],
+        entryIds: [], // FIX: Empty array, not undefined variables
+        sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
         mode: 'move',
       };
@@ -310,6 +337,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [taskId],
+        sourceCollectionId: 'col-a',
         targetCollectionId: null,
         mode: 'move',
       };
@@ -336,6 +364,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [taskId, fakeId],
+        sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
         mode: 'move',
       };
@@ -358,6 +387,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [task1Id, task2Id],
+        sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
         mode: 'move',
       };
@@ -383,6 +413,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [taskId],
+        sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
         mode: 'move',
       };
@@ -425,6 +456,7 @@ describe('BulkMigrateEntriesHandler', () => {
       // Migrate from A to C (using bulk handler with mode='move')
       await handler.handle({
         entryIds: [taskId],
+        sourceCollectionId: 'collection-a', // FIX: Use actual collection ID
         targetCollectionId: 'collection-c',
         mode: 'move',
       });
@@ -451,4 +483,185 @@ describe('BulkMigrateEntriesHandler', () => {
       );
     });
   });
+
+  describe('Migrated sub-task bulk migration', () => {
+    it('should remove migrated sub-task from actual collection, not parent collection', async () => {
+      // Setup: Need AddTaskToCollectionHandler, TaskListProjection, and CreateSubTaskHandler
+      const taskProjection = new TaskListProjection(eventStore);
+      const addTaskHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
+      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+      
+      // Scenario: Parent in monthly log, sub-task migrated to 2/15, then bulk migrate to 2/16
+      // 1. Create parent task in monthly log
+      const parentId = await createTaskHandler.handle({
+        title: 'Parent Task',
+        collectionId: 'monthly-log',
+      });
+      
+      // 2. Create sub-task under parent
+      const subTaskId = await createSubTaskHandler.handle({
+        parentTaskId: parentId,
+        title: 'Sub-task',
+      });
+      
+      // 3. Migrate sub-task to 2/15 (using AddTaskToCollection)
+      await addTaskHandler.handle({
+        taskId: subTaskId,
+        collectionId: 'daily-log-2024-02-15',
+      });
+      
+      // Verify sub-task is in 2/15 now
+      let subTask = await entryProjection.getTaskById(subTaskId);
+      expect(subTask?.collections).toContain('daily-log-2024-02-15');
+      expect(subTask?.collectionId).toBe('monthly-log'); // Display collection (parent's)
+      
+      // 4. Bulk migrate from 2/15 to 2/16
+      const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
+      await handler.handle({
+        entryIds: [subTaskId],
+        sourceCollectionId: 'daily-log-2024-02-15', // IMPORTANT: Remove from 2/15, not monthly-log
+        targetCollectionId: 'daily-log-2024-02-16',
+        mode: 'move',
+      });
+      
+      // Assert: Should remove from 2/15 and add to 2/16
+      const batchedEvents = appendBatchSpy.mock.calls[0][0];
+      expect(batchedEvents).toHaveLength(2);
+      
+      const removedEvent = batchedEvents.find(e => e.type === 'TaskRemovedFromCollection') as TaskRemovedFromCollection;
+      const addedEvent = batchedEvents.find(e => e.type === 'TaskAddedToCollection') as TaskAddedToCollection;
+      
+      // CRITICAL: Should remove from 2/15 (source), NOT from monthly-log (parent's collection)
+      expect(removedEvent.payload.collectionId).toBe('daily-log-2024-02-15');
+      expect(removedEvent.payload.collectionId).not.toBe('monthly-log');
+      expect(addedEvent.payload.collectionId).toBe('daily-log-2024-02-16');
+      
+      // Verify sub-task is now in 2/16, not 2/15
+      subTask = await entryProjection.getTaskById(subTaskId);
+      expect(subTask?.collections).toContain('daily-log-2024-02-16');
+      expect(subTask?.collections).not.toContain('daily-log-2024-02-15');
+      expect(subTask?.collectionId).toBe('monthly-log'); // Display collection unchanged (still parent's)
+    });
+
+    it('INTEGRATION TEST: should handle exact user scenario - multi-step migration with bulk operation', async () => {
+      // This test reproduces the EXACT user scenario:
+      // 1. Parent task in monthly log
+      // 2. Sub-task created (inherits monthly log as collectionId)
+      // 3. Sub-task migrated to 2/14 daily log
+      // 4. Sub-task moved from 2/14 to 2/15
+      // 5. Additional tasks created in 2/15
+      // 6. Bulk migrate ALL tasks from 2/15 to 2/16
+      // Expected: Sub-task should be removed from 2/15, NOT from monthly-log
+
+      // Setup handlers
+      const taskProjection = new TaskListProjection(eventStore);
+      const addTaskHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
+      const removeTaskHandler = new (await import('./collection-management.handlers')).RemoveTaskFromCollectionHandler(eventStore, entryProjection);
+      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+      
+      // Step 1: Create parent task in monthly log
+      const parentId = await createTaskHandler.handle({
+        title: 'Monthly Parent Task',
+        collectionId: 'monthly-log',
+      });
+      
+      // Step 2: Create sub-task under parent (inherits monthly-log as display collection)
+      const subTaskId = await createSubTaskHandler.handle({
+        parentTaskId: parentId,
+        title: 'Migrated Sub-task',
+      });
+      
+      // Verify initial state: sub-task has monthly-log as collectionId
+      let subTask = await entryProjection.getTaskById(subTaskId);
+      expect(subTask?.collectionId).toBe('monthly-log');
+      expect(subTask?.collections).toEqual(['monthly-log']);
+      
+      // Step 3: Single-migrate sub-task to 2/14 daily log (UI defaults to 'add' mode for sub-tasks)
+      // This simulates user clicking "Migrate" on sub-task → defaults to "Also show in" (add mode)
+      await addTaskHandler.handle({
+        taskId: subTaskId,
+        collectionId: 'daily-2024-02-14',
+      });
+      
+      // Verify: sub-task is now in both monthly-log and 2/14
+      subTask = await entryProjection.getTaskById(subTaskId);
+      expect(subTask?.collections).toEqual(expect.arrayContaining(['monthly-log', 'daily-2024-02-14']));
+      expect(subTask?.collectionId).toBe('monthly-log'); // Display collection unchanged
+      
+      // Step 4: Single-migrate sub-task from 2/14 view to 2/15 (still using 'add' mode - UI default for sub-tasks)
+      // User is in 2/14 daily log, migrates sub-task to 2/15 → UI defaults to "Also show in"
+      await addTaskHandler.handle({
+        taskId: subTaskId,
+        collectionId: 'daily-2024-02-15',
+      });
+      
+      // Verify: sub-task is now in monthly-log, 2/14, AND 2/15 (all 3 collections!)
+      subTask = await entryProjection.getTaskById(subTaskId);
+      expect(subTask?.collections).toEqual(expect.arrayContaining(['monthly-log', 'daily-2024-02-14', 'daily-2024-02-15']));
+      expect(subTask?.collectionId).toBe('monthly-log'); // Display collection STILL unchanged
+      
+      // Step 5: Create additional tasks directly in 2/15 daily log
+      const normalTask1Id = await createTaskHandler.handle({
+        title: 'Normal Task 1 in 2/15',
+        collectionId: 'daily-2024-02-15',
+      });
+      const normalTask2Id = await createTaskHandler.handle({
+        title: 'Normal Task 2 in 2/15',
+        collectionId: 'daily-2024-02-15',
+      });
+      
+      // Verify all 3 tasks are in 2/15 daily log
+      const entriesIn215 = await entryProjection.getEntriesForCollectionView('daily-2024-02-15');
+      expect(entriesIn215.map((e: Entry) => e.id)).toEqual(expect.arrayContaining([subTaskId, normalTask1Id, normalTask2Id]));
+      
+      // Step 6: Bulk migrate ALL tasks from 2/15 to 2/16
+      const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
+      await handler.handle({
+        entryIds: [subTaskId, normalTask1Id, normalTask2Id],
+        sourceCollectionId: 'daily-2024-02-15', // CRITICAL: Remove from 2/15 (actual collection)
+        targetCollectionId: 'daily-2024-02-16',
+        mode: 'move',
+      });
+      
+      // Assert: Should have 6 events total (3 remove + 3 add)
+      const batchedEvents = appendBatchSpy.mock.calls[0][0];
+      expect(batchedEvents).toHaveLength(6);
+      
+      const removedEvents = batchedEvents.filter(e => e.type === 'TaskRemovedFromCollection') as TaskRemovedFromCollection[];
+      const addedEvents = batchedEvents.filter(e => e.type === 'TaskAddedToCollection') as TaskAddedToCollection[];
+      
+      expect(removedEvents).toHaveLength(3);
+      expect(addedEvents).toHaveLength(3);
+      
+      // CRITICAL BUG CHECK: All removal events should reference 2/15, NOT monthly-log
+      const subTaskRemovedEvent = removedEvents.find(e => e.payload.taskId === subTaskId);
+      expect(subTaskRemovedEvent).toBeDefined();
+      expect(subTaskRemovedEvent!.payload.collectionId).toBe('daily-2024-02-15'); // ✅ Should remove from 2/15
+      expect(subTaskRemovedEvent!.payload.collectionId).not.toBe('monthly-log'); // ❌ BUG: Would incorrectly remove from monthly-log
+      
+      // Verify normal tasks also removed from 2/15
+      removedEvents.forEach(event => {
+        expect(event.payload.collectionId).toBe('daily-2024-02-15');
+      });
+      
+      // Verify all tasks added to 2/16
+      addedEvents.forEach(event => {
+        expect(event.payload.collectionId).toBe('daily-2024-02-16');
+      });
+      
+      // Final state verification: Sub-task should be in monthly-log, 2/14, AND 2/16 (removed from 2/15 only)
+      // This is the KEY test: bulk migrate with mode='move' from 2/15 should ONLY remove from 2/15
+      subTask = await entryProjection.getTaskById(subTaskId);
+      expect(subTask?.collections).toEqual(expect.arrayContaining(['monthly-log', 'daily-2024-02-14', 'daily-2024-02-16']));
+      expect(subTask?.collections).not.toContain('daily-2024-02-15'); // Removed from 2/15 only
+      expect(subTask?.collectionId).toBe('monthly-log'); // Display collection STILL unchanged
+      
+      // Verify normal tasks are ONLY in 2/16 (not in monthly-log)
+      const normalTask1 = await entryProjection.getTaskById(normalTask1Id);
+      const normalTask2 = await entryProjection.getTaskById(normalTask2Id);
+      expect(normalTask1?.collections).toEqual(['daily-2024-02-16']);
+      expect(normalTask2?.collections).toEqual(['daily-2024-02-16']);
+    });
+  });
 });
+

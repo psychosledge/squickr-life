@@ -54,7 +54,8 @@ describe('MigrateEntryDialog - Smart Defaults', () => {
       expect(addRadio).not.toBeChecked();
     });
 
-    it('should default to "add" mode for sub-tasks with parentTaskId', () => {
+    it('should default to "move" mode for sub-tasks when parentCollections not provided', () => {
+      // When parentCollections is not provided (undefined), parent not found = orphaned = move
       renderWithAppProvider(
         <MigrateEntryDialog
           isOpen={true}
@@ -69,11 +70,12 @@ describe('MigrateEntryDialog - Smart Defaults', () => {
       const moveRadio = screen.getByRole('radio', { name: /Move to/i });
       const addRadio = screen.getByRole('radio', { name: /Also show in/i });
 
-      expect(moveRadio).not.toBeChecked();
-      expect(addRadio).toBeChecked();
+      expect(moveRadio).toBeChecked();
+      expect(addRadio).not.toBeChecked();
     });
 
-    it('should default to "add" mode for sub-tasks with parentEntryId', () => {
+    it('should default to "move" mode for sub-tasks with parentEntryId when parentCollections not provided', () => {
+      // When parentCollections is not provided (undefined), parent not found = orphaned = move
       const mockSubTaskWithParentEntry: Entry = {
         type: 'task',
         id: 'task-2',
@@ -95,8 +97,11 @@ describe('MigrateEntryDialog - Smart Defaults', () => {
         />
       );
 
+      const moveRadio = screen.getByRole('radio', { name: /Move to/i });
       const addRadio = screen.getByRole('radio', { name: /Also show in/i });
-      expect(addRadio).toBeChecked();
+
+      expect(moveRadio).toBeChecked();
+      expect(addRadio).not.toBeChecked();
     });
 
     it('should default to "move" mode for top-level notes', () => {
@@ -129,6 +134,147 @@ describe('MigrateEntryDialog - Smart Defaults', () => {
 
       const moveRadio = screen.getByRole('radio', { name: /Move to/i });
       expect(moveRadio).toBeChecked();
+    });
+  });
+
+  // ============================================================================
+  // Issue #4: Smart Default Migration Mode for Sub-Tasks (Context-Aware)
+  // ============================================================================
+
+  describe('Smart Default Mode Based on Parent Location (Issue #4)', () => {
+    it('should default to "add" mode for sub-task when parent is in current collection', () => {
+      // Parent is in monthly-log, sub-task is also in monthly-log
+      // Expected: Default to 'add' (keep with parent)
+      renderWithAppProvider(
+        <MigrateEntryDialog
+          isOpen={true}
+          onClose={mockOnClose}
+          entry={mockSubTask}
+          currentCollectionId="monthly-log"
+          collections={mockCollections}
+          onMigrate={mockOnMigrate}
+          parentCollections={['monthly-log', 'work-projects']}
+        />
+      );
+
+      const moveRadio = screen.getByRole('radio', { name: /Move to/i });
+      const addRadio = screen.getByRole('radio', { name: /Also show in/i });
+
+      expect(addRadio).toBeChecked();
+      expect(moveRadio).not.toBeChecked();
+    });
+
+    it('should default to "move" mode for sub-task when parent is NOT in current collection', () => {
+      // Parent is in monthly-log and work-projects
+      // Current collection is daily-log (sub-task migrated away from parent)
+      // Expected: Default to 'move' (already separated from parent)
+      renderWithAppProvider(
+        <MigrateEntryDialog
+          isOpen={true}
+          onClose={mockOnClose}
+          entry={mockSubTask}
+          currentCollectionId="daily-log"
+          collections={mockCollections}
+          onMigrate={mockOnMigrate}
+          parentCollections={['monthly-log', 'work-projects']}
+        />
+      );
+
+      const moveRadio = screen.getByRole('radio', { name: /Move to/i });
+      const addRadio = screen.getByRole('radio', { name: /Also show in/i });
+
+      expect(moveRadio).toBeChecked();
+      expect(addRadio).not.toBeChecked();
+    });
+
+    it('should default to "move" mode for sub-task when parentCollections is undefined (parent not found)', () => {
+      // parentCollections === undefined means parent was NOT found in current collection
+      // = orphaned sub-task = default to 'move'
+      renderWithAppProvider(
+        <MigrateEntryDialog
+          isOpen={true}
+          onClose={mockOnClose}
+          entry={mockSubTask}
+          currentCollectionId="daily-log"
+          collections={mockCollections}
+          onMigrate={mockOnMigrate}
+          parentCollections={undefined}
+        />
+      );
+
+      const moveRadio = screen.getByRole('radio', { name: /Move to/i });
+      const addRadio = screen.getByRole('radio', { name: /Also show in/i });
+
+      expect(moveRadio).toBeChecked();
+      expect(addRadio).not.toBeChecked();
+    });
+
+    it('should default to "move" mode for sub-task when currentCollectionId is undefined', () => {
+      // Edge case: global view or missing collection context = parent not in current view
+      renderWithAppProvider(
+        <MigrateEntryDialog
+          isOpen={true}
+          onClose={mockOnClose}
+          entry={mockSubTask}
+          currentCollectionId={undefined}
+          collections={mockCollections}
+          onMigrate={mockOnMigrate}
+          parentCollections={['monthly-log']}
+        />
+      );
+
+      const moveRadio = screen.getByRole('radio', { name: /Move to/i });
+      expect(moveRadio).toBeChecked();
+    });
+
+    it('should default to "move" mode for sub-task when parent collections is empty array', () => {
+      // Parent exists but has no collections (orphaned/uncategorized parent)
+      // Expected: Default to 'move' (parent not in current collection)
+      renderWithAppProvider(
+        <MigrateEntryDialog
+          isOpen={true}
+          onClose={mockOnClose}
+          entry={mockSubTask}
+          currentCollectionId="daily-log"
+          collections={mockCollections}
+          onMigrate={mockOnMigrate}
+          parentCollections={[]}
+        />
+      );
+
+      const moveRadio = screen.getByRole('radio', { name: /Move to/i });
+      expect(moveRadio).toBeChecked();
+    });
+
+    it('should default to "move" mode for sub-task in multiple collections when parent NOT visible in current view (Case C)', () => {
+      // Case C: Sub-task created in "Monthly Log" with parent, then added to "Today"
+      // - Sub-task is in: ['monthly-log', 'today']
+      // - Parent is only in: ['monthly-log']
+      // - Current view: 'today' (daily-log in fixtures)
+      // Expected: Default to 'move' (parent NOT visible in current view, sub-task is orphaned)
+      const subTaskInMultipleCollections: Entry = {
+        ...mockSubTask,
+        collections: ['monthly-log', 'daily-log'], // Sub-task in both collections
+      };
+
+      renderWithAppProvider(
+        <MigrateEntryDialog
+          isOpen={true}
+          onClose={mockOnClose}
+          entry={subTaskInMultipleCollections}
+          currentCollectionId="daily-log" // Viewing from "Today"
+          collections={mockCollections}
+          onMigrate={mockOnMigrate}
+          parentCollections={['monthly-log']} // Parent only in Monthly Log
+        />
+      );
+
+      const moveRadio = screen.getByRole('radio', { name: /Move to/i });
+      const addRadio = screen.getByRole('radio', { name: /Also show in/i });
+
+      // Should default to 'move' because parent is NOT in current view
+      expect(moveRadio).toBeChecked();
+      expect(addRadio).not.toBeChecked();
     });
   });
 

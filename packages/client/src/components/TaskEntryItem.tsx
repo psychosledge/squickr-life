@@ -30,6 +30,8 @@ interface TaskEntryItemProps {
   // Phase 4: Expand/collapse control for sub-tasks
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  // Phase 5: Parent collections for smart migration defaults (Issue #4)
+  parentCollections?: string[];
 }
 
 /**
@@ -57,6 +59,7 @@ export function TaskEntryItem({
   parentTitle,
   isCollapsed = false,
   onToggleCollapse,
+  parentCollections,
 }: TaskEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -150,9 +153,11 @@ export function TaskEntryItem({
   
   // Check if sub-task is in a different collection than the current view
   // (which would be the parent's collection)
-  const isSubTaskMigrated = isSubTask && currentCollectionId 
-    ? !(entry.collections || [entry.collectionId]).includes(currentCollectionId)
+  const isMultiCollection = (entry.collections || []).length > 1;
+  const isNotInCurrentCollection = isSubTask && currentCollectionId
+    ? !(entry.collections || []).includes(currentCollectionId)
     : false;
+  const isSubTaskMigrated = isMultiCollection || isNotInCurrentCollection;
 
   return (
     <div className="relative">
@@ -228,7 +233,9 @@ export function TaskEntryItem({
                   {isSubTaskMigrated && (
                     <span 
                       className="inline-block ml-1.5"
-                      title="This sub-task is in a different collection than its parent"
+                      title={isMultiCollection 
+                        ? "This task exists in multiple collections" 
+                        : "This sub-task is in a different collection than its parent"}
                     >
                       <Link2 
                         className="w-4 h-4 align-text-bottom text-blue-600 dark:text-blue-400"
@@ -300,6 +307,7 @@ export function TaskEntryItem({
           collections={collections}
           onMigrate={onMigrate}
           onCreateCollection={_onCreateCollection}
+          parentCollections={parentCollections}
         />
       )}
       

@@ -11,6 +11,7 @@ interface GhostEntryProps {
   onNavigateToCollection: (collectionId: string) => void;
   onDelete: () => void;
   collections: Collection[];
+  currentCollectionId?: string;
 }
 
 /**
@@ -33,6 +34,7 @@ export function GhostEntry({
   onNavigateToCollection,
   onDelete,
   collections,
+  currentCollectionId,
 }: GhostEntryProps) {
   // Find the target collection name
   const targetCollectionId = entry.ghostNewLocation;
@@ -115,6 +117,7 @@ export function GhostEntry({
           onMove={() => {}} // No-op for ghost entries
           onDelete={onDelete}
           collections={collections}
+          currentCollectionId={currentCollectionId}
           onNavigateToMigrated={handleNavigateToMigrated}
           isGhost={true}
         />

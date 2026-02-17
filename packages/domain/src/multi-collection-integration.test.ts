@@ -69,6 +69,7 @@ describe('Multi-Collection Integration Tests', () => {
       // Act: Migrate to Collection B using bulk migrate (mode='move')
       await bulkMigrateHandler.handle({
         entryIds: [taskId],
+        sourceCollectionId: 'monthly-2026-01',
         targetCollectionId: 'daily-2026-01-14',
         mode: 'move',
       });
@@ -116,6 +117,7 @@ describe('Multi-Collection Integration Tests', () => {
       // Act: Migrate to Collection B
       await bulkMigrateHandler.handle({
         entryIds: [taskId],
+        sourceCollectionId: 'collection-a',
         targetCollectionId: 'collection-b',
         mode: 'move',
       });
@@ -472,6 +474,7 @@ describe('Multi-Collection Integration Tests', () => {
       // Act 1: Bulk migrate to Collection B
       await bulkMigrateHandler.handle({
         entryIds: [taskId],
+        sourceCollectionId: 'collection-a',
         targetCollectionId: 'collection-b',
         mode: 'move',
       });
@@ -483,6 +486,7 @@ describe('Multi-Collection Integration Tests', () => {
       // Act 2: Bulk migrate to B again (should be no-op - already in B, not in A)
       await bulkMigrateHandler.handle({
         entryIds: [taskId],
+        sourceCollectionId: 'collection-b',
         targetCollectionId: 'collection-b',
         mode: 'move',
       });
@@ -517,6 +521,7 @@ describe('Multi-Collection Integration Tests', () => {
       // Act: Bulk migrate all 5 to Collection B (mode='move')
       await bulkMigrateHandler.handle({
         entryIds: taskIds,
+        sourceCollectionId: 'collection-a',
         targetCollectionId: 'collection-b',
         mode: 'move',
       });
@@ -543,6 +548,7 @@ describe('Multi-Collection Integration Tests', () => {
       // Act: Bulk migrate to Collection B
       await bulkMigrateHandler.handle({
         entryIds: taskIds,
+        sourceCollectionId: 'collection-a',
         targetCollectionId: 'collection-b',
         mode: 'move',
       });
@@ -571,6 +577,7 @@ describe('Multi-Collection Integration Tests', () => {
       // Act: Bulk migrate to Collection B
       await bulkMigrateHandler.handle({
         entryIds: taskIds,
+        sourceCollectionId: 'collection-a',
         targetCollectionId: 'collection-b',
         mode: 'move',
       });
@@ -607,6 +614,7 @@ describe('Multi-Collection Integration Tests', () => {
       // Act: Bulk migrate to Collection B
       await bulkMigrateHandler.handle({
         entryIds: taskIds,
+        sourceCollectionId: 'collection-a',
         targetCollectionId: 'collection-b',
         mode: 'move',
       });
@@ -643,6 +651,7 @@ describe('Multi-Collection Integration Tests', () => {
       // Act: Bulk migrate to Collection B
       await bulkMigrateHandler.handle({
         entryIds: taskIds,
+        sourceCollectionId: 'collection-a',
         targetCollectionId: 'collection-b',
         mode: 'move',
       });

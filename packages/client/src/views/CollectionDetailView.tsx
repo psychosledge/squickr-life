@@ -115,7 +115,7 @@ export function CollectionDetailView({
       bulkMigrateEntriesHandler, // Phase 4: Batch migration
     },
     {
-      collectionId,
+      collectionId: resolvedCollectionId,
       onOpenRenameModal: modals.openRenameModal,
       onCloseDeleteModal: modals.closeDeleteModal,
       onOpenDeleteModal: modals.openDeleteModal,

@@ -395,5 +395,28 @@ describe('TaskEntryItem', () => {
       expect(wrapper).toHaveClass('inline-block');
       expect(wrapper).toHaveClass('ml-1.5');
     });
+
+    it('should show Link2 icon for sub-task in multiple collections', () => {
+      const multiCollectionSubTask: Entry & { type: 'task' } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Find eye doctor',
+        status: 'open',
+        parentTaskId: 'parent-1',
+        createdAt: '2026-01-27T10:00:00.000Z',
+        collections: ['monthly-uuid', 'yesterday-uuid'], // Multiple collections
+      };
+
+      render(
+        <TaskEntryItem 
+          entry={multiCollectionSubTask}
+          onDelete={mockOnDelete}
+          currentCollectionId="yesterday-uuid" // Viewing one of the collections
+        />
+      );
+      
+      const linkIcon = screen.getByLabelText(/linked to different collection|exists in multiple collections/i);
+      expect(linkIcon).toBeInTheDocument();
+    });
   });
 });

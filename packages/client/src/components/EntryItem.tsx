@@ -37,6 +37,8 @@ interface EntryItemProps {
   // Phase 4: Expand/collapse control for sub-tasks
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  // Phase 5: Parent collections for smart migration defaults (Issue #4)
+  parentCollections?: string[];
 }
 
 /**
@@ -66,6 +68,7 @@ export function EntryItem({
   parentTitle,
   isCollapsed,
   onToggleCollapse,
+  parentCollections,
 }: EntryItemProps) {
   // Route to the appropriate type-specific component
   if (entry.type === 'task') {
@@ -86,6 +89,7 @@ export function EntryItem({
         parentTitle={parentTitle}
         isCollapsed={isCollapsed}
         onToggleCollapse={onToggleCollapse}
+        parentCollections={parentCollections}
       />
     );
   }

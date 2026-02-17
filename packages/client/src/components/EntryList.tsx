@@ -327,6 +327,7 @@ export function EntryList({
                     }}
                     onDelete={() => onDelete(entry.id)}
                     collections={collections || []}
+                    currentCollectionId={currentCollectionId}
                   />
                 );
               }
@@ -336,6 +337,17 @@ export function EntryList({
               
               // Phase 4: Check collapse state
               const collapsed = isCollapsed(entry.id);
+              
+              // Phase 5: Calculate parent collections for top-level sub-tasks
+              // If this entry is a sub-task showing at top-level (parent in different collection),
+              // look up the parent's collections for smart migration defaults
+              let parentCollections: string[] | undefined;
+              if (entry.type === 'task' && entry.parentTaskId) {
+                const parentTask = entries.find(e => e.id === entry.parentTaskId);
+                if (parentTask && 'collections' in parentTask) {
+                  parentCollections = parentTask.collections;
+                }
+              }
               
               return (
                 <div key={entry.id}>
@@ -364,6 +376,8 @@ export function EntryList({
                     // Phase 4: Pass collapse props
                     isCollapsed={collapsed}
                     onToggleCollapse={() => toggleCollapsed(entry.id)}
+                    // Phase 5: Pass parent collections for smart migration defaults
+                    parentCollections={parentCollections}
                   />
                   
                   {/* Render sub-tasks indented (non-draggable) - Phase 3 */}
@@ -374,6 +388,10 @@ export function EntryList({
                                     border-l-2 border-gray-200 dark:border-gray-700 
                                     rounded-br-lg pb-2">
                       {subTasks.map((subTask) => {
+                        // Phase 5: Pass parent collections for smart migration defaults
+                        const parentTask = entry.type === 'task' ? entry : undefined;
+                        const parentCollections = parentTask?.collections;
+                        
                         return (
                           <div key={subTask.id}>
                             <EntryItem
@@ -391,6 +409,7 @@ export function EntryList({
                               onNavigateToMigrated={onNavigateToMigrated}
                               onCreateCollection={onCreateCollection}
                               onAddSubTask={onAddSubTask}
+                              parentCollections={parentCollections}
                             />
                           </div>
                         );

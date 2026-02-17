@@ -466,6 +466,47 @@ describe('GhostEntry', () => {
 
       expect(mockOnDelete).toHaveBeenCalledTimes(1);
     });
+
+    it('should NOT show "Go to" for current collection in menu', () => {
+      const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
+        type: 'task',
+        id: 'task-1',
+        title: 'Buy milk',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        status: 'open',
+        collections: [],
+        collectionHistory: [
+          { 
+            collectionId: 'project-alpha', 
+            addedAt: '2026-01-20T10:00:00.000Z', 
+            removedAt: '2026-01-24T10:00:00.000Z' 
+          },
+        ],
+        migratedTo: 'migrated-task-id',
+        renderAsGhost: true,
+        ghostNewLocation: 'monthly-log',
+      };
+
+      render(
+        <GhostEntry
+          entry={mockGhostTask}
+          onNavigateToCollection={mockOnNavigateToCollection}
+          onDelete={vi.fn()}
+          collections={mockCollections}
+          currentCollectionId="project-alpha"  // Currently viewing Project Alpha
+        />
+      );
+
+      // Open menu
+      const menuButton = screen.getByRole('button', { name: 'Entry actions' });
+      fireEvent.click(menuButton);
+
+      // Should NOT show "Go to Project Alpha" (we're already there!)
+      expect(screen.queryByRole('menuitem', { name: 'Go to Project Alpha' })).not.toBeInTheDocument();
+      
+      // Should show "Go to Monthly Log" (where it migrated to)
+      expect(screen.getByRole('menuitem', { name: 'Go to Monthly Log' })).toBeInTheDocument();
+    });
   });
 
   // ============================================================================

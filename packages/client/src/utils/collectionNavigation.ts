@@ -50,8 +50,8 @@ export function getNavigationCollections(
   // 3. LEGACY: Add migratedTo (old format)
   if ('migratedTo' in entry && entry.migratedTo && 'migratedToCollectionId' in entry) {
     const targetCollId = entry.migratedToCollectionId ?? null;
-    // Show if different from current, OR if current is undefined (global view)
-    if (currentCollectionId === undefined || targetCollId !== currentCollectionId) {
+    // Only show if different from current collection
+    if (targetCollId !== currentCollectionId) {
       if (!result.has(targetCollId)) {
         result.set(targetCollId, false); // Active
       }
@@ -61,8 +61,8 @@ export function getNavigationCollections(
   // 4. LEGACY: Add migratedFrom (old format)
   if ('migratedFrom' in entry && entry.migratedFrom && 'migratedFromCollectionId' in entry) {
     const sourceCollId = entry.migratedFromCollectionId ?? null;
-    // Show if different from current, OR if current is undefined (global view)
-    if (currentCollectionId === undefined || sourceCollId !== currentCollectionId) {
+    // Only show if different from current collection
+    if (sourceCollId !== currentCollectionId) {
       if (!result.has(sourceCollId)) {
         result.set(sourceCollId, true); // Ghost
       }
