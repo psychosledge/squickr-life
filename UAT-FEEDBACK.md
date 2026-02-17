@@ -1,111 +1,119 @@
-# TODO
+# UAT Feedback Tracking - v0.10.1
 
-## UI Bugs
+## ✅ COMPLETED (Deployed in v0.10.1 - 2026-02-16)
 
-### Z-Index Issue: Collection Menu Behind Debug/Entry Icons
-**Priority**: Medium  
-**Reported**: 2026-02-16
+### Issue #1: Z-Index - Collection Menu Behind Debug/Entry Icons
+**Status**: ✅ FIXED  
+**Reported**: 2026-02-16  
+**Fixed**: 2026-02-16 (v0.10.1)  
+**UAT**: PASSED
 
-The collection menu (kebab menu in top-right) is rendering behind:
-- Debug button (purple badge icons showing "1", "2", "3")
-- Entry menu icons
+**Problem**: Collection menu rendering behind debug badges and entry menus (z-50 vs z-[99]/z-[150])
 
-This is a z-index layering issue where the dropdown menu needs a higher z-index than the debug/entry UI elements.
+**Solution**: Changed `CollectionHeader.tsx` z-index from `z-50` to `z-[200]`
 
-**Location**: Daily log view header (e.g., "Yesterday, February 15, 2026")
-
-**Expected**: Menu should overlay all other UI elements when open
-
-**Screenshot**: Available (shows menu items "Select Entries", "Add to Favorites", "Settings", "Rename", "Delete" partially obscured by purple debug badges)
-
-### Sub-Task Missing Multi-Collection Visual Indicators
-**Priority**: Medium  
-**Reported**: 2026-02-16
-
-When a sub-task exists in multiple collections (e.g., created in monthly log, then added to daily log), it's missing the visual indicators that show it's in multiple places.
-
-**Current behavior**: 
-- Sub-task appears as a regular task without any indication it's in multiple collections
-- No link icon shown
-- No parent task name displayed for context
-
-**Expected behavior**:
-- Show link icon to indicate the task exists in multiple collections
-- Display parent task name (e.g., "under [Parent Task Name]") for context
-- Make it visually clear this is a sub-task that's been added to another collection
-
-**Example scenario**:
-- Parent "Monthly Parent Task" in monthly log
-- Sub-task "Find eye doctor" created under parent
-- Sub-task added to yesterday's daily log
-- When viewing yesterday's log, sub-task shows NO indication it's also in monthly log or that it has a parent
-
-**Impact**: Users can't tell if a sub-task is in multiple collections, leading to confusion about whether bulk migration will affect other collections.
-
-**Location**: Collection detail view, task list items
-
-### Ghost Entry Context Menu Shows Current Collection as "Go to" Option
-**Priority**: Low  
-**Reported**: 2026-02-16
-
-When viewing a ghost entry (migrated task showing as crossed out), the context menu includes a "Go to [Current Collection]" option, which is a no-op since the user is already viewing that collection.
-
-**Current behavior**: 
-- Ghost entry shows multiple "Go to" options in its context menu
-- One of the options is for the current collection being viewed
-- Clicking it does nothing (already on that collection)
-
-**Example**:
-- Viewing "Yesterday, February 15, 2026" (Sunday)
-- Ghost entry "Find eye doctor" (migrated to Monday)
-- Context menu shows:
-  - "Go to February 2026" (month collection)
-  - "Go to Monday, February 16" (migrated target - correct)
-  - "Go to Sunday, February 15" (current collection - redundant)
-  - "Delete"
-
-**Expected behavior**:
-- Don't show "Go to" option for the current collection
-- Only show navigation to OTHER collections where the task exists
-
-**Impact**: Minor UX confusion - user might think clicking will do something when it won't.
-
-**Location**: Ghost entry context menu
+**Files Changed**:
+- `packages/client/src/components/CollectionHeader.tsx` (line 194)
 
 ---
 
-## UX Improvements
+### Issue #2: Sub-Task Missing Multi-Collection Visual Indicators
+**Status**: ✅ FIXED  
+**Reported**: 2026-02-16  
+**Fixed**: 2026-02-16 (v0.10.1)  
+**UAT**: PASSED
 
-### Smart Default Migration Mode for Sub-Tasks
-**Priority**: Medium  
-**Reported**: 2026-02-16
+**Problem**: Sub-tasks in multiple collections didn't show multi-collection indicator
 
-When migrating or bulk-migrating a sub-task, the default migration mode should be context-aware:
+**Solution**: Fixed detection logic to check `collections.length > 1 OR !collections.includes(currentCollectionId)`
 
-**Current behavior**: Default is always "add" for sub-tasks (keeps them in all collections)
-
-**Desired behavior**:
-- **Default to "move"** when migrating a sub-task that is on a different collection than its parent
-  - Example: Sub-task is in "Daily Log 2/15" but parent is in "Monthly Log" → default to "move" (remove from 2/15, add to target)
-- **Default to "add"** only when migrating a sub-task from the collection where it's shown with its parent
-  - Example: Sub-task is in "Monthly Log" with its parent → default to "add" (keep in Monthly Log, also add to target)
-
-**Rationale**: When a sub-task has already been migrated away from its parent, the user typically wants to move it (not duplicate it across collections). Only when migrating from the parent's collection does it make sense to default to "add" (so it stays with the parent).
-
-**Implementation**: Update migration dialog logic to check if `task.collectionId !== currentCollectionId` to determine default mode.
+**Files Changed**:
+- `packages/client/src/components/TaskEntryItem.tsx` (lines 156-160, 231)
+- `packages/client/src/components/TaskEntryItem.test.tsx` (added test coverage)
 
 ---
 
-## In Progress
+### Issue #3: Ghost Entry Context Menu Shows Current Collection
+**Status**: ✅ FIXED  
+**Reported**: 2026-02-16  
+**Fixed**: 2026-02-16 (v0.10.1)  
+**UAT**: PASSED
 
-### Bulk Migration Fix - v0.10.0
-**Status**: Ready for manual UI testing, then commit
+**Problem**: Ghost entries showed redundant "Go to current collection" option
 
-- ✅ Core fix implemented (sourceCollectionId parameter)
-- ✅ Validation added (mode='move' requires sourceCollectionId)
-- ✅ Tests passing (1,556 tests across all packages)
-- ✅ Casey approved (9/10 - production ready)
-- ⏳ Manual UI testing needed
-- ⏳ Commit and deploy
+**Solution**: 
+- Fixed `collectionNavigation.ts` exclusion logic
+- Propagated `currentCollectionId` through component chain: `EntryList` → `GhostEntry` → `EntryActionsMenu`
+- Added test coverage
 
-**Next**: Manual test migrated sub-task bulk migration scenario
+**Files Changed**:
+- `packages/client/src/utils/collectionNavigation.ts` (lines 51-69)
+- `packages/client/src/components/EntryList.tsx` (line 330)
+- `packages/client/src/components/GhostEntry.tsx` (lines 14, 37, 120)
+- `packages/client/src/components/GhostEntry.test.tsx` (lines 470-509)
+
+---
+
+### Issue #4: Smart Default Migration Mode for Sub-Tasks
+**Status**: ✅ FIXED  
+**Reported**: 2026-02-16  
+**Fixed**: 2026-02-16 (v0.10.1)  
+**UAT**: PASSED
+
+**Problem**: Sub-tasks always defaulted to 'add' mode, even when orphaned from parent
+
+**Solution**: 
+- Calculate `parentCollections` in `EntryList.tsx` for top-level sub-tasks
+- Propagate through component chain: `EntryList` → `SortableEntryItem` → `EntryItem` → `TaskEntryItem` → `MigrateEntryDialog`
+- Fixed `getDefaultMode()` logic: `undefined` parentCollections → default to 'move'
+- Added comprehensive test coverage
+
+**Files Changed**:
+- `packages/client/src/components/MigrateEntryDialog.tsx` (getDefaultMode function)
+- `packages/client/src/components/EntryList.tsx` (lines 341-357, 387)
+- `packages/client/src/components/SortableEntryItem.tsx` (added parentCollections prop)
+- `packages/client/src/components/EntryItem.tsx` (forwarded prop)
+- `packages/client/src/components/TaskEntryItem.tsx` (passed to dialog)
+- `packages/client/src/components/MigrateEntryDialog.smartDefaults.test.tsx` (5 new tests)
+
+---
+
+### Bulk Migration Bug Fix (Original Issue)
+**Status**: ✅ FIXED  
+**Reported**: 2026-02-16  
+**Fixed**: 2026-02-16 (v0.10.1)  
+**UAT**: PASSED
+
+**Problem**: Sub-tasks in multiple collections weren't being removed from source collections when migrated via temporal routes
+
+**Root Cause**: 
+1. Handler used `entry.collectionId` (display) instead of actual source collection
+2. UI passed temporal identifier (e.g., "yesterday") instead of resolved UUID
+
+**Solution**:
+- Added `sourceCollectionId` parameter to `BulkMigrateEntriesCommand`/`Handler`
+- UI passes `resolvedCollectionId` instead of `collectionId`
+- Added comprehensive integration test
+
+**Files Changed**:
+- `packages/domain/src/bulk-migrate-entries.handler.ts`
+- `packages/domain/src/bulk-migrate-entries.handler.test.ts` (lines 546-666)
+- `packages/client/src/views/CollectionDetailView.tsx` (line 118)
+- `packages/client/src/hooks/useEntryOperations.ts`
+
+---
+
+## Test Results
+
+**All 1,565 tests passing** (580 domain + 21 infrastructure + 964 client)
+
+**Casey Review Score**: 9/10 overall (excellent work)
+
+---
+
+## Deployment
+
+**Version**: v0.10.1  
+**Deployed**: 2026-02-16  
+**Commit**: ed56d58  
+**Tag**: v0.10.1

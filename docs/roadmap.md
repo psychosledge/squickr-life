@@ -1,6 +1,6 @@
 # Product Roadmap
-**Last Updated:** February 11, 2026  
-**Current Version:** v0.8.0  
+**Last Updated:** February 16, 2026  
+**Current Version:** v0.10.1  
 **Status:** Roadmap finalized through v1.0.0
 
 ---
@@ -236,52 +236,72 @@
 
 ---
 
-### v0.9.0 - Code Quality & Polish (NEXT)
-**Target:** After v0.8.0  
-**Estimated Time:** 2-4 hours  
-**Status:** Ready to implement
+### ✅ v0.10.1 - Bulk Migration Bug Fix & UAT Feedback (COMPLETED)
+**Released:** February 16, 2026  
+**Actual Time:** ~8 hours (investigation + fixes + testing)  
+**Status:** Deployed to production
 
-**Casey's Recommendations from Recent Reviews:**
+**Critical Bug Fix:**
+- ✅ Bulk migration not removing sub-tasks from source collections in temporal routes
+  - Root cause: Handler used display collectionId, UI passed temporal identifier
+  - Solution: Added `sourceCollectionId` parameter, pass `resolvedCollectionId` from UI
+  - Added comprehensive integration test
 
-**From Timezone Fix (9/10):**
-1. ✅ Import `getLocalDateKey` in tests instead of duplicating logic
-2. Add timezone edge case tests (late night EST, positive UTC offsets)
-3. Create ADR-014 documenting local timezone strategy
-4. Extract date comparison to reusable utility function
+**UAT Feedback Fixes (4 issues):**
+1. ✅ Collection menu z-index fixed (z-50 → z-[200])
+2. ✅ Multi-collection indicators for sub-tasks in multiple collections
+3. ✅ Ghost entry menus no longer show redundant current collection option
+4. ✅ Smart migration defaults - context-aware 'move' vs 'add' for orphaned sub-tasks
 
-**From ADR-014 Implementation (10/10):**
-1. Fix timezone inconsistencies in `DateHeader.tsx` and `formatters.ts`
-2. Add centralized date parsing utilities
+**Test Coverage:**
+- All 1,565 tests passing (580 domain + 21 infrastructure + 964 client)
+- Casey review: 9/10 overall rating
 
-**Minor Code TODOs:**
-- Add tests for drag-and-drop functionality in `HierarchicalCollectionList.tsx`
-- Show error toast to user in `CollectionDetailView.tsx`
-
-**Value Proposition:**
-- Eliminate timezone inconsistencies across the codebase
-- Improve test coverage for edge cases
-- Better developer experience with centralized utilities
-- Enhanced error handling for users
-
-**Implementation Plan:**
-1. **Timezone Utilities** (1 hour)
-   - Extract date comparison to reusable utility function
-   - Add centralized date parsing utilities
-   - Fix inconsistencies in `DateHeader.tsx` and `formatters.ts`
-
-2. **Test Coverage** (1-2 hours)
-   - Add timezone edge case tests (late night EST, positive UTC offsets)
-   - Add drag-and-drop tests for `HierarchicalCollectionList.tsx`
-   - Import `getLocalDateKey` in tests instead of duplicating logic
-
-3. **Documentation & Error Handling** (0.5-1 hour)
-   - Create ADR-014 documenting local timezone strategy
-   - Add error toast to user in `CollectionDetailView.tsx`
+**Files Changed:**
+- Domain: bulk-migrate-entries handler + tests
+- Client: 10 files (CollectionHeader, TaskEntryItem, GhostEntry, MigrateDialog, etc.)
+- Added comprehensive test coverage for all fixes
 
 ---
 
-### v1.0.0 - Intro Guide/Walkthrough
-**Target:** After v0.7.0 (Milestone release)  
+### v0.9.0 - Code Quality & Refactoring Session (NEXT)
+**Target:** After v0.10.1  
+**Estimated Time:** 4-6 hours  
+**Status:** Ready to implement
+
+**Scope:** Combined code quality improvements and minor refactoring
+
+**Phase 1: Timezone Utilities & Consistency (1-1.5 hours)**
+- Extract date comparison to reusable utility function
+- Add centralized date parsing utilities
+- Fix timezone inconsistencies in `DateHeader.tsx` and `formatters.ts`
+- Create ADR-014 documenting local timezone strategy
+
+**Phase 2: Test Coverage Improvements (1.5-2 hours)**
+- Add timezone edge case tests (late night EST, positive UTC offsets)
+- Add drag-and-drop tests for `HierarchicalCollectionList.tsx`
+- Import `getLocalDateKey` in tests instead of duplicating logic
+
+**Phase 3: Code TODOs & Refactoring (1.5-2 hours)**
+- Add error toast to user in `CollectionDetailView.tsx`
+- Multi-collection pattern for Notes/Events (bulk-migrate-entries.handler.ts)
+- Remove outdated TODOs and clean up comments
+
+**Phase 4: Documentation Cleanup (0.5-1 hour)**
+- Archive or remove superseded design docs (ADR-015 implementation plan)
+- Update README and development guide
+- Clean up session notes and move to archive
+
+**Value Proposition:**
+- Eliminate technical debt before v1.0.0
+- Improve maintainability and test coverage
+- Better developer experience with centralized utilities
+- Clean documentation reflects actual implementation
+
+---
+
+### v1.0.0 - Intro Guide/Walkthrough (MILESTONE RELEASE)
+**Target:** After v0.9.0 refactoring  
 **Estimated Time:** 7-11 hours  
 **Status:** ✅ Design complete and approved
 
@@ -308,6 +328,32 @@
 - `docs/session-2026-02-06-intro-guide-final.md` (approved spec)
 - `docs/session-2026-02-06-intro-guide-design.md` (comprehensive design)
 
+**Implementation Phases:**
+1. **Infrastructure** (2-3 hours)
+   - Install React Joyride or similar tutorial library
+   - Create tutorial state management
+   - Add help menu (?) icon to header
+
+2. **Tutorial Steps** (2-3 hours)
+   - Implement 7-step interactive walkthrough
+   - Add spotlight overlays for key UI elements
+   - Mobile-optimized step positioning
+
+3. **Help Menu** (2.5-3 hours)
+   - Restart Tutorial
+   - Bullet Journal Guide (modal with methodology)
+   - Keyboard Shortcuts (modal with shortcuts table)
+   - Report a Bug (pre-filled GitHub issue)
+   - Request a Feature (pre-filled GitHub issue)
+   - GitHub Discussions link
+   - About Squickr Life (version, credits)
+
+4. **Polish** (1-2 hours)
+   - Dark mode support for tutorial
+   - Auto-trigger logic (once per session, zero collections)
+   - Accessibility (keyboard navigation, ARIA)
+   - Testing
+
 ---
 
 ## Rationale for v1.0.0 Milestone
@@ -324,9 +370,11 @@
 - ✅ Collections (daily, monthly, custom)
 - ✅ Entry types (tasks, notes, events)
 - ✅ Migration (single and bulk)
+- ✅ Multi-collection support
+- ✅ Sub-tasks for complex work breakdown
 - ✅ Collection settings and preferences
 - ✅ User preferences with sensible defaults
-- ✅ Sub-tasks for complex work breakdown
+- ✅ Temporal navigation (today/yesterday/tomorrow)
 - ✅ First-time user experience (FTUX)
 - ✅ Self-service help and support
 
@@ -336,7 +384,13 @@
 
 ### Completed Versions
 
-**v0.7.1** (February 11, 2026)
+**v0.10.1** (February 16, 2026)
+- Critical bulk migration bug fix
+- 4 UAT feedback UI/UX fixes
+- 1,565 tests passing
+- Casey review: 9/10
+
+**v0.8.0** (February 11, 2026)
 - Production bug fixes from v0.7.0
 - Fixed collection stats counting
 - Fixed "Active" filter selection
@@ -391,59 +445,31 @@
 
 ## Next Steps
 
-### Immediate: v1.0.0 Intro Guide/Walkthrough
+### Immediate: v0.9.0 Code Quality & Refactoring Session
 
-**Status:** Ready to implement (design complete ✅)  
-**Estimated Time:** 7-11 hours  
-**Target Release:** After v0.7.0
+**Status:** Ready to implement  
+**Estimated Time:** 4-6 hours  
+**Target Release:** After v0.10.1
 
-**Implementation Phases:**
-1. **Infrastructure** (2-3 hours)
-   - Install React Joyride or similar tutorial library
-   - Create tutorial state management
-   - Add help menu (?) icon to header
-
-2. **Tutorial Steps** (2-3 hours)
-   - Implement 7-step interactive walkthrough
-   - Add spotlight overlays for key UI elements
-   - Mobile-optimized step positioning
-
-3. **Help Menu** (2-3 hours)
-   - Restart Tutorial
-   - Bullet Journal Guide (modal with methodology)
-   - Keyboard Shortcuts (modal with shortcuts table)
-   - Report a Bug (pre-filled GitHub issue)
-   - Request a Feature (pre-filled GitHub issue)
-   - GitHub Discussions link
-   - About Squickr Life (version, credits)
-
-4. **Polish** (1-2 hours)
-   - Dark mode support for tutorial
-   - Auto-trigger logic (once per session, zero collections)
-   - Accessibility (keyboard navigation, ARIA)
-   - Testing
-
-**Design Documents:**
-- `docs/session-2026-02-06-intro-guide-final.md` (approved spec)
-- `docs/session-2026-02-06-intro-guide-design.md` (comprehensive design)
+**Goal:** Clean up technical debt, improve test coverage, and prepare codebase for v1.0.0
 
 ---
-
-
 
 ## Timeline Estimate
 
 **Completed:**
 - v0.6.0: ✅ ~7 hours (February 6, 2026)
 - v0.7.0: ✅ ~12 hours (February 7-10, 2026)
+- v0.8.0: ✅ ~14 hours (February 11, 2026)
+- v0.10.1: ✅ ~8 hours (February 16, 2026)
 
 **Remaining to v1.0.0:**
-- v0.9.0 Code Quality & Polish: 2-4 hours
+- v0.9.0 Code Quality & Refactoring: 4-6 hours
 - v1.0.0 Intro Guide: 7-11 hours
-- **Total:** 9-15 hours
+- **Total:** 11-17 hours
 
-**Optimistic:** 1-2 weeks to v1.0.0  
-**Realistic:** 2-3 weeks to v1.0.0
+**Optimistic:** 2-3 weeks to v1.0.0  
+**Realistic:** 3-4 weeks to v1.0.0
 
 ---
 
