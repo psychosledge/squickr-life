@@ -12,6 +12,7 @@ Quick navigation to find what you need.
 | **[Architecture Decisions](architecture-decisions.md)** | Design decisions and rationale (ADRs) | When making design choices |
 | **[Event Models Reference](event-models.md)** | Quick event sourcing reference | When designing new events |
 | **[Roadmap](roadmap.md)** | Version history and upcoming features | Planning next work |
+| **[Retrospective](retrospective.md)** | Architectural retrospective — what we'd do differently | Before major refactoring |
 | **[Deployment Guide](deployment-guide.md)** | Release process and validation | Before merging to production |
 
 ## 📦 Archive

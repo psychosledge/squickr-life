@@ -40,12 +40,15 @@ User Action → Command → Event → Projection (Read Model)
 - `TaskTitleChanged` - Title edited
 - `TaskDeleted` - Task removed
 - `TaskReordered` - Order changed
+- `TaskAddedToCollection` - Task added to a collection (multi-collection)
+- `TaskRemovedFromCollection` - Task removed from a collection (creates ghost)
 
 ### Note Events
 - `NoteCreated` - New note added
 - `NoteContentChanged` - Content edited
 - `NoteDeleted` - Note removed
 - `NoteReordered` - Order changed
+- `NoteMigrated` - Note moved to different collection (legacy pattern)
 
 ### Event Events (Calendar/Future Log)
 - `EventCreated` - New calendar event
@@ -53,6 +56,10 @@ User Action → Command → Event → Projection (Read Model)
 - `EventDateChanged` - Date changed or removed
 - `EventDeleted` - Event removed
 - `EventReordered` - Order changed
+- `EventMigrated` - Event moved to different collection (legacy pattern)
+
+### Cross-Cutting Events
+- `EntryMovedToCollection` - Generic move for any entry type
 
 ---
 
@@ -71,6 +78,11 @@ type Entry =
 - No migration needed when adding fields to one type
 - See ADR-003 in `architecture-decisions.md`
 
+**Note on migration patterns:**
+- Tasks use the **multi-collection pattern** (`TaskAddedToCollection` / `TaskRemovedFromCollection`) — preserves ID, full history, ghost rendering
+- Notes/Events still use the **legacy migration pattern** (`NoteMigrated` / `EventMigrated`) — creates a new ID with `migratedTo`/`migratedFrom` pointers
+- See ADR-015 in `architecture-decisions.md` for the full story
+
 ---
 
 ## Event Store Interface
@@ -78,8 +90,9 @@ type Entry =
 ```typescript
 interface IEventStore {
   append(event: DomainEvent): Promise<void>;
-  getEvents(): Promise<DomainEvent[]>;
-  subscribe(callback: (event: DomainEvent) => void): () => void;
+  appendBatch(events: DomainEvent[]): Promise<void>;
+  getAll(): Promise<readonly DomainEvent[]>;
+  subscribe(callback: () => void): () => void;
 }
 ```
 
@@ -101,7 +114,7 @@ class EntryListProjection {
   }
 
   async getEntries(): Promise<Entry[]> {
-    const events = await this.eventStore.getEvents();
+    const events = await this.eventStore.getAll();
     return this.applyEvents(events);
   }
 
