@@ -27,6 +27,7 @@ import { useSwipeProgress } from '../hooks/useSwipeProgress';
 import { useTutorial } from '../hooks/useTutorial';
 import { TUTORIAL_COMPLETED_KEY, TUTORIAL_SEEN_KEY } from '../context/TutorialContext';
 import { SWIPE } from '../utils/constants';
+import { buildEntriesByCollectionMap } from '../utils/buildEntriesByCollectionMap';
 
 export function CollectionIndexView() {
   const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler } = useApp();
@@ -46,7 +47,7 @@ export function CollectionIndexView() {
   const swipeProgress = useSwipeProgress();
 
   // Load collections and entries
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     // Load real collections
     const loadedCollections = await collectionProjection.getCollections();
     
@@ -55,15 +56,7 @@ export function CollectionIndexView() {
     
     // Get all entries grouped by collection for stats
     const allEntries = await entryProjection.getEntries('all');
-    const entriesMap = new Map<string | null, Entry[]>();
-    for (const entry of allEntries) {
-      const collectionId = entry.collectionId ?? null;
-      if (!entriesMap.has(collectionId)) {
-        entriesMap.set(collectionId, []);
-      }
-      entriesMap.get(collectionId)!.push(entry);
-    }
-    setEntriesByCollection(entriesMap);
+    setEntriesByCollection(buildEntriesByCollectionMap(allEntries));
     
     // Check if uncategorized entries exist
     const uncategorizedCount = allCounts.get(null) ?? 0;
@@ -86,7 +79,7 @@ export function CollectionIndexView() {
     collectionsWithVirtual.push(...loadedCollections);
     
     setCollections(collectionsWithVirtual);
-  };
+  }, [collectionProjection, entryProjection]);
 
   // Subscribe to projection changes (reactive updates)
   useEffect(() => {
@@ -106,7 +99,7 @@ export function CollectionIndexView() {
       unsubscribeCollection();
       unsubscribeEntry();
     };
-  }, [collectionProjection, entryProjection]);
+  }, [loadData, collectionProjection, entryProjection]);
 
   // Auto-trigger tutorial for new users with zero real collections
   const { startTutorial } = tutorial;

@@ -548,4 +548,172 @@ describe('formatCollectionStats', () => {
       expect(result).toBe('');
     });
   });
+
+  describe('multi-collection pattern (TaskAddedToCollection regression)', () => {
+    /**
+     * These tests simulate the map-building logic in CollectionIndexView.tsx
+     * and verify that formatCollectionStats produces correct output when the
+     * entries are bucketed using entry.collections[] rather than entry.collectionId.
+     *
+     * Prior to the bug fix, tasks added via TaskAddedToCollection had
+     * collectionId: undefined and were bucketed under null, causing stats for
+     * the actual collection to appear empty.
+     */
+
+    it('should show correct stats for a task added via multi-collection pattern (collectionId undefined)', () => {
+      // Simulate the FIXED map-building logic: task has collections: ['daily-2026-02-09']
+      // and collectionId: undefined (TaskAddedToCollection, no original collection)
+      const node: HierarchyNode = {
+        type: 'day',
+        id: 'daily-2026-02-09',
+        label: 'Feb 9, 2026',
+        collection: {
+          id: 'daily-2026-02-09',
+          name: 'Feb 9, 2026',
+          type: 'daily',
+          date: '2026-02-09',
+          createdAt: '2026-02-09T00:00:00Z',
+          order: '2026-02-09',
+        },
+        children: [],
+        isExpanded: false,
+      };
+
+      // Task created without a collectionId but later added to the collection
+      // via TaskAddedToCollection — collections[] is the source of truth.
+      const multiCollectionTask: Entry = {
+        id: 'task-mc-1',
+        type: 'task' as const,
+        title: 'Multi-collection task',
+        status: 'open',
+        collectionId: undefined,   // No original collectionId
+        collections: ['daily-2026-02-09'],
+        createdAt: '2026-02-09T08:00:00Z',
+      };
+
+      // The fixed CollectionIndexView loop would bucket this task under
+      // 'daily-2026-02-09' (from collections[]), NOT under null.
+      const entriesByCollection = new Map<string | null, Entry[]>();
+      entriesByCollection.set('daily-2026-02-09', [multiCollectionTask]);
+
+      const result = formatCollectionStats(node, entriesByCollection);
+      expect(result).toBe('(1 task)');
+    });
+
+    it('should show correct stats for a task with stale collectionId pointing to a different collection', () => {
+      // Simulate a task that was originally in 'old-col' but was subsequently
+      // added to 'new-col' via TaskAddedToCollection.
+      // The fixed loop uses collections[] as the source of truth, so the task
+      // appears under 'new-col', not 'old-col'.
+      const newColNode: HierarchyNode = {
+        type: 'custom',
+        id: 'new-col',
+        label: 'New Collection',
+        collection: {
+          id: 'new-col',
+          name: 'New Collection',
+          type: 'custom',
+          createdAt: '2026-01-01T00:00:00Z',
+          order: 'b',
+        },
+        children: [],
+        isExpanded: false,
+      };
+
+      const oldColNode: HierarchyNode = {
+        type: 'custom',
+        id: 'old-col',
+        label: 'Old Collection',
+        collection: {
+          id: 'old-col',
+          name: 'Old Collection',
+          type: 'custom',
+          createdAt: '2026-01-01T00:00:00Z',
+          order: 'a',
+        },
+        children: [],
+        isExpanded: false,
+      };
+
+      const taskWithStaleCollectionId: Entry = {
+        id: 'task-stale-1',
+        type: 'task' as const,
+        title: 'Task with stale collectionId',
+        status: 'open',
+        collectionId: 'old-col',       // Stale — was the original collection
+        collections: ['new-col'],       // Source of truth: task is now in new-col
+        createdAt: '2026-01-15T10:00:00Z',
+      };
+
+      // The fixed CollectionIndexView loop buckets this task under 'new-col'
+      // (from collections[]), ignoring the stale collectionId.
+      const entriesByCollection = new Map<string | null, Entry[]>();
+      entriesByCollection.set('new-col', [taskWithStaleCollectionId]);
+      entriesByCollection.set('old-col', []); // old-col gets nothing from this task
+
+      // new-col should show the task
+      const newColResult = formatCollectionStats(newColNode, entriesByCollection);
+      expect(newColResult).toBe('(1 task)');
+
+      // old-col should be empty (stale collectionId is not used)
+      const oldColResult = formatCollectionStats(oldColNode, entriesByCollection);
+      expect(oldColResult).toBe('');
+    });
+
+    it('should show correct stats when a task belongs to multiple collections simultaneously', () => {
+      // A task present in both 'monthly-log' and 'daily-2026-02-09' via collections[].
+      const monthlyNode: HierarchyNode = {
+        type: 'monthly',
+        id: 'monthly-feb-2026',
+        label: 'February 2026',
+        collection: {
+          id: 'monthly-feb-2026',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          createdAt: '2026-02-01T00:00:00Z',
+          order: '2026-02',
+        },
+        children: [],
+        isExpanded: false,
+      };
+
+      const dailyNode: HierarchyNode = {
+        type: 'day',
+        id: 'daily-2026-02-09',
+        label: 'Feb 9, 2026',
+        collection: {
+          id: 'daily-2026-02-09',
+          name: 'Feb 9, 2026',
+          type: 'daily',
+          date: '2026-02-09',
+          createdAt: '2026-02-09T00:00:00Z',
+          order: '2026-02-09',
+        },
+        children: [],
+        isExpanded: false,
+      };
+
+      const sharedTask: Entry = {
+        id: 'task-shared-1',
+        type: 'task' as const,
+        title: 'Task in both collections',
+        status: 'open',
+        collectionId: 'monthly-feb-2026',   // Original collection
+        collections: ['monthly-feb-2026', 'daily-2026-02-09'],
+        createdAt: '2026-02-09T09:00:00Z',
+      };
+
+      // Fixed loop: task is bucketed under BOTH collections
+      const entriesByCollection = new Map<string | null, Entry[]>();
+      entriesByCollection.set('monthly-feb-2026', [sharedTask]);
+      entriesByCollection.set('daily-2026-02-09', [sharedTask]);
+
+      const monthlyResult = formatCollectionStats(monthlyNode, entriesByCollection);
+      expect(monthlyResult).toBe('(1 entry)'); // monthly uses total-entry count
+
+      const dailyResult = formatCollectionStats(dailyNode, entriesByCollection);
+      expect(dailyResult).toBe('(1 task)');
+    });
+  });
 });

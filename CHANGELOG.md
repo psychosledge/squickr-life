@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-02-20
+
+### Fixed
+- **Collection stats bug:** Stats were missing or incorrect for collections populated via the multi-collection pattern (`TaskAddedToCollection` events)
+  - Root cause: `CollectionIndexView` bucketed all entries by `entry.collectionId`, but tasks using the multi-collection pattern store their membership in `entry.collections[]`, not `collectionId`
+  - Fix: Extracted `buildEntriesByCollectionMap()` utility — tasks use `collections[]` (with fallback to legacy `collectionId`), notes/events use `collectionId`
+  - All collection stat displays (sidebar counts, breakdown by type) now reflect correct values
+
+### Technical
+- New file: `packages/client/src/utils/buildEntriesByCollectionMap.ts` — pure utility function for building the entries-by-collection map
+- `CollectionIndexView.tsx` `loadData()` now delegates to `buildEntriesByCollectionMap()` instead of inline map-building loop
+- Wrapped `loadData` in `useCallback` for correctness
+
+### Tests
+- 1,060 tests passing (up from 1,018 at v1.0.0 / 1,046 at last count)
+- New test file: `buildEntriesByCollectionMap.test.ts` — 11 direct unit tests covering all bucketing paths
+- 3 regression tests added to `collectionStatsFormatter.test.ts`
+- Casey review: 9/10 — Approved
+
 ## [1.0.0] - 2026-02-19
 
 ### Added

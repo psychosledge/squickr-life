@@ -1,7 +1,7 @@
 # Product Roadmap
-**Last Updated:** February 19, 2026  
-**Current Version:** v1.0.0  
-**Status:** v1.0.0 shipped — post-v1.0.0 refactoring phase
+**Last Updated:** February 20, 2026  
+**Current Version:** v1.0.2  
+**Status:** v1.0.2 shipped — post-v1.0.0 refactoring phase
 
 ---
 
@@ -52,6 +52,12 @@
 ## Version History
 
 ### Completed Versions
+
+**v1.0.2** (February 20, 2026) — Patch
+- Fixed collection stats missing/incorrect for multi-collection tasks
+- Extracted `buildEntriesByCollectionMap()` utility; `loadData` now multi-collection-aware
+- 1,060 tests passing
+- Casey review: 9/10
 
 **v1.0.0** (February 19, 2026) — MILESTONE RELEASE
 - 7-step interactive tutorial (react-joyride) with pause/resume across route transitions
@@ -146,6 +152,6 @@
 
 ---
 
-**Roadmap Status:** ✅ v1.0.0 Shipped  
+**Roadmap Status:** ✅ v1.0.2 Shipped  
 **Current Phase:** Post-v1.0.0 refactoring  
-**Date:** February 19, 2026
+**Date:** February 20, 2026
