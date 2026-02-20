@@ -30,7 +30,7 @@ interface TutorialState {
   hasCompletedTutorial: boolean;
 }
 
-interface TutorialContextValue extends TutorialState {
+export interface TutorialContextValue extends TutorialState {
   /** Sets isRunning=true, stepIndex=0 and marks session as seen */
   startTutorial: () => void;
   /** Sets isRunning=false without marking complete */
