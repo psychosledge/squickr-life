@@ -624,4 +624,35 @@ describe('HierarchicalCollectionList', () => {
     const janLinks = screen.getAllByText(/January 2026/);
     expect(janLinks.length).toBe(1);
   });
+
+  // ─── Tutorial DOM anchor ───────────────────────────────────────────────────
+  describe('data-tutorial-id anchor', () => {
+    it('should render the outermost list div with data-tutorial-id="tutorial-collection-list"', () => {
+      const collections: Collection[] = [
+        {
+          id: 'col-1',
+          name: 'Test Collection',
+          type: 'custom',
+          order: 'a',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList collections={collections} />
+      );
+
+      const anchor = container.querySelector('[data-tutorial-id="tutorial-collection-list"]');
+      expect(anchor).toBeInTheDocument();
+    });
+
+    it('should render the tutorial anchor even in empty state', () => {
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList collections={[]} />
+      );
+
+      const anchor = container.querySelector('[data-tutorial-id="tutorial-collection-list"]');
+      expect(anchor).toBeInTheDocument();
+    });
+  });
 });

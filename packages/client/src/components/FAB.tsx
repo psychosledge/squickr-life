@@ -7,6 +7,7 @@ export function FAB({ onClick, className = '' }: FABProps) {
   return (
     <button
       onClick={onClick}
+      data-tutorial-id="tutorial-fab"
       className={`
         fixed bottom-5 left-1/2 -translate-x-1/2 md:bottom-6 md:right-6 md:left-auto md:translate-x-0
         w-14 h-14 md:w-16 md:h-16

@@ -172,4 +172,11 @@ describe('CollectionNavigationControls', () => {
     const svgs = container.querySelectorAll('svg');
     expect(svgs.length).toBeGreaterThanOrEqual(2);
   });
+
+  // ─── Tutorial DOM anchor ─────────────────────────────────────────────────────
+  it('should render the button group with data-tutorial-id="tutorial-navigation"', () => {
+    const { container } = render(<CollectionNavigationControls {...defaultProps} />);
+    const anchor = container.querySelector('[data-tutorial-id="tutorial-navigation"]');
+    expect(anchor).toBeInTheDocument();
+  });
 });

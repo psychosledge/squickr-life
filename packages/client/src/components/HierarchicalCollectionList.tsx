@@ -212,7 +212,7 @@ export function HierarchicalCollectionList({
   // Empty state
   if (collections.length === 0) {
     return (
-      <div className="w-full max-w-2xl mx-auto text-center py-12">
+      <div className="w-full max-w-2xl mx-auto text-center py-12" data-tutorial-id="tutorial-collection-list">
         <p className="text-gray-500 dark:text-gray-400 text-lg mb-2">
           No collections yet
         </p>
@@ -224,7 +224,7 @@ export function HierarchicalCollectionList({
   }
   
   return (
-    <div className="w-full max-w-2xl mx-auto pb-32">
+    <div className="w-full max-w-2xl mx-auto pb-32" data-tutorial-id="tutorial-collection-list">
       <div className="mb-4 text-sm text-gray-600 dark:text-gray-400 flex justify-between items-center">
         <span>{collections.length} {collectionText}</span>
       </div>

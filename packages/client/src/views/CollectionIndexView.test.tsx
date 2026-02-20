@@ -4,16 +4,44 @@
  * Phase 2D: Tests for virtual 'Uncategorized' collection synthesis
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { CollectionIndexView } from './CollectionIndexView';
 import { AppProvider } from '../context/AppContext';
 import { AuthProvider } from '../context/AuthContext';
+import { TutorialProvider } from '../context/TutorialContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import type { Collection, Entry } from '@squickr/domain';
 import { DEFAULT_USER_PREFERENCES } from '@squickr/domain';
+
+// ─── Hoisted mocks (must be defined before vi.mock factory runs) ──────────────
+
+const { mockStartTutorial } = vi.hoisted(() => ({
+  mockStartTutorial: vi.fn(),
+}));
+
+// Mock useTutorial so the S2 integration tests can spy on startTutorial.
+// The mock is applied file-wide; existing tests are unaffected because they
+// wrap CollectionIndexView in a real TutorialProvider whose value is ignored
+// when useTutorial is mocked (useTutorial is called directly by the component,
+// not through TutorialContext directly).
+vi.mock('../hooks/useTutorial', () => ({
+  useTutorial: () => ({
+    isRunning: false,
+    isPaused: false,
+    stepIndex: 0,
+    hasCompletedTutorial: false,
+    startTutorial: mockStartTutorial,
+    stopTutorial: vi.fn(),
+    pauseTutorial: vi.fn(),
+    resumeTutorial: vi.fn(),
+    nextStep: vi.fn(),
+    completeTutorial: vi.fn(),
+    resetTutorial: vi.fn(),
+  }),
+}));
 
 // Mock useNavigate
 const mockNavigate = vi.fn();
@@ -77,7 +105,9 @@ describe('CollectionIndexView - Header Branding', () => {
       <AuthProvider>
         <BrowserRouter>
           <AppProvider value={mockAppContext}>
-            <CollectionIndexView />
+            <TutorialProvider>
+              <CollectionIndexView />
+            </TutorialProvider>
           </AppProvider>
         </BrowserRouter>
       </AuthProvider>
@@ -175,7 +205,9 @@ describe('CollectionIndexView - Navigation Arrows', () => {
       <AuthProvider>
         <BrowserRouter>
           <AppProvider value={mockAppContext}>
-            <CollectionIndexView />
+            <TutorialProvider>
+              <CollectionIndexView />
+            </TutorialProvider>
           </AppProvider>
         </BrowserRouter>
       </AuthProvider>
@@ -365,7 +397,9 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
       <AuthProvider>
         <BrowserRouter>
           <AppProvider value={mockAppContext}>
-            <CollectionIndexView />
+            <TutorialProvider>
+              <CollectionIndexView />
+            </TutorialProvider>
           </AppProvider>
         </BrowserRouter>
       </AuthProvider>
@@ -581,7 +615,9 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
       <AuthProvider>
         <BrowserRouter>
           <AppProvider value={mockAppContext}>
-            <CollectionIndexView />
+            <TutorialProvider>
+              <CollectionIndexView />
+            </TutorialProvider>
           </AppProvider>
         </BrowserRouter>
       </AuthProvider>
@@ -613,4 +649,195 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
     expect(screen.getByText('Movies to Watch')).toBeInTheDocument();
   });
 });
+
+// ─── S2: Integration test — auto-trigger startTutorial ───────────────────────
+//
+// Verifies that CollectionIndexView calls startTutorial() from the real
+// useTutorial hook when: zero real collections + not seen this session + not completed.
+
+describe('CollectionIndexView - Auto-trigger tutorial (integration)', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+  let mockCreateCollectionHandler: any;
+
+  beforeEach(() => {
+    mockStartTutorial.mockClear();
+    // Ensure clean storage so guard conditions are met
+    sessionStorage.clear();
+    localStorage.clear();
+
+    mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getActiveTaskCountsByCollection: vi.fn(() => Promise.resolve(new Map())),
+      getEntries: vi.fn(() => Promise.resolve([])),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockCreateCollectionHandler = {
+      handle: vi.fn().mockResolvedValue(undefined),
+    };
+  });
+
+  afterEach(() => {
+    sessionStorage.clear();
+    localStorage.clear();
+  });
+
+  function renderView() {
+    const mockAppContext = {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: mockCreateCollectionHandler,
+      migrateTaskHandler: {} as any,
+      migrateNoteHandler: {} as any,
+      migrateEventHandler: {} as any,
+      addTaskToCollectionHandler: {} as any,
+      removeTaskFromCollectionHandler: {} as any,
+      moveTaskToCollectionHandler: {} as any,
+      bulkMigrateEntriesHandler: {} as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
+    };
+
+    return render(
+      <AuthProvider>
+        <BrowserRouter>
+          <AppProvider value={mockAppContext}>
+            <TutorialProvider>
+              <CollectionIndexView />
+            </TutorialProvider>
+          </AppProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    );
+  }
+
+  it('calls startTutorial() when zero real collections, not seen this session, not completed', async () => {
+    renderView();
+
+    await waitFor(() => {
+      expect(mockStartTutorial).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('does NOT call startTutorial() when TUTORIAL_SEEN_KEY is set in sessionStorage', async () => {
+    sessionStorage.setItem('squickr_tutorial_seen', 'true');
+
+    renderView();
+
+    // Wait for data load to complete
+    await waitFor(() => {
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    });
+
+    expect(mockStartTutorial).not.toHaveBeenCalled();
+  });
+
+  it('does NOT call startTutorial() when TUTORIAL_COMPLETED_KEY is set in localStorage', async () => {
+    localStorage.setItem('squickr_tutorial_completed', 'true');
+
+    renderView();
+
+    // Wait for data load to complete
+    await waitFor(() => {
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    });
+
+    expect(mockStartTutorial).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Tutorial DOM anchor on h1 ────────────────────────────────────────────────
+describe('CollectionIndexView - data-tutorial-id anchor on h1', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+  let mockCreateCollectionHandler: any;
+
+  beforeEach(() => {
+    mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getActiveTaskCountsByCollection: vi.fn(() => Promise.resolve(new Map())),
+      getEntries: vi.fn(() => Promise.resolve([])),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockCreateCollectionHandler = {
+      handle: vi.fn().mockResolvedValue(undefined),
+    };
+  });
+
+  function renderView() {
+    const mockAppContext = {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: mockCreateCollectionHandler,
+      migrateTaskHandler: {} as any,
+      migrateNoteHandler: {} as any,
+      migrateEventHandler: {} as any,
+      addTaskToCollectionHandler: {} as any,
+      removeTaskFromCollectionHandler: {} as any,
+      moveTaskToCollectionHandler: {} as any,
+      bulkMigrateEntriesHandler: {} as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
+    };
+
+    return render(
+      <AuthProvider>
+        <BrowserRouter>
+          <AppProvider value={mockAppContext}>
+            <TutorialProvider>
+              <CollectionIndexView />
+            </TutorialProvider>
+          </AppProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    );
+  }
+
+  it('should render the "Squickr Life" h1 with data-tutorial-id="tutorial-welcome"', async () => {
+    const { container } = renderView();
+
+    await waitFor(() => {
+      const anchor = container.querySelector('[data-tutorial-id="tutorial-welcome"]');
+      expect(anchor).toBeInTheDocument();
+    });
+  });
+
+  it('should be an h1 element', async () => {
+    const { container } = renderView();
+
+    await waitFor(() => {
+      const anchor = container.querySelector('[data-tutorial-id="tutorial-welcome"]');
+      expect(anchor?.tagName.toLowerCase()).toBe('h1');
+    });
+  });
+});
+
 

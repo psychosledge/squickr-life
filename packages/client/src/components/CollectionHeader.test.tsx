@@ -259,3 +259,63 @@ describe('CollectionHeader - Virtual Collection Behavior', () => {
     expect(backButton).toHaveAttribute('href', '/');
   });
 });
+
+// ─── Tutorial DOM anchor ─────────────────────────────────────────────────────
+describe('CollectionHeader - data-tutorial-id anchor', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+
+  beforeEach(() => {
+    mockCollectionProjection = {
+      getCollections: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+  });
+
+  function renderHeader(props = {}) {
+    return render(
+      <BrowserRouter>
+        <AppProvider
+          value={{
+            eventStore: {
+              getAll: vi.fn().mockResolvedValue([]),
+              subscribe: vi.fn().mockReturnValue(() => {}),
+            } as any,
+            collectionProjection: mockCollectionProjection,
+            entryProjection: mockEntryProjection,
+            taskProjection: {} as any,
+            createCollectionHandler: {} as any,
+            migrateTaskHandler: {} as any,
+            migrateNoteHandler: {} as any,
+            migrateEventHandler: {} as any,
+          }}
+        >
+          <CollectionHeader
+            collectionName="Test Collection"
+            collectionId="test-collection"
+            onRename={vi.fn()}
+            onDelete={vi.fn()}
+            onSettings={vi.fn()}
+            {...props}
+          />
+        </AppProvider>
+      </BrowserRouter>
+    );
+  }
+
+  it('should render three-dot menu button with data-tutorial-id="tutorial-collection-menu"', () => {
+    const { container } = renderHeader();
+    const anchor = container.querySelector('[data-tutorial-id="tutorial-collection-menu"]');
+    expect(anchor).toBeInTheDocument();
+  });
+
+  it('should NOT render data-tutorial-id on three-dot menu when isVirtual=true', () => {
+    const { container } = renderHeader({ isVirtual: true });
+    const anchor = container.querySelector('[data-tutorial-id="tutorial-collection-menu"]');
+    expect(anchor).not.toBeInTheDocument();
+  });
+});

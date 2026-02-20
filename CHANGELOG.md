@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-19
+
+### Added
+- **7-Step Interactive Tutorial (react-joyride):** First-run onboarding walkthrough for new users
+  - Auto-triggers after sign-in when user has zero real collections (once per session)
+  - Spotlight overlay highlights real DOM elements via `data-tutorial-id` anchors
+  - Option A pause/resume: tutorial pauses after Step 3 (FAB), resumes automatically when user navigates into their first collection
+  - Steps cover: Welcome, Collections, Create a Collection, Entry Types, Manage Collection, Migration, Navigation
+  - Skip button on every step; Finish button on last step
+  - Controlled mode: step index and run state managed in `TutorialContext`
+  - Persists completion to `localStorage`; session deduplication via `sessionStorage`
+
+- **Help Menu (extended UserProfileMenu):** 7 new items in the avatar dropdown
+  - Restart Tutorial — replays tour from Step 1
+  - Bullet Journal Guide — modal with BuJo methodology primer (entry types, states, migration practice)
+  - Keyboard Shortcuts — modal with complete shortcuts table
+  - Report a Bug — opens GitHub issue template in new tab (version pre-filled)
+  - Request a Feature — opens GitHub feature request template in new tab
+  - GitHub Discussions — opens project discussions in new tab
+  - About Squickr Life — modal with version number, credits, and repository link
+
+- **New files:** `TutorialContext.tsx`, `useTutorial.ts`, `constants/github.ts`, `BulletJournalGuideModal.tsx`, `KeyboardShortcutsModal.tsx`, `AboutModal.tsx`
+
+- **DOM anchors:** `data-tutorial-id` attributes added to `FAB`, `CollectionHeader`, `HierarchicalCollectionList`, `CollectionNavigationControls`, `CollectionIndexView` title
+
+### Technical
+- `TutorialContext` state machine: `isRunning`, `isPaused`, `stepIndex`, `hasCompletedTutorial`; actions: `startTutorial`, `stopTutorial`, `pauseTutorial`, `resumeTutorial`, `nextStep`, `completeTutorial`, `resetTutorial`
+- `CollectionDetailView` resumes tutorial on mount after loading completes; `hasResumedRef` guard prevents double-resume under React StrictMode
+- `TUTORIAL_STEP_COUNT` constant kept in sync with `TUTORIAL_STEPS.length` via a startup assertion
+- `constants/github.ts` centralises repo owner/name and URL builders for all GitHub links
+- Tooltip width set to 340px; Step 4 content uses JSX for proper list formatting
+- All debug `console.log` statements removed from `CollectionDetailView`, `TutorialContext`, and `App`
+
+### Tests
+- 1,018 tests passing (client)
+- New test files: `TutorialContext.test.tsx`, `BulletJournalGuideModal.test.tsx`, `KeyboardShortcutsModal.test.tsx`, `AboutModal.test.tsx`
+- Extended: `UserProfileMenu.test.tsx`, `CollectionIndexView.test.tsx`, `CollectionDetailView.test.tsx`
+- Casey review: Approved
+
+### Developer
+- Implementation: 4 commits across infrastructure, Help menu, tutorial steps, and polish/bug fixes
+- Milestone: v1.0.0 — first public-ready release
+
 ## [0.10.0] - 2026-02-15
 
 ### Fixed

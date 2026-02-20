@@ -153,6 +153,7 @@ export function CollectionHeader({
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              data-tutorial-id="tutorial-collection-menu"
               className="
                 p-2 -mr-2
                 text-gray-600 dark:text-gray-400

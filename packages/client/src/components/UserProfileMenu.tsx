@@ -1,11 +1,13 @@
 /**
  * UserProfileMenu Component
- * 
+ *
  * Displays user profile avatar with dropdown menu for user info and sign out.
- * 
+ *
  * Features:
  * - Google profile picture or initials fallback
- * - Dropdown menu with user info and sign out
+ * - Dropdown menu with user info, help items, and sign out
+ * - Help section: Restart Tutorial, Bullet Journal Guide, Keyboard Shortcuts,
+ *   Report a Bug, Request a Feature, GitHub Discussions, About Squickr Life
  * - Click outside to close
  * - Escape key to close
  * - Full keyboard navigation
@@ -17,6 +19,11 @@
 import { useState, useRef, useEffect } from 'react';
 import type { User } from 'firebase/auth';
 import { getInitials } from '../utils/userUtils';
+import { useTutorialContext } from '../context/TutorialContext';
+import { GITHUB_URLS, getBugReportUrl } from '../constants/github';
+import { BulletJournalGuideModal } from './BulletJournalGuideModal';
+import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
+import { AboutModal } from './AboutModal';
 
 interface UserProfileMenuProps {
   user: User;
@@ -27,6 +34,13 @@ interface UserProfileMenuProps {
 export function UserProfileMenu({ user, onSignOut, onSettingsClick }: UserProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Modal open states
+  const [isBujoGuideOpen, setIsBujoGuideOpen] = useState(false);
+  const [isKeyboardShortcutsOpen, setIsKeyboardShortcutsOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+
+  const tutorial = useTutorialContext();
 
   // Close menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -46,7 +60,7 @@ export function UserProfileMenu({ user, onSignOut, onSettingsClick }: UserProfil
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
@@ -67,8 +81,37 @@ export function UserProfileMenu({ user, onSignOut, onSettingsClick }: UserProfil
     await onSignOut();
   };
 
+  const handleRestartTutorial = () => {
+    tutorial.resetTutorial();
+    setIsOpen(false);
+  };
+
   const displayName = user.displayName || user.email || 'User';
   const initials = getInitials(user.displayName);
+
+  /** Shared Tailwind classes for menu item buttons */
+  const menuItemButtonClass = `
+    w-full text-left
+    px-3 py-2
+    text-sm text-gray-700 dark:text-gray-300
+    hover:bg-gray-100 dark:hover:bg-gray-700
+    rounded-md
+    transition-colors
+    focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+    flex items-center gap-2
+  `;
+
+  /** Shared Tailwind classes for menu item links */
+  const menuItemLinkClass = `
+    block
+    px-3 py-2
+    text-sm text-gray-700 dark:text-gray-300
+    hover:bg-gray-100 dark:hover:bg-gray-700
+    rounded-md
+    transition-colors
+    focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+    flex items-center gap-2
+  `;
 
   return (
     <div className="relative" ref={menuRef}>
@@ -134,25 +177,92 @@ export function UserProfileMenu({ user, onSignOut, onSettingsClick }: UserProfil
             )}
           </div>
 
-          {/* Menu Options */}
+          {/* Settings */}
           <div className="px-2 py-1">
             <button
               role="menuitem"
               onClick={handleSettingsClick}
-              className="
-                w-full text-left
-                px-3 py-2
-                text-sm text-gray-700 dark:text-gray-300
-                hover:bg-gray-100 dark:hover:bg-gray-700
-                rounded-md
-                transition-colors
-                focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
-                flex items-center gap-2
-              "
+              className={menuItemButtonClass}
             >
               <span>⚙️</span>
               <span>Settings</span>
             </button>
+          </div>
+
+          {/* Help Section */}
+          <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1 px-2 pb-1">
+            <button
+              role="menuitem"
+              onClick={handleRestartTutorial}
+              className={menuItemButtonClass}
+            >
+              <span>🎓</span>
+              <span>Restart Tutorial</span>
+            </button>
+
+            <button
+              role="menuitem"
+              onClick={() => { setIsOpen(false); setIsBujoGuideOpen(true); }}
+              className={menuItemButtonClass}
+            >
+              <span>📓</span>
+              <span>Bullet Journal Guide</span>
+            </button>
+
+            <button
+              role="menuitem"
+              onClick={() => { setIsOpen(false); setIsKeyboardShortcutsOpen(true); }}
+              className={menuItemButtonClass}
+            >
+              <span>⌨️</span>
+              <span>Keyboard Shortcuts</span>
+            </button>
+
+            <a
+              href={getBugReportUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              role="menuitem"
+              className={menuItemLinkClass}
+            >
+              <span>🐛</span>
+              <span>Report a Bug</span>
+            </a>
+
+            <a
+              href={GITHUB_URLS.featureRequest}
+              target="_blank"
+              rel="noopener noreferrer"
+              role="menuitem"
+              className={menuItemLinkClass}
+            >
+              <span>💡</span>
+              <span>Request a Feature</span>
+            </a>
+
+            <a
+              href={GITHUB_URLS.discussions}
+              target="_blank"
+              rel="noopener noreferrer"
+              role="menuitem"
+              className={menuItemLinkClass}
+            >
+              <span>💬</span>
+              <span>GitHub Discussions</span>
+            </a>
+
+            <button
+              role="menuitem"
+              onClick={() => { setIsOpen(false); setIsAboutOpen(true); }}
+              className={menuItemButtonClass}
+            >
+              <span>ℹ️</span>
+              <span>About Squickr Life</span>
+            </button>
+          </div>
+
+          {/* Sign out */}
+          <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1 px-2 pb-1">
             <button
               role="menuitem"
               onClick={handleSignOut}
@@ -173,6 +283,20 @@ export function UserProfileMenu({ user, onSignOut, onSettingsClick }: UserProfil
           </div>
         </div>
       )}
+
+      {/* Modals rendered outside dropdown to avoid clipping */}
+      <BulletJournalGuideModal
+        isOpen={isBujoGuideOpen}
+        onClose={() => setIsBujoGuideOpen(false)}
+      />
+      <KeyboardShortcutsModal
+        isOpen={isKeyboardShortcutsOpen}
+        onClose={() => setIsKeyboardShortcutsOpen(false)}
+      />
+      <AboutModal
+        isOpen={isAboutOpen}
+        onClose={() => setIsAboutOpen(false)}
+      />
     </div>
   );
 }

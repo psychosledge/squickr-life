@@ -11,7 +11,7 @@
  * Phase 2 Refactor: Extracted handlers, modals, and operations into dedicated hooks
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Collection, Entry } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
@@ -21,6 +21,7 @@ import { useCollectionModals } from '../hooks/useCollectionModals';
 import { useEntryOperations } from '../hooks/useEntryOperations';
 import { useSelectionMode } from '../hooks/useSelectionMode';
 import { useCollectionNavigation } from '../hooks/useCollectionNavigation';
+import { useTutorial } from '../hooks/useTutorial';
 import { CollectionHeader } from '../components/CollectionHeader';
 import { EntryList } from '../components/EntryList';
 import { EntryInputModal } from '../components/EntryInputModal';
@@ -68,6 +69,18 @@ export function CollectionDetailView({
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Tutorial Option A: resume when user first navigates into a collection,
+  // but only AFTER loading is complete so Joyride's target elements are in the DOM.
+  // Use a ref to ensure we only resume once per mount, even in StrictMode.
+  const tutorial = useTutorial();
+  const hasResumedRef = useRef(false);
+  useEffect(() => {
+    if (tutorial.isPaused && !isLoading && !hasResumedRef.current) {
+      hasResumedRef.current = true;
+      tutorial.resumeTutorial();
+    }
+  }, [tutorial.isPaused, tutorial.resumeTutorial, isLoading]);
   
   // Track resolved collection ID (actual UUID after temporal route resolution)
   // This ensures navigation and child components use the actual UUID, not temporal identifiers
@@ -135,12 +148,10 @@ export function CollectionDetailView({
   const loadData = async () => {
     if (!collectionId && !temporalDate) return;
 
-    console.log('🔍 [CollectionDetailView] loadData called with collectionId:', collectionId, 'temporalDate:', temporalDate);
     setIsLoading(true);
     
     // Load all collections (for migration modal)
     const collections = await collectionProjection.getCollections();
-    console.log('📚 [CollectionDetailView] All collections from projection:', collections.map(c => ({ id: c.id, name: c.name, type: c.type })));
     setAllCollections(collections);
     
     let foundCollection: Collection | null = null;
@@ -158,15 +169,12 @@ export function CollectionDetailView({
         targetType = 'daily';
       }
       
-      console.log(`📅 [CollectionDetailView] Looking for ${targetType} collection with date:`, targetDate);
       foundCollection = collections.find(c => 
         c.type === targetType && c.date === targetDate
       ) || null;
-      console.log('📅 [CollectionDetailView] Found temporal collection:', foundCollection ? { id: foundCollection.id, name: foundCollection.name } : null);
     }
     // Strategy 2: Virtual "uncategorized" collection (EXISTING)
     else if (collectionId === UNCATEGORIZED_COLLECTION_ID) {
-      console.log('🗂️ [CollectionDetailView] Handling uncategorized collection');
       // Synthesize virtual collection
       setCollection({
         id: UNCATEGORIZED_COLLECTION_ID,
@@ -182,7 +190,6 @@ export function CollectionDetailView({
       // Load orphaned entries (null collectionId)
       // Note: Uncategorized collection doesn't support ghost entries (no collection history)
       const orphanedEntries = await entryProjection.getEntriesByCollection(null);
-      console.log('📝 [CollectionDetailView] Orphaned entries:', orphanedEntries.length);
       setEntries(orphanedEntries);
       
       setIsLoading(false);
@@ -191,7 +198,6 @@ export function CollectionDetailView({
     // Strategy 3: Regular UUID lookup (EXISTING)
     else if (collectionId) {
       foundCollection = collections.find((c: Collection) => c.id === collectionId) || null;
-      console.log('🔎 [CollectionDetailView] Found collection:', foundCollection ? { id: foundCollection.id, name: foundCollection.name, type: foundCollection.type } : null);
     }
     
     setCollection(foundCollection);
@@ -209,8 +215,6 @@ export function CollectionDetailView({
     if (idForEntries) {
       // Phase 2: Use getEntriesForCollectionView to get entries with ghost metadata
       const collectionEntries = await entryProjection.getEntriesForCollectionView(idForEntries);
-      console.log('📋 [CollectionDetailView] Entries for collection:', collectionEntries.length, 'entries');
-      console.log('📋 [CollectionDetailView] Entry details:', collectionEntries.map(e => ({ id: e.id, type: e.type, title: e.type === 'task' ? e.title : e.type === 'note' ? e.content.substring(0, 30) : 'event' })));
       setEntries(collectionEntries);
     }
 

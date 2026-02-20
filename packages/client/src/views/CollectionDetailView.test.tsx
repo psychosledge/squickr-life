@@ -13,6 +13,23 @@ import { AppProvider } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import type { Collection, Entry } from '@squickr/domain';
 
+// Mock useTutorial to avoid needing TutorialProvider in tests
+vi.mock('../hooks/useTutorial', () => ({
+  useTutorial: () => ({
+    isRunning: false,
+    isPaused: false,
+    stepIndex: 0,
+    hasCompletedTutorial: false,
+    startTutorial: vi.fn(),
+    stopTutorial: vi.fn(),
+    pauseTutorial: vi.fn(),
+    resumeTutorial: vi.fn(),
+    nextStep: vi.fn(),
+    completeTutorial: vi.fn(),
+    resetTutorial: vi.fn(),
+  }),
+}));
+
 // Mock implementations
 const mockCollection: Collection = {
   id: 'col-1',

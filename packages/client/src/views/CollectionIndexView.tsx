@@ -24,6 +24,8 @@ import { logger } from '../utils/logger';
 import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useSwipeProgress } from '../hooks/useSwipeProgress';
+import { useTutorial } from '../hooks/useTutorial';
+import { TUTORIAL_COMPLETED_KEY, TUTORIAL_SEEN_KEY } from '../context/TutorialContext';
 import { SWIPE } from '../utils/constants';
 
 export function CollectionIndexView() {
@@ -31,6 +33,7 @@ export function CollectionIndexView() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const userPreferences = useUserPreferences();
+  const tutorial = useTutorial();
   
   const [collections, setCollections] = useState<Collection[]>([]);
   const [entriesByCollection, setEntriesByCollection] = useState<Map<string | null, Entry[]>>(new Map());
@@ -104,6 +107,26 @@ export function CollectionIndexView() {
       unsubscribeEntry();
     };
   }, [collectionProjection, entryProjection]);
+
+  // Auto-trigger tutorial for new users with zero real collections
+  const { startTutorial } = tutorial;
+  useEffect(() => {
+    const realCollections = collections.filter(
+      (c) => c.id !== UNCATEGORIZED_COLLECTION_ID,
+    );
+    const hasSeenThisSession =
+      sessionStorage.getItem(TUTORIAL_SEEN_KEY) === 'true';
+    const hasCompletedTutorial =
+      localStorage.getItem(TUTORIAL_COMPLETED_KEY) === 'true';
+
+    if (
+      realCollections.length === 0 &&
+      !hasSeenThisSession &&
+      !hasCompletedTutorial
+    ) {
+      startTutorial();
+    }
+  }, [collections, startTutorial]);
 
   // Calculate next collection (first in sorted order) for navigation
   const nextCollection = useMemo(() => {
@@ -201,7 +224,12 @@ export function CollectionIndexView() {
   }, [navigateToNext, swipeProgress]);
 
   const handleCreateCollection = async (name: string, type?: import('@squickr/domain').CollectionType, date?: string) => {
-    await createCollectionHandler.handle({ name, type, date });
+    const collectionId = await createCollectionHandler.handle({ name, type, date });
+    // When the tutorial is paused (waiting for the user to enter a collection),
+    // auto-navigate so Steps 4–7 can appear without the user having to find the collection manually.
+    if (tutorial.isPaused) {
+      navigate(`/collection/${collectionId}`);
+    }
   };
 
   const handleReorderCollection = async (
@@ -252,7 +280,7 @@ export function CollectionIndexView() {
           <div className="flex items-center justify-between mb-2">
             <div className="flex-1" /> {/* Spacer for centering */}
             <div className="text-center flex-shrink-0">
-              <h1 className="text-4xl sm:text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-4xl sm:text-5xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent" data-tutorial-id="tutorial-welcome">
                 Squickr Life
               </h1>
             </div>

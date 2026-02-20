@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Joyride, { type CallBackProps, ACTIONS, EVENTS, STATUS } from 'react-joyride';
+import type { Step } from 'react-joyride';
 import {
   CreateCollectionHandler,
   ReorderCollectionHandler,
@@ -21,6 +23,9 @@ import { IndexedDBEventStore, FirestoreEventStore } from '@squickr/infrastructur
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DebugProvider } from './context/DebugContext';
+import { TutorialProvider } from './context/TutorialContext';
+import { useTutorial } from './hooks/useTutorial';
+import { TUTORIAL_STEP_COUNT } from './context/TutorialContext';
 import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
 import { SignInView } from './views/SignInView';
@@ -28,6 +33,176 @@ import { SyncManager } from './firebase/SyncManager';
 import { firestore } from './firebase/config';
 import { ROUTES } from './routes';
 import { logger } from './utils/logger';
+
+// ─── Tutorial Step Definitions ────────────────────────────────────────────────
+// Real DOM anchors use data-tutorial-id attributes added in Commit 3.
+// Steps 4–6 use Option A: tutorial pauses after Step 3 until user enters a
+// collection (see TutorialJoyride pause/resume logic below).
+
+const TUTORIAL_STEPS: Step[] = [
+  {
+    target: '[data-tutorial-id="tutorial-welcome"]',
+    title: 'Welcome to Squickr Life',
+    content:
+      'Squickr Life is a bullet journal app built for getting things done — ' +
+      'faster. This quick tour shows you the essentials. Takes about 60 seconds.',
+    placement: 'bottom',
+    disableBeacon: true,
+  },
+  {
+    target: '[data-tutorial-id="tutorial-collection-list"]',
+    title: 'Collections are your journal pages',
+    content:
+      'Each collection is a page in your journal. You might have a page for ' +
+      'Today, one for Work Projects, one for Home. ' +
+      'Pinned (★) collections stay at the top. Daily logs are grouped by year and month.',
+    placement: 'bottom',
+    disableBeacon: true,
+  },
+  {
+    target: '[data-tutorial-id="tutorial-fab"]',
+    title: 'Create your first collection',
+    content:
+      'Tap this button to create a collection. You can make a Daily Log ' +
+      '(linked to a date), or a Custom collection for any topic — projects, ' +
+      'habits, reading lists, whatever you need.',
+    placement: 'top',
+    disableBeacon: true,
+  },
+  {
+    target: '[data-tutorial-id="tutorial-fab"]',
+    title: 'Three entry types: tasks, notes, events',
+    content: (
+      <div style={{ textAlign: 'left' }}>
+        <p style={{ margin: '0 0 8px 0' }}>Tap + to add an entry. Choose your type:</p>
+        <ul style={{ margin: '0 0 8px 0', paddingLeft: 0, listStyle: 'none' }}>
+          <li style={{ marginBottom: 4 }}>☐ Task — something to do (check the box to complete it)</li>
+          <li style={{ marginBottom: 4 }}>📝 Note — a thought, reference, or observation</li>
+          <li>📅 Event — something happening on a date</li>
+        </ul>
+        <p style={{ margin: '8px 0 0 0' }}>Type your entry and press Enter or tap Save.</p>
+      </div>
+    ),
+    placement: 'top',
+    disableBeacon: true,
+  },
+  {
+    target: '[data-tutorial-id="tutorial-collection-menu"]',
+    title: 'Manage your collection',
+    content:
+      'Tap ⋮ to rename, delete, or adjust settings for this collection. ' +
+      'Use Settings to control how completed tasks are displayed. ' +
+      'Use Add to Favorites to pin a collection to the top of your list.',
+    placement: 'left',
+    disableBeacon: true,
+  },
+  {
+    target: '[data-tutorial-id="tutorial-collection-menu"]',
+    title: 'Migrate entries between collections',
+    content:
+      'Tap ⋮ → Select Entries to choose multiple entries at once, ' +
+      'then migrate them to another collection. ' +
+      'You can also tap ⋮ on any individual entry row to migrate, edit, or delete it. ' +
+      'Ghost entries (→) show where tasks originally came from.',
+    placement: 'left',
+    disableBeacon: true,
+  },
+  {
+    target: '[data-tutorial-id="tutorial-navigation"]',
+    title: 'Flip between pages like a real journal',
+    content:
+      'Use the ‹ › arrows to flip between collections — or swipe left/right on mobile. ' +
+      "You're all set! Tap your profile picture any time to access Help, Settings, " +
+      'and to restart this tour.',
+    placement: 'bottom',
+    disableBeacon: true,
+  },
+];
+
+// Verify step count matches the shared constant used by TutorialContext's nextStep() guard.
+// If this throws, update TUTORIAL_STEP_COUNT in TutorialContext.tsx to match.
+if (TUTORIAL_STEPS.length !== TUTORIAL_STEP_COUNT) {
+  throw new Error(
+    `TUTORIAL_STEPS has ${TUTORIAL_STEPS.length} steps but TUTORIAL_STEP_COUNT is ${TUTORIAL_STEP_COUNT}. Keep them in sync.`,
+  );
+}
+
+// ─── Tutorial Joyride Wrapper ─────────────────────────────────────────────────
+
+/**
+ * Renders the react-joyride component in controlled mode.
+ * Must live inside TutorialProvider so it can read/write tutorial state.
+ *
+ * Option A pause/resume: after Step 3 (index 2, the FAB step), the tutorial
+ * advances to stepIndex 3 then immediately pauses. CollectionDetailView
+ * resumes when the user first navigates into a collection.
+ */
+function TutorialJoyride() {
+  const tutorial = useTutorial();
+
+  // Index of the last step shown on the index page (FAB step)
+  const PAUSE_AFTER_STEP_INDEX = 2;
+
+  const handleJoyrideCallback = (data: CallBackProps) => {
+    const { action, status, type, index } = data;
+
+    // Advance step on NEXT action (controlled mode: we manage stepIndex)
+    if (type === EVENTS.STEP_AFTER && action === ACTIONS.NEXT) {
+      // Option A: pause after Step 3 (FAB step, index 2).
+      // Do NOT advance stepIndex yet — keep stepIndex=2 while paused so Joyride
+      // never tries to render a step targeting elements that don't exist on the
+      // index page. CollectionDetailView calls resumeTutorial() on mount, which
+      // triggers a nextStep() there to advance to step 3 before restarting Joyride.
+      if (index === PAUSE_AFTER_STEP_INDEX) {
+        tutorial.pauseTutorial();
+        return;
+      }
+
+      // Last step: clicking Finish fires STEP_AFTER+NEXT before STATUS.FINISHED.
+      // Complete here so the tooltip closes immediately.
+      if (index === TUTORIAL_STEP_COUNT - 1) {
+        tutorial.completeTutorial();
+        return;
+      }
+
+      tutorial.nextStep();
+      return;
+    }
+
+    // Back button is disabled via hideBackButton={true} prop on <Joyride>
+    // (prevStep() not yet implemented — desync risk if Back were enabled)
+
+    // Tutorial finished (reached last step) or skipped
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      tutorial.completeTutorial();
+      return;
+    }
+
+    // Close button pressed mid-tour (dismiss without completing)
+    if (action === ACTIONS.CLOSE) {
+      tutorial.stopTutorial();
+    }
+  };
+
+  return (
+    <Joyride
+      steps={TUTORIAL_STEPS}
+      run={tutorial.isRunning}
+      stepIndex={tutorial.stepIndex}
+      continuous
+      showSkipButton
+      hideBackButton
+      locale={{ skip: 'Skip Tour', last: 'Finish' }}
+      callback={handleJoyrideCallback}
+      styles={{
+        options: {
+          zIndex: 10000,
+          width: 340,
+        },
+      }}
+    />
+  );
+}
 
 /**
  * Main App Component
@@ -176,6 +351,7 @@ function AppContent() {
   return (
     <AppProvider value={contextValue}>
       <DebugProvider>
+        <TutorialJoyride />
         <BrowserRouter>
           <Routes>
             {/* Temporal paths - use date prop instead of TemporalRoute components */}
@@ -197,12 +373,14 @@ function AppContent() {
 }
 
 /**
- * Root App component with AuthProvider
+ * Root App component with AuthProvider and TutorialProvider
  */
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <TutorialProvider>
+        <AppContent />
+      </TutorialProvider>
     </AuthProvider>
   );
 }

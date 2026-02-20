@@ -21,7 +21,7 @@ export function CollectionNavigationControls({
   onNavigateNext,
 }: CollectionNavigationControlsProps) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" data-tutorial-id="tutorial-navigation">
       {/* Previous button */}
       <button
         onClick={onNavigatePrevious}

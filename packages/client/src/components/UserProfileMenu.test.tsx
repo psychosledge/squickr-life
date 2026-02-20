@@ -1,16 +1,45 @@
 /**
- * UserProfileMenu Tests
- * 
- * Tests for user profile menu component
+ * UserProfileMenu Tests (extended for Commit 2)
+ *
+ * Tests for user profile menu component — original tests preserved,
+ * extended with Help section tests.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { UserProfileMenu } from './UserProfileMenu';
+import { TutorialProvider, TUTORIAL_COMPLETED_KEY } from '../context/TutorialContext';
 import type { User } from 'firebase/auth';
+import type { ReactNode } from 'react';
+// ─── Render helper ────────────────────────────────────────────────────────────
 
-// Mock user data
+function renderWithTutorial(ui: ReactNode) {
+  return render(<TutorialProvider>{ui}</TutorialProvider>);
+}
+
+// ─── localStorage mock ────────────────────────────────────────────────────────
+
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+
+Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+
+// ─── Mock user data ───────────────────────────────────────────────────────────
+
 const mockUserWithPhoto: Partial<User> = {
   uid: 'test-uid',
   email: 'test@example.com',
@@ -39,9 +68,15 @@ const mockUserWithSingleName: Partial<User> = {
   photoURL: null,
 };
 
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
 describe('UserProfileMenu', () => {
   const mockOnSignOut = vi.fn();
   const mockOnSettingsClick = vi.fn();
+
+  beforeEach(() => {
+    localStorageMock.clear();
+  });
 
   afterEach(() => {
     mockOnSignOut.mockClear();
@@ -49,52 +84,58 @@ describe('UserProfileMenu', () => {
   });
 
   it('should render with photo URL', () => {
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     expect(avatar).toBeInTheDocument();
-    
-    // Check that image is present
+
     const img = screen.getByAltText(/profile/i);
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute('src', 'https://example.com/photo.jpg');
   });
 
   it('should render with initials fallback when no photo', () => {
-    render(<UserProfileMenu user={mockUserWithoutPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithoutPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     expect(avatar).toBeInTheDocument();
-    
-    // Check for initials
+
     expect(screen.getByText('JS')).toBeInTheDocument();
   });
 
   it('should render with single initial for single-word name', () => {
-    render(<UserProfileMenu user={mockUserWithSingleName as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithSingleName as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     expect(screen.getByText('M')).toBeInTheDocument();
   });
 
   it('should display email when no display name', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithoutDisplayName as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithoutDisplayName as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
-    
-    // Email should be shown in place of display name
+
     expect(screen.getByText('test3@example.com')).toBeInTheDocument();
   });
 
   it('should open dropdown when avatar is clicked', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
-    
-    // Dropdown should show user info
+
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('test@example.com')).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /sign out/i })).toBeInTheDocument();
@@ -102,119 +143,123 @@ describe('UserProfileMenu', () => {
 
   it('should close dropdown when avatar is clicked again', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
-    
-    // Open
+
     await user.click(avatar);
     expect(screen.getByText('John Doe')).toBeInTheDocument();
-    
-    // Close
+
     await user.click(avatar);
     expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
   });
 
   it('should close dropdown when clicking outside', async () => {
     const user = userEvent.setup();
-    const { container } = render(
+    renderWithTutorial(
       <div>
         <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />
         <div data-testid="outside">Outside element</div>
-      </div>
+      </div>,
     );
-    
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
-    
+
     expect(screen.getByText('John Doe')).toBeInTheDocument();
-    
-    // Click outside
+
     const outside = screen.getByTestId('outside');
     await user.click(outside);
-    
+
     expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
   });
 
   it('should close dropdown when Escape is pressed', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
-    
+
     expect(screen.getByText('John Doe')).toBeInTheDocument();
-    
-    // Press Escape
+
     await user.keyboard('{Escape}');
-    
+
     expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
   });
 
   it('should call onSignOut when sign out button is clicked', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
-    
+
     const signOutButton = screen.getByRole('menuitem', { name: /sign out/i });
     await user.click(signOutButton);
-    
+
     expect(mockOnSignOut).toHaveBeenCalledOnce();
   });
 
   it('should display user info correctly in dropdown', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
-    
-    // Check display name
+
     expect(screen.getByText('John Doe')).toBeInTheDocument();
-    
-    // Check email
     expect(screen.getByText('test@example.com')).toBeInTheDocument();
   });
 
   it('should have proper ARIA attributes', () => {
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
-    
+
     expect(avatar).toHaveAttribute('aria-haspopup', 'true');
     expect(avatar).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('should update aria-expanded when dropdown opens', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
-    
+
     expect(avatar).toHaveAttribute('aria-expanded', 'false');
-    
+
     await user.click(avatar);
-    
+
     expect(avatar).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('should support keyboard navigation', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
-    
-    // Tab to avatar
+
     await user.tab();
     expect(avatar).toHaveFocus();
-    
-    // Open with Enter
+
     await user.keyboard('{Enter}');
     expect(screen.getByText('John Doe')).toBeInTheDocument();
-    
-    // Tab to first menu item (Settings)
+
     await user.tab();
     const settingsButton = screen.getByRole('menuitem', { name: /settings/i });
     expect(settingsButton).toHaveFocus();
@@ -222,53 +267,177 @@ describe('UserProfileMenu', () => {
 
   it('should render Settings menu option', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
-    
+
     expect(screen.getByRole('menuitem', { name: /settings/i })).toBeInTheDocument();
   });
 
   it('should call onSettingsClick when Settings is clicked', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
-    
+
     const settingsButton = screen.getByRole('menuitem', { name: /settings/i });
     await user.click(settingsButton);
-    
+
     expect(mockOnSettingsClick).toHaveBeenCalledOnce();
   });
 
   it('should close menu after Settings is clicked', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
-    
+
     expect(screen.getByText('John Doe')).toBeInTheDocument();
-    
+
     const settingsButton = screen.getByRole('menuitem', { name: /settings/i });
     await user.click(settingsButton);
-    
-    // Menu should be closed
+
     expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
   });
 
-  it('should display Settings option before Sign out', async () => {
+  it('should display Settings option before Sign out with new help items in between', async () => {
     const user = userEvent.setup();
-    render(<UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />);
-    
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
-    
+
     const menuItems = screen.getAllByRole('menuitem');
-    expect(menuItems).toHaveLength(2);
+    // Settings + Restart Tutorial + Bullet Journal Guide + Keyboard Shortcuts
+    // + Report a Bug + Request a Feature + GitHub Discussions + About Squickr Life
+    // + Sign out = 9
+    expect(menuItems).toHaveLength(9);
     expect(menuItems[0]).toHaveTextContent(/settings/i);
-    expect(menuItems[1]).toHaveTextContent(/sign out/i);
+    expect(menuItems[8]).toHaveTextContent(/sign out/i);
+  });
+
+  // ─── Help Section ────────────────────────────────────────────────────────
+
+  it('help section items are present in the dropdown', async () => {
+    const user = userEvent.setup();
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
+    const avatar = screen.getByRole('button', { name: /user menu/i });
+    await user.click(avatar);
+
+    expect(screen.getByRole('menuitem', { name: /restart tutorial/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /bullet journal guide/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /keyboard shortcuts/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /report a bug/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /request a feature/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /github discussions/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /about squickr life/i })).toBeInTheDocument();
+  });
+
+  it('clicking "Restart Tutorial" calls resetTutorial and clears localStorage', async () => {
+    const user = userEvent.setup();
+    // Pre-set the completed flag
+    localStorageMock.setItem(TUTORIAL_COMPLETED_KEY, 'true');
+
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
+    const avatar = screen.getByRole('button', { name: /user menu/i });
+    await user.click(avatar);
+
+    const restartButton = screen.getByRole('menuitem', { name: /restart tutorial/i });
+    await user.click(restartButton);
+
+    // Dropdown should be closed
+    expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+
+    // localStorage key should be cleared (resetTutorial removes it)
+    expect(localStorageMock.getItem(TUTORIAL_COMPLETED_KEY)).toBeNull();
+  });
+
+  it('clicking "Bullet Journal Guide" opens the BuJo modal', async () => {
+    const user = userEvent.setup();
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
+    const avatar = screen.getByRole('button', { name: /user menu/i });
+    await user.click(avatar);
+
+    const bujoButton = screen.getByRole('menuitem', { name: /bullet journal guide/i });
+    await user.click(bujoButton);
+
+    // BulletJournalGuideModal should be visible
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Bullet Journal Guide')).toBeInTheDocument();
+  });
+
+  it('clicking "Keyboard Shortcuts" opens the keyboard shortcuts modal', async () => {
+    const user = userEvent.setup();
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
+    const avatar = screen.getByRole('button', { name: /user menu/i });
+    await user.click(avatar);
+
+    const shortcutsButton = screen.getByRole('menuitem', { name: /keyboard shortcuts/i });
+    await user.click(shortcutsButton);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument();
+  });
+
+  it('clicking "About Squickr Life" opens the About modal', async () => {
+    const user = userEvent.setup();
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
+    const avatar = screen.getByRole('button', { name: /user menu/i });
+    await user.click(avatar);
+
+    const aboutButton = screen.getByRole('menuitem', { name: /about squickr life/i });
+    await user.click(aboutButton);
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+  });
+
+  it('"Report a Bug", "Request a Feature", "GitHub Discussions" are present as links', async () => {
+    const user = userEvent.setup();
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
+    );
+
+    const avatar = screen.getByRole('button', { name: /user menu/i });
+    await user.click(avatar);
+
+    const bugLink = screen.getByRole('menuitem', { name: /report a bug/i });
+    expect(bugLink.tagName).toBe('A');
+    expect(bugLink).toHaveAttribute('target', '_blank');
+    expect(bugLink).toHaveAttribute('rel', 'noopener noreferrer');
+
+    const featureLink = screen.getByRole('menuitem', { name: /request a feature/i });
+    expect(featureLink.tagName).toBe('A');
+    expect(featureLink).toHaveAttribute('target', '_blank');
+
+    const discussionsLink = screen.getByRole('menuitem', { name: /github discussions/i });
+    expect(discussionsLink.tagName).toBe('A');
+    expect(discussionsLink).toHaveAttribute('target', '_blank');
   });
 });
