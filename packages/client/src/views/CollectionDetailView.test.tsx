@@ -12,6 +12,7 @@ import { CollectionDetailView } from './CollectionDetailView';
 import { AppProvider } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import type { Collection, Entry } from '@squickr/domain';
+import { DEFAULT_USER_PREFERENCES } from '@squickr/domain';
 
 // Mock useTutorial to avoid needing TutorialProvider in tests
 vi.mock('../hooks/useTutorial', () => ({
@@ -1070,5 +1071,216 @@ describe('CollectionDetailView - Temporal Route Navigation Fix', () => {
     // The fix: currentCollectionId='col-feb-2026-uuid' === entry.collections[0]
     // ensures current collection is excluded from navigation (no circular "Go to February 2026")
     expect(mockCollectionProjection.getCollections).toHaveBeenCalled();
+  });
+});
+
+// ============================================================================
+// Error Toast Tests
+// ============================================================================
+
+describe('CollectionDetailView - Error Toast', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+
+  const mockCollection: Collection = {
+    id: 'col-1',
+    name: 'Test Collection',
+    type: 'log',
+    order: 'a0',
+    createdAt: '2026-01-27T10:00:00Z',
+  };
+
+  // Note: these tests use mockImplementation with pre-caught rejections instead of
+  // mockRejectedValue. Although loadData() and useCollectionNavigation both catch
+  // rejections internally, pre-catching prevents any residual unhandled rejection
+  // warnings during the microtask gap between promise creation and await.
+  beforeEach(() => {
+    mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([mockCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+  });
+
+  function buildAppContext(overrides: Partial<any> = {}) {
+    return {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: {} as any,
+      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
+      ...overrides,
+    };
+  }
+
+  function renderView(collectionId = 'col-1', appContextOverrides: Partial<any> = {}) {
+    return render(
+      <MemoryRouter initialEntries={[`/collection/${collectionId}`]}>
+        <AppProvider value={buildAppContext(appContextOverrides)}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it('should show an error toast when loadData fails', async () => {
+    // Use mockImplementation with a pre-caught rejection to prevent vitest's unhandledRejection
+    // detection from firing — loadData catches this in its try/catch, but Node.js marks a
+    // promise as "unhandled" if no .catch() is attached synchronously on the same microtask.
+    mockCollectionProjection.getCollections.mockImplementation(() => {
+      const p = Promise.reject(new Error('Network error'));
+      p.catch(() => {}); // pre-catch to prevent unhandled rejection
+      return p;
+    });
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Network error');
+  });
+
+  it('should show a generic error message when loadData throws a non-Error', async () => {
+    mockCollectionProjection.getCollections.mockImplementation(() => {
+      const p = Promise.reject('Unknown failure');
+      p.catch(() => {});
+      return p;
+    });
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to load collection data');
+    });
+  });
+
+  it('should dismiss the error toast when the dismiss button is clicked', async () => {
+    const user = userEvent.setup();
+    mockCollectionProjection.getCollections.mockImplementation(() => {
+      const p = Promise.reject(new Error('Network error'));
+      p.catch(() => {});
+      return p;
+    });
+
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    const dismissButton = screen.getByRole('button', { name: /dismiss error/i });
+    await user.click(dismissButton);
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('should show an error toast when bulk migration fails', async () => {
+    const user = userEvent.setup();
+    const failingBulkHandler = {
+      handle: vi.fn().mockImplementation(() => {
+        const p = Promise.reject(new Error('Bulk migration failed'));
+        p.catch(() => {}); // pre-catch to prevent unhandled rejection warning
+        return p;
+      }),
+    };
+
+    const mockEntries = [
+      {
+        id: 'task-1',
+        type: 'task' as const,
+        title: 'Task 1',
+        status: 'open' as const,
+        createdAt: '2026-01-27T10:00:00Z',
+        order: 'a0',
+        collectionId: 'col-1',
+        collections: ['col-1'],
+      },
+    ];
+    mockEntryProjection.getEntriesForCollectionView.mockResolvedValue(mockEntries);
+
+    // Provide a second collection so MigrateEntryDialog has a target after filtering out col-1
+    const targetCollection: Collection = {
+      id: 'col-2',
+      name: 'Another Collection',
+      type: 'log',
+      order: 'a1',
+      createdAt: '2026-01-27T10:00:00Z',
+    };
+    mockCollectionProjection.getCollections.mockResolvedValue([mockCollection, targetCollection]);
+
+    renderView('col-1', { bulkMigrateEntriesHandler: failingBulkHandler });
+
+    // Wait for loading to complete
+    await waitFor(() => {
+      expect(screen.getByText('Test Collection')).toBeInTheDocument();
+    });
+
+    // Enter selection mode via menu
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+    const selectOption = screen.getByText(/^Select Entries$/i);
+    await user.click(selectOption);
+
+    // Select all entries
+    const selectAllButton = screen.getByRole('button', { name: /^All$/i });
+    await user.click(selectAllButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 selected/i)).toBeInTheDocument();
+    });
+
+    // Open bulk migrate modal
+    const migrateButton = screen.getByRole('button', { name: /^Migrate$/i });
+    await user.click(migrateButton);
+
+    // The MigrateEntryDialog shows "Migrate N entries" heading when open
+    await waitFor(() => {
+      expect(screen.getByText(/migrate 1 entr/i)).toBeInTheDocument();
+    });
+
+    // Select the target collection and submit to trigger the failure path
+    const collectionSelect = screen.getByRole('combobox', { name: /Collection/i });
+    await user.selectOptions(collectionSelect, 'col-2');
+    // There are two "Migrate" buttons: the dialog's submit button (first in DOM, inside the dialog)
+    // and the toolbar's "Migrate" button (second in DOM, after the dialog).
+    // Click the dialog's submit button (index 0).
+    const migrateButtons = screen.getAllByRole('button', { name: /^Migrate$/i });
+    await user.click(migrateButtons[0]);
+
+    // The error toast should appear with the handler's error message
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('Bulk migration failed');
   });
 });

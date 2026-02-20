@@ -35,6 +35,7 @@ import { ConfirmDeleteParentModal } from '../components/ConfirmDeleteParentModal
 import { SelectionToolbar } from '../components/SelectionToolbar';
 import { SwipeIndicator } from '../components/SwipeIndicator';
 import { FAB } from '../components/FAB';
+import { ErrorToast } from '../components/ErrorToast';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { DEBOUNCE } from '../utils/constants';
 import { getDateKeyForTemporal, getMonthKeyForTemporal } from '../utils/temporalUtils';
@@ -69,6 +70,7 @@ export function CollectionDetailView({
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Tutorial Option A: resume when user first navigates into a collection,
   // but only AFTER loading is complete so Joyride's target elements are in the DOM.
@@ -150,75 +152,79 @@ export function CollectionDetailView({
 
     setIsLoading(true);
     
-    // Load all collections (for migration modal)
-    const collections = await collectionProjection.getCollections();
-    setAllCollections(collections);
-    
-    let foundCollection: Collection | null = null;
-    
-    // Strategy 1: Temporal date lookup (NEW)
-    if (temporalDate) {
-      let targetDate: string;
-      let targetType: 'daily' | 'monthly';
+    try {
+      // Load all collections (for migration modal)
+      const collections = await collectionProjection.getCollections();
+      setAllCollections(collections);
       
-      if (temporalDate === 'this-month' || temporalDate === 'last-month' || temporalDate === 'next-month') {
-        targetDate = getMonthKeyForTemporal(temporalDate);
-        targetType = 'monthly';
-      } else {
-        targetDate = getDateKeyForTemporal(temporalDate);
-        targetType = 'daily';
+      let foundCollection: Collection | null = null;
+      
+      // Strategy 1: Temporal date lookup (NEW)
+      if (temporalDate) {
+        let targetDate: string;
+        let targetType: 'daily' | 'monthly';
+        
+        if (temporalDate === 'this-month' || temporalDate === 'last-month' || temporalDate === 'next-month') {
+          targetDate = getMonthKeyForTemporal(temporalDate);
+          targetType = 'monthly';
+        } else {
+          targetDate = getDateKeyForTemporal(temporalDate);
+          targetType = 'daily';
+        }
+        
+        foundCollection = collections.find(c => 
+          c.type === targetType && c.date === targetDate
+        ) || null;
+      }
+      // Strategy 2: Virtual "uncategorized" collection (EXISTING)
+      else if (collectionId === UNCATEGORIZED_COLLECTION_ID) {
+        // Synthesize virtual collection
+        setCollection({
+          id: UNCATEGORIZED_COLLECTION_ID,
+          name: 'Uncategorized',
+          type: 'custom',
+          order: '!',
+          createdAt: new Date().toISOString(),
+        });
+        
+        // Set resolved ID for uncategorized
+        setResolvedCollectionId(UNCATEGORIZED_COLLECTION_ID);
+        
+        // Load orphaned entries (null collectionId)
+        // Note: Uncategorized collection doesn't support ghost entries (no collection history)
+        const orphanedEntries = await entryProjection.getEntriesByCollection(null);
+        setEntries(orphanedEntries);
+        
+        setIsLoading(false);
+        return;
+      }
+      // Strategy 3: Regular UUID lookup (EXISTING)
+      else if (collectionId) {
+        foundCollection = collections.find((c: Collection) => c.id === collectionId) || null;
       }
       
-      foundCollection = collections.find(c => 
-        c.type === targetType && c.date === targetDate
-      ) || null;
-    }
-    // Strategy 2: Virtual "uncategorized" collection (EXISTING)
-    else if (collectionId === UNCATEGORIZED_COLLECTION_ID) {
-      // Synthesize virtual collection
-      setCollection({
-        id: UNCATEGORIZED_COLLECTION_ID,
-        name: 'Uncategorized',
-        type: 'custom',
-        order: '!',
-        createdAt: new Date().toISOString(),
-      });
+      setCollection(foundCollection);
       
-      // Set resolved ID for uncategorized
-      setResolvedCollectionId(UNCATEGORIZED_COLLECTION_ID);
-      
-      // Load orphaned entries (null collectionId)
-      // Note: Uncategorized collection doesn't support ghost entries (no collection history)
-      const orphanedEntries = await entryProjection.getEntriesByCollection(null);
-      setEntries(orphanedEntries);
-      
+      // Set resolved collection ID (actual UUID after temporal/UUID resolution)
+      // This is critical for navigation to work correctly with temporal routes
+      if (foundCollection) {
+        setResolvedCollectionId(foundCollection.id);
+      } else {
+        setResolvedCollectionId('');
+      }
+
+      // Fetch entries (use collectionId if available, else use found collection's id)
+      const idForEntries = collectionId || foundCollection?.id;
+      if (idForEntries) {
+        // Phase 2: Use getEntriesForCollectionView to get entries with ghost metadata
+        const collectionEntries = await entryProjection.getEntriesForCollectionView(idForEntries);
+        setEntries(collectionEntries);
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to load collection data');
+    } finally {
       setIsLoading(false);
-      return;
     }
-    // Strategy 3: Regular UUID lookup (EXISTING)
-    else if (collectionId) {
-      foundCollection = collections.find((c: Collection) => c.id === collectionId) || null;
-    }
-    
-    setCollection(foundCollection);
-    
-    // Set resolved collection ID (actual UUID after temporal/UUID resolution)
-    // This is critical for navigation to work correctly with temporal routes
-    if (foundCollection) {
-      setResolvedCollectionId(foundCollection.id);
-    } else {
-      setResolvedCollectionId('');
-    }
-
-    // Fetch entries (use collectionId if available, else use found collection's id)
-    const idForEntries = collectionId || foundCollection?.id;
-    if (idForEntries) {
-      // Phase 2: Use getEntriesForCollectionView to get entries with ghost metadata
-      const collectionEntries = await entryProjection.getEntriesForCollectionView(idForEntries);
-      setEntries(collectionEntries);
-    }
-
-    setIsLoading(false);
   };
 
   // Subscribe to projection changes (reactive updates with debouncing to prevent memory leaks)
@@ -291,7 +297,7 @@ export function CollectionDetailView({
       selection.exitSelectionMode();
     } catch (error) {
       console.error('Bulk migration failed:', error);
-      // TODO: Show error toast to user
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to migrate entries');
     } finally {
       setIsBulkMigrating(false); // Clear loading state
     }
@@ -329,7 +335,7 @@ export function CollectionDetailView({
     );
   }
 
-  // Error state - collection not found
+  // Error state - collection not found (or load error — toast will indicate which)
   if (!collection) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -354,6 +360,14 @@ export function CollectionDetailView({
             Back to Collections
           </button>
         </div>
+
+        {/* Error toast — shown when a load error caused the not-found state */}
+        {errorMessage && (
+          <ErrorToast
+            message={errorMessage}
+            onDismiss={() => setErrorMessage(null)}
+          />
+        )}
       </div>
     );
   }
@@ -617,6 +631,14 @@ export function CollectionDetailView({
         previousCollectionName={navigation.previousCollection?.name ?? null}
         nextCollectionName={navigation.nextCollection?.name ?? null}
       />
+
+      {/* Error toast — shown for load and bulk-migration failures */}
+      {errorMessage && (
+        <ErrorToast
+          message={errorMessage}
+          onDismiss={() => setErrorMessage(null)}
+        />
+      )}
     </div>
   );
 }

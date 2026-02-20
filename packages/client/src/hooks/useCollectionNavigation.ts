@@ -41,27 +41,32 @@ export function useCollectionNavigation(
 
   // Load collections including virtual uncategorized if needed
   const loadCollections = useCallback(async () => {
-    const realCollections = await collectionProjection.getCollections();
-    
-    // Check if there are orphaned entries (for virtual uncategorized collection)
-    const orphanedEntries = await entryProjection.getEntriesByCollection(null);
-    
-    let allCollections: Collection[];
-    if (orphanedEntries.length > 0) {
-      // Add virtual uncategorized collection at the start
-      const virtualUncategorized: Collection = {
-        id: UNCATEGORIZED_COLLECTION_ID,
-        name: 'Uncategorized',
-        type: 'custom',
-        order: '!', // Comes before all other collections
-        createdAt: new Date().toISOString(),
-      };
-      allCollections = [virtualUncategorized, ...realCollections];
-    } else {
-      allCollections = realCollections;
+    try {
+      const realCollections = await collectionProjection.getCollections();
+      
+      // Check if there are orphaned entries (for virtual uncategorized collection)
+      const orphanedEntries = await entryProjection.getEntriesByCollection(null);
+      
+      let allCollections: Collection[];
+      if (orphanedEntries.length > 0) {
+        // Add virtual uncategorized collection at the start
+        const virtualUncategorized: Collection = {
+          id: UNCATEGORIZED_COLLECTION_ID,
+          name: 'Uncategorized',
+          type: 'custom',
+          order: '!', // Comes before all other collections
+          createdAt: new Date().toISOString(),
+        };
+        allCollections = [virtualUncategorized, ...realCollections];
+      } else {
+        allCollections = realCollections;
+      }
+      
+      setCollections(allCollections);
+    } catch {
+      // Navigation is non-critical; silently ignore load failures so they don't
+      // prevent the main view from rendering or cause unhandled promise rejections.
     }
-    
-    setCollections(allCollections);
   }, [collectionProjection, entryProjection]);
 
   // Load collections on mount and when they change

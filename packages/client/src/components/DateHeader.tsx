@@ -1,6 +1,10 @@
+import { formatDateLabel } from '../utils/dateUtils';
+
 interface DateHeaderProps {
   date: string; // YYYY-MM-DD
   entryCount: number;
+  /** Override the reference date used for Today/Yesterday labels (defaults to now). */
+  referenceDate?: Date;
 }
 
 /**
@@ -9,29 +13,7 @@ interface DateHeaderProps {
  * Displays a sticky date header for a daily log section.
  * Shows "Today", "Yesterday", or a formatted date depending on the date.
  */
-export function DateHeader({ date, entryCount }: DateHeaderProps) {
-  const formatDateLabel = (dateStr: string): string => {
-    const date = new Date(dateStr + 'T00:00:00'); // Avoid timezone issues
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    const inputDate = new Date(date);
-    inputDate.setHours(0, 0, 0, 0);
-    
-    if (inputDate.getTime() === today.getTime()) return 'Today';
-    if (inputDate.getTime() === yesterday.getTime()) return 'Yesterday';
-    
-    // Format as "Friday, Jan 24"
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
-
+export function DateHeader({ date, entryCount, referenceDate }: DateHeaderProps) {
   const entryText = entryCount === 1 ? 'entry' : 'entries';
 
   return (
@@ -42,7 +24,7 @@ export function DateHeader({ date, entryCount }: DateHeaderProps) {
     >
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-          {formatDateLabel(date)}
+          {formatDateLabel(date, referenceDate)}
         </h2>
         <span className="text-sm text-gray-500 dark:text-gray-400">
           {entryCount} {entryText}
