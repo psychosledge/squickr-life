@@ -22,6 +22,5 @@ export function getBugReportUrl(): string {
 
 export const GITHUB_URLS = {
   featureRequest: `${GITHUB_BASE_URL}/issues/new?template=feature_request.md&labels=enhancement&title=%5BFeature%5D+`,
-  discussions: `${GITHUB_BASE_URL}/discussions`,
   repository: GITHUB_BASE_URL,
 } as const;

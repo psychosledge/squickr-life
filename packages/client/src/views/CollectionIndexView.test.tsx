@@ -121,10 +121,10 @@ describe('CollectionIndexView - Header Branding', () => {
     });
   });
 
-  it('should display "Get shit done quicker with Squickr!" as the subtitle', async () => {
+  it('should display "Get your shit together quicker with Squickr!" as the subtitle', async () => {
     renderView();
     await waitFor(() => {
-      expect(screen.getByText('Get shit done quicker with Squickr!')).toBeInTheDocument();
+      expect(screen.getByText('Get your shit together quicker with Squickr!')).toBeInTheDocument();
     });
   });
 });

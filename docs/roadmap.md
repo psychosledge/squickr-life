@@ -1,7 +1,7 @@
 # Product Roadmap
-**Last Updated:** February 20, 2026  
-**Current Version:** v1.0.2  
-**Status:** v1.0.2 shipped — post-v1.0.0 refactoring phase
+**Last Updated:** February 21, 2026  
+**Current Version:** v1.0.3  
+**Status:** v1.0.3 shipped — post-v1.0.0 refactoring phase
 
 ---
 
@@ -52,6 +52,15 @@
 ## Version History
 
 ### Completed Versions
+
+**v1.0.3** (February 21, 2026) — Patch
+- Removed dead GitHub Discussions link (404 — Discussions not enabled)
+- Bullet Journal Guide now shows app icons instead of raw Unicode symbols
+- Fixed completed sub-tasks rendering twice when parent is in same collection
+- Fixed ghost entries being invisibly included in bulk selection
+- Tagline updated: "Get your shit together quicker with Squickr!"
+- 1,069 tests passing
+- Casey review: 9/10
 
 **v1.0.2** (February 20, 2026) — Patch
 - Fixed collection stats missing/incorrect for multi-collection tasks
@@ -152,6 +161,6 @@
 
 ---
 
-**Roadmap Status:** ✅ v1.0.2 Shipped  
+**Roadmap Status:** ✅ v1.0.3 Shipped  
 **Current Phase:** Post-v1.0.0 refactoring  
-**Date:** February 20, 2026
+**Date:** February 21, 2026

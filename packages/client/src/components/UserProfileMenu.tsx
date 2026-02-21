@@ -7,7 +7,7 @@
  * - Google profile picture or initials fallback
  * - Dropdown menu with user info, help items, and sign out
  * - Help section: Restart Tutorial, Bullet Journal Guide, Keyboard Shortcuts,
- *   Report a Bug, Request a Feature, GitHub Discussions, About Squickr Life
+ *   Report a Bug, Request a Feature, About Squickr Life
  * - Click outside to close
  * - Escape key to close
  * - Full keyboard navigation
@@ -238,17 +238,6 @@ export function UserProfileMenu({ user, onSignOut, onSettingsClick }: UserProfil
             >
               <span>💡</span>
               <span>Request a Feature</span>
-            </a>
-
-            <a
-              href={GITHUB_URLS.discussions}
-              target="_blank"
-              rel="noopener noreferrer"
-              role="menuitem"
-              className={menuItemLinkClass}
-            >
-              <span>💬</span>
-              <span>GitHub Discussions</span>
             </a>
 
             <button

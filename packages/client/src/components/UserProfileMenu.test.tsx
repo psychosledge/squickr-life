@@ -320,11 +320,11 @@ describe('UserProfileMenu', () => {
 
     const menuItems = screen.getAllByRole('menuitem');
     // Settings + Restart Tutorial + Bullet Journal Guide + Keyboard Shortcuts
-    // + Report a Bug + Request a Feature + GitHub Discussions + About Squickr Life
-    // + Sign out = 9
-    expect(menuItems).toHaveLength(9);
+    // + Report a Bug + Request a Feature + About Squickr Life
+    // + Sign out = 8
+    expect(menuItems).toHaveLength(8);
     expect(menuItems[0]).toHaveTextContent(/settings/i);
-    expect(menuItems[8]).toHaveTextContent(/sign out/i);
+    expect(menuItems[7]).toHaveTextContent(/sign out/i);
   });
 
   // ─── Help Section ────────────────────────────────────────────────────────
@@ -343,7 +343,7 @@ describe('UserProfileMenu', () => {
     expect(screen.getByRole('menuitem', { name: /keyboard shortcuts/i })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /report a bug/i })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /request a feature/i })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: /github discussions/i })).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: /github discussions/i })).not.toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: /about squickr life/i })).toBeInTheDocument();
   });
 
@@ -418,7 +418,7 @@ describe('UserProfileMenu', () => {
     expect(screen.getByText('Squickr Life')).toBeInTheDocument();
   });
 
-  it('"Report a Bug", "Request a Feature", "GitHub Discussions" are present as links', async () => {
+  it('"Report a Bug" and "Request a Feature" are present as links', async () => {
     const user = userEvent.setup();
     renderWithTutorial(
       <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} />,
@@ -436,8 +436,6 @@ describe('UserProfileMenu', () => {
     expect(featureLink.tagName).toBe('A');
     expect(featureLink).toHaveAttribute('target', '_blank');
 
-    const discussionsLink = screen.getByRole('menuitem', { name: /github discussions/i });
-    expect(discussionsLink.tagName).toBe('A');
-    expect(discussionsLink).toHaveAttribute('target', '_blank');
+    expect(screen.queryByRole('menuitem', { name: /github discussions/i })).not.toBeInTheDocument();
   });
 });

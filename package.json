@@ -1,9 +1,9 @@
 {
   "name": "squickr-life",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
-  "description": "Get shit done quicker with Squickr!",
+  "description": "Get your shit together quicker with Squickr!",
   "keywords": ["task-tracker", "event-sourcing", "pwa", "offline-first"],
   "author": "Your Name",
   "license": "MIT",

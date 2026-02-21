@@ -80,6 +80,7 @@ Review all modified files thoroughly:
 
 ### Step 3: Check Tests
 Run `pnpm test run` to verify all tests pass.
+**CRITICAL**: If ANY test is failing — even tests unrelated to the change under review — this is a **blocker**. Do not sign off until the full test suite is green. The project cannot deploy with failing tests regardless of cause. Report all failures explicitly and mark the review as blocked.
 Analyze test coverage and quality.
 
 ### Step 4: Provide Feedback

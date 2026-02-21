@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { ENTRY_ICONS } from '../utils/constants';
 
 interface BulletJournalGuideModalProps {
   isOpen: boolean;
@@ -93,19 +94,30 @@ export function BulletJournalGuideModal({ isOpen, onClose }: BulletJournalGuideM
               The Three Entry Types
             </h3>
             <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 dark:text-gray-400">
+                  <th className="pr-3 font-normal text-left w-12">App</th>
+                  <th className="pr-3 font-normal text-left w-12">BuJo</th>
+                  <th className="pr-3 font-normal text-left w-16">Type</th>
+                  <th className="font-normal text-left">Description</th>
+                </tr>
+              </thead>
               <tbody>
                 <tr>
-                  <td className="pr-3 font-mono w-8">•</td>
+                  <td className="pr-3 font-mono w-12" data-testid="entry-type-task-icon">{ENTRY_ICONS.TASK_OPEN}</td>
+                  <td className="pr-3 font-mono w-12 text-gray-400">•</td>
                   <td className="pr-3 font-semibold w-16">Task</td>
                   <td>Something to do</td>
                 </tr>
                 <tr>
-                  <td className="pr-3 font-mono">–</td>
+                  <td className="pr-3 font-mono">{ENTRY_ICONS.NOTE}</td>
+                  <td className="pr-3 font-mono text-gray-400">–</td>
                   <td className="pr-3 font-semibold">Note</td>
                   <td>Something to record</td>
                 </tr>
                 <tr>
-                  <td className="pr-3 font-mono">○</td>
+                  <td className="pr-3 font-mono">{ENTRY_ICONS.EVENT}</td>
+                  <td className="pr-3 font-mono text-gray-400">○</td>
                   <td className="pr-3 font-semibold">Event</td>
                   <td>Something happening</td>
                 </tr>
@@ -119,22 +131,24 @@ export function BulletJournalGuideModal({ isOpen, onClose }: BulletJournalGuideM
               The Bullet States
             </h3>
             <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 dark:text-gray-400">
+                  <th className="pr-3 font-normal text-left w-12">App</th>
+                  <th className="font-normal text-left">Meaning</th>
+                </tr>
+              </thead>
               <tbody>
                 <tr>
-                  <td className="pr-3 font-mono w-8">•</td>
+                  <td className="pr-3 font-mono w-12" data-testid="bullet-state-open-icon">{ENTRY_ICONS.TASK_OPEN}</td>
                   <td>Open task</td>
                 </tr>
                 <tr>
-                  <td className="pr-3 font-mono">×</td>
+                  <td className="pr-3 font-mono" data-testid="bullet-state-completed-icon">{ENTRY_ICONS.TASK_COMPLETED}</td>
                   <td>Completed task</td>
                 </tr>
-                <tr>
-                  <td className="pr-3 font-mono">{'>'}</td>
-                  <td>Migrated task (moved to another page)</td>
-                </tr>
-                <tr>
-                  <td className="pr-3 font-mono">–</td>
-                  <td>Cancelled/irrelevant task</td>
+                <tr data-testid="bullet-state-migrated-row">
+                  <td className="pr-3 font-mono">{ENTRY_ICONS.MIGRATED}</td>
+                  <td>Migrated task — use the migrate action to move to another collection</td>
                 </tr>
               </tbody>
             </table>

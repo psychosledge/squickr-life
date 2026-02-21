@@ -1284,3 +1284,279 @@ describe('CollectionDetailView - Error Toast', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Bulk migration failed');
   });
 });
+
+// ============================================================================
+// Fix 3: Completed sub-tasks should stay with parent in active section
+// ============================================================================
+
+describe('CollectionDetailView - Completed sub-task stays with parent (Fix 3)', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+
+  const collectionWithMoveToBottom: Collection = {
+    id: 'col-1',
+    name: 'My Tasks',
+    type: 'log',
+    order: 'a0',
+    createdAt: '2026-01-27T10:00:00Z',
+    settings: { completedTaskBehavior: 'move-to-bottom' } as any,
+  };
+
+  // Parent task (open) + completed sub-task — both in same collection
+  const parentTask: Entry = {
+    id: 'parent-1',
+    type: 'task',
+    title: 'Parent Task',
+    status: 'open',
+    createdAt: '2026-01-27T10:00:00Z',
+    order: 'a0',
+    collectionId: 'col-1',
+  };
+
+  const completedSubTask: Entry = {
+    id: 'sub-1',
+    type: 'task',
+    title: 'Completed Sub Task',
+    status: 'completed',
+    completedAt: '2026-01-27T11:00:00Z',
+    createdAt: '2026-01-27T10:01:00Z',
+    order: 'a1',
+    collectionId: 'col-1',
+    parentTaskId: 'parent-1',
+  } as any;
+
+  beforeEach(() => {
+    mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([collectionWithMoveToBottom]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([parentTask, completedSubTask]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([parentTask, completedSubTask]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 1, completed: 1, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([completedSubTask]),
+      getSubTasksForMultipleParents: vi.fn().mockImplementation((ids: string[]) => {
+        const map = new Map<string, Entry[]>();
+        if (ids.includes('parent-1')) map.set('parent-1', [completedSubTask]);
+        return Promise.resolve(map);
+      }),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(true),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+  });
+
+  function renderView() {
+    const mockAppContext = {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: {} as any,
+      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    };
+
+    return render(
+      <MemoryRouter initialEntries={['/collection/col-1']}>
+        <AppProvider value={mockAppContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it('completed sub-task whose parent is in collection should NOT appear in "completed" section', async () => {
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Parent Task')).toBeInTheDocument();
+    });
+
+    // The "move-to-bottom" separator/completed section should NOT appear
+    // because the only completed task is a sub-task whose parent is present
+    expect(screen.queryByText(/completed task/i)).not.toBeInTheDocument();
+  });
+
+  it('completed sub-task with parent present should not be duplicated', async () => {
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Parent Task')).toBeInTheDocument();
+    });
+
+    // Sub-task title should appear at most once (rendered via parent's sub-task list)
+    const matches = screen.queryAllByText('Completed Sub Task');
+    // Either 0 (hidden by parent-child logic) or 1 (shown indented under parent), never 2
+    expect(matches.length).toBeLessThanOrEqual(1);
+  });
+});
+
+// ============================================================================
+// Fix 4: Ghost entries excluded from selection handlers
+// ============================================================================
+
+describe('CollectionDetailView - Ghost entries excluded from selection (Fix 4)', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+
+  const collectionA: Collection = {
+    id: 'col-a',
+    name: 'Collection A',
+    type: 'log',
+    order: 'a0',
+    createdAt: '2026-01-27T10:00:00Z',
+  };
+
+  // Parent was migrated out → renderAsGhost: true
+  const ghostParent: Entry & { renderAsGhost: boolean } = {
+    id: 'parent-ghost',
+    type: 'task',
+    title: 'Ghost Parent (migrated out)',
+    status: 'open',
+    createdAt: '2026-01-27T10:00:00Z',
+    order: 'a0',
+    collectionId: 'col-a',
+    renderAsGhost: true,
+  } as any;
+
+  // Completed sub-task still in collection
+  const completedSubTask: Entry = {
+    id: 'sub-completed',
+    type: 'task',
+    title: 'Completed Sub Task',
+    status: 'completed',
+    completedAt: '2026-01-27T11:00:00Z',
+    createdAt: '2026-01-27T10:01:00Z',
+    order: 'a1',
+    collectionId: 'col-a',
+    parentTaskId: 'parent-ghost',
+  } as any;
+
+  beforeEach(() => {
+    mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([collectionA]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([ghostParent, completedSubTask]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([ghostParent, completedSubTask]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 1, completed: 1, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([completedSubTask]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+  });
+
+  function renderView() {
+    const mockAppContext = {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: {} as any,
+      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    };
+
+    return render(
+      <MemoryRouter initialEntries={['/collection/col-a']}>
+        <AppProvider value={mockAppContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it('"Active" filter should select 0 entries when only ghost + completed sub-task', async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Collection A')).toBeInTheDocument();
+    });
+
+    // Enter selection mode via menu
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+    const selectOption = screen.getByText(/^Select Entries$/i);
+    await user.click(selectOption);
+
+    await waitFor(() => {
+      expect(screen.getByText(/0 selected/i)).toBeInTheDocument();
+    });
+
+    // Click "Active" filter
+    const activeButton = screen.getByRole('button', { name: /^Active$/i });
+    await user.click(activeButton);
+
+    // Ghost is open but renderAsGhost=true → excluded
+    // Sub-task is completed → excluded
+    // Result: 0 selected
+    await waitFor(() => {
+      expect(screen.getByText(/0 selected/i)).toBeInTheDocument();
+    });
+  });
+
+  it('"Select All" should NOT include ghost entries', async () => {
+    const user = userEvent.setup();
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Collection A')).toBeInTheDocument();
+    });
+
+    // Enter selection mode via menu
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+    const selectOption = screen.getByText(/^Select Entries$/i);
+    await user.click(selectOption);
+
+    await waitFor(() => {
+      expect(screen.getByText(/0 selected/i)).toBeInTheDocument();
+    });
+
+    // Click "All" (Select All)
+    const allButton = screen.getByRole('button', { name: /^All$/i });
+    await user.click(allButton);
+
+    // Only the non-ghost entry (completedSubTask) should be selected → 1
+    await waitFor(() => {
+      expect(screen.getByText(/1 selected/i)).toBeInTheDocument();
+    });
+  });
+});

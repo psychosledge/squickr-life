@@ -77,4 +77,35 @@ describe('BulletJournalGuideModal', () => {
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
+
+  // ─── Fix 2: App icons displayed, cancelled state removed ──────────────────
+
+  it('shows app task icon ☐ in the Three Entry Types section', () => {
+    render(<BulletJournalGuideModal isOpen={true} onClose={mockOnClose} />);
+    // The open-task app icon should appear in the entry types table
+    expect(screen.getByTestId('entry-type-task-icon')).toHaveTextContent('☐');
+  });
+
+  it('shows app completed icon ✓ in the Bullet States section', () => {
+    render(<BulletJournalGuideModal isOpen={true} onClose={mockOnClose} />);
+    expect(screen.getByTestId('bullet-state-completed-icon')).toHaveTextContent('✓');
+  });
+
+  it('shows app open-task icon ☐ in the Bullet States section', () => {
+    render(<BulletJournalGuideModal isOpen={true} onClose={mockOnClose} />);
+    expect(screen.getByTestId('bullet-state-open-icon')).toHaveTextContent('☐');
+  });
+
+  it('does NOT show a cancelled/– row in the Bullet States section', () => {
+    render(<BulletJournalGuideModal isOpen={true} onClose={mockOnClose} />);
+    expect(screen.queryByText(/cancelled/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('bullet-state-cancelled-row')).not.toBeInTheDocument();
+  });
+
+  it('migrated state row mentions the migrate action', () => {
+    render(<BulletJournalGuideModal isOpen={true} onClose={mockOnClose} />);
+    expect(screen.getByTestId('bullet-state-migrated-row')).toBeInTheDocument();
+    // Should mention "migrate" in some form
+    expect(screen.getByTestId('bullet-state-migrated-row').textContent).toMatch(/migrat/i);
+  });
 });

@@ -57,7 +57,7 @@ describe('App', () => {
     render(<App />);
     
     await waitFor(() => {
-      expect(screen.getByText('Get shit done quicker with Squickr!')).toBeInTheDocument();
+      expect(screen.getByText('Get your shit together quicker with Squickr!')).toBeInTheDocument();
     });
   });
 

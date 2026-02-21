@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-02-21
+
+### Fixed
+- **GitHub Discussions dead link removed:** The "GitHub Discussions" menu item in the Help menu linked to a URL that returns 404 (Discussions not enabled on this repo). The menu item and the `discussions` key in `constants/github.ts` have been removed.
+- **Bullet Journal Guide now shows app icons:** The guide was displaying raw Unicode standard BuJo symbols (`•`, `×`, `>`, `–`) instead of the app's actual entry icons. Updated to use `ENTRY_ICONS` from `utils/constants.ts`. The non-existent "cancelled" state row was removed and the migration row was clarified as a triggered action.
+- **Completed sub-tasks no longer render twice:** A completed sub-task whose parent was in the same collection appeared twice — once indented under the parent, once flat in the completed section. Root cause: the partition predicate in `CollectionDetailView.tsx` split by `status === 'completed'` with no awareness of parent-child relationships. Fix: added `parentIdsInCollection` set and `isSubTaskWithParentPresent` predicate to keep completed sub-tasks with their parent in the active list.
+- **Ghost entries excluded from bulk selection:** `handleSelectAll` and `handleSelectActive` were not excluding ghost entries (`renderAsGhost: true`). An open task moved out of a collection becomes a ghost but previously passed the selection filter, causing it to be invisibly selected. Fix: added `!e.renderAsGhost` guard to both handlers.
+
+### Changed
+- **Tagline updated:** "Get shit done quicker with Squickr!" → "Get your shit together quicker with Squickr!" — updated across UI, meta tags, PWA manifest, and tests.
+
+### Tests
+- 1,069 tests passing (up from 1,060 at v1.0.2)
+- New regression tests in `CollectionDetailView.test.tsx` covering double-render and ghost selection scenarios
+- Updated tests in `BulletJournalGuideModal.test.tsx`, `UserProfileMenu.test.tsx`, `CollectionIndexView.test.tsx`, `App.test.tsx`
+- Casey review: 9/10 — Approved
+
 ## [1.0.2] - 2026-02-20
 
 ### Fixed

@@ -39,7 +39,7 @@ export function SignInView() {
             Squickr Life
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-400">
-            Get shit done quicker with Squickr!
+            Get your shit together quicker with Squickr!
           </p>
         </div>
 

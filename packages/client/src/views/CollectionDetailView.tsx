@@ -264,13 +264,22 @@ export function CollectionDetailView({
 
   // Selection mode handlers
   const handleSelectAll = () => {
-    selection.selectAll(entries.map(e => e.id));
+    const allNonGhost = entries
+      .filter(e => !(e as any).renderAsGhost)
+      .map(e => e.id);
+    selection.selectAll(allNonGhost);
   };
 
   const handleSelectActive = () => {
     // BUG FIX #2: Only select incomplete (open) tasks, not all non-migrated entries
+    // Also exclude ghost entries (renderAsGhost: true) — they are visually invisible
     const activeEntries = entries
-      .filter(e => e.type === 'task' && e.status === 'open' && !e.migratedTo)
+      .filter(e =>
+        e.type === 'task' &&
+        e.status === 'open' &&
+        !e.migratedTo &&
+        !(e as any).renderAsGhost
+      )
       .map(e => e.id);
     selection.selectAll(activeEntries);
   };
@@ -388,11 +397,23 @@ export function CollectionDetailView({
   
   // Partition entries based on behavior mode
   const shouldPartition = completedTaskBehavior === 'move-to-bottom' || completedTaskBehavior === 'collapse';
+
+  // Build the set of top-level task IDs present in this collection so we can
+  // keep completed sub-tasks with their parent rather than moving them to the
+  // completed section (where the parent isn't rendered and they'd show twice).
+  const parentIdsInCollection = new Set(
+    entries.filter(e => e.type === 'task' && !(e as any).parentTaskId).map(e => e.id)
+  );
+  const isSubTaskWithParentPresent = (e: Entry): boolean =>
+    e.type === 'task' &&
+    !!(e as any).parentTaskId &&
+    parentIdsInCollection.has((e as any).parentTaskId as string);
+
   const activeTasks = shouldPartition
-    ? entries.filter(e => !(e.type === 'task' && e.status === 'completed'))
+    ? entries.filter(e => !(e.type === 'task' && e.status === 'completed' && !isSubTaskWithParentPresent(e)))
     : entries;
   const completedTasks = shouldPartition
-    ? entries.filter(e => e.type === 'task' && e.status === 'completed')
+    ? entries.filter(e => e.type === 'task' && e.status === 'completed' && !isSubTaskWithParentPresent(e))
     : [];
 
   return (

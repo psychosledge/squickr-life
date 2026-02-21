@@ -21,7 +21,7 @@ export default defineConfig({
       manifest: {
         name: 'Squickr Life',
         short_name: 'Squickr',
-        description: 'Get shit done quicker! Event-sourced bullet journal.',
+        description: 'Get your shit together quicker! Event-sourced bullet journal.',
         theme_color: '#2563eb',
         background_color: '#111827',
         display: 'standalone',

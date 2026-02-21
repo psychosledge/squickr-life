@@ -289,7 +289,7 @@ export function CollectionIndexView() {
           </div>
 
           <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 text-center">
-            Get shit done quicker with Squickr!
+            Get your shit together quicker with Squickr!
           </p>
           <p className="text-xs text-gray-400 dark:text-gray-600 mt-1 text-center">
             v{__APP_VERSION__}

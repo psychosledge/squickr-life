@@ -1,6 +1,6 @@
 # Squickr Life
 
-> **Get shit done quicker with Squickr!**
+> **Get your shit together quicker with Squickr!**
 
 A personal bullet journal app built with event sourcing, offline-first PWA architecture, and strict TDD principles.
 
