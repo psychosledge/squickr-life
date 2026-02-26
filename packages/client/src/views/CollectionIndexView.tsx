@@ -30,7 +30,7 @@ import { SWIPE } from '../utils/constants';
 import { buildEntriesByCollectionMap } from '../utils/buildEntriesByCollectionMap';
 
 export function CollectionIndexView() {
-  const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler } = useApp();
+  const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler, isAppReady } = useApp();
   const { user } = useAuth();
   const navigate = useNavigate();
   const userPreferences = useUserPreferences();
@@ -101,9 +101,14 @@ export function CollectionIndexView() {
     };
   }, [loadData, collectionProjection, entryProjection]);
 
-  // Auto-trigger tutorial for new users with zero real collections
+  // Auto-trigger tutorial for new users with zero real collections.
+  // Gate behind isAppReady so we never fire during initial Firestore sync on a
+  // new device — collections.length === 0 is temporarily true while 900+ events
+  // are downloading.
   const { startTutorial } = tutorial;
   useEffect(() => {
+    if (!isAppReady) return;
+
     const realCollections = collections.filter(
       (c) => c.id !== UNCATEGORIZED_COLLECTION_ID,
     );
@@ -119,7 +124,7 @@ export function CollectionIndexView() {
     ) {
       startTutorial();
     }
-  }, [collections, startTutorial]);
+  }, [collections, isAppReady, startTutorial]);
 
   // Calculate next collection (first in sorted order) for navigation
   const nextCollection = useMemo(() => {

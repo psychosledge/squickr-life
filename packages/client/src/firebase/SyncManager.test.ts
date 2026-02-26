@@ -257,7 +257,7 @@ describe('SyncManager', () => {
       await syncManager.syncNow();
 
       expect(onSyncStateChange).toHaveBeenCalledWith(true); // Start
-      expect(onSyncStateChange).toHaveBeenCalledWith(false); // End
+      expect(onSyncStateChange).toHaveBeenCalledWith(false, undefined); // End (no error)
     });
 
     it('should handle sync errors gracefully', async () => {
@@ -272,8 +272,54 @@ describe('SyncManager', () => {
         expect.any(Error)
       );
 
-      // Should still notify end of sync
-      expect(onSyncStateChange).toHaveBeenCalledWith(false);
+      // Should still notify end of sync (no error string for non-timeout errors)
+      expect(onSyncStateChange).toHaveBeenCalledWith(false, undefined);
+    });
+
+    it('should pass error message on Firestore timeout', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      // Simulate a timeout by having remoteStore.getAll hang forever
+      vi.mocked(localStore.getAll).mockResolvedValue([]);
+      vi.mocked(remoteStore.getAll).mockImplementationOnce(
+        () => new Promise<never>(() => {}) // never resolves
+      );
+
+      syncManager = new SyncManager(localStore, remoteStore, onSyncStateChange);
+
+      // Advance time past the 15-second timeout while syncNow() is running
+      const syncPromise = syncManager.syncNow();
+      await vi.advanceTimersByTimeAsync(15_001);
+      await syncPromise;
+
+      // Should pass the timeout error message to the callback
+      expect(onSyncStateChange).toHaveBeenCalledWith(
+        false,
+        "Couldn't reach the server — showing local data"
+      );
+    });
+
+    it('should set initialSyncComplete after first sync', async () => {
+      syncManager = new SyncManager(localStore, remoteStore);
+      expect(syncManager.initialSyncComplete).toBe(false);
+      await syncManager.syncNow();
+      expect(syncManager.initialSyncComplete).toBe(true);
+    });
+
+    it('should set initialSyncComplete even after a timeout', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.mocked(localStore.getAll).mockResolvedValue([]);
+      vi.mocked(remoteStore.getAll).mockImplementationOnce(
+        () => new Promise<never>(() => {})
+      );
+
+      syncManager = new SyncManager(localStore, remoteStore);
+      expect(syncManager.initialSyncComplete).toBe(false);
+
+      const syncPromise = syncManager.syncNow();
+      await vi.advanceTimersByTimeAsync(15_001);
+      await syncPromise;
+
+      expect(syncManager.initialSyncComplete).toBe(true);
     });
   });
 

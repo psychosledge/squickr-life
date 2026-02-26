@@ -54,6 +54,8 @@ interface AppContextValue {
   moveEventToCollectionHandler: MoveEventToCollectionHandler;
   bulkMigrateEntriesHandler: BulkMigrateEntriesHandler;
   userPreferences: UserPreferences;
+  /** True once IndexedDB has loaded AND the initial Firestore sync has completed (or timed out). */
+  isAppReady: boolean;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);

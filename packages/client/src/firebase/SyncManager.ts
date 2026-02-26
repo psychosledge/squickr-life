@@ -17,11 +17,15 @@ import type { IEventStore } from '@squickr/domain';
 import { logger } from '../utils/logger';
 import { DEBOUNCE, SYNC_CONFIG } from '../utils/constants';
 
+/** Firestore sync timeout — 15 seconds before we give up and show local data */
+const SYNC_TIMEOUT_MS = 15_000;
+
 export class SyncManager {
   private intervalId: number | null = null;
   private isSyncing = false;
   private lastSyncTime: number = 0;
   private syncDebounceMs = DEBOUNCE.SYNC_OPERATION;
+  private hasCompletedInitialSync = false;
   
   // Event handler references (for cleanup)
   private handleVisibilityChange?: () => void;
@@ -31,8 +35,13 @@ export class SyncManager {
   constructor(
     private localStore: IEventStore,
     private remoteStore: IEventStore,
-    private onSyncStateChange?: (syncing: boolean) => void
+    public onSyncStateChange?: (syncing: boolean, error?: string) => void
   ) {}
+
+  /** Returns true once the first sync attempt has finished (success or timeout) */
+  get initialSyncComplete(): boolean {
+    return this.hasCompletedInitialSync;
+  }
   
   /**
    * Start the sync manager
@@ -74,13 +83,21 @@ export class SyncManager {
       return;
     }
     
+    let syncError: string | undefined;
     try {
       this.isSyncing = true;
       this.onSyncStateChange?.(true);
       
       // Upload: Get events from localStore, append to remoteStore
       const localEvents = await this.localStore.getAll();
-      const remoteEvents = await this.remoteStore.getAll();
+
+      // Wrap Firestore getAll() in a 15-second timeout guard so a new device
+      // never waits forever on a slow/unavailable network.
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore sync timed out')), SYNC_TIMEOUT_MS)
+      );
+      const remoteEvents = await Promise.race([this.remoteStore.getAll(), timeoutPromise]);
+
       const remoteIds = new Set(remoteEvents.map(e => e.id));
       const newEvents = localEvents.filter(e => !remoteIds.has(e.id));
       
@@ -101,9 +118,13 @@ export class SyncManager {
       this.lastSyncTime = Date.now();
     } catch (error) {
       logger.error('[SyncManager] Sync failed:', error);
+      if (error instanceof Error && error.message === 'Firestore sync timed out') {
+        syncError = "Couldn't reach the server — showing local data";
+      }
     } finally {
       this.isSyncing = false;
-      this.onSyncStateChange?.(false);
+      this.hasCompletedInitialSync = true;
+      this.onSyncStateChange?.(false, syncError);
     }
   }
   

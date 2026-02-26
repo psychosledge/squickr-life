@@ -41,6 +41,7 @@ export function renderWithAppProvider(
     moveTaskToCollectionHandler: {} as any,
     bulkMigrateEntriesHandler: {} as any,
     userPreferences: options.userPreferences ?? DEFAULT_USER_PREFERENCES,
+    isAppReady: true,
   };
 
   const wrapped = (

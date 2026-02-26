@@ -131,6 +131,7 @@ describe('CollectionDetailView', () => {
       removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
+      isAppReady: true,
     };
 
     return render(
@@ -263,6 +264,7 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       status: 'open',
       createdAt: '2026-01-27T10:00:00Z',
       order: 'a0',
+      collections: [],
       // No collectionId
     },
     {
@@ -271,6 +273,7 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       content: 'Orphaned note',
       createdAt: '2026-01-27T10:01:00Z',
       order: 'a1',
+      collections: [],
       // No collectionId
     },
   ];
@@ -331,6 +334,7 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
+      isAppReady: true,
     };
 
     return render(
@@ -448,6 +452,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       createdAt: '2026-01-27T10:00:00Z',
       order: 'a0',
       collectionId: 'col-1',
+      collections: ['col-1'],
     },
     {
       id: 'task-2',
@@ -458,6 +463,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       completedAt: '2026-01-27T11:00:00Z',
       order: 'a1',
       collectionId: 'col-1',
+      collections: ['col-1'],
     },
     {
       id: 'note-1',
@@ -466,6 +472,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       createdAt: '2026-01-27T10:02:00Z',
       order: 'a2',
       collectionId: 'col-1',
+      collections: ['col-1'],
     },
     {
       id: 'task-3',
@@ -476,6 +483,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       completedAt: '2026-01-27T11:01:00Z',
       order: 'a3',
       collectionId: 'col-1',
+      collections: ['col-1'],
     },
   ];
 
@@ -526,6 +534,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      isAppReady: true,
     };
 
     return render(
@@ -655,6 +664,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
         createdAt: '2026-01-27T10:00:00Z',
         order: 'a0',
         collectionId: 'col-1',
+        collections: [],
       },
       {
         id: 'task-2',
@@ -665,6 +675,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
         completedAt: '2026-01-27T11:00:00Z',
         order: 'a1',
         collectionId: 'col-1',
+        collections: [],
       },
     ];
 
@@ -688,6 +699,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
         createdAt: '2026-01-27T10:00:00Z',
         order: 'a0',
         collectionId: 'col-1',
+        collections: [],
       },
     ];
 
@@ -775,6 +787,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
         createdAt: '2026-01-27T14:00:00Z',
         order: 'a4',
         collectionId: 'col-1',
+        collections: [],
       },
     ];
 
@@ -866,6 +879,7 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
       addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      isAppReady: true,
     };
 
     return render(
@@ -1069,6 +1083,7 @@ describe('CollectionDetailView - Temporal Route Navigation Fix', () => {
       addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      isAppReady: true,
     };
 
     return render(
@@ -1175,6 +1190,7 @@ describe('CollectionDetailView - Error Toast', () => {
       removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
+      isAppReady: true,
       ...overrides,
     };
   }

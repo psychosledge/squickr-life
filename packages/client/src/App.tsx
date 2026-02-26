@@ -275,6 +275,10 @@ function AppContent() {
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
   
+  // Sync overlay state — tracks whether the initial Firestore sync is in progress
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  
   // Track if app is initialized (prevents double-init in React StrictMode)
   const isInitialized = useRef(false);
   
@@ -304,6 +308,16 @@ function AppContent() {
     // User signed in - start background sync
     const remoteStore = new FirestoreEventStore(firestore, user.uid);
     const manager = new SyncManager(eventStore, remoteStore);
+
+    // Wire sync state changes to React state so the overlay reacts.
+    // Pre-set isSyncing=true before start() so the overlay appears immediately
+    // (before the first onSyncStateChange(true) call from the async syncNow()).
+    setIsSyncing(true);
+    manager.onSyncStateChange = (syncing: boolean, error?: string) => {
+      setIsSyncing(syncing);
+      setSyncError(error ?? null);
+    };
+
     manager.start();
     syncManagerRef.current = manager;
     
@@ -338,6 +352,17 @@ function AppContent() {
       setIsLoading(false);
     }
   };
+
+  // The app is "ready" once IndexedDB has loaded AND the initial Firestore sync
+  // has completed (or never started because there's no user yet) AND there is no
+  // unacknowledged sync error. Background syncs after the first do not block
+  // (initialSyncComplete stays true). When a timeout occurs, syncError is set and
+  // the overlay stays visible until the user dismisses it with "Show local data".
+  const syncManager = syncManagerRef.current;
+  const isAppReady =
+    !isLoading &&
+    (!isSyncing || (syncManager?.initialSyncComplete ?? true)) &&
+    syncError === null;
 
   // Show loading while auth state or IndexedDB is initializing
   if (authLoading || isLoading) {
@@ -375,6 +400,7 @@ function AppContent() {
     moveEventToCollectionHandler,
     bulkMigrateEntriesHandler,
     userPreferences,
+    isAppReady,
   };
 
   // Show main app for authenticated users
@@ -382,6 +408,49 @@ function AppContent() {
     <AppProvider value={contextValue}>
       <DebugProvider>
         <TutorialJoyride />
+
+        {/* ── Sync overlay ─────────────────────────────────────────────────────
+            Shown while the initial Firestore sync is in progress.
+            Prevents the empty-state flash and premature tutorial trigger
+            on new devices downloading 900+ events for the first time.       */}
+        {!isAppReady && (
+          <div
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4
+                       bg-gray-50 dark:bg-gray-900"
+            role="status"
+            aria-live="polite"
+            data-testid="sync-overlay"
+          >
+            {syncError ? (
+              /* ── Timeout / error state ── */
+              <>
+                <p className="text-gray-600 dark:text-gray-400 text-center max-w-xs">
+                  {syncError}
+                </p>
+                <button
+                  onClick={() => setSyncError(null)}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium
+                             hover:bg-blue-700 active:bg-blue-800 transition-colors"
+                >
+                  Show local data
+                </button>
+              </>
+            ) : (
+              /* ── Default spinner state ── */
+              <>
+                <div
+                  className="w-8 h-8 border-4 border-blue-600 border-t-transparent
+                             rounded-full animate-spin"
+                  aria-hidden="true"
+                />
+                <p className="text-gray-600 dark:text-gray-400">
+                  Syncing your journal…
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
         <BrowserRouter>
           <Routes>
             {/* Temporal paths - use date prop instead of TemporalRoute components */}

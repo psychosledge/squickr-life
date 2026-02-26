@@ -99,6 +99,7 @@ describe('CollectionIndexView - Header Branding', () => {
       moveTaskToCollectionHandler: {} as any,
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
+      isAppReady: true,
     };
 
     return render(
@@ -199,6 +200,7 @@ describe('CollectionIndexView - Navigation Arrows', () => {
       moveTaskToCollectionHandler: {} as any,
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
+      isAppReady: true,
     };
 
     return render(
@@ -391,6 +393,7 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
       moveTaskToCollectionHandler: {} as any,
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
+      isAppReady: true,
     };
 
     return render(
@@ -609,6 +612,7 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
       moveTaskToCollectionHandler: {} as any,
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
+      isAppReady: true,
     };
 
     return render(
@@ -710,6 +714,7 @@ describe('CollectionIndexView - Auto-trigger tutorial (integration)', () => {
       moveTaskToCollectionHandler: {} as any,
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
+      isAppReady: true,
     };
 
     return render(
@@ -806,6 +811,7 @@ describe('CollectionIndexView - data-tutorial-id anchor on h1', () => {
       moveTaskToCollectionHandler: {} as any,
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
+      isAppReady: true,
     };
 
     return render(
