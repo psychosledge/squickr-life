@@ -247,6 +247,19 @@ This is our **primary workflow** for all development. For multi-item sessions, w
 
 > **Exception:** User may request UAT earlier (e.g., after a specific item) by saying so explicitly. Otherwise, UAT happens at the end of the full planned session.
 
+### Phase 4: Release (After UAT Passes)
+
+When the user says "ship it":
+
+1. Bump version in all `package.json` files (`package.json`, `packages/client`, `packages/domain`, `packages/infrastructure`)
+2. Update `docs/roadmap.md` — add release entry, update current version and status
+3. Update `docs/current-session.md` — mark status complete, mark all items ✅
+4. Commit: `chore: bump version to vX.Y.Z and update docs`
+5. Push commits: `git push`
+6. Create and push tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
+
+> **The tag is what triggers deployment to production.** Pushing commits alone does NOT deploy. Step 6 is mandatory.
+
 ### Key Points:
 
 1. **Alex plans first** - All items planned and approved before any implementation
@@ -521,7 +534,7 @@ Located in: `.opencode/commands/`
 
 ## The Golden Rule
 
-**Alex plans. Sam implements. Casey reviews. User UATs. OpenCode commits.**
+**Alex plans. Sam implements. Casey reviews. User UATs. OpenCode commits and ships.**
 
 Never skip the loop:
 1. **Plan** (Alex — all items, upfront, user-approved)
@@ -529,6 +542,7 @@ Never skip the loop:
 3. **Review** (Casey — every item, no exceptions)
 4. **Commit** (OpenCode — after Casey approval + full test suite passes)
 5. **UAT** (User — at end of session, or explicitly earlier)
+6. **Release** (OpenCode — bump version, update docs, push commits, push tag)
 
 **Every. Single. Time.**
 
