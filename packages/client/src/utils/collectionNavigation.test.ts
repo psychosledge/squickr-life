@@ -528,5 +528,99 @@ describe('getNavigationCollections', () => {
         { collectionId: 'yesterday-feb-14', isGhost: true },
       ]);
     });
+
+    // ─── Regression: A→B→C last-hop ghost for legacy (self-ref migratedFrom) ──
+
+    it('should NOT show a ghost link when viewing origin collection A (A→B→C, self-ref migratedFrom)', () => {
+      // This is the UAT failure: a modern-format entry moved A→B→C has
+      // collectionHistory + a self-reference migratedFrom set by TaskAddedToCollection.
+      // When viewing Collection A (the origin), step 4 (legacy) was incorrectly
+      // adding migratedFromCollectionId=B as a ghost even though B is the LAST
+      // collection the entry was in, not a predecessor of A.
+      //
+      // The entry lives in col-c (current home). collectionHistory records A→B→C.
+      // TaskAddedToCollection sets migratedFrom=entry.id (self-ref) and
+      // migratedFromCollectionId=col-b (most recent removal = B, because B→C was last move).
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T08:00:00Z',
+        collections: ['col-c'],
+        collectionHistory: [
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z', removedAt: '2026-02-15T09:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T09:00:00Z', removedAt: '2026-02-15T10:00:00Z' },
+          { collectionId: 'col-c', addedAt: '2026-02-15T10:00:00Z' },
+        ],
+        // Self-reference migratedFrom (set by TaskAddedToCollection on last move B→C)
+        migratedFrom: 'task-1', // same as entry.id
+        migratedFromCollectionId: 'col-b', // most recent removal
+      };
+
+      const result = getNavigationCollections(entry, 'col-a');
+
+      // col-c is active (current home), no ghost (A is the origin — no predecessor)
+      expect(result).toEqual([
+        { collectionId: 'col-c', isGhost: false },
+      ]);
+      // Critically: col-b must NOT appear as a ghost when viewing col-a
+      expect(result).not.toContainEqual({ collectionId: 'col-b', isGhost: true });
+    });
+
+    it('should show correct ghost when viewing middle collection B (A→B→C, self-ref migratedFrom)', () => {
+      // Same entry as above but viewing col-b. Expected: active=col-c, ghost=col-a.
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T08:00:00Z',
+        collections: ['col-c'],
+        collectionHistory: [
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z', removedAt: '2026-02-15T09:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T09:00:00Z', removedAt: '2026-02-15T10:00:00Z' },
+          { collectionId: 'col-c', addedAt: '2026-02-15T10:00:00Z' },
+        ],
+        migratedFrom: 'task-1',
+        migratedFromCollectionId: 'col-b',
+      };
+
+      const result = getNavigationCollections(entry, 'col-b');
+
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { collectionId: 'col-c', isGhost: false }, // active: current home
+          { collectionId: 'col-a', isGhost: true },  // ghost: last hop before B
+        ])
+      );
+      expect(result).toHaveLength(2);
+    });
+
+    it('should show correct ghost when viewing destination C (A→B→C, self-ref migratedFrom)', () => {
+      // Viewing col-c (current home). Expected: ghost=col-b (last hop before C).
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T08:00:00Z',
+        collections: ['col-c'],
+        collectionHistory: [
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z', removedAt: '2026-02-15T09:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T09:00:00Z', removedAt: '2026-02-15T10:00:00Z' },
+          { collectionId: 'col-c', addedAt: '2026-02-15T10:00:00Z' },
+        ],
+        migratedFrom: 'task-1',
+        migratedFromCollectionId: 'col-b',
+      };
+
+      const result = getNavigationCollections(entry, 'col-c');
+
+      // Only ghost=col-b (the last hop), no active links (col-c is current)
+      expect(result).toEqual([
+        { collectionId: 'col-b', isGhost: true },
+      ]);
+    });
   });
 });

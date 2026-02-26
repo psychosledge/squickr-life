@@ -95,7 +95,18 @@ export function getNavigationCollections(
   }
 
   // 4. LEGACY: Add migratedFrom (old format)
-  if ('migratedFrom' in entry && entry.migratedFrom && 'migratedFromCollectionId' in entry) {
+  //    Skip when collectionHistory is non-empty: step 2 already computed the
+  //    correct last-hop ghost via the modern algorithm.  Running this step on
+  //    modern-format entries would add a spurious ghost because
+  //    TaskAddedToCollection sets migratedFrom=entry.id (self-reference) with
+  //    migratedFromCollectionId pointing to the most-recent removal — which is
+  //    wrong when the current collection is the origin (A in an A→B→C chain).
+  const hasModernHistory =
+    'collectionHistory' in entry &&
+    entry.collectionHistory !== undefined &&
+    (entry.collectionHistory as unknown[]).length > 0;
+
+  if (!hasModernHistory && 'migratedFrom' in entry && entry.migratedFrom && 'migratedFromCollectionId' in entry) {
     const sourceCollId = entry.migratedFromCollectionId ?? null;
     // Only show if different from current collection
     if (sourceCollId !== currentCollectionId) {
