@@ -46,12 +46,12 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Set up analytics', parentTaskId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Write blog post', parentTaskId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Deploy to production', parentTaskId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Set up analytics', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Write blog post', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Deploy to production', parentEntryId: parent.id });
 
     const allTasks = await entryProjection.getTasks();
-    const children = allTasks.filter(t => t.parentTaskId === parent.id);
+    const children = allTasks.filter(t => t.parentEntryId === parent.id);
     const blogChild = children.find(c => c.title === 'Write blog post')!;
 
     // Step 2: Migrate 1 sub-task to "Today's Log"
@@ -72,7 +72,7 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     console.log('Sub-tasks under migrated parent:', migratedParentSubTasks.map(t => ({
       title: t.title,
       id: t.id,
-      parentTaskId: t.parentTaskId,
+      parentEntryId: t.parentEntryId,
       collectionId: t.collectionId
     })));
 
@@ -93,9 +93,9 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     expect(deployInMonthly?.collectionId).toBe('monthly-log');
     
     // Verify they all point to migrated parent
-    expect(analyticsInMonthly?.parentTaskId).toBe(parentMigratedId);
-    expect(blogInMonthly?.parentTaskId).toBe(parentMigratedId);
-    expect(deployInMonthly?.parentTaskId).toBe(parentMigratedId);
+    expect(analyticsInMonthly?.parentEntryId).toBe(parentMigratedId);
+    expect(blogInMonthly?.parentEntryId).toBe(parentMigratedId);
+    expect(deployInMonthly?.parentEntryId).toBe(parentMigratedId);
   });
 
   it('Bug 2: Migrated parent should have migratedFrom pointer for "Go back" navigation', async () => {
@@ -136,9 +136,9 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Set up analytics', parentTaskId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Write blog post', parentTaskId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Deploy to production', parentTaskId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Set up analytics', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Write blog post', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Deploy to production', parentEntryId: parent.id });
 
     // Step 2: Migrate parent to "Monthly Log"
     await migrateTaskHandler.handle({
@@ -152,7 +152,7 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     console.log('Sub-tasks under original parent:', originalParentSubTasks.map(t => ({
       title: t.title,
       id: t.id,
-      parentTaskId: t.parentTaskId,
+      parentEntryId: t.parentEntryId,
       migratedTo: t.migratedTo
     })));
 
@@ -171,12 +171,12 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Set up analytics', parentTaskId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Write blog post', parentTaskId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Deploy to production', parentTaskId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Set up analytics', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Write blog post', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Deploy to production', parentEntryId: parent.id });
 
     const allTasks = await entryProjection.getTasks();
-    const children = allTasks.filter(t => t.parentTaskId === parent.id);
+    const children = allTasks.filter(t => t.parentEntryId === parent.id);
     const blogChild = children.find(c => c.title === 'Write blog post')!;
 
     // Step 2: Migrate 1 sub-task to "Today's Log"
@@ -199,7 +199,7 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     console.log('Tasks:', workProjectsTasks.map(t => ({
       title: t.title,
       migratedTo: t.migratedTo,
-      parentTaskId: t.type === 'task' ? t.parentTaskId : undefined
+      parentEntryId: t.type === 'task' ? t.parentEntryId : undefined
     })));
     
     // EXPECTED: Original parent + original children (all with migratedTo pointers)
@@ -217,7 +217,7 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
       title: t.title,
       migratedFrom: t.migratedFrom,
       migratedTo: t.migratedTo,
-      parentTaskId: t.type === 'task' ? t.parentTaskId : undefined
+      parentEntryId: t.type === 'task' ? t.parentEntryId : undefined
     })));
     
     // EXPECTED: First migration of blog child (with migratedTo pointing to second migration)
@@ -235,7 +235,7 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     console.log('Tasks:', monthlyLogTasks.map(t => ({
       title: t.title,
       migratedFrom: t.migratedFrom,
-      parentTaskId: t.type === 'task' ? t.parentTaskId : undefined
+      parentEntryId: t.type === 'task' ? t.parentEntryId : undefined
     })));
     
     // EXPECTED: Migrated parent + 3 migrated children
@@ -245,7 +245,7 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     expect(monthlyParent?.migratedFrom).toBe(parent.id);
     
     // All 3 children should be here
-    const monthlyChildren = monthlyLogTasks.filter(t => t.type === 'task' && t.parentTaskId === parentMigratedId);
+    const monthlyChildren = monthlyLogTasks.filter(t => t.type === 'task' && t.parentEntryId === parentMigratedId);
     expect(monthlyChildren).toHaveLength(3);
     
     const analyticsInMonthly = monthlyChildren.find(t => t.title === 'Set up analytics');

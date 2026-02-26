@@ -44,7 +44,7 @@ interface EntryListProps {
     allComplete: boolean;
   }>;
   // Phase 3: Optional sub-task fetcher (for rendering sub-tasks under parents)
-  getSubTasks?: (parentTaskId: string) => Promise<Task[]>;
+  getSubTasks?: (parentEntryId: string) => Promise<Task[]>;
   // Phase 2: Optional batch sub-task fetcher (performance optimization)
   getSubTasksForMultipleParents?: (parentIds: string[]) => Promise<Map<string, Task[]>>;
   // Phase 2 Feature: Optional parent title fetcher (for migrated sub-tasks)
@@ -114,7 +114,7 @@ export function EntryList({
     // Get all parent task IDs in current entry list
     const parentIdsInList = new Set(
       entries
-        .filter(e => e.type === 'task' && !e.parentTaskId)
+        .filter(e => e.type === 'task' && !e.parentEntryId)
         .map(e => e.id)
     );
     
@@ -123,12 +123,12 @@ export function EntryList({
       if (entry.type !== 'task') return true;
       
       // Top-level task (no parent) - always show
-      if (!entry.parentTaskId) return true;
+      if (!entry.parentEntryId) return true;
       
       // Sub-task: Only show as flat entry if parent is NOT in current list
       // If parent is in list, sub-task will be shown indented under parent
       // If parent is NOT in list, sub-task is migrated and should appear as flat entry (symlink)
-      return !parentIdsInList.has(entry.parentTaskId);
+      return !parentIdsInList.has(entry.parentEntryId);
     });
   }, [entries]);
   
@@ -342,8 +342,8 @@ export function EntryList({
               // If this entry is a sub-task showing at top-level (parent in different collection),
               // look up the parent's collections for smart migration defaults
               let parentCollections: string[] | undefined;
-              if (entry.type === 'task' && entry.parentTaskId) {
-                const parentTask = entries.find(e => e.id === entry.parentTaskId);
+              if (entry.type === 'task' && entry.parentEntryId) {
+                const parentTask = entries.find(e => e.id === entry.parentEntryId);
                 if (parentTask && 'collections' in parentTask) {
                   parentCollections = parentTask.collections;
                 }

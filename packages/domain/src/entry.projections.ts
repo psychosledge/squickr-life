@@ -362,7 +362,7 @@ export class EntryListProjection {
 
   /**
    * Get all sub-tasks of a parent task
-   * Returns tasks that have parentTaskId === parentTaskId
+   * Returns tasks that have parentEntryId === parentEntryId
    * NOTE: This is a cross-collection query - returns sub-tasks from ALL collections
    * 
    * Symlink behavior (Phase 2):
@@ -370,13 +370,13 @@ export class EntryListProjection {
    * - Includes migrated versions (tasks with migratedFrom pointer)
    * - Result: Sub-task appears only once in the list (the active version)
    * 
-   * @param parentTaskId - The parent task ID
-   * @returns Array of sub-tasks (tasks with this parentTaskId), sorted by order
+   * @param parentEntryId - The parent entry ID
+   * @returns Array of sub-tasks (tasks with this parentEntryId), sorted by order
    */
-  async getSubTasks(parentTaskId: string): Promise<Task[]> {
+  async getSubTasks(parentEntryId: string): Promise<Task[]> {
     const allTasks = await this.getTasks();
     return allTasks.filter(task => 
-      task.parentTaskId === parentTaskId && !task.migratedTo
+      task.parentEntryId === parentEntryId && !task.migratedTo
     );
   }
 
@@ -395,19 +395,19 @@ export class EntryListProjection {
     const allTasks = await this.getTasks();
     const resultMap = new Map<string, Task[]>();
     
-    // Group tasks by parentTaskId in a single pass
+    // Group tasks by parentEntryId in a single pass
     for (const task of allTasks) {
       // Skip if not a sub-task, or if migrated (original version)
-      if (!task.parentTaskId || task.migratedTo) {
+      if (!task.parentEntryId || task.migratedTo) {
         continue;
       }
       
       // Only include if this is one of the requested parents
-      if (parentIds.includes(task.parentTaskId)) {
-        if (!resultMap.has(task.parentTaskId)) {
-          resultMap.set(task.parentTaskId, []);
+      if (parentIds.includes(task.parentEntryId)) {
+        if (!resultMap.has(task.parentEntryId)) {
+          resultMap.set(task.parentEntryId, []);
         }
-        resultMap.get(task.parentTaskId)!.push(task);
+        resultMap.get(task.parentEntryId)!.push(task);
       }
     }
     
@@ -416,18 +416,18 @@ export class EntryListProjection {
 
   /**
    * Check if a task is a sub-task
-   * A task is a sub-task if it has a parentTaskId set
+   * A task is a sub-task if it has a parentEntryId set
    * 
    * @param task - The task to check
    * @returns true if task is a sub-task, false otherwise
    */
   isSubTask(task: Task): boolean {
-    return task.parentTaskId !== undefined;
+    return task.parentEntryId !== undefined;
   }
 
   /**
    * Check if a task is a parent task (has children)
-   * A task is a parent if at least one other task has parentTaskId === this task's ID
+   * A task is a parent if at least one other task has parentEntryId === this task's ID
    * 
    * @param taskId - The task ID to check
    * @returns true if task has children, false otherwise
@@ -445,15 +445,15 @@ export class EntryListProjection {
    * - completed: Number of completed sub-tasks
    * - allComplete: true if all sub-tasks are complete (or no sub-tasks exist)
    * 
-   * @param parentTaskId - The parent task ID
+   * @param parentEntryId - The parent entry ID
    * @returns Completion status object
    */
-  async getParentCompletionStatus(parentTaskId: string): Promise<{
+  async getParentCompletionStatus(parentEntryId: string): Promise<{
     total: number;
     completed: number;
     allComplete: boolean;
   }> {
-    const children = await this.getSubTasks(parentTaskId);
+    const children = await this.getSubTasks(parentEntryId);
     const completed = children.filter(child => child.status === 'completed').length;
     
     return {
@@ -468,28 +468,28 @@ export class EntryListProjection {
    * 
    * Returns the parent task if the given task is a sub-task.
    * Returns undefined if:
-   * - Task is not a sub-task (no parentTaskId)
+   * - Task is not a sub-task (no parentEntryId)
    * - Parent task doesn't exist (deleted)
    * 
    * @param task - The task to get parent for
    * @returns Parent task or undefined
    */
   async getParentTask(task: Task): Promise<Task | undefined> {
-    if (!task.parentTaskId) {
+    if (!task.parentEntryId) {
       return undefined;
     }
-    return this.getTaskById(task.parentTaskId);
+    return this.getTaskById(task.parentEntryId);
   }
 
   /**
    * Check if a sub-task has been migrated to a different collection (Phase 2: Migration/Symlink)
    * 
    * A sub-task is considered "migrated" when:
-   * - It has a parentTaskId (is a sub-task), AND
+   * - It has a parentEntryId (is a sub-task), AND
    * - Its collectionId differs from its parent's collectionId
    * 
    * Returns false if:
-   * - Task is not a sub-task (no parentTaskId)
+   * - Task is not a sub-task (no parentEntryId)
    * - Task is in the same collection as parent (unmigrated sub-task)
    * - Parent task doesn't exist (edge case - orphaned sub-task)
    * 
@@ -500,7 +500,7 @@ export class EntryListProjection {
    */
   async isSubTaskMigrated(task: Task): Promise<boolean> {
     // Not a sub-task - cannot be migrated
-    if (!task.parentTaskId) {
+    if (!task.parentEntryId) {
       return false;
     }
 
@@ -526,7 +526,8 @@ export class EntryListProjection {
    * This is a performance optimization for displaying parent context in entry lists.
    * Returns a Map<subTaskId, parentTitle> only for entries where:
    * - Entry is a task
-   * - Entry has a parentTaskId
+    * - Entry has a parentEntryId
+
    * - Parent task exists and is a task
    * 
    * This does NOT filter by collection - filtering happens in the UI layer.
@@ -556,10 +557,10 @@ export class EntryListProjection {
       if (!subTask || subTask.type !== 'task') continue;
       
       // Skip if task has no parent
-      if (!subTask.parentTaskId) continue;
+      if (!subTask.parentEntryId) continue;
       
       // Find parent task
-      const parent = entriesMap.get(subTask.parentTaskId);
+      const parent = entriesMap.get(subTask.parentEntryId);
       
       // Skip if parent doesn't exist or is not a task
       if (!parent || parent.type !== 'task') continue;
@@ -721,8 +722,7 @@ export class EntryListProjection {
           order: event.payload.order,
           collectionId: event.payload.collectionId,
           userId: event.payload.userId,
-          parentTaskId: event.payload.parentTaskId, // Phase 1: Sub-Tasks
-          parentEntryId: event.payload.parentTaskId, // Use parentEntryId for polymorphism
+          parentEntryId: event.payload.parentTaskId, // Use parentEntryId for polymorphism (event payload field name is immutable)
           // Initialize collections array from legacy collectionId
           collections: event.payload.collectionId ? [event.payload.collectionId] : [],
           collectionHistory: event.payload.collectionId ? [
@@ -795,24 +795,24 @@ export class EntryListProjection {
 
         // Create new task in target collection with migratedFrom pointer
         // New task inherits all properties from original except collectionId and migration pointers
-        // IMPORTANT: Preserve parentTaskId for sub-tasks (Phase 2: Migration/Symlink)
+        // IMPORTANT: Preserve parentEntryId for sub-tasks (Phase 2: Migration/Symlink)
         if (originalTask) {
           // Phase 3: Parent Cascade - If this is a sub-task and its parent has been migrated,
-          // update parentTaskId to point to migrated parent (preserve hierarchy in new collection)
-          let parentTaskId = originalTask.parentTaskId;
+          // update parentEntryId to point to migrated parent (preserve hierarchy in new collection)
+          let parentEntryId = originalTask.parentEntryId;
           
-          if (parentTaskId) {
+          if (parentEntryId) {
             // This is a sub-task - check if parent has been migrated
-            const parentTask = tasks.get(parentTaskId);
+            const parentTask = tasks.get(parentEntryId);
             if (parentTask?.migratedTo) {
               // Parent has been migrated - check if in SAME target collection
               const parentMigrated = tasks.get(parentTask.migratedTo);
               if (parentMigrated && 
                   (parentMigrated.collectionId ?? null) === (event.payload.targetCollectionId ?? null)) {
                 // Parent migrated to SAME collection → update child to point to migrated parent
-                parentTaskId = parentTask.migratedTo;
+                parentEntryId = parentTask.migratedTo;
               }
-              // Else: Parent migrated to DIFFERENT collection → keep original parentTaskId
+              // Else: Parent migrated to DIFFERENT collection → keep original parentEntryId
             }
           }
 
@@ -827,8 +827,7 @@ export class EntryListProjection {
             userId: originalTask.userId,
             migratedFrom: event.payload.originalTaskId,
             migratedFromCollectionId: originalTask.collectionId, // Store source collection for "Go back"
-            parentTaskId, // Phase 3: Updated to point to migrated parent if cascade
-            parentEntryId: parentTaskId, // Use parentEntryId for polymorphism
+            parentEntryId, // Phase 3: Updated to point to migrated parent if cascade
             // Initialize collections array from target collection
             collections: event.payload.targetCollectionId ? [event.payload.targetCollectionId] : [],
             collectionHistory: event.payload.targetCollectionId ? [

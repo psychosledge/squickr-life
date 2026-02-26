@@ -44,12 +44,12 @@ describe('Migration Chain - UI Indicators', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Sub-task A', parentTaskId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Sub-task B', parentTaskId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Sub-task C', parentTaskId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Sub-task A', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Sub-task B', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Sub-task C', parentEntryId: parent.id });
 
     const allTasks = await entryProjection.getTasks();
-    const children = allTasks.filter(t => t.parentTaskId === parent.id);
+    const children = allTasks.filter(t => t.parentEntryId === parent.id);
     expect(children).toHaveLength(3);
 
     const subTaskB = children.find(c => c.title === 'Sub-task B')!;
@@ -101,7 +101,7 @@ describe('Migration Chain - UI Indicators', () => {
     expect(subTaskBInMonthlyLog.collectionId).toBe('monthly-log');
 
     // Second migration should follow migrated parent
-    expect(subTaskBInMonthlyLog.parentTaskId).toBe(parentMigratedId);
+    expect(subTaskBInMonthlyLog.parentEntryId).toBe(parentMigratedId);
 
     // First migration should still exist in todays-log
     expect(subTaskBInTodaysLogAfterParentMigration.collectionId).toBe('todays-log');
@@ -160,7 +160,7 @@ describe('Migration Chain - UI Indicators', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Child', parentTaskId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Child', parentEntryId: parent.id });
     const allTasksAfterCreate = await entryProjection.getTasks();
     const child = allTasksAfterCreate.find(t => t.title === 'Child')!;
 

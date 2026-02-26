@@ -22,7 +22,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
       title: 'Find eye doctor',
       collections: ['monthly-log', 'todays-log'],
       collectionId: 'monthly-log', // Legacy field (first collection)
-      parentTaskId: 'parent-1',
+      parentEntryId: 'parent-1',
     };
 
     // BUG FIX: Detection logic from EntryList.tsx (lines 205-214, 237-246)
@@ -53,7 +53,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
       title: 'Find eye doctor',
       collections: ['monthly-log', 'todays-log'],
       collectionId: 'monthly-log',
-      parentTaskId: 'parent-1',
+      parentEntryId: 'parent-1',
     };
 
     // Navigation target logic from EntryList.tsx (lines 399-405)
@@ -80,7 +80,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
       title: 'Find eye doctor',
       collections: ['monthly-log', 'todays-log'],
       collectionId: 'monthly-log',
-      parentTaskId: 'parent-1',
+      parentEntryId: 'parent-1',
     };
 
     // Navigation target logic
@@ -105,7 +105,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
       title: 'Find eye doctor',
       collections: ['monthly-log'], // Only in ONE collection
       collectionId: 'monthly-log',
-      parentTaskId: 'parent-1',
+      parentEntryId: 'parent-1',
     };
 
     // Detection logic
@@ -124,7 +124,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
       title: 'Find eye doctor',
       collections: ['monthly-log', 'todays-log', 'work-projects'], // 3 collections
       collectionId: 'monthly-log',
-      parentTaskId: 'parent-1',
+      parentEntryId: 'parent-1',
     };
 
     // Detection
@@ -152,7 +152,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
       title: 'Find eye doctor',
       collections: ['monthly-log', 'todays-log'], // In BOTH
       collectionId: 'monthly-log',
-      parentTaskId: 'parent-1',
+      parentEntryId: 'parent-1',
     };
 
     // Step 1: Detect if migrated (EntryList.tsx logic)

@@ -500,7 +500,7 @@ describe('BulkMigrateEntriesHandler', () => {
       
       // 2. Create sub-task under parent
       const subTaskId = await createSubTaskHandler.handle({
-        parentTaskId: parentId,
+        parentEntryId: parentId,
         title: 'Sub-task',
       });
       
@@ -567,7 +567,7 @@ describe('BulkMigrateEntriesHandler', () => {
       
       // Step 2: Create sub-task under parent (inherits monthly-log as display collection)
       const subTaskId = await createSubTaskHandler.handle({
-        parentTaskId: parentId,
+        parentEntryId: parentId,
         title: 'Migrated Sub-task',
       });
       

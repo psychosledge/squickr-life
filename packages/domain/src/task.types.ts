@@ -88,9 +88,6 @@ export interface Task {
   /** Optional: Parent entry ID (if this is a sub-task)
    * NOTE: Use parentEntryId (not parentTaskId) to enable future sub-notes/events */
   readonly parentEntryId?: string;
-  
-  /** DEPRECATED: Use parentEntryId instead - kept for backward compatibility */
-  readonly parentTaskId?: string;
 }
 
 /**
@@ -138,12 +135,12 @@ export interface CreateTaskCommand {
  * 
  * Validation rules:
  * - title: Required, will be trimmed, 1-500 characters
- * - parentTaskId: Required, must reference an existing task
+ * - parentEntryId: Required, must reference an existing task
  * - Parent task must not be a sub-task itself (max 2 levels)
  */
 export interface CreateSubTaskCommand {
   readonly title: string;
-  readonly parentTaskId: string; // Required - which task to add sub-task under
+  readonly parentEntryId: string; // Required - which entry to add sub-task under
   readonly userId?: string;
 }
 

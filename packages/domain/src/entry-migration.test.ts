@@ -222,11 +222,11 @@ describe('MoveEntryToCollectionHandler', () => {
       // Create 2 sub-tasks (will inherit parent's collection)
       await createSubTaskHandler.handle({
         title: 'Child 1',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       });
       await createSubTaskHandler.handle({
         title: 'Child 2',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       });
 
       // Verify children are in same collection as parent
@@ -269,11 +269,11 @@ describe('MoveEntryToCollectionHandler', () => {
       // Create 2 children
       await createSubTaskHandler.handle({
         title: 'Child 1',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       });
       await createSubTaskHandler.handle({
         title: 'Child 2',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       });
 
       const children = await entryProjection.getSubTasks(parentId);

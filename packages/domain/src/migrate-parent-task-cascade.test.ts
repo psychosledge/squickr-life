@@ -43,12 +43,12 @@ describe('MigrateTaskHandler - Phase 3 Parent Cascade (Symlink Pattern)', () => 
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Set up analytics', parentTaskId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Write blog post', parentTaskId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Deploy to production', parentTaskId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Set up analytics', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Write blog post', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Deploy to production', parentEntryId: parent.id });
 
     const allTasks = await entryProjection.getTasks();
-    const children = allTasks.filter(t => t.parentTaskId === parent.id);
+    const children = allTasks.filter(t => t.parentEntryId === parent.id);
     expect(children).toHaveLength(3);
 
     const analyticsChild = children.find(c => c.title === 'Set up analytics')!;
@@ -102,7 +102,7 @@ describe('MigrateTaskHandler - Phase 3 Parent Cascade (Symlink Pattern)', () => 
     const analyticsMigrated = finalTasks.find(t => t.id === analyticsOriginal.migratedTo)!;
     expect(analyticsMigrated).toBeDefined();
     expect(analyticsMigrated.collectionId).toBe('monthly-log'); // Followed parent
-    expect(analyticsMigrated.parentTaskId).toBe(parentMigratedId); // Points to migrated parent
+    expect(analyticsMigrated.parentEntryId).toBe(parentMigratedId); // Points to migrated parent
 
     // Deploy: Original in "work-projects" + Symlink in "monthly-log"
     const deployOriginal = finalTasks.find(t => t.id === deployChild.id)!;
@@ -112,7 +112,7 @@ describe('MigrateTaskHandler - Phase 3 Parent Cascade (Symlink Pattern)', () => 
     const deployMigrated = finalTasks.find(t => t.id === deployOriginal.migratedTo)!;
     expect(deployMigrated).toBeDefined();
     expect(deployMigrated.collectionId).toBe('monthly-log'); // Followed parent
-    expect(deployMigrated.parentTaskId).toBe(parentMigratedId); // Points to migrated parent
+    expect(deployMigrated.parentEntryId).toBe(parentMigratedId); // Points to migrated parent
 
     // Blog: ALL children follow parent - blog gets ANOTHER migration to follow parent
     // This creates a migration CHAIN:
@@ -130,7 +130,7 @@ describe('MigrateTaskHandler - Phase 3 Parent Cascade (Symlink Pattern)', () => 
     const blogSecondMigration = finalTasks.find(t => t.id === blogFirstMigration.migratedTo)!;
     expect(blogSecondMigration).toBeDefined();
     expect(blogSecondMigration.collectionId).toBe('monthly-log'); // Followed parent
-    expect(blogSecondMigration.parentTaskId).toBe(parentMigratedId); // Points to migrated parent
+    expect(blogSecondMigration.parentEntryId).toBe(parentMigratedId); // Points to migrated parent
     expect(blogSecondMigration.migratedFrom).toBe(blogMigratedId); // Links back to first migration (not original)
   });
 });

@@ -39,7 +39,7 @@ describe('CreateSubTaskHandler', () => {
 
       const command: CreateSubTaskCommand = {
         title: 'Write blog post',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       };
 
       // Act: Create sub-task
@@ -52,7 +52,7 @@ describe('CreateSubTaskHandler', () => {
       const subTaskEvent = events[1] as TaskCreated;
       expect(subTaskEvent.type).toBe('TaskCreated');
       expect(subTaskEvent.payload.title).toBe('Write blog post');
-      expect(subTaskEvent.payload.parentTaskId).toBe(parentId);
+      expect(subTaskEvent.payload.parentTaskId).toBe(parentId); // Event payload field - immutable
       expect(subTaskEvent.payload.collectionId).toBe('work-projects'); // Inherits parent's collection
       expect(subTaskEvent.payload.status).toBe('open');
       expect(subTaskId).toBe(subTaskEvent.payload.id);
@@ -67,7 +67,7 @@ describe('CreateSubTaskHandler', () => {
 
       const command: CreateSubTaskCommand = {
         title: '  Sub-task with spaces  ',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       };
 
       // Act
@@ -89,7 +89,7 @@ describe('CreateSubTaskHandler', () => {
 
       const command: CreateSubTaskCommand = {
         title: 'Sub-task',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       };
 
       // Act
@@ -111,7 +111,7 @@ describe('CreateSubTaskHandler', () => {
 
       const command: CreateSubTaskCommand = {
         title: 'Sub-task',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       };
 
       // Act
@@ -134,17 +134,17 @@ describe('CreateSubTaskHandler', () => {
       // Act: Create 3 sub-tasks
       const subTask1Id = await handler.handle({
         title: 'Write blog post',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       });
 
       const subTask2Id = await handler.handle({
         title: 'Deploy to production',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       });
 
       const subTask3Id = await handler.handle({
         title: 'Send announcement',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       });
 
       // Assert
@@ -152,7 +152,7 @@ describe('CreateSubTaskHandler', () => {
       expect(events).toHaveLength(4); // 1 parent + 3 sub-tasks
 
       const subTaskEvents = events.slice(1) as TaskCreated[];
-      expect(subTaskEvents.every(e => e.payload.parentTaskId === parentId)).toBe(true);
+      expect(subTaskEvents.every(e => e.payload.parentTaskId === parentId)).toBe(true); // Event payload - immutable
       expect(subTaskEvents.every(e => e.payload.collectionId === 'work')).toBe(true);
       
       expect([subTask1Id, subTask2Id, subTask3Id]).toHaveLength(3);
@@ -170,7 +170,7 @@ describe('CreateSubTaskHandler', () => {
 
       const command: CreateSubTaskCommand = {
         title: '',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       };
 
       // Act & Assert
@@ -186,7 +186,7 @@ describe('CreateSubTaskHandler', () => {
 
       const command: CreateSubTaskCommand = {
         title: '   ',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       };
 
       // Act & Assert
@@ -202,7 +202,7 @@ describe('CreateSubTaskHandler', () => {
 
       const command: CreateSubTaskCommand = {
         title: 'a'.repeat(501),
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       };
 
       // Act & Assert
@@ -213,7 +213,7 @@ describe('CreateSubTaskHandler', () => {
       // Arrange
       const command: CreateSubTaskCommand = {
         title: 'Sub-task',
-        parentTaskId: 'non-existent-parent',
+        parentEntryId: 'non-existent-parent',
       };
 
       // Act & Assert
@@ -229,13 +229,13 @@ describe('CreateSubTaskHandler', () => {
 
       const childId = await handler.handle({
         title: 'Parent (sub-task)',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       });
 
       // Act & Assert: Try to create sub-task of sub-task
       const command: CreateSubTaskCommand = {
         title: 'Grandchild',
-        parentTaskId: childId,
+        parentEntryId: childId,
       };
 
       await expect(handler.handle(command)).rejects.toThrow(
@@ -267,7 +267,7 @@ describe('CreateSubTaskHandler', () => {
       // Act & Assert
       const command: CreateSubTaskCommand = {
         title: 'Sub-task',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       };
 
       await expect(handler.handle(command)).rejects.toThrow(`Parent task ${parentId} not found`);
@@ -285,7 +285,7 @@ describe('CreateSubTaskHandler', () => {
 
       const command: CreateSubTaskCommand = {
         title: 'Sub-task',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
         userId: 'user-456', // Different user creating sub-task
       };
 
@@ -310,7 +310,7 @@ describe('CreateSubTaskHandler', () => {
       for (let i = 0; i < 10; i++) {
         const id = await handler.handle({
           title: `Sub-task ${i}`,
-          parentTaskId: parentId,
+          parentEntryId: parentId,
         });
         subTaskIds.push(id);
       }
@@ -331,7 +331,7 @@ describe('CreateSubTaskHandler', () => {
       const maxTitle = 'a'.repeat(500);
       const command: CreateSubTaskCommand = {
         title: maxTitle,
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       };
 
       // Act

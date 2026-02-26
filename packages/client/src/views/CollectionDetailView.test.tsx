@@ -1402,7 +1402,7 @@ describe('CollectionDetailView - Completed sub-task stays with parent (Fix 3)', 
     createdAt: '2026-01-27T10:01:00Z',
     order: 'a1',
     collectionId: 'col-1',
-    parentTaskId: 'parent-1',
+    parentEntryId: 'parent-1',
   } as any;
 
   beforeEach(() => {
@@ -1526,7 +1526,7 @@ describe('CollectionDetailView - Ghost entries excluded from selection (Fix 4)',
     createdAt: '2026-01-27T10:01:00Z',
     order: 'a1',
     collectionId: 'col-a',
-    parentTaskId: 'parent-ghost',
+    parentEntryId: 'parent-ghost',
   } as any;
 
   beforeEach(() => {

@@ -48,7 +48,7 @@ export interface UseEntryOperationsParams {
 export interface EntryOperations {
   // Entry creation operations
   handleCreateTask: (title: string) => Promise<void>;
-  handleCreateSubTask: (parentTaskId: string, title: string) => Promise<void>; // Phase 1: Sub-Tasks
+  handleCreateSubTask: (parentEntryId: string, title: string) => Promise<void>; // Phase 1: Sub-Tasks
   handleCreateNote: (content: string) => Promise<void>;
   handleCreateEvent: (content: string, eventDate?: string) => Promise<void>;
   
@@ -129,8 +129,8 @@ export function useEntryOperations(
   }, [handlers.createTaskHandler, collectionId]);
 
   // Phase 1: Sub-Tasks - Create sub-task under parent
-  const handleCreateSubTask = useCallback(async (parentTaskId: string, title: string) => {
-    await handlers.createSubTaskHandler.handle({ parentTaskId, title });
+  const handleCreateSubTask = useCallback(async (parentEntryId: string, title: string) => {
+    await handlers.createSubTaskHandler.handle({ parentEntryId, title });
   }, [handlers.createSubTaskHandler]);
 
   const handleCreateNote = useCallback(async (content: string) => {

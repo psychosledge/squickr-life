@@ -253,12 +253,12 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
       
       await createSubTaskHandler.handle({
         title: 'Child 1',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       });
 
       await createSubTaskHandler.handle({
         title: 'Child 2',
-        parentTaskId: parentId,
+        parentEntryId: parentId,
       });
 
       // Act: Migrate parent to Collection B (cascade should migrate children)
@@ -280,7 +280,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
       // Assert: Children should also have migration pointers
       const allTasks = await projection.getTasks();
       const migratedChildren = allTasks.filter(t => 
-        t.parentTaskId === migratedParentId && 
+        t.parentEntryId === migratedParentId && 
         t.collectionId === 'collection-b'
       );
 

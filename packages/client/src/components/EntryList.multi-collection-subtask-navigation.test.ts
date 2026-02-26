@@ -23,7 +23,7 @@ describe('Bug #4: Multi-Collection Sub-Task Navigation', () => {
       const subTask = {
         id: 'subtask-1',
         collections: ['monthly-log', 'todays-log'],
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
       };
       
       // Current logic (BUGGY):
@@ -53,7 +53,7 @@ describe('Bug #4: Multi-Collection Sub-Task Navigation', () => {
       const subTask = {
         id: 'subtask-1',
         collections: ['monthly-log', 'todays-log'],
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
       };
       
       // Current logic (also works for this case):
@@ -78,7 +78,7 @@ describe('Bug #4: Multi-Collection Sub-Task Navigation', () => {
       const subTask = {
         id: 'subtask-1',
         collections: ['monthly-log'],
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
       };
       
       // CORRECT logic:
@@ -94,7 +94,7 @@ describe('Bug #4: Multi-Collection Sub-Task Navigation', () => {
       const subTask = {
         id: 'subtask-1',
         collections: [],
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
       };
       
       // CORRECT logic:
@@ -179,7 +179,7 @@ describe('Bug #4: Multi-Collection Sub-Task Navigation', () => {
         title: 'Find eye doctor',
         collections: ['monthly-log', 'todays-log'], // In BOTH!
         collectionId: 'monthly-log', // Legacy field
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
       };
       
       // Step 1: Detect if sub-task is migrated
@@ -213,7 +213,7 @@ describe('Bug #4: Multi-Collection Sub-Task Navigation', () => {
         title: 'Find eye doctor',
         collections: ['monthly-log', 'todays-log'],
         collectionId: 'monthly-log',
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
       };
       
       // Detect migration

@@ -147,7 +147,7 @@ export function TaskEntryItem({
 
   const isCompleted = entry.status === 'completed';
   const canEdit = !!onUpdateTaskTitle;
-  const isSubTask = !!entry.parentTaskId;
+  const isSubTask = !!entry.parentEntryId;
   const hasSubTasks = completionStatus && completionStatus.total > 0;
   const isLegacyMigrated = !!entry.migratedTo;
   

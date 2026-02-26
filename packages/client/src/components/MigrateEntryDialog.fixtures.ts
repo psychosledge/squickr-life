@@ -49,7 +49,7 @@ export const mockTask: Entry = {
 };
 
 /**
- * Mock sub-task with parentTaskId
+ * Mock sub-task with parentEntryId
  */
 export const mockSubTask: Entry = {
   type: 'task',
@@ -58,7 +58,7 @@ export const mockSubTask: Entry = {
   createdAt: '2026-01-24T10:00:00.000Z',
   status: 'open',
   collections: [],
-  parentTaskId: 'task-1',
+  parentEntryId: 'task-1',
 };
 
 /**

@@ -97,7 +97,7 @@ describe('BulletIcon', () => {
         id: 'task-1',
         title: 'Test',
         status: 'open',
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
         collections: []
       };
@@ -116,7 +116,7 @@ describe('BulletIcon', () => {
         id: 'task-1',
         title: 'Test',
         status: 'open',
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z'
       };
       
@@ -135,7 +135,7 @@ describe('BulletIcon', () => {
         title: 'Test',
         status: 'completed',
         completedAt: '2026-01-27T10:00:00.000Z',
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
         createdAt: '2026-01-27T09:00:00.000Z'
       };
       

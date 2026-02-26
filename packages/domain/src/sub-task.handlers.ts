@@ -17,7 +17,7 @@ import { generateKeyBetween } from 'fractional-indexing';
  * - Sub-task inherits parent's collectionId
  * - Generate unique identifiers
  * - Generate fractional index for task ordering
- * - Create TaskCreated event with parentTaskId
+ * - Create TaskCreated event with parentTaskId (event payload - immutable field name)
  * - Persist events to EventStore
  * 
  * This is the "write side" of CQRS for sub-tasks
@@ -55,15 +55,15 @@ export class CreateSubTaskHandler {
     }
 
     // Validate parent task exists
-    const parentTask = await this.entryProjection.getTaskById(command.parentTaskId);
+    const parentTask = await this.entryProjection.getTaskById(command.parentEntryId);
     if (!parentTask) {
-      throw new Error(`Parent task ${command.parentTaskId} not found`);
+      throw new Error(`Parent task ${command.parentEntryId} not found`);
     }
 
     // Validate parent is not a sub-task (enforce 2-level limit)
-    if (parentTask.parentTaskId) {
+    if (parentTask.parentEntryId) {
       throw new Error(
-        `Cannot create sub-task under ${command.parentTaskId}: parent is already a sub-task (2-level limit)`
+        `Cannot create sub-task under ${command.parentEntryId}: parent is already a sub-task (2-level limit)`
       );
     }
 
@@ -90,7 +90,7 @@ export class CreateSubTaskHandler {
         order,
         collectionId: parentTask.collectionId, // Inherit parent's collection
         userId: command.userId,
-        parentTaskId: command.parentTaskId, // This field makes it a sub-task!
+        parentTaskId: command.parentEntryId, // Event payload field name stays for backward compat of stored events
       },
     };
 

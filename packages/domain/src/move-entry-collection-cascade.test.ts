@@ -47,20 +47,20 @@ describe('MoveEntryToCollectionHandler - Phase 3 Parent Cascade (Bug Reproductio
     // Create 3 sub-tasks (all inherit parent's collection)
     await createSubTaskHandler.handle({
       title: 'Set up analytics',
-      parentTaskId: parent.id
+      parentEntryId: parent.id
     });
     await createSubTaskHandler.handle({
       title: 'Write blog post',
-      parentTaskId: parent.id
+      parentEntryId: parent.id
     });
     await createSubTaskHandler.handle({
       title: 'Deploy to production',
-      parentTaskId: parent.id
+      parentEntryId: parent.id
     });
 
     // Verify all 3 children are in same collection as parent
     const allTasks = await entryProjection.getTasks();
-    const children = allTasks.filter(t => t.parentTaskId === parent.id);
+    const children = allTasks.filter(t => t.parentEntryId === parent.id);
     expect(children).toHaveLength(3);
     expect(children.every(c => c.collectionId === 'work-projects')).toBe(true);
 
@@ -88,7 +88,7 @@ describe('MoveEntryToCollectionHandler - Phase 3 Parent Cascade (Bug Reproductio
     // Step 4: Verify results
     const finalTasks = await entryProjection.getTasks();
     const finalParent = finalTasks.find(t => t.id === parent.id)!;
-    const finalChildren = finalTasks.filter(t => t.parentTaskId === parent.id);
+    const finalChildren = finalTasks.filter(t => t.parentEntryId === parent.id);
 
     // Parent should be in "monthly-log" ✅
     expect(finalParent.collectionId).toBe('monthly-log');

@@ -36,7 +36,7 @@ describe('Migration Chain - Debug', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Sub-task', parentTaskId: parent.id });
+    await createSubTaskHandler.handle({ title: 'Sub-task', parentEntryId: parent.id });
     
     const allTasksAfterCreate = await entryProjection.getTasks();
     const subTask = allTasksAfterCreate.find(t => t.title === 'Sub-task')!;
@@ -46,7 +46,7 @@ describe('Migration Chain - Debug', () => {
       id: parent.id.substring(0, 8),
       title: parent.title,
       collectionId: parent.collectionId,
-      parentTaskId: parent.parentTaskId,
+      parentEntryId: parent.parentEntryId,
       migratedFrom: parent.migratedFrom,
       migratedTo: parent.migratedTo,
     });
@@ -54,7 +54,7 @@ describe('Migration Chain - Debug', () => {
       id: subTask.id.substring(0, 8),
       title: subTask.title,
       collectionId: subTask.collectionId,
-      parentTaskId: subTask.parentTaskId?.substring(0, 8),
+      parentEntryId: subTask.parentEntryId?.substring(0, 8),
       migratedFrom: subTask.migratedFrom,
       migratedTo: subTask.migratedTo,
     });
@@ -74,7 +74,7 @@ describe('Migration Chain - Debug', () => {
       id: subTaskOriginal.id.substring(0, 8),
       title: subTaskOriginal.title,
       collectionId: subTaskOriginal.collectionId,
-      parentTaskId: subTaskOriginal.parentTaskId?.substring(0, 8),
+      parentEntryId: subTaskOriginal.parentEntryId?.substring(0, 8),
       migratedFrom: subTaskOriginal.migratedFrom?.substring(0, 8),
       migratedFromCollectionId: subTaskOriginal.migratedFromCollectionId,
       migratedTo: subTaskOriginal.migratedTo?.substring(0, 8),
@@ -84,7 +84,7 @@ describe('Migration Chain - Debug', () => {
       id: subTaskFirstMigration.id.substring(0, 8),
       title: subTaskFirstMigration.title,
       collectionId: subTaskFirstMigration.collectionId,
-      parentTaskId: subTaskFirstMigration.parentTaskId?.substring(0, 8),
+      parentEntryId: subTaskFirstMigration.parentEntryId?.substring(0, 8),
       migratedFrom: subTaskFirstMigration.migratedFrom?.substring(0, 8),
       migratedFromCollectionId: subTaskFirstMigration.migratedFromCollectionId,
       migratedTo: subTaskFirstMigration.migratedTo?.substring(0, 8),
@@ -108,7 +108,7 @@ describe('Migration Chain - Debug', () => {
       id: parentOriginalFinal.id.substring(0, 8),
       title: parentOriginalFinal.title,
       collectionId: parentOriginalFinal.collectionId,
-      parentTaskId: parentOriginalFinal.parentTaskId,
+      parentEntryId: parentOriginalFinal.parentEntryId,
       migratedFrom: parentOriginalFinal.migratedFrom?.substring(0, 8),
       migratedTo: parentOriginalFinal.migratedTo?.substring(0, 8),
       migratedToCollectionId: parentOriginalFinal.migratedToCollectionId,
@@ -117,7 +117,7 @@ describe('Migration Chain - Debug', () => {
       id: parentMigrated.id.substring(0, 8),
       title: parentMigrated.title,
       collectionId: parentMigrated.collectionId,
-      parentTaskId: parentMigrated.parentTaskId,
+      parentEntryId: parentMigrated.parentEntryId,
       migratedFrom: parentMigrated.migratedFrom?.substring(0, 8),
       migratedFromCollectionId: parentMigrated.migratedFromCollectionId,
       migratedTo: parentMigrated.migratedTo?.substring(0, 8),
@@ -126,7 +126,7 @@ describe('Migration Chain - Debug', () => {
       id: subTaskOriginalFinal.id.substring(0, 8),
       title: subTaskOriginalFinal.title,
       collectionId: subTaskOriginalFinal.collectionId,
-      parentTaskId: subTaskOriginalFinal.parentTaskId?.substring(0, 8),
+      parentEntryId: subTaskOriginalFinal.parentEntryId?.substring(0, 8),
       migratedFrom: subTaskOriginalFinal.migratedFrom?.substring(0, 8),
       migratedTo: subTaskOriginalFinal.migratedTo?.substring(0, 8),
       migratedToCollectionId: subTaskOriginalFinal.migratedToCollectionId,
@@ -135,7 +135,7 @@ describe('Migration Chain - Debug', () => {
       id: subTaskFirstMigrationFinal.id.substring(0, 8),
       title: subTaskFirstMigrationFinal.title,
       collectionId: subTaskFirstMigrationFinal.collectionId,
-      parentTaskId: subTaskFirstMigrationFinal.parentTaskId?.substring(0, 8),
+      parentEntryId: subTaskFirstMigrationFinal.parentEntryId?.substring(0, 8),
       migratedFrom: subTaskFirstMigrationFinal.migratedFrom?.substring(0, 8),
       migratedFromCollectionId: subTaskFirstMigrationFinal.migratedFromCollectionId,
       migratedTo: subTaskFirstMigrationFinal.migratedTo?.substring(0, 8),
@@ -150,7 +150,7 @@ describe('Migration Chain - Debug', () => {
         id: subTaskSecondMigration.id.substring(0, 8),
         title: subTaskSecondMigration.title,
         collectionId: subTaskSecondMigration.collectionId,
-        parentTaskId: subTaskSecondMigration.parentTaskId?.substring(0, 8),
+        parentEntryId: subTaskSecondMigration.parentEntryId?.substring(0, 8),
         migratedFrom: subTaskSecondMigration.migratedFrom?.substring(0, 8),
         migratedFromCollectionId: subTaskSecondMigration.migratedFromCollectionId,
         migratedTo: subTaskSecondMigration.migratedTo?.substring(0, 8),

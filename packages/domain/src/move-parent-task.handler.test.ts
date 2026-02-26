@@ -92,20 +92,20 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
 
       await createSubTaskHandler.handle({ 
         title: 'Set up analytics',
-        parentTaskId: parent.id
+        parentEntryId: parent.id
       });
       await createSubTaskHandler.handle({ 
         title: 'Deploy to production',
-        parentTaskId: parent.id
+        parentEntryId: parent.id
       });
       await createSubTaskHandler.handle({ 
         title: 'Update documentation',
-        parentTaskId: parent.id
+        parentEntryId: parent.id
       });
 
       // Verify all in same collection
       const allTasks = await projection.getTasks();
-      const children = allTasks.filter(t => t.parentTaskId === parent.id);
+      const children = allTasks.filter(t => t.parentEntryId === parent.id);
       expect(children).toHaveLength(3);
       expect(children.every(c => c.collectionId === 'work-projects')).toBe(true);
 
@@ -139,7 +139,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       // Verify projection state - all tasks now in 'monthly-2026-02'
       const updatedTasks = await projection.getTasks();
       const updatedParent = updatedTasks.find(t => t.id === parent.id)!;
-      const updatedChildren = updatedTasks.filter(t => t.parentTaskId === parent.id);
+      const updatedChildren = updatedTasks.filter(t => t.parentEntryId === parent.id);
       
       expect(updatedParent.collectionId).toBe('monthly-2026-02');
       expect(updatedChildren).toHaveLength(3);
@@ -161,15 +161,15 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       // Create 2 children
       await createSubTaskHandler.handle({ 
         title: 'Child 1',
-        parentTaskId: parent.id
+        parentEntryId: parent.id
       });
       await createSubTaskHandler.handle({ 
         title: 'Child 2',
-        parentTaskId: parent.id
+        parentEntryId: parent.id
       });
 
       const allTasks = await projection.getTasks();
-      const children = allTasks.filter(t => t.parentTaskId === parent.id);
+      const children = allTasks.filter(t => t.parentEntryId === parent.id);
 
       // Manually migrate children to different collections (Phase 2 individual migration)
       await moveEntryHandler.handle({ 
@@ -229,19 +229,19 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       // Create 3 children
       await createSubTaskHandler.handle({ 
         title: 'Set up analytics',
-        parentTaskId: parent.id
+        parentEntryId: parent.id
       });
       await createSubTaskHandler.handle({ 
         title: 'Write blog post',
-        parentTaskId: parent.id
+        parentEntryId: parent.id
       });
       await createSubTaskHandler.handle({ 
         title: 'Deploy to production',
-        parentTaskId: parent.id
+        parentEntryId: parent.id
       });
 
       const allTasks = await projection.getTasks();
-      const children = allTasks.filter(t => t.parentTaskId === parent.id);
+      const children = allTasks.filter(t => t.parentEntryId === parent.id);
       expect(children).toHaveLength(3);
 
       // Migrate 1 child to different collection (Phase 2 individual migration)
@@ -254,7 +254,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       // Verify state before parent migration
       const preMoveTasks = await projection.getTasks();
       const preParent = preMoveTasks.find(t => t.id === parent.id)!;
-      const preChildren = preMoveTasks.filter(t => t.parentTaskId === parent.id);
+      const preChildren = preMoveTasks.filter(t => t.parentEntryId === parent.id);
       
       expect(preParent.collectionId).toBe('work-projects');
       
@@ -297,7 +297,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       // Verify final state - ALL children in monthly-2026-02
       const finalTasks = await projection.getTasks();
       const finalParent = finalTasks.find(t => t.id === parent.id)!;
-      const finalChildren = finalTasks.filter(t => t.parentTaskId === parent.id);
+      const finalChildren = finalTasks.filter(t => t.parentEntryId === parent.id);
       
       expect(finalParent.collectionId).toBe('monthly-2026-02');
       
@@ -358,7 +358,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
 
       await createSubTaskHandler.handle({ 
         title: 'Child task',
-        parentTaskId: parent.id
+        parentEntryId: parent.id
       });
 
       const eventCountBefore = (await eventStore.getAll()).length;

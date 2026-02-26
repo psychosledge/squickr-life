@@ -23,7 +23,7 @@ describe('Migration Chain - UI Detection Logic', () => {
     const subTaskInMonthlyLog = {
       id: 'subtask-second-migration-id',
       collectionId: 'monthly-log',
-      parentTaskId: 'parent-migrated-id',
+      parentEntryId: 'parent-migrated-id',
       migratedFrom: 'subtask-first-migration-id', // Points to Today's Log version
       migratedFromCollectionId: 'todays-log', // Different from parent's migratedFromCollectionId!
     };
@@ -56,7 +56,7 @@ describe('Migration Chain - UI Detection Logic', () => {
     const subTaskInMonthlyLog = {
       id: 'subtask-migrated-id',
       collectionId: 'monthly-log',
-      parentTaskId: 'parent-migrated-id',
+      parentEntryId: 'parent-migrated-id',
       migratedFrom: 'subtask-original-id', // Points to Work Projects version
       migratedFromCollectionId: 'work-projects', // Same as parent!
     };
@@ -88,7 +88,7 @@ describe('Migration Chain - UI Detection Logic', () => {
     const subTaskInMonthlyLog = {
       id: 'subtask-id',
       collectionId: 'monthly-log',
-      parentTaskId: 'parent-migrated-id',
+      parentEntryId: 'parent-migrated-id',
       migratedFrom: undefined, // No migration history
       migratedFromCollectionId: undefined,
     };
@@ -116,7 +116,7 @@ describe('Migration Chain - UI Detection Logic', () => {
     const subTaskInMonthlyLog = {
       id: 'subtask-second-migration-id',
       collectionId: 'monthly-log',
-      parentTaskId: 'parent-migrated-id',
+      parentEntryId: 'parent-migrated-id',
       migratedFrom: 'subtask-first-migration-id',
       migratedFromCollectionId: 'todays-log', // Different from undefined!
     };

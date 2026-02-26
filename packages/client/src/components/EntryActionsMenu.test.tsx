@@ -719,7 +719,7 @@ describe('EntryActionsMenu', () => {
       title: 'Sub-task',
       createdAt: '2026-01-24T10:00:00.000Z',
       status: 'open',
-      parentTaskId: 'parent-1', // This makes it a sub-task
+      parentEntryId: 'parent-1', // This makes it a sub-task
     };
 
     it('should open menu for sub-task entries', () => {

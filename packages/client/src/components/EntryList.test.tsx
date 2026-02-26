@@ -406,7 +406,7 @@ describe('EntryList', () => {
           title: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-07T10:01:00Z',
-          parentTaskId: 'parent-1', // This is a sub-task
+          parentEntryId: 'parent-1', // This is a sub-task
         },
         {
           id: 'subtask-2',
@@ -414,7 +414,7 @@ describe('EntryList', () => {
           title: 'Sub-task 2',
           status: 'open',
           createdAt: '2026-02-07T10:02:00Z',
-          parentTaskId: 'parent-1', // This is a sub-task
+          parentEntryId: 'parent-1', // This is a sub-task
         },
         {
           id: 'task-2',
@@ -462,7 +462,7 @@ describe('EntryList', () => {
           title: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-07T10:00:00Z',
-          parentTaskId: 'parent-1', // Parent NOT in this list
+          parentEntryId: 'parent-1', // Parent NOT in this list
         },
         {
           id: 'subtask-2',
@@ -470,7 +470,7 @@ describe('EntryList', () => {
           title: 'Sub-task 2',
           status: 'open',
           createdAt: '2026-02-07T11:00:00Z',
-          parentTaskId: 'parent-1', // Parent NOT in this list
+          parentEntryId: 'parent-1', // Parent NOT in this list
         },
       ];
 
@@ -511,7 +511,7 @@ describe('EntryList', () => {
           title: 'Sub-task',
           status: 'open',
           createdAt: '2026-02-07T10:01:00Z',
-          parentTaskId: 'task-1',
+          parentEntryId: 'task-1',
         },
         {
           id: 'note-1',
@@ -566,7 +566,7 @@ describe('EntryList', () => {
           title: 'Sub-task',
           status: 'open',
           createdAt: '2026-02-07T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ];
 
@@ -610,7 +610,7 @@ describe('EntryList', () => {
           title: 'Book flights',
           status: 'open',
           createdAt: '2026-02-07T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
         {
           id: 'subtask-2',
@@ -618,7 +618,7 @@ describe('EntryList', () => {
           title: 'Book hotel',
           status: 'open',
           createdAt: '2026-02-07T10:02:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ];
 
@@ -629,7 +629,7 @@ describe('EntryList', () => {
           title: 'Book flights',
           status: 'open',
           createdAt: '2026-02-07T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
         {
           id: 'subtask-2',
@@ -637,7 +637,7 @@ describe('EntryList', () => {
           title: 'Book hotel',
           status: 'open',
           createdAt: '2026-02-07T10:02:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ]);
 
@@ -697,7 +697,7 @@ describe('EntryList', () => {
               title: 'Book flights',
               status: 'open',
               createdAt: '2026-02-07T10:01:00Z',
-              parentTaskId: 'parent-1',
+              parentEntryId: 'parent-1',
             },
           ]);
         }
@@ -709,7 +709,7 @@ describe('EntryList', () => {
               title: 'Buy decorations',
               status: 'open',
               createdAt: '2026-02-07T11:01:00Z',
-              parentTaskId: 'parent-2',
+              parentEntryId: 'parent-2',
             },
           ]);
         }
@@ -869,7 +869,7 @@ describe('EntryList', () => {
           title: 'Find eye doctor',
           status: 'open',
           createdAt: '2026-02-10T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
           collectionId: 'daily-log-feb-10',
           collections: ['daily-log-feb-10', 'health-collection'], // Sub-task is in multiple collections
         },
@@ -927,7 +927,7 @@ describe('EntryList', () => {
           title: 'Find eye doctor',
           status: 'open',
           createdAt: '2026-02-10T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
           collectionId: 'daily-log-feb-10',
           collections: ['daily-log-feb-10', 'health-collection'], // Sub-task is in multiple collections
         },
@@ -987,7 +987,7 @@ describe('EntryList', () => {
           title: 'Find eye doctor',
           status: 'open',
           createdAt: '2026-02-10T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
           collectionId: 'daily-log-feb-10',
           collections: ['daily-log-feb-10', 'health-collection'],
         },
@@ -1058,7 +1058,7 @@ describe('EntryList', () => {
           title: 'Buy groceries',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ]);
 
@@ -1106,7 +1106,7 @@ describe('EntryList', () => {
           title: 'Pack for trip',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ]);
 
@@ -1154,7 +1154,7 @@ describe('EntryList', () => {
           title: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ]);
 
@@ -1203,7 +1203,7 @@ describe('EntryList', () => {
           title: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ]);
 
@@ -1251,7 +1251,7 @@ describe('EntryList', () => {
           title: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ]);
 
@@ -1335,7 +1335,7 @@ describe('EntryList', () => {
           title: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ]);
 
@@ -1383,7 +1383,7 @@ describe('EntryList', () => {
           title: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ]);
 
@@ -1434,7 +1434,7 @@ describe('EntryList', () => {
           title: 'Book flights',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
         {
           id: 'subtask-2',
@@ -1442,7 +1442,7 @@ describe('EntryList', () => {
           title: 'Book hotel',
           status: 'open',
           createdAt: '2026-02-14T10:02:00Z',
-          parentTaskId: 'parent-1',
+          parentEntryId: 'parent-1',
         },
       ]);
 

@@ -39,7 +39,7 @@ interface MigrateEntryDialogProps {
  */
 function isSubTask(entry: Entry): boolean {
   if (entry.type !== 'task') return false;
-  return !!(entry.parentEntryId || entry.parentTaskId);
+  return !!(entry.parentEntryId);
 }
 
 /**

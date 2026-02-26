@@ -225,7 +225,7 @@ describe('TaskEntryItem', () => {
         id: 'task-1',
         title: 'Buy groceries',
         status: 'open',
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
         collectionId: 'col-other',
         collections: ['col-other'], // Sub-task is in different collection
@@ -254,7 +254,7 @@ describe('TaskEntryItem', () => {
         id: 'task-1',
         title: 'Regular sub-task',
         status: 'open',
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
         collectionId: 'col-parent',
         collections: ['col-parent'], // Sub-task is in same collection as parent
@@ -297,7 +297,7 @@ describe('TaskEntryItem', () => {
         id: 'task-1',
         title: 'Buy groceries',
         status: 'open',
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
         collectionId: 'col-other',
         collections: ['col-other'], // Sub-task is in different collection
@@ -341,7 +341,7 @@ describe('TaskEntryItem', () => {
         title: 'Buy groceries',
         status: 'completed',
         completedAt: '2026-01-27T11:00:00.000Z',
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
         collectionId: 'col-other',
         collections: ['col-other'], // Sub-task is in different collection
@@ -365,7 +365,7 @@ describe('TaskEntryItem', () => {
         id: 'task-1',
         title: 'Buy groceries',
         status: 'open',
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
         collectionId: 'col-other',
         collections: ['col-other'], // Sub-task is in different collection
@@ -402,7 +402,7 @@ describe('TaskEntryItem', () => {
         id: 'task-1',
         title: 'Find eye doctor',
         status: 'open',
-        parentTaskId: 'parent-1',
+        parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
         collections: ['monthly-uuid', 'yesterday-uuid'], // Multiple collections
       };

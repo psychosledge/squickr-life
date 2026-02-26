@@ -402,12 +402,12 @@ export function CollectionDetailView({
   // keep completed sub-tasks with their parent rather than moving them to the
   // completed section (where the parent isn't rendered and they'd show twice).
   const parentIdsInCollection = new Set(
-    entries.filter(e => e.type === 'task' && !(e as any).parentTaskId).map(e => e.id)
+    entries.filter(e => e.type === 'task' && !(e as any).parentEntryId).map(e => e.id)
   );
   const isSubTaskWithParentPresent = (e: Entry): boolean =>
     e.type === 'task' &&
-    !!(e as any).parentTaskId &&
-    parentIdsInCollection.has((e as any).parentTaskId as string);
+    !!(e as any).parentEntryId &&
+    parentIdsInCollection.has((e as any).parentEntryId as string);
 
   const activeTasks = shouldPartition
     ? entries.filter(e => !(e.type === 'task' && e.status === 'completed' && !isSubTaskWithParentPresent(e)))
@@ -454,7 +454,7 @@ export function CollectionDetailView({
           selectedEntryIds={selection.selectedEntryIds}
           onToggleSelection={selection.toggleSelection}
           getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
-          getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
+          getSubTasks={(parentEntryId) => entryProjection.getSubTasks(parentEntryId)}
           getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
           getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
         />
@@ -485,7 +485,7 @@ export function CollectionDetailView({
               selectedEntryIds={selection.selectedEntryIds}
               onToggleSelection={selection.toggleSelection}
               getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
-              getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
+              getSubTasks={(parentEntryId) => entryProjection.getSubTasks(parentEntryId)}
               getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
               getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
             />
@@ -542,7 +542,7 @@ export function CollectionDetailView({
                 selectedEntryIds={selection.selectedEntryIds}
                 onToggleSelection={selection.toggleSelection}
                 getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
-                getSubTasks={(parentTaskId) => entryProjection.getSubTasks(parentTaskId)}
+                getSubTasks={(parentEntryId) => entryProjection.getSubTasks(parentEntryId)}
                 getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
                 getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
               />
