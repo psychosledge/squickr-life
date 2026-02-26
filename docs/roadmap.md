@@ -1,7 +1,7 @@
 # Product Roadmap
-**Last Updated:** February 21, 2026  
+**Last Updated:** February 25, 2026  
 **Current Version:** v1.0.3  
-**Status:** v1.0.3 shipped — post-v1.0.0 refactoring phase
+**Status:** v1.0.3 shipped — active refactoring session in progress (see `docs/current-session.md`)
 
 ---
 
@@ -13,15 +13,21 @@
 
 ## Post-v1.0.0: Code Quality & Refactoring
 
-> Per the architectural retrospective (`docs/retrospective.md`), refactoring was deferred until after v1.0.0 ships. The event sourcing foundation is sound; the test suite (1,018 tests) is the safety net.
+> Per the architectural retrospective (`docs/retrospective.md`), refactoring was deferred until after v1.0.0 ships. The event sourcing foundation is sound; the test suite is the safety net.
 
-**Deferred items:**
-- Multi-collection pattern for Notes/Events (closes feature parity gap with Tasks)
-- Timezone utility consolidation (`DateHeader.tsx`, `formatters.ts`)
-- Split `entry.projections.ts` into focused projection classes (SRP)
-- Complete `parentTaskId` → `parentEntryId` migration (remove deprecated field)
-- Error toast in `CollectionDetailView.tsx`
-- Incremental projection snapshots (performance at scale)
+**Items in active session (Feb 25, 2026) — see `docs/current-session.md` for full plan:**
+- ⬜ Error toast test coverage in `CollectionDetailView.tsx` (Casey feedback)
+- ⬜ Complete `parentTaskId` → `parentEntryId` migration (remove deprecated field)
+- ⬜ Limit inactive "goto collection" links to most-recent predecessor only (UX)
+- ⬜ Split `entry.projections.ts` into focused classes (SRP)
+- ⬜ Multi-collection pattern for Notes/Events + `BaseEntry` interface (feature parity with Tasks)
+- ⬜ Replay loading state + Firestore timeout guard (UX + reliability)
+
+**Deferred — learning exercise (implement when event count exceeds ~5,000 or replay exceeds ~500ms):**
+- Incremental projection snapshots — `ISnapshotStore` in infrastructure layer, delta replay on startup, snapshot on tab close + every 50 events. ADR required. Open design questions: per-collection vs. full-projection snapshots? Firestore snapshot sync for new-device cold start?
+
+**Previously completed deferred items:**
+- ✅ Timezone utility consolidation (`DateHeader.tsx`, `formatters.ts`) — done in v2ba59d8
 
 ---
 

@@ -7,6 +7,7 @@ Quick navigation to find what you need.
 | Doc | Purpose | When to Read |
 |-----|---------|--------------|
 | **[Main README](../README.md)** | Project overview, setup, quick start | First time or showing others |
+| **[Current Session](current-session.md)** | Active session plan + approved item list | At the start of every session |
 | **[OpenCode Workflow](opencode-workflow.md)** | Agent team, slash commands, development loop | Every session (orchestrator guide) |
 | **[Development Guide](development-guide.md)** | TDD workflow, testing patterns, common tasks | When implementing features |
 | **[Architecture Decisions](architecture-decisions.md)** | Design decisions and rationale (ADRs) | When making design choices |
@@ -26,8 +27,9 @@ Completed feature designs (for reference):
 
 ### Starting a New Session
 1. Check git log: `git log --oneline -10`
-2. Read: **[OpenCode Workflow](opencode-workflow.md)** - Remember the agent team
-3. Say to OpenCode: *"What did we do so far?"*
+2. Read: **[Current Session](current-session.md)** — active plan and item status
+3. Read: **[OpenCode Workflow](opencode-workflow.md)** — remember the agent team
+4. Say to OpenCode: *"I'm ready for our next session"*
 
 ### Implementing a Feature
 1. Read: **[Development Guide > Common Tasks](development-guide.md#common-tasks)**

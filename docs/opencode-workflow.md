@@ -167,68 +167,96 @@ We have **3 specialized agents**:
 
 ## The Development Loop
 
-This is our **primary workflow** for all development:
+This is our **primary workflow** for all development. For multi-item sessions, we plan everything upfront, then execute one item at a time.
+
+### Phase 1: Planning (Alex)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  User: "Add feature X for version Y.Z.W"               │
-│  OpenCode: *Creates todo list, evaluates complexity*   │
-│  OpenCode: *Agrees on target version number*           │
+│  User: Describes the work for the session               │
+│  OpenCode: Creates todo list of all planned items       │
+│  OpenCode: `/design [all items]`                        │
+│  Alex: *Produces plan for each item, including:*        │
+│    - Implementation approach                            │
+│    - Any event model / ADR changes                      │
+│    - Tutorial/UX changes if applicable                  │
+│    - Clarifying questions for user if needed            │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│  If complex design needed:                              │
-│  OpenCode: `/design [feature X architecture]`          │
-│  Alex: *Provides event model, ADR, or architecture*    │
+│  User: Reviews Alex's plan                              │
+│  User: Approves or requests changes                     │
+│  (Repeat until plan is approved)                        │
 └─────────────────────────────────────────────────────────┘
-                          ↓
+```
+
+### Phase 2: Execute Each Item (one at a time)
+
+```
 ┌─────────────────────────────────────────────────────────┐
-│  OpenCode: `/implement [feature X]`                     │
-│  Sam: *Follows TDD, implements feature*                │
-│  Sam: "Feature complete, tests passing (X/X)"          │
+│  OpenCode: `/implement [item N per Alex's approved plan]`│
+│  Sam: *Follows TDD, implements feature*                 │
+│  Sam: "Feature complete, tests passing (X/X)"           │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
 │  OpenCode: `/review`                                    │
 │  Casey: *Reviews code + tests*                         │
 │  Casey: "Rating 8/10, here's feedback..."              │
-│  Casey: "Please do manual review and UI testing"       │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│  User: *Manual testing in browser*                     │
-│  - Test UI behavior                                     │
-│  - Check console for errors                            │
-│  - Verify data persistence                             │
-└─────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────┐
-│  IF issues found:                                       │
-│  User: "There's a bug with X"                          │
-│  OpenCode: `/implement [fix the bug]`                  │
-│  Sam: *Investigates and fixes*                         │
-│  → Back to review step                                 │
+│  IF Casey requests changes:                             │
+│  OpenCode: `/implement [address Casey's feedback]`     │
+│  Sam: *Fixes issues, re-runs tests*                    │
+│  OpenCode: `/review` again                             │
 │                                                         │
-│  IF everything looks good:                             │
+│  IF Casey approves:                                     │
 │  OpenCode: *Runs FULL test suite (pnpm test --run)*   │
 │  - Verifies ALL tests pass (not just new ones)        │
 │  - Catches integration issues across packages          │
-│                                                         │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
 │  IF tests pass:                                         │
-│  User: "commit"                                         │
-│  OpenCode: *Updates version in package.json*           │
-│  OpenCode: *Creates git commit with version*           │
+│  OpenCode: *Creates git commit for this item*          │
+│  OpenCode: Moves to next planned item                  │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│  Repeat Phase 2 for each remaining item                 │
 └─────────────────────────────────────────────────────────┘
 ```
 
+### Phase 3: UAT (End of Session)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  User: *Manual testing in browser (all items)*         │
+│  - Test UI behavior                                     │
+│  - Check console for errors                            │
+│  - Verify data persistence                             │
+│                                                         │
+│  IF bugs found:                                         │
+│  User: "There's a bug with X"                          │
+│  OpenCode: `/implement [fix the bug]`                  │
+│  Sam: *Investigates and fixes*                         │
+│  OpenCode: `/review` → Casey → Commit                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+> **Exception:** User may request UAT earlier (e.g., after a specific item) by saying so explicitly. Otherwise, UAT happens at the end of the full planned session.
+
 ### Key Points:
 
-1. **OpenCode orchestrates** - Never does implementation itself
-2. **Always use slash commands** - `/design`, `/implement`, `/review`
-3. **One agent at a time** - Clear handoffs between agents
-4. **Casey reviews everything** - No commits without code review
-5. **User tests manually** - Agents can't test UI in browser
-6. **User approves commits** - Say "commit" explicitly
+1. **Alex plans first** - All items planned and approved before any implementation
+2. **Alex asks clarifying questions** - Any agent may ask the user questions as needed
+3. **OpenCode orchestrates** - Never does implementation itself
+4. **Always use slash commands** - `/design`, `/implement`, `/review`
+5. **One item at a time** - Complete (implement → review → commit) before moving to next
+6. **Casey reviews everything** - No commits without code review
+7. **UAT at end of session** - Unless user explicitly requests earlier
+8. **User approves plan** - Implementation only starts after plan is approved
 
 ---
 
@@ -335,18 +363,20 @@ OpenCode should read these files to get context:
 ```
 User: Add ability to tag entries
 
-OpenCode: I'll delegate this to our team.
+OpenCode: I'll have Alex plan this first.
+          [Calls `/design event model for entry tags`]
 
-1. First, let's design the event model
-   [Calls `/design event model for entry tags`]
-
-Alex: Here's the event model for tags:
-      - TagCreated, TagAddedToEntry, TagRemovedFromEntry
+Alex: Here's the plan:
+      - TagCreated, TagAddedToEntry, TagRemovedFromEntry events
       - TagProjection for querying tags
-      [Provides full ADR]
+      - UI changes: tag picker on entry form
+      - Tutorial step update: mention tagging
+      Clarifying question: Should tags be global or per-collection?
 
-OpenCode: Great! Now let's implement it.
-          [Calls `/implement tag system based on Alex's design`]
+User: Global tags, shared across all collections. Plan approved.
+
+OpenCode: Plan approved. Starting implementation.
+          [Calls `/implement tag system based on Alex's approved plan`]
 
 Sam: Implementation complete:
      - Created tag.handlers.ts
@@ -354,33 +384,22 @@ Sam: Implementation complete:
      - Updated UI components
      - 25 tests added, all passing (330→355 total)
 
-OpenCode: Ready for review.
-          [Calls `/review`]
+OpenCode: [Calls `/review`]
 
 Casey: Review complete. Rating: 9/10
        Excellent work. Minor suggestions:
        - Consider extracting tag validation
        - Add test for empty tag name
-       Please do manual UI testing.
+       [Addresses feedback or approves]
 
-User: [Tests in browser - finds bug]
+OpenCode: Tests all passing (355/355). Committed: "feat: add global tag system"
+          Moving to next planned item...
+
+User: [At end of session] Testing in browser...
       The tag dropdown doesn't close after selection
 
 OpenCode: [Calls `/implement fix tag dropdown not closing`]
-
-Sam: Investigated and fixed:
-     Root cause: TagDropdown.tsx:45 - missing onClick handler for backdrop
-     Added backdrop click handler
-     Added test to prevent regression
-     All tests passing (356/356)
-
-OpenCode: [Calls `/review`]
-
-Casey: Rating: 9.5/10. Fix looks good. Ready to commit.
-
-User: commit
-
-OpenCode: ✓ Committed: "Add tag system for entries"
+...
 ```
 
 ---
@@ -502,16 +521,18 @@ Located in: `.opencode/commands/`
 
 ## The Golden Rule
 
-**OpenCode orchestrates. Agents execute. User approves.**
+**Alex plans. Sam implements. Casey reviews. User UATs. OpenCode commits.**
 
 Never skip the loop:
-1. Design (Alex if needed)
-2. Implement (Sam)
-3. Review (Casey)  
-4. User manual test
-5. Commit (user approval)
+1. **Plan** (Alex — all items, upfront, user-approved)
+2. **Implement** (Sam — one item at a time, TDD)
+3. **Review** (Casey — every item, no exceptions)
+4. **Commit** (OpenCode — after Casey approval + full test suite passes)
+5. **UAT** (User — at end of session, or explicitly earlier)
 
 **Every. Single. Time.**
+
+Any agent may ask clarifying questions at any point. Questions should be asked before work begins, not after.
 
 ---
 
