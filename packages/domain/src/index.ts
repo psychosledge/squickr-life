@@ -177,6 +177,7 @@ export { validateCollectionDate } from './collection-date-validation';
 // Projections (Read Models)
 export { TaskListProjection } from './task.projections';
 export { EntryListProjection } from './entry.projections';
+export { EntryEventApplicator } from './entry.event-applicator';
 export { CollectionListProjection } from './collection.projections';
 export { UserPreferencesProjection } from './user-preferences.projections';
 
