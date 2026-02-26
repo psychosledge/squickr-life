@@ -1,7 +1,7 @@
 # Product Roadmap
 **Last Updated:** February 25, 2026  
-**Current Version:** v1.0.3  
-**Status:** v1.0.3 shipped — active refactoring session in progress (see `docs/current-session.md`)
+**Current Version:** v1.1.0  
+**Status:** v1.1.0 shipped
 
 ---
 
@@ -15,13 +15,7 @@
 
 > Per the architectural retrospective (`docs/retrospective.md`), refactoring was deferred until after v1.0.0 ships. The event sourcing foundation is sound; the test suite is the safety net.
 
-**Items in active session (Feb 25, 2026) — see `docs/current-session.md` for full plan:**
-- ⬜ Error toast test coverage in `CollectionDetailView.tsx` (Casey feedback)
-- ⬜ Complete `parentTaskId` → `parentEntryId` migration (remove deprecated field)
-- ⬜ Limit inactive "goto collection" links to most-recent predecessor only (UX)
-- ⬜ Split `entry.projections.ts` into focused classes (SRP)
-- ⬜ Multi-collection pattern for Notes/Events + `BaseEntry` interface (feature parity with Tasks)
-- ⬜ Replay loading state + Firestore timeout guard (UX + reliability)
+## Post-v1.1.0
 
 **Deferred — learning exercise (implement when event count exceeds ~5,000 or replay exceeds ~500ms):**
 - Incremental projection snapshots — `ISnapshotStore` in infrastructure layer, delta replay on startup, snapshot on tab close + every 50 events. ADR required. Open design questions: per-collection vs. full-projection snapshots? Firestore snapshot sync for new-device cold start?
@@ -58,6 +52,16 @@
 ## Version History
 
 ### Completed Versions
+
+**v1.1.0** (February 25, 2026) — Minor
+- Error toast test coverage for bulk migration failures
+- `parentTaskId` → `parentEntryId` rename across domain and client (event payloads unchanged)
+- Last-hop ghost "goto collection" links — only most-recent predecessor shown
+- SRP split: `EntryEventApplicator` extracted from `entry.projections.ts`
+- Multi-collection support for Notes and Events (feature parity with Tasks) + `BaseEntry` interface
+- `isAppReady` flag with 15s Firestore timeout guard and sync error overlay
+- 1,088 tests passing
+- Casey review: approved
 
 **v1.0.3** (February 21, 2026) — Patch
 - Removed dead GitHub Discussions link (404 — Discussions not enabled)
@@ -167,6 +171,6 @@
 
 ---
 
-**Roadmap Status:** ✅ v1.0.3 Shipped  
-**Current Phase:** Post-v1.0.0 refactoring  
-**Date:** February 21, 2026
+**Roadmap Status:** ✅ v1.1.0 Shipped  
+**Current Phase:** Post-v1.1.0  
+**Date:** February 25, 2026

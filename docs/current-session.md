@@ -1,7 +1,7 @@
 # Current Session Plan
 **Date:** February 25, 2026  
-**Status:** Plan approved — ready for implementation  
-**Planned version bump:** v1.1.0 (refactoring + new features)
+**Status:** ✅ Complete — shipped as v1.1.0  
+**Version bumped:** v1.0.3 → v1.1.0
 
 ---
 
@@ -17,7 +17,7 @@ Resume here. The plan is fully approved. Pick up at the first incomplete item in
 
 ## Approved Implementation Sequence
 
-### Item 1 — Error Toast Tests in `CollectionDetailView` ⬜
+### Item 1 — Error Toast Tests in `CollectionDetailView` ✅
 **Status:** Pending  
 **Type:** Tests only (no production code changes expected)  
 **Scope:** Add `describe('error handling')` block to `CollectionDetailView.test.tsx`  
@@ -31,7 +31,7 @@ Resume here. The plan is fully approved. Pick up at the first incomplete item in
 
 ---
 
-### Item 2 — `parentTaskId` → `parentEntryId` Migration ⬜
+### Item 2 — `parentTaskId` → `parentEntryId` Migration ✅
 **Status:** Pending  
 **Type:** Refactor (TypeScript-guided sweep)  
 **Key constraint:** Event payloads (`TaskCreated.payload.parentTaskId`, `SubTaskCreated.payload.parentTaskId`) are **immutable — do not rename them**. The projection already maps them to `parentEntryId` at lines 724–725 of `entry.projections.ts`. Only the **projected `Task` entity field** and call sites are being removed.
@@ -46,7 +46,7 @@ Resume here. The plan is fully approved. Pick up at the first incomplete item in
 
 ---
 
-### Item 3 — Last-Hop Ghost "Goto Collection" Links ⬜
+### Item 3 — Last-Hop Ghost "Goto Collection" Links ✅
 **Status:** Pending  
 **Type:** New UX behaviour (user-requested)  
 **Files:** `collectionNavigation.ts`, `collectionNavigation.test.ts`
@@ -86,7 +86,7 @@ let lastHop = candidates.sort(by removedAt desc)[0]
 
 ---
 
-### Item 4 — SRP Split of `entry.projections.ts` ⬜
+### Item 4 — SRP Split of `entry.projections.ts` ✅
 **Status:** Pending  
 **Type:** Pure refactor (no behaviour change, no public API change)
 
@@ -107,7 +107,7 @@ let lastHop = candidates.sort(by removedAt desc)[0]
 
 ---
 
-### Item 5 — Multi-Collection Pattern for Notes and Events ⬜
+### Item 5 — Multi-Collection Pattern for Notes and Events ✅
 **Status:** Pending  
 **Type:** New feature (feature parity with Tasks)  
 **Architectural decision:** Extract `BaseEntry` interface (Option C, approved by user)
@@ -157,7 +157,7 @@ interface BaseEntry {
 
 ---
 
-### Item 6 — Replay Loading State + Firestore Timeout Guard ⬜
+### Item 6 — Replay Loading State + Firestore Timeout Guard ✅
 **Status:** Pending  
 **Type:** New feature (UX + reliability)  
 **UI choice:** Full-screen overlay (Option A, approved by user)
