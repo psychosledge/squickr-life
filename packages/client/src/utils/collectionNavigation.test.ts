@@ -244,4 +244,287 @@ describe('getNavigationCollections', () => {
       { collectionId: null, isGhost: false },
     ]);
   });
+
+  // ─── Last-Hop Ghost Link Tests ────────────────────────────────────────────
+
+  describe('last-hop ghost link algorithm', () => {
+    it('should show zero ghost links when entry has no history (created in current collection)', () => {
+      // Entry created directly in 'col-c', never moved
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T08:00:00Z',
+        collections: ['col-c'],
+        collectionHistory: [
+          { collectionId: 'col-c', addedAt: '2026-02-15T08:00:00Z' },
+        ],
+      };
+
+      const result = getNavigationCollections(entry, 'col-c');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should show one ghost link for a single hop (A → B, viewing B)', () => {
+      // Created in A, moved to B
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T08:00:00Z',
+        collections: ['col-b'],
+        collectionHistory: [
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z', removedAt: '2026-02-15T10:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T10:00:00Z' },
+        ],
+      };
+
+      const result = getNavigationCollections(entry, 'col-b');
+
+      expect(result).toEqual([
+        { collectionId: 'col-a', isGhost: true },
+      ]);
+    });
+
+    it('should show only the LAST hop for a multi-hop chain (A→B→C→D, viewing D)', () => {
+      // Chain: A → B → C → D (current)
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T08:00:00Z',
+        collections: ['col-d'],
+        collectionHistory: [
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z', removedAt: '2026-02-15T09:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T09:00:00Z', removedAt: '2026-02-15T10:00:00Z' },
+          { collectionId: 'col-c', addedAt: '2026-02-15T10:00:00Z', removedAt: '2026-02-15T11:00:00Z' },
+          { collectionId: 'col-d', addedAt: '2026-02-15T11:00:00Z' },
+        ],
+      };
+
+      const result = getNavigationCollections(entry, 'col-d');
+
+      // Only C (the most recent predecessor), not A or B
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({ collectionId: 'col-c', isGhost: true });
+    });
+
+    it('should show correct ghost when viewing a non-final collection (A→B→C→D, viewing C)', () => {
+      // Viewing C: active = D, ghost = B (predecessor of C)
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T08:00:00Z',
+        collections: ['col-d'],
+        collectionHistory: [
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z', removedAt: '2026-02-15T09:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T09:00:00Z', removedAt: '2026-02-15T10:00:00Z' },
+          { collectionId: 'col-c', addedAt: '2026-02-15T10:00:00Z', removedAt: '2026-02-15T11:00:00Z' },
+          { collectionId: 'col-d', addedAt: '2026-02-15T11:00:00Z' },
+        ],
+      };
+
+      const result = getNavigationCollections(entry, 'col-c');
+
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { collectionId: 'col-d', isGhost: false }, // active: current home of the entry
+          { collectionId: 'col-b', isGhost: true },  // ghost: last hop before C
+        ])
+      );
+      expect(result).toHaveLength(2);
+      // col-a must NOT appear (it's not the last hop before C)
+      expect(result).not.toContainEqual({ collectionId: 'col-a', isGhost: true });
+    });
+
+    it('should show correct ghost when viewing B in chain (A→B→C→D, viewing B)', () => {
+      // Viewing B: active = D, ghost = A
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T08:00:00Z',
+        collections: ['col-d'],
+        collectionHistory: [
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z', removedAt: '2026-02-15T09:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T09:00:00Z', removedAt: '2026-02-15T10:00:00Z' },
+          { collectionId: 'col-c', addedAt: '2026-02-15T10:00:00Z', removedAt: '2026-02-15T11:00:00Z' },
+          { collectionId: 'col-d', addedAt: '2026-02-15T11:00:00Z' },
+        ],
+      };
+
+      const result = getNavigationCollections(entry, 'col-b');
+
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { collectionId: 'col-d', isGhost: false }, // active: current home
+          { collectionId: 'col-a', isGhost: true },  // ghost: last hop before B
+        ])
+      );
+      expect(result).toHaveLength(2);
+      // col-c must NOT appear (it's after B, not before)
+      expect(result).not.toContainEqual({ collectionId: 'col-c', isGhost: true });
+    });
+
+    it('should show zero ghost links when viewing origin (A→B→C→D, viewing A)', () => {
+      // Viewing A: active = D, ghost = none (A was created here, no predecessor)
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T08:00:00Z',
+        collections: ['col-d'],
+        collectionHistory: [
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z', removedAt: '2026-02-15T09:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T09:00:00Z', removedAt: '2026-02-15T10:00:00Z' },
+          { collectionId: 'col-c', addedAt: '2026-02-15T10:00:00Z', removedAt: '2026-02-15T11:00:00Z' },
+          { collectionId: 'col-d', addedAt: '2026-02-15T11:00:00Z' },
+        ],
+      };
+
+      const result = getNavigationCollections(entry, 'col-a');
+
+      // Only active link to col-d, no ghost links
+      expect(result).toEqual([
+        { collectionId: 'col-d', isGhost: false },
+      ]);
+    });
+
+    it('should fall through to legacy migratedFrom when collectionHistory is absent', () => {
+      // No collectionHistory at all → legacy fallback
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T10:00:00Z',
+        collections: [],
+        collectionHistory: [],
+        migratedFrom: 'task-0',
+        migratedFromCollectionId: 'yesterday-feb-14',
+      };
+
+      const result = getNavigationCollections(entry, null);
+
+      expect(result).toEqual([
+        { collectionId: 'yesterday-feb-14', isGhost: true },
+      ]);
+    });
+
+    it('should use entry.createdAt as arrivedAt when current collection has no history entry', () => {
+      // Simulate an edge case: current collection not found in history
+      // (e.g. history was partially recorded). Should use createdAt as fallback.
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T11:00:00Z',
+        collections: ['col-d'],
+        collectionHistory: [
+          // col-a, col-b removed before createdAt — only col-b is the last hop
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z', removedAt: '2026-02-15T09:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T09:00:00Z', removedAt: '2026-02-15T10:00:00Z' },
+          // col-d not in history (missing), so arrivedAt falls back to createdAt = 11:00
+        ],
+      };
+
+      const result = getNavigationCollections(entry, 'col-d');
+
+      // col-b is the most recent removal before createdAt (11:00)
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({ collectionId: 'col-b', isGhost: true });
+    });
+
+    it('should not show ghost links for entries with only active collections (no removedAt)', () => {
+      // Task in multiple active collections, none removed
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T10:00:00Z',
+        collections: ['col-a', 'col-b'],
+        collectionHistory: [
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T09:00:00Z' },
+        ],
+      };
+
+      const result = getNavigationCollections(entry, 'col-a');
+
+      expect(result).toEqual([
+        { collectionId: 'col-b', isGhost: false },
+      ]);
+      // No ghost links at all
+      expect(result.some(r => r.isGhost)).toBe(false);
+    });
+
+    it('should handle re-add cycle (A→B→A, viewing A) — ghost should be B', () => {
+      // Entry created in A, moved to B, then moved back to A.
+      // History has two entries for col-a: the original (removedAt=09:00) and the re-add (no removedAt).
+      // arrivedAtCurrentAt = most recent addedAt for col-a = 10:00
+      // candidates: col-b (removedAt=10:00 ≤ 10:00) ✅, old col-a entry excluded (same id as current)
+      const entry: Entry = {
+        id: 'task-1',
+        type: 'task',
+        title: 'Test Task',
+        status: 'open',
+        createdAt: '2026-02-15T08:00:00Z',
+        collections: ['col-a'],
+        collectionHistory: [
+          { collectionId: 'col-a', addedAt: '2026-02-15T08:00:00Z', removedAt: '2026-02-15T09:00:00Z' },
+          { collectionId: 'col-b', addedAt: '2026-02-15T09:00:00Z', removedAt: '2026-02-15T10:00:00Z' },
+          { collectionId: 'col-a', addedAt: '2026-02-15T10:00:00Z' }, // re-added, no removedAt
+        ],
+      };
+
+      const result = getNavigationCollections(entry, 'col-a');
+
+      // Ghost should be col-b (the last hop before re-arriving at col-a)
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({ collectionId: 'col-b', isGhost: true });
+    });
+
+    it('should handle Note entries — no ghost links, no crash', () => {
+      // Notes have no collectionHistory and no collections[] — only legacy fields
+      const entry: Entry = {
+        id: 'note-1',
+        type: 'note',
+        content: 'A note',
+        createdAt: '2026-02-15T10:00:00Z',
+      };
+
+      const result = getNavigationCollections(entry, 'col-a');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle Event entries with legacy migratedFrom — ghost link shown', () => {
+      // Events have no collectionHistory — fall through to legacy fallback
+      const entry: Entry = {
+        id: 'event-1',
+        type: 'event',
+        content: 'An event',
+        eventDate: '2026-02-15',
+        createdAt: '2026-02-15T10:00:00Z',
+        migratedFrom: 'event-0',
+        migratedFromCollectionId: 'yesterday-feb-14',
+      };
+
+      const result = getNavigationCollections(entry, null);
+
+      expect(result).toEqual([
+        { collectionId: 'yesterday-feb-14', isGhost: true },
+      ]);
+    });
+  });
 });
