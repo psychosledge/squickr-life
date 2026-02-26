@@ -17,8 +17,9 @@
 
 ## Post-v1.1.0
 
-**Deferred — learning exercise (implement when event count exceeds ~5,000 or replay exceeds ~500ms):**
+**Next session — projection snapshots (learning exercise):**
 - Incremental projection snapshots — `ISnapshotStore` in infrastructure layer, delta replay on startup, snapshot on tab close + every 50 events. ADR required. Open design questions: per-collection vs. full-projection snapshots? Firestore snapshot sync for new-device cold start?
+- Note: not yet needed for performance (event count well below ~5,000) — implementing as a learning exercise
 
 **Previously completed deferred items:**
 - ✅ Timezone utility consolidation (`DateHeader.tsx`, `formatters.ts`) — done in v2ba59d8

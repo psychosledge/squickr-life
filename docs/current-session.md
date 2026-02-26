@@ -5,6 +5,14 @@
 
 ---
 
+## Next Session
+
+**Topic:** Projection snapshots (learning exercise)  
+**Start with:** Alex planning as usual  
+**Carry-over UAT:** Item 6 offline test — load app, block Firestore in DevTools (not full offline), hard-reload, verify 15s timeout overlay appears
+
+---
+
 ## Session Goal
 
 Six items: five deferred post-v1.0.0 refactors + one new UX feature (last-hop goto links). Full architectural plan produced and approved by user. Snapshots deferred to roadmap.
