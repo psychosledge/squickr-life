@@ -1283,6 +1283,85 @@ describe('CollectionDetailView - Error Toast', () => {
     });
     expect(screen.getByRole('alert')).toHaveTextContent('Bulk migration failed');
   });
+
+  it('should show a generic error message when bulk migration throws a non-Error', async () => {
+    const user = userEvent.setup();
+    const failingBulkHandler = {
+      handle: vi.fn().mockImplementation(() => {
+        const p = Promise.reject('string error');
+        p.catch(() => {}); // pre-catch to prevent unhandled rejection warning
+        return p;
+      }),
+    };
+
+    const mockEntries = [
+      {
+        id: 'task-1',
+        type: 'task' as const,
+        title: 'Task 1',
+        status: 'open' as const,
+        createdAt: '2026-01-27T10:00:00Z',
+        order: 'a0',
+        collectionId: 'col-1',
+        collections: ['col-1'],
+      },
+    ];
+    mockEntryProjection.getEntriesForCollectionView.mockResolvedValue(mockEntries);
+
+    // Provide a second collection so MigrateEntryDialog has a target after filtering out col-1
+    const targetCollection: Collection = {
+      id: 'col-2',
+      name: 'Another Collection',
+      type: 'log',
+      order: 'a1',
+      createdAt: '2026-01-27T10:00:00Z',
+    };
+    mockCollectionProjection.getCollections.mockResolvedValue([mockCollection, targetCollection]);
+
+    renderView('col-1', { bulkMigrateEntriesHandler: failingBulkHandler });
+
+    // Wait for loading to complete
+    await waitFor(() => {
+      expect(screen.getByText('Test Collection')).toBeInTheDocument();
+    });
+
+    // Enter selection mode via menu
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+    const selectOption = screen.getByText(/^Select Entries$/i);
+    await user.click(selectOption);
+
+    // Select all entries
+    const selectAllButton = screen.getByRole('button', { name: /^All$/i });
+    await user.click(selectAllButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 selected/i)).toBeInTheDocument();
+    });
+
+    // Open bulk migrate modal
+    const migrateButton = screen.getByRole('button', { name: /^Migrate$/i });
+    await user.click(migrateButton);
+
+    // The MigrateEntryDialog shows "Migrate N entries" heading when open
+    await waitFor(() => {
+      expect(screen.getByText(/migrate 1 entr/i)).toBeInTheDocument();
+    });
+
+    // Select the target collection and submit to trigger the failure path
+    const collectionSelect = screen.getByRole('combobox', { name: /Collection/i });
+    await user.selectOptions(collectionSelect, 'col-2');
+    // There are two "Migrate" buttons: the dialog's submit button (first in DOM, inside the dialog)
+    // and the toolbar's "Migrate" button (second in DOM, after the dialog).
+    // Click the dialog's submit button (index 0).
+    const migrateButtons = screen.getAllByRole('button', { name: /^Migrate$/i });
+    await user.click(migrateButtons[0]);
+
+    // The error toast should show the generic fallback message for non-Error rejections
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to migrate entries');
+    });
+  });
 });
 
 // ============================================================================
