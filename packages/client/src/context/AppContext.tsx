@@ -23,6 +23,12 @@ import type {
   AddTaskToCollectionHandler,
   RemoveTaskFromCollectionHandler,
   MoveTaskToCollectionHandler,
+  AddNoteToCollectionHandler,
+  RemoveNoteFromCollectionHandler,
+  MoveNoteToCollectionHandler,
+  AddEventToCollectionHandler,
+  RemoveEventFromCollectionHandler,
+  MoveEventToCollectionHandler,
   BulkMigrateEntriesHandler,
   UserPreferences,
 } from '@squickr/domain';
@@ -40,6 +46,12 @@ interface AppContextValue {
   addTaskToCollectionHandler: AddTaskToCollectionHandler;
   removeTaskFromCollectionHandler: RemoveTaskFromCollectionHandler;
   moveTaskToCollectionHandler: MoveTaskToCollectionHandler;
+  addNoteToCollectionHandler: AddNoteToCollectionHandler;
+  removeNoteFromCollectionHandler: RemoveNoteFromCollectionHandler;
+  moveNoteToCollectionHandler: MoveNoteToCollectionHandler;
+  addEventToCollectionHandler: AddEventToCollectionHandler;
+  removeEventFromCollectionHandler: RemoveEventFromCollectionHandler;
+  moveEventToCollectionHandler: MoveEventToCollectionHandler;
   bulkMigrateEntriesHandler: BulkMigrateEntriesHandler;
   userPreferences: UserPreferences;
 }

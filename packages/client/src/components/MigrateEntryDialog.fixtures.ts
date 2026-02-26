@@ -69,6 +69,7 @@ export const mockNote: Entry = {
   id: 'note-1',
   content: 'Important meeting notes',
   createdAt: '2026-01-24T10:00:00.000Z',
+  collections: [],
 };
 
 /**
@@ -80,6 +81,7 @@ export const mockEvent: Entry = {
   content: 'Team standup',
   createdAt: '2026-01-24T10:00:00.000Z',
   eventDate: '2026-02-15',
+  collections: [],
 };
 
 /**

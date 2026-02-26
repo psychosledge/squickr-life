@@ -11,6 +11,12 @@ import {
   AddTaskToCollectionHandler,
   RemoveTaskFromCollectionHandler,
   MoveTaskToCollectionHandler,
+  AddNoteToCollectionHandler,
+  RemoveNoteFromCollectionHandler,
+  MoveNoteToCollectionHandler,
+  AddEventToCollectionHandler,
+  RemoveEventFromCollectionHandler,
+  MoveEventToCollectionHandler,
   BulkMigrateEntriesHandler,
   EntryListProjection,
   TaskListProjection,
@@ -242,6 +248,24 @@ function AppContent() {
     return new MoveTaskToCollectionHandler(addHandler, removeHandler, entryProjection);
   });
   
+  // Note multi-collection handlers
+  const [addNoteToCollectionHandler] = useState(() => new AddNoteToCollectionHandler(eventStore, entryProjection));
+  const [removeNoteFromCollectionHandler] = useState(() => new RemoveNoteFromCollectionHandler(eventStore, entryProjection));
+  const [moveNoteToCollectionHandler] = useState(() => {
+    const addHandler = new AddNoteToCollectionHandler(eventStore, entryProjection);
+    const removeHandler = new RemoveNoteFromCollectionHandler(eventStore, entryProjection);
+    return new MoveNoteToCollectionHandler(addHandler, removeHandler, entryProjection);
+  });
+
+  // Event entry multi-collection handlers
+  const [addEventToCollectionHandler] = useState(() => new AddEventToCollectionHandler(eventStore, entryProjection));
+  const [removeEventFromCollectionHandler] = useState(() => new RemoveEventFromCollectionHandler(eventStore, entryProjection));
+  const [moveEventToCollectionHandler] = useState(() => {
+    const addHandler = new AddEventToCollectionHandler(eventStore, entryProjection);
+    const removeHandler = new RemoveEventFromCollectionHandler(eventStore, entryProjection);
+    return new MoveEventToCollectionHandler(addHandler, removeHandler, entryProjection);
+  });
+  
   // Bulk migration handler (Phase 4: ADR-013)
   const [bulkMigrateEntriesHandler] = useState(() => new BulkMigrateEntriesHandler(eventStore, entryProjection));
   
@@ -343,6 +367,12 @@ function AppContent() {
     addTaskToCollectionHandler,
     removeTaskFromCollectionHandler,
     moveTaskToCollectionHandler,
+    addNoteToCollectionHandler,
+    removeNoteFromCollectionHandler,
+    moveNoteToCollectionHandler,
+    addEventToCollectionHandler,
+    removeEventFromCollectionHandler,
+    moveEventToCollectionHandler,
     bulkMigrateEntriesHandler,
     userPreferences,
   };

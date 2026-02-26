@@ -47,11 +47,16 @@ export type {
   NoteDeleted,
   NoteReordered,
   NoteMigrated,
+  NoteAddedToCollection,
+  NoteRemovedFromCollection,
   CreateNoteCommand,
   UpdateNoteContentCommand,
   DeleteNoteCommand,
   ReorderNoteCommand,
   MigrateNoteCommand,
+  AddNoteToCollectionCommand,
+  RemoveNoteFromCollectionCommand,
+  MoveNoteToCollectionCommand,
   NoteEvent,
 } from './task.types';
 
@@ -64,12 +69,17 @@ export type {
   EventDeleted,
   EventReordered,
   EventMigrated,
+  EventAddedToCollection,
+  EventRemovedFromCollection,
   CreateEventCommand,
   UpdateEventContentCommand,
   UpdateEventDateCommand,
   DeleteEventCommand,
   ReorderEventCommand,
   MigrateEventCommand,
+  AddEventToCollectionCommand,
+  RemoveEventFromCollectionCommand,
+  MoveEventToCollectionCommand,
   EventEvent,
 } from './task.types';
 
@@ -127,6 +137,12 @@ export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHa
 
 // Multi-Collection Command Handlers
 export { AddTaskToCollectionHandler, RemoveTaskFromCollectionHandler, MoveTaskToCollectionHandler } from './collection-management.handlers';
+
+// Note Multi-Collection Command Handlers
+export { AddNoteToCollectionHandler, RemoveNoteFromCollectionHandler, MoveNoteToCollectionHandler } from './note-collection-management.handlers';
+
+// Event Multi-Collection Command Handlers
+export { AddEventToCollectionHandler, RemoveEventFromCollectionHandler, MoveEventToCollectionHandler } from './event-collection-management.handlers';
 
 // Sub-Task Command Handlers (Phase 1: Sub-Tasks)
 export { CreateSubTaskHandler } from './sub-task.handlers';

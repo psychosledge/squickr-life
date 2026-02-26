@@ -49,6 +49,7 @@ const mockEntries: Entry[] = [
     createdAt: '2026-01-27T10:00:00Z',
     order: 'a0',
     collectionId: 'col-1',
+    collections: [],
   },
   {
     id: 'note-1',
@@ -57,6 +58,7 @@ const mockEntries: Entry[] = [
     createdAt: '2026-01-27T10:01:00Z',
     order: 'a1',
     collectionId: 'col-1',
+    collections: [],
   },
 ];
 
@@ -122,6 +124,13 @@ describe('CollectionDetailView', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
+      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
     };
 
     return render(
@@ -315,6 +324,13 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
+      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
     };
 
     return render(
@@ -504,6 +520,12 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
+      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     };
 
     return render(
@@ -838,6 +860,12 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     };
 
     return render(
@@ -1035,6 +1063,12 @@ describe('CollectionDetailView - Temporal Route Navigation Fix', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     };
 
     return render(
@@ -1134,6 +1168,12 @@ describe('CollectionDetailView - Error Toast', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
       ...overrides,
     };

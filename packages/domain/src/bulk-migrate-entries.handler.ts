@@ -2,10 +2,12 @@ import type { IEventStore } from './event-store';
 import type { EntryListProjection } from './entry.projections';
 import type { DomainEvent } from './domain-event';
 import type { 
-  NoteMigrated, 
-  EventMigrated,
   TaskAddedToCollection,
-  TaskRemovedFromCollection
+  TaskRemovedFromCollection,
+  NoteAddedToCollection,
+  NoteRemovedFromCollection,
+  EventAddedToCollection,
+  EventRemovedFromCollection,
 } from './task.types';
 import { generateEventMetadata } from './event-helpers';
 
@@ -16,10 +18,9 @@ import { generateEventMetadata } from './event-helpers';
  * This is a generic handler that works for all entry types (tasks, notes, events)
  * and uses appendBatch() to prevent UI flashing during bulk operations.
  * 
- * Tasks: Use multi-collection pattern (preserves task ID, full collection history)
- * Notes/Events: Use legacy migration pattern (creates new ID with migratedTo pointer)
+ * All entry types use the multi-collection pattern (preserves ID, full collection history).
  * 
- * Supports two modes (tasks only):
+ * Supports two modes:
  * - 'move': Remove from current collection + add to new collection
  * - 'add': Add to new collection without removing from current (multi-collection)
  */
@@ -49,14 +50,13 @@ export interface BulkMigrateEntriesCommand {
  * Responsibilities:
  * - Validate entries exist
  * - Skip ghost entries (already migrated)
- * - For tasks: Use multi-collection events (TaskAddedToCollection + TaskRemovedFromCollection)
- * - For notes/events: Use legacy migration events (NoteMigrated, EventMigrated)
+ * - For all entry types: Use multi-collection events (Added/RemovedFromCollection)
  * - Support 'move' and 'add' modes for multi-collection
  * - Use appendBatch() for atomic writes and single UI update
  * 
- * This implements ADR-013 Phase 3: Bulk migration UX improvements
- * Tasks use the new multi-collection pattern (preserves task ID and full history)
- * Notes/Events still use legacy migration pattern (creates new IDs)
+ * This implements ADR-013 Phase 3: Bulk migration UX improvements.
+ * All entry types (tasks, notes, events) use the multi-collection pattern
+ * (preserves entry ID and full collection history — no new entries created).
  */
 export class BulkMigrateEntriesHandler {
   constructor(
@@ -101,9 +101,6 @@ export class BulkMigrateEntriesHandler {
       if (!entry || entry.migratedTo) {
         continue;
       }
-      
-      // Generate timestamp once for all events in this iteration (for notes/events)
-      const migratedAt = new Date().toISOString();
       
       // Create type-specific migration event
       switch (entry.type) {
@@ -158,48 +155,100 @@ export class BulkMigrateEntriesHandler {
         }
           
         case 'note': {
-          // Notes still use legacy migration pattern (creates new ID)
-          // TODO: Update to multi-collection pattern in future
-          const migratedToId = crypto.randomUUID();
+          // Notes use multi-collection pattern (preserves note ID and collection history)
           
-          const noteMigratedEvent: NoteMigrated = {
-            id: crypto.randomUUID(),
-            type: 'NoteMigrated',
-            timestamp: migratedAt,
-            version: 1,
-            aggregateId: entryId,
-            payload: {
-              originalNoteId: entryId,
-              migratedToId,
-              targetCollectionId: command.targetCollectionId,
-              migratedAt,
-            },
-          };
-          events.push(noteMigratedEvent);
-          // Notes currently don't support multi-collection, so only 'move' mode
+          // Idempotency: Skip if source and target are the same (no-op)
+          if (command.mode === 'move' && 
+              command.sourceCollectionId === command.targetCollectionId) {
+            continue;
+          }
+          
+          // Remove from source collection (if mode='move' and source collection provided)
+          if (command.mode === 'move' && command.sourceCollectionId) {
+            // Idempotency: Only remove if note is actually in the source collection
+            if (entry.collections?.includes(command.sourceCollectionId)) {
+              const removeMetadata = generateEventMetadata();
+              const noteRemovedEvent: NoteRemovedFromCollection = {
+                ...removeMetadata,
+                type: 'NoteRemovedFromCollection',
+                aggregateId: entryId,
+                payload: {
+                  noteId: entryId,
+                  collectionId: command.sourceCollectionId,
+                  removedAt: removeMetadata.timestamp,
+                },
+              };
+              events.push(noteRemovedEvent);
+            }
+          }
+          
+          // Add to target collection (both 'move' and 'add' modes)
+          if (command.targetCollectionId) {
+            // Idempotency: Only add if note is NOT already in target collection
+            if (!entry.collections?.includes(command.targetCollectionId)) {
+              const addMetadata = generateEventMetadata();
+              const noteAddedEvent: NoteAddedToCollection = {
+                ...addMetadata,
+                type: 'NoteAddedToCollection',
+                aggregateId: entryId,
+                payload: {
+                  noteId: entryId,
+                  collectionId: command.targetCollectionId,
+                  addedAt: addMetadata.timestamp,
+                },
+              };
+              events.push(noteAddedEvent);
+            }
+          }
           break;
         }
           
         case 'event': {
-          // Events still use legacy migration pattern (creates new ID)
-          // TODO: Update to multi-collection pattern in future
-          const migratedToId = crypto.randomUUID();
+          // Events use multi-collection pattern (preserves event ID and collection history)
           
-          const eventMigratedEvent: EventMigrated = {
-            id: crypto.randomUUID(),
-            type: 'EventMigrated',
-            timestamp: migratedAt,
-            version: 1,
-            aggregateId: entryId,
-            payload: {
-              originalEventId: entryId,
-              migratedToId,
-              targetCollectionId: command.targetCollectionId,
-              migratedAt,
-            },
-          };
-          events.push(eventMigratedEvent);
-          // Events currently don't support multi-collection, so only 'move' mode
+          // Idempotency: Skip if source and target are the same (no-op)
+          if (command.mode === 'move' && 
+              command.sourceCollectionId === command.targetCollectionId) {
+            continue;
+          }
+          
+          // Remove from source collection (if mode='move' and source collection provided)
+          if (command.mode === 'move' && command.sourceCollectionId) {
+            // Idempotency: Only remove if event is actually in the source collection
+            if (entry.collections?.includes(command.sourceCollectionId)) {
+              const removeMetadata = generateEventMetadata();
+              const eventRemovedEvent: EventRemovedFromCollection = {
+                ...removeMetadata,
+                type: 'EventRemovedFromCollection',
+                aggregateId: entryId,
+                payload: {
+                  eventId: entryId,
+                  collectionId: command.sourceCollectionId,
+                  removedAt: removeMetadata.timestamp,
+                },
+              };
+              events.push(eventRemovedEvent);
+            }
+          }
+          
+          // Add to target collection (both 'move' and 'add' modes)
+          if (command.targetCollectionId) {
+            // Idempotency: Only add if event is NOT already in target collection
+            if (!entry.collections?.includes(command.targetCollectionId)) {
+              const addMetadata = generateEventMetadata();
+              const eventAddedEvent: EventAddedToCollection = {
+                ...addMetadata,
+                type: 'EventAddedToCollection',
+                aggregateId: entryId,
+                payload: {
+                  eventId: entryId,
+                  collectionId: command.targetCollectionId,
+                  addedAt: addMetadata.timestamp,
+                },
+              };
+              events.push(eventAddedEvent);
+            }
+          }
           break;
         }
       }

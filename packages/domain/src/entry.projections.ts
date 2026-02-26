@@ -575,23 +575,16 @@ export class EntryListProjection {
   ): Promise<(Entry & { renderAsGhost?: boolean; ghostNewLocation?: string })[]> {
     const allEntries = await this.getEntries();
     
-    // Active entries: Currently in this collection
+    // Active entries: Currently in this collection (all types use collections[])
     const activeEntries = allEntries
-      .filter(entry => {
-        if (entry.type === 'task') {
-          return entry.collections.includes(collectionId);
-        }
-        // For notes/events, use legacy collectionId (no multi-collection yet)
-        return entry.collectionId === collectionId;
-      })
+      .filter(entry => entry.collections.includes(collectionId))
       .map(entry => ({
         ...entry,
         renderAsGhost: false,
       }));
     
-    // Ghost entries: Removed from this collection (tasks only for now)
+    // Ghost entries: Removed from this collection (all entry types with collectionHistory)
     const ghostEntries = allEntries
-      .filter(entry => entry.type === 'task')
       .filter(entry => !entry.collections.includes(collectionId))
       .filter(entry => entry.collectionHistory?.some(h => 
         h.collectionId === collectionId && h.removedAt

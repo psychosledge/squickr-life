@@ -26,54 +26,37 @@ export interface CollectionHistoryEntry {
 }
 
 /**
+ * BaseEntry interface - shared fields for all entry types (Task, Note, Event)
+ * Provides multi-collection support and audit trail fields.
+ */
+export interface BaseEntry {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly order?: string;
+  readonly collectionId?: string;
+  /** Array of collection IDs this entry belongs to (multi-collection support) */
+  readonly collections: string[];
+  readonly collectionHistory?: CollectionHistoryEntry[];
+  readonly userId?: string;
+  readonly migratedTo?: string;
+  readonly migratedFrom?: string;
+  readonly migratedToCollectionId?: string;
+  readonly migratedFromCollectionId?: string;
+}
+
+/**
  * Task entity - represents the current state of a task
  * This is derived from events, not stored directly
  */
-export interface Task {
-  /** Unique identifier (UUID v4) */
-  readonly id: string;
-  
+export interface Task extends BaseEntry {
   /** Task title (1-500 characters) */
   readonly title: string;
-  
-  /** When the task was created (ISO 8601) */
-  readonly createdAt: string;
   
   /** Current status of the task */
   readonly status: TaskStatus;
   
   /** When the task was completed (ISO 8601), if applicable */
   readonly completedAt?: string;
-  
-  /** Fractional index for ordering tasks (e.g., "a0", "a1", "a0V") 
-   * Optional for backward compatibility with tasks created before this field was added */
-  readonly order?: string;
-  
-  /** Optional: Collection this task belongs to (null/undefined = uncategorized) 
-   * LEGACY: Kept for backward compatibility with single-collection tasks */
-  readonly collectionId?: string;
-  
-  /** Array of collection IDs this task belongs to (multi-collection support) 
-   * Empty array = uncategorized */
-  readonly collections: string[];
-  
-  /** Collection history - track when task was added/removed from collections */
-  readonly collectionHistory?: CollectionHistoryEntry[];
-  
-  /** Optional: User who created the task (for future multi-user support) */
-  readonly userId?: string;
-  
-  /** Optional: ID of entry this task was migrated to (audit trail) */
-  readonly migratedTo?: string;
-  
-  /** Optional: ID of entry this task was migrated from (audit trail) */
-  readonly migratedFrom?: string;
-  
-  /** Optional: Collection ID where this task was migrated to (for "Go to" navigation) */
-  readonly migratedToCollectionId?: string;
-  
-  /** Optional: Collection ID where this task was migrated from (for "Go back" navigation) */
-  readonly migratedFromCollectionId?: string;
   
   /** Optional: ID of task this was moved from (for movement tracking, not migration)
    * When a task is MOVED (not migrated) between collections, this is set to self-reference.
@@ -484,36 +467,9 @@ export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted
  * Note entity - represents a note entry in the bullet journal
  * Notes are informational entries without completion status
  */
-export interface Note {
-  /** Unique identifier (UUID v4) */
-  readonly id: string;
-  
+export interface Note extends BaseEntry {
   /** Note content (1-5000 characters) */
   readonly content: string;
-  
-  /** When the note was created (ISO 8601) */
-  readonly createdAt: string;
-  
-  /** Fractional index for ordering entries */
-  readonly order?: string;
-  
-  /** Optional: Collection this note belongs to (null/undefined = uncategorized) */
-  readonly collectionId?: string;
-  
-  /** Optional: User who created the note */
-  readonly userId?: string;
-  
-  /** Optional: ID of entry this note was migrated to (audit trail) */
-  readonly migratedTo?: string;
-  
-  /** Optional: ID of entry this note was migrated from (audit trail) */
-  readonly migratedFrom?: string;
-  
-  /** Optional: Collection ID where this note was migrated to (for "Go to" navigation) */
-  readonly migratedToCollectionId?: string;
-  
-  /** Optional: Collection ID where this note was migrated from (for "Go back" navigation) */
-  readonly migratedFromCollectionId?: string;
 }
 
 /**
@@ -656,7 +612,72 @@ export interface MigrateNoteCommand {
 /**
  * Union type of all note-related events
  */
-export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | EntryMovedToCollection | NoteMigrated;
+export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | EntryMovedToCollection | NoteMigrated | NoteAddedToCollection | NoteRemovedFromCollection;
+
+// ============================================================================
+// Note Multi-Collection Events
+// ============================================================================
+
+/**
+ * NoteAddedToCollection Event
+ * Emitted when a note is added to an additional collection
+ * 
+ * Invariants:
+ * - aggregateId must match an existing note
+ * - Note must not already be in this collection (idempotent check)
+ */
+export interface NoteAddedToCollection extends DomainEvent {
+  readonly type: 'NoteAddedToCollection';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly noteId: string;
+    readonly collectionId: string;
+    readonly addedAt: string;
+  };
+}
+
+/**
+ * NoteRemovedFromCollection Event
+ * Emitted when a note is removed from a collection
+ * 
+ * Invariants:
+ * - aggregateId must match an existing note
+ * - Note must be in this collection (idempotent check)
+ */
+export interface NoteRemovedFromCollection extends DomainEvent {
+  readonly type: 'NoteRemovedFromCollection';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly noteId: string;
+    readonly collectionId: string;
+    readonly removedAt: string;
+  };
+}
+
+/**
+ * AddNoteToCollection Command
+ */
+export interface AddNoteToCollectionCommand {
+  readonly noteId: string;
+  readonly collectionId: string;
+}
+
+/**
+ * RemoveNoteFromCollection Command
+ */
+export interface RemoveNoteFromCollectionCommand {
+  readonly noteId: string;
+  readonly collectionId: string;
+}
+
+/**
+ * MoveNoteToCollection Command
+ */
+export interface MoveNoteToCollectionCommand {
+  readonly noteId: string;
+  readonly currentCollectionId: string;
+  readonly targetCollectionId: string;
+}
 
 // ============================================================================
 // Event Domain Types (Bullet Journal Events)
@@ -666,39 +687,12 @@ export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteReo
  * Event entity - represents an event entry in the bullet journal
  * Events are things that happen/happened on specific dates
  */
-export interface Event {
-  /** Unique identifier (UUID v4) */
-  readonly id: string;
-  
+export interface Event extends BaseEntry {
   /** Event content/description (1-5000 characters) */
   readonly content: string;
   
-  /** When the event entry was created (ISO 8601) */
-  readonly createdAt: string;
-  
   /** Optional: When the event actually occurs/occurred (ISO 8601 date) */
   readonly eventDate?: string;
-  
-  /** Fractional index for ordering entries */
-  readonly order?: string;
-  
-  /** Optional: Collection this event belongs to (null/undefined = uncategorized) */
-  readonly collectionId?: string;
-  
-  /** Optional: User who created the event */
-  readonly userId?: string;
-  
-  /** Optional: ID of entry this event was migrated to (audit trail) */
-  readonly migratedTo?: string;
-  
-  /** Optional: ID of entry this event was migrated from (audit trail) */
-  readonly migratedFrom?: string;
-  
-  /** Optional: Collection ID where this event was migrated to (for "Go to" navigation) */
-  readonly migratedToCollectionId?: string;
-  
-  /** Optional: Collection ID where this event was migrated from (for "Go back" navigation) */
-  readonly migratedFromCollectionId?: string;
 }
 
 /**
@@ -867,7 +861,72 @@ export interface MigrateEventCommand {
 /**
  * Union type of all event-related events
  */
-export type EventEvent = EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered | EntryMovedToCollection | EventMigrated;
+export type EventEvent = EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered | EntryMovedToCollection | EventMigrated | EventAddedToCollection | EventRemovedFromCollection;
+
+// ============================================================================
+// Event Multi-Collection Events
+// ============================================================================
+
+/**
+ * EventAddedToCollection Event
+ * Emitted when an event entry is added to an additional collection
+ * 
+ * Invariants:
+ * - aggregateId must match an existing event entry
+ * - Event must not already be in this collection (idempotent check)
+ */
+export interface EventAddedToCollection extends DomainEvent {
+  readonly type: 'EventAddedToCollection';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly eventId: string;
+    readonly collectionId: string;
+    readonly addedAt: string;
+  };
+}
+
+/**
+ * EventRemovedFromCollection Event
+ * Emitted when an event entry is removed from a collection
+ * 
+ * Invariants:
+ * - aggregateId must match an existing event entry
+ * - Event must be in this collection (idempotent check)
+ */
+export interface EventRemovedFromCollection extends DomainEvent {
+  readonly type: 'EventRemovedFromCollection';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly eventId: string;
+    readonly collectionId: string;
+    readonly removedAt: string;
+  };
+}
+
+/**
+ * AddEventToCollection Command
+ */
+export interface AddEventToCollectionCommand {
+  readonly eventId: string;
+  readonly collectionId: string;
+}
+
+/**
+ * RemoveEventFromCollection Command
+ */
+export interface RemoveEventFromCollectionCommand {
+  readonly eventId: string;
+  readonly collectionId: string;
+}
+
+/**
+ * MoveEventToCollection Command
+ */
+export interface MoveEventToCollectionCommand {
+  readonly eventId: string;
+  readonly currentCollectionId: string;
+  readonly targetCollectionId: string;
+}
 
 // ============================================================================
 // Unified Entry Types (for UI)

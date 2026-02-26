@@ -55,23 +55,31 @@ describe('BulkMigrateEntriesHandler', () => {
       expect(appendBatchSpy).toHaveBeenCalledTimes(1);
       
       // Assert: Migration events + collection management events
-      // 2 tasks × 2 events (TaskRemovedFromCollection + TaskAddedToCollection) - NO TaskMigrated
-      // 2 notes × 1 event (NoteMigrated)
-      // 1 event × 1 event (EventMigrated)
-      // Total: 4 + 2 + 1 = 7 events
+      // 2 tasks × 2 events (TaskRemovedFromCollection + TaskAddedToCollection) = 4
+      // 2 notes × 2 events (NoteRemovedFromCollection + NoteAddedToCollection) = 4
+      // 1 event × 2 events (EventRemovedFromCollection + EventAddedToCollection) = 2
+      // Total: 4 + 4 + 2 = 10 events
       const batchedEvents = appendBatchSpy.mock.calls[0][0];
-      expect(batchedEvents).toHaveLength(7);
+      expect(batchedEvents).toHaveLength(10);
 
       // Verify each migration event type
       const taskMigratedEvents = batchedEvents.filter(e => e.type === 'TaskMigrated');
       const noteMigratedEvents = batchedEvents.filter(e => e.type === 'NoteMigrated');
       const eventMigratedEvents = batchedEvents.filter(e => e.type === 'EventMigrated');
+      const noteAddedEvents = batchedEvents.filter(e => e.type === 'NoteAddedToCollection');
+      const eventAddedEvents = batchedEvents.filter(e => e.type === 'EventAddedToCollection');
+      const noteRemovedEvents = batchedEvents.filter(e => e.type === 'NoteRemovedFromCollection');
+      const eventRemovedEvents = batchedEvents.filter(e => e.type === 'EventRemovedFromCollection');
 
-      expect(taskMigratedEvents).toHaveLength(0); // No TaskMigrated for tasks anymore
-      expect(noteMigratedEvents).toHaveLength(2);
-      expect(eventMigratedEvents).toHaveLength(1);
+      expect(taskMigratedEvents).toHaveLength(0); // No TaskMigrated for tasks
+      expect(noteMigratedEvents).toHaveLength(0); // No NoteMigrated - use multi-collection pattern
+      expect(eventMigratedEvents).toHaveLength(0); // No EventMigrated - use multi-collection pattern
+      expect(noteAddedEvents).toHaveLength(2);    // Notes use NoteAddedToCollection now
+      expect(noteRemovedEvents).toHaveLength(2);  // Notes also get NoteRemovedFromCollection in move mode
+      expect(eventAddedEvents).toHaveLength(1);   // Events use EventAddedToCollection now
+      expect(eventRemovedEvents).toHaveLength(1); // Events also get EventRemovedFromCollection in move mode
 
-      // Verify tasks NO LONGER have migratedTo pointers (they keep same ID)
+      // Verify all entries keep same IDs (multi-collection pattern, no new IDs)
       const task1 = await entryProjection.getTaskById(task1Id);
       const task2 = await entryProjection.getTaskById(task2Id);
       const note1 = await entryProjection.getNoteById(note1Id);
@@ -80,9 +88,9 @@ describe('BulkMigrateEntriesHandler', () => {
 
       expect(task1?.migratedTo).toBeUndefined(); // Tasks keep same ID
       expect(task2?.migratedTo).toBeUndefined();
-      expect(note1?.migratedTo).toBeDefined(); // Notes still use old pattern
-      expect(note2?.migratedTo).toBeDefined();
-      expect(event1?.migratedTo).toBeDefined(); // Events still use old pattern
+      expect(note1?.migratedTo).toBeUndefined(); // Notes also keep same ID now
+      expect(note2?.migratedTo).toBeUndefined();
+      expect(event1?.migratedTo).toBeUndefined(); // Events also keep same ID now
     });
   });
 
@@ -241,7 +249,7 @@ describe('BulkMigrateEntriesHandler', () => {
       expect(taskAddedEvents).toHaveLength(3);
     });
 
-    it('should handle notes and events in add mode (no multi-collection yet)', async () => {
+    it('should handle notes and events in add mode (multi-collection)', async () => {
       // Arrange: 1 note + 1 event
       const noteId = await createNoteHandler.handle({ content: 'Note 1', collectionId: 'col-a' });
       const eventId = await createEventHandler.handle({ content: 'Event 1', eventDate: '2026-01-15', collectionId: 'col-a' });
@@ -252,22 +260,26 @@ describe('BulkMigrateEntriesHandler', () => {
         entryIds: [noteId, eventId],
         sourceCollectionId: 'col-a',
         targetCollectionId: 'col-b',
-        mode: 'add', // Mode doesn't affect notes/events (they don't support multi-collection)
+        mode: 'add', // Notes/Events now support multi-collection
       };
 
       // Act
       await handler.handle(command);
 
-      // Assert: 1 × NoteMigrated + 1 × EventMigrated = 2 events
-      // Notes and events don't have multi-collection, so no add/remove events
+      // Assert: 1 × NoteAddedToCollection + 1 × EventAddedToCollection = 2 events
+      // Notes and events now use multi-collection pattern (no NoteMigrated/EventMigrated)
       const batchedEvents = appendBatchSpy.mock.calls[0][0];
       expect(batchedEvents).toHaveLength(2);
 
       const noteMigratedEvents = batchedEvents.filter(e => e.type === 'NoteMigrated');
       const eventMigratedEvents = batchedEvents.filter(e => e.type === 'EventMigrated');
+      const noteAddedEvents = batchedEvents.filter(e => e.type === 'NoteAddedToCollection');
+      const eventAddedEvents = batchedEvents.filter(e => e.type === 'EventAddedToCollection');
 
-      expect(noteMigratedEvents).toHaveLength(1);
-      expect(eventMigratedEvents).toHaveLength(1);
+      expect(noteMigratedEvents).toHaveLength(0); // No legacy NoteMigrated
+      expect(eventMigratedEvents).toHaveLength(0); // No legacy EventMigrated
+      expect(noteAddedEvents).toHaveLength(1);  // Multi-collection pattern
+      expect(eventAddedEvents).toHaveLength(1); // Multi-collection pattern
     });
   });
 

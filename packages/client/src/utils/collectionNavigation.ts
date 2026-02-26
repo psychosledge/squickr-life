@@ -30,13 +30,11 @@ export function getNavigationCollections(
 ): NavigationCollection[] {
   const result = new Map<string | null, boolean>(); // Auto de-duplicates
 
-  // 1. Add all ACTIVE collections (only for tasks with multi-collection support)
-  if (entry.type === 'task') {
-    const entryCollections = entry.collections || [];
-    for (const collId of entryCollections) {
-      if (collId !== currentCollectionId) {
-        result.set(collId, false); // false = active, not ghost
-      }
+  // 1. Add all ACTIVE collections (for all entry types with multi-collection support)
+  const entryCollections = entry.collections || [];
+  for (const collId of entryCollections) {
+    if (collId !== currentCollectionId) {
+      result.set(collId, false); // false = active, not ghost
     }
   }
 

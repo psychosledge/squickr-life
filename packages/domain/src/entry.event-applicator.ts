@@ -18,12 +18,16 @@ import type {
   NoteDeleted,
   NoteReordered,
   NoteMigrated,
+  NoteAddedToCollection,
+  NoteRemovedFromCollection,
   EventCreated,
   EventContentChanged,
   EventDateChanged,
   EventDeleted,
   EventReordered,
   EventMigrated,
+  EventAddedToCollection,
+  EventRemovedFromCollection,
   EntryFilter,
   EntryMovedToCollection,
 } from './task.types';
@@ -178,13 +182,15 @@ export class EntryEventApplicator {
 
   isNoteEvent(
     event: DomainEvent
-  ): event is NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | NoteMigrated {
+  ): event is NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | NoteMigrated | NoteAddedToCollection | NoteRemovedFromCollection {
     return (
       event.type === 'NoteCreated' ||
       event.type === 'NoteContentChanged' ||
       event.type === 'NoteDeleted' ||
       event.type === 'NoteReordered' ||
-      event.type === 'NoteMigrated'
+      event.type === 'NoteMigrated' ||
+      event.type === 'NoteAddedToCollection' ||
+      event.type === 'NoteRemovedFromCollection'
     );
   }
 
@@ -196,14 +202,18 @@ export class EntryEventApplicator {
     | EventDateChanged
     | EventDeleted
     | EventReordered
-    | EventMigrated {
+    | EventMigrated
+    | EventAddedToCollection
+    | EventRemovedFromCollection {
     return (
       event.type === 'EventCreated' ||
       event.type === 'EventContentChanged' ||
       event.type === 'EventDateChanged' ||
       event.type === 'EventDeleted' ||
       event.type === 'EventReordered' ||
-      event.type === 'EventMigrated'
+      event.type === 'EventMigrated' ||
+      event.type === 'EventAddedToCollection' ||
+      event.type === 'EventRemovedFromCollection'
     );
   }
 
@@ -473,7 +483,7 @@ export class EntryEventApplicator {
    */
   applyNoteEvent(
     notes: Map<string, Note>,
-    event: NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | NoteMigrated
+    event: NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | NoteMigrated | NoteAddedToCollection | NoteRemovedFromCollection
   ): void {
     switch (event.type) {
       case 'NoteCreated': {
@@ -484,6 +494,11 @@ export class EntryEventApplicator {
           order: event.payload.order,
           collectionId: event.payload.collectionId,
           userId: event.payload.userId,
+          // Initialize collections array from legacy collectionId
+          collections: event.payload.collectionId ? [event.payload.collectionId] : [],
+          collectionHistory: event.payload.collectionId
+            ? [{ collectionId: event.payload.collectionId, addedAt: event.payload.createdAt }]
+            : [],
         };
         notes.set(note.id, note);
         break;
@@ -535,9 +550,77 @@ export class EntryEventApplicator {
             userId: originalNote.userId,
             migratedFrom: event.payload.originalNoteId,
             migratedFromCollectionId: originalNote.collectionId, // Store source collection for "Go back"
+            // Initialize collections for the new note
+            collections: event.payload.targetCollectionId ? [event.payload.targetCollectionId] : [],
+            collectionHistory: event.payload.targetCollectionId
+              ? [{ collectionId: event.payload.targetCollectionId, addedAt: event.payload.migratedAt }]
+              : [],
           };
           notes.set(newNote.id, newNote);
         }
+        break;
+      }
+      case 'NoteAddedToCollection': {
+        const note = notes.get(event.payload.noteId);
+        if (!note) break;
+
+        // Idempotency check
+        if (note.collections.includes(event.payload.collectionId)) break;
+
+        // Check if this is a MOVE (there's a recent removal in collectionHistory)
+        const removals = note.collectionHistory
+          ?.map((h, index) => ({ ...h, index }))
+          ?.filter(h => h.removedAt !== undefined) || [];
+
+        const recentRemoval =
+          removals.length > 0
+            ? removals.reduce((latest, current) => {
+                const latestTime = new Date(latest.removedAt!).getTime();
+                const currentTime = new Date(current.removedAt!).getTime();
+                if (currentTime > latestTime) return current;
+                if (currentTime < latestTime) return latest;
+                return current.index > latest.index ? current : latest;
+              })
+            : undefined;
+
+        const updatedNote: Note = recentRemoval
+          ? {
+              ...note,
+              collections: [...note.collections, event.payload.collectionId],
+              collectionHistory: [
+                ...(note.collectionHistory || []),
+                { collectionId: event.payload.collectionId, addedAt: event.timestamp },
+              ],
+              migratedFrom: note.id, // Self-reference = moved, not migrated
+              migratedFromCollectionId: recentRemoval.collectionId,
+            }
+          : {
+              ...note,
+              collections: [...note.collections, event.payload.collectionId],
+              collectionHistory: [
+                ...(note.collectionHistory || []),
+                { collectionId: event.payload.collectionId, addedAt: event.timestamp },
+              ],
+            };
+
+        notes.set(note.id, updatedNote);
+        break;
+      }
+      case 'NoteRemovedFromCollection': {
+        const note = notes.get(event.payload.noteId);
+        if (!note) break;
+
+        const updatedNote: Note = {
+          ...note,
+          collections: note.collections.filter(c => c !== event.payload.collectionId),
+          collectionHistory: note.collectionHistory?.map(h =>
+            h.collectionId === event.payload.collectionId && !h.removedAt
+              ? { ...h, removedAt: event.timestamp }
+              : h
+          ),
+        };
+
+        notes.set(note.id, updatedNote);
         break;
       }
     }
@@ -555,6 +638,8 @@ export class EntryEventApplicator {
       | EventDeleted
       | EventReordered
       | EventMigrated
+      | EventAddedToCollection
+      | EventRemovedFromCollection
   ): void {
     switch (event.type) {
       case 'EventCreated': {
@@ -566,6 +651,11 @@ export class EntryEventApplicator {
           order: event.payload.order,
           collectionId: event.payload.collectionId,
           userId: event.payload.userId,
+          // Initialize collections array from legacy collectionId
+          collections: event.payload.collectionId ? [event.payload.collectionId] : [],
+          collectionHistory: event.payload.collectionId
+            ? [{ collectionId: event.payload.collectionId, addedAt: event.payload.createdAt }]
+            : [],
         };
         eventEntries.set(evt.id, evt);
         break;
@@ -628,9 +718,77 @@ export class EntryEventApplicator {
             userId: originalEvent.userId,
             migratedFrom: event.payload.originalEventId,
             migratedFromCollectionId: originalEvent.collectionId, // Store source collection for "Go back"
+            // Initialize collections for the new event
+            collections: event.payload.targetCollectionId ? [event.payload.targetCollectionId] : [],
+            collectionHistory: event.payload.targetCollectionId
+              ? [{ collectionId: event.payload.targetCollectionId, addedAt: event.payload.migratedAt }]
+              : [],
           };
           eventEntries.set(newEvent.id, newEvent);
         }
+        break;
+      }
+      case 'EventAddedToCollection': {
+        const evt = eventEntries.get(event.payload.eventId);
+        if (!evt) break;
+
+        // Idempotency check
+        if (evt.collections.includes(event.payload.collectionId)) break;
+
+        // Check if this is a MOVE (there's a recent removal in collectionHistory)
+        const removals = evt.collectionHistory
+          ?.map((h, index) => ({ ...h, index }))
+          ?.filter(h => h.removedAt !== undefined) || [];
+
+        const recentRemoval =
+          removals.length > 0
+            ? removals.reduce((latest, current) => {
+                const latestTime = new Date(latest.removedAt!).getTime();
+                const currentTime = new Date(current.removedAt!).getTime();
+                if (currentTime > latestTime) return current;
+                if (currentTime < latestTime) return latest;
+                return current.index > latest.index ? current : latest;
+              })
+            : undefined;
+
+        const updatedEvt: EventEntry = recentRemoval
+          ? {
+              ...evt,
+              collections: [...evt.collections, event.payload.collectionId],
+              collectionHistory: [
+                ...(evt.collectionHistory || []),
+                { collectionId: event.payload.collectionId, addedAt: event.timestamp },
+              ],
+              migratedFrom: evt.id, // Self-reference = moved, not migrated
+              migratedFromCollectionId: recentRemoval.collectionId,
+            }
+          : {
+              ...evt,
+              collections: [...evt.collections, event.payload.collectionId],
+              collectionHistory: [
+                ...(evt.collectionHistory || []),
+                { collectionId: event.payload.collectionId, addedAt: event.timestamp },
+              ],
+            };
+
+        eventEntries.set(evt.id, updatedEvt);
+        break;
+      }
+      case 'EventRemovedFromCollection': {
+        const evt = eventEntries.get(event.payload.eventId);
+        if (!evt) break;
+
+        const updatedEvt: EventEntry = {
+          ...evt,
+          collections: evt.collections.filter(c => c !== event.payload.collectionId),
+          collectionHistory: evt.collectionHistory?.map(h =>
+            h.collectionId === event.payload.collectionId && !h.removedAt
+              ? { ...h, removedAt: event.timestamp }
+              : h
+          ),
+        };
+
+        eventEntries.set(evt.id, updatedEvt);
         break;
       }
     }

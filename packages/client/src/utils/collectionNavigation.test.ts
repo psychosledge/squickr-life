@@ -501,6 +501,7 @@ describe('getNavigationCollections', () => {
         type: 'note',
         content: 'A note',
         createdAt: '2026-02-15T10:00:00Z',
+        collections: [],
       };
 
       const result = getNavigationCollections(entry, 'col-a');
@@ -518,6 +519,7 @@ describe('getNavigationCollections', () => {
         createdAt: '2026-02-15T10:00:00Z',
         migratedFrom: 'event-0',
         migratedFromCollectionId: 'yesterday-feb-14',
+        collections: [],
       };
 
       const result = getNavigationCollections(entry, null);
