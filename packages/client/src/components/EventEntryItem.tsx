@@ -176,9 +176,11 @@ export function EventEntryItem({
               <>
                 <div 
                   className={`text-lg font-medium cursor-pointer select-none ${
-                    isLegacyMigrated || isDeleted
-                      ? 'text-gray-500 dark:text-gray-400 line-through'
-                      : 'text-gray-900 dark:text-white'
+                    isDeleted
+                      ? 'text-gray-400 dark:text-gray-600 line-through'
+                      : isLegacyMigrated
+                        ? 'text-gray-500 dark:text-gray-400'
+                        : 'text-gray-900 dark:text-white'
                   } ${canEdit && !isDeleted ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
                   onDoubleClick={handleDoubleClick}
                   title={canEdit && !isDeleted ? 'Double-click to edit' : undefined}

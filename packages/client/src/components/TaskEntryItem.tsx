@@ -224,9 +224,13 @@ export function TaskEntryItem({
                 
                 <div 
                   className={`text-lg font-medium cursor-pointer select-none ${
-                    isCompleted || isLegacyMigrated || isDeleted
-                      ? 'text-gray-500 dark:text-gray-400 line-through' 
-                      : 'text-gray-900 dark:text-white'
+                    isDeleted
+                      ? 'text-gray-400 dark:text-gray-600 line-through'
+                      : isCompleted
+                        ? 'text-gray-500 dark:text-gray-400 line-through'
+                        : isLegacyMigrated
+                          ? 'text-gray-500 dark:text-gray-400'
+                          : 'text-gray-900 dark:text-white'
                   } ${canEdit ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
                   onDoubleClick={handleDoubleClick}
                   title={canEdit ? 'Double-click to edit' : undefined}

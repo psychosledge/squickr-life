@@ -1386,7 +1386,7 @@ describe('EntryListProjection', () => {
       expect(newTask!.migratedFrom).toBe(taskId);
     });
 
-    it('should clear invalid migration pointer when migrated target is deleted', async () => {
+    it('should PRESERVE migration pointer when migrated target is soft-deleted (can be restored)', async () => {
       // Create task in collection-A
       const taskId = await taskHandler.handle({ title: 'Original task', collectionId: 'collection-A' });
       
@@ -1394,18 +1394,19 @@ describe('EntryListProjection', () => {
       const migrateHandler = new MigrateTaskHandler(eventStore, projection);
       const newTaskId = await migrateHandler.handle({ taskId, targetCollectionId: 'collection-B' });
       
-      // Delete the migrated target
+      // Soft-delete the migrated target (it still exists in the event log with deletedAt set)
       const deleteHandler = new DeleteTaskHandler(eventStore, projection);
       await deleteHandler.handle({ taskId: newTaskId });
       
-      // Original task should have migration pointer cleared
+      // Original task should KEEP its migration pointer — the target is soft-deleted, not gone.
+      // Preserving the pointer prevents the source from appearing as a phantom "1 task" in sidebar stats.
       const originalTask = await projection.getTaskById(taskId);
       expect(originalTask).toBeDefined();
-      expect(originalTask!.migratedTo).toBeUndefined();
-      expect(originalTask!.migratedToCollectionId).toBeUndefined();
+      expect(originalTask!.migratedTo).toBe(newTaskId);
+      expect(originalTask!.migratedToCollectionId).toBe('collection-B');
     });
 
-    it('should clear invalid migration pointer for notes when target is deleted', async () => {
+    it('should PRESERVE migration pointer for notes when migrated target is soft-deleted', async () => {
       // Create note in collection-A
       const noteId = await noteHandler.handle({ content: 'Original note', collectionId: 'collection-A' });
       
@@ -1414,18 +1415,18 @@ describe('EntryListProjection', () => {
       const migrateHandler = new MigrateNoteHandler(eventStore, projection);
       const newNoteId = await migrateHandler.handle({ noteId, targetCollectionId: 'collection-B' });
       
-      // Delete the migrated target
+      // Soft-delete the migrated target
       const deleteHandler = new DeleteNoteHandler(eventStore, projection);
       await deleteHandler.handle({ noteId: newNoteId });
       
-      // Original note should have migration pointer cleared
+      // Original note should KEEP its migration pointer
       const originalNote = await projection.getNoteById(noteId);
       expect(originalNote).toBeDefined();
-      expect(originalNote!.migratedTo).toBeUndefined();
-      expect(originalNote!.migratedToCollectionId).toBeUndefined();
+      expect(originalNote!.migratedTo).toBe(newNoteId);
+      expect(originalNote!.migratedToCollectionId).toBe('collection-B');
     });
 
-    it('should clear invalid migration pointer for events when target is deleted', async () => {
+    it('should PRESERVE migration pointer for events when migrated target is soft-deleted', async () => {
       // Create event in collection-A
       const eventId = await eventHandler.handle({ content: 'Original event', collectionId: 'collection-A' });
       
@@ -1434,40 +1435,40 @@ describe('EntryListProjection', () => {
       const migrateHandler = new MigrateEventHandler(eventStore, projection);
       const newEventId = await migrateHandler.handle({ eventId, targetCollectionId: 'collection-B' });
       
-      // Delete the migrated target
+      // Soft-delete the migrated target
       const deleteHandler = new DeleteEventHandler(eventStore, projection);
       await deleteHandler.handle({ eventId: newEventId });
       
-      // Original event should have migration pointer cleared
+      // Original event should KEEP its migration pointer
       const originalEvent = await projection.getEventById(eventId);
       expect(originalEvent).toBeDefined();
-      expect(originalEvent!.migratedTo).toBeUndefined();
-      expect(originalEvent!.migratedToCollectionId).toBeUndefined();
+      expect(originalEvent!.migratedTo).toBe(newEventId);
+      expect(originalEvent!.migratedToCollectionId).toBe('collection-B');
     });
 
-    it('should sanitize migration pointers in getEntriesByCollection', async () => {
+    it('should preserve migration pointers in getEntriesByCollection when target is soft-deleted', async () => {
       // Create and migrate a task
       const taskId = await taskHandler.handle({ title: 'Task to migrate', collectionId: 'collection-A' });
       const migrateHandler = new MigrateTaskHandler(eventStore, projection);
       const newTaskId = await migrateHandler.handle({ taskId, targetCollectionId: 'collection-B' });
       
-      // Delete migrated target
+      // Soft-delete migrated target — source pointer is preserved
       const deleteHandler = new DeleteTaskHandler(eventStore, projection);
       await deleteHandler.handle({ taskId: newTaskId });
       
-      // Get entries by collection
+      // Get entries by collection — original task is still in collection-A (it's the source/ghost)
       const entriesInA = await projection.getEntriesByCollection('collection-A');
       expect(entriesInA).toHaveLength(1);
       
       const originalTask = entriesInA[0];
       expect(originalTask.type).toBe('task');
       if (originalTask.type === 'task') {
-        expect(originalTask.migratedTo).toBeUndefined();
-        expect(originalTask.migratedToCollectionId).toBeUndefined();
+        // migratedTo is PRESERVED since the target still exists (soft-deleted, restorable)
+        expect(originalTask.migratedTo).toBe(newTaskId);
       }
     });
 
-    it('should handle cross-type migration pointer validation', async () => {
+    it('should preserve migration pointers for all entry types when targets are soft-deleted', async () => {
       // Test that we check all three maps (tasks, notes, events) when validating pointers
       // Create task, note, and event
       const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
@@ -1486,7 +1487,7 @@ describe('EntryListProjection', () => {
       const migrateEventHandler = new MigrateEventHandler(eventStore, projection);
       const newEventId = await migrateEventHandler.handle({ eventId, targetCollectionId: 'collection-B' });
       
-      // Delete all migrated targets
+      // Soft-delete all migrated targets
       const deleteTaskHandler = new DeleteTaskHandler(eventStore, projection);
       await deleteTaskHandler.handle({ taskId: newTaskId });
       
@@ -1496,13 +1497,12 @@ describe('EntryListProjection', () => {
       const deleteEventHandler = new DeleteEventHandler(eventStore, projection);
       await deleteEventHandler.handle({ eventId: newEventId });
       
-      // All originals should have migration pointers cleared
+      // All originals should PRESERVE their migration pointers (targets are soft-deleted, not gone)
       const entries = await projection.getEntriesByCollection('collection-A');
       expect(entries).toHaveLength(3);
       
       entries.forEach(entry => {
-        expect(entry.migratedTo).toBeUndefined();
-        expect(entry.migratedToCollectionId).toBeUndefined();
+        expect(entry.migratedTo).toBeDefined(); // pointer preserved
       });
     });
   });

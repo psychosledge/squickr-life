@@ -119,15 +119,17 @@ export class EntryEventApplicator {
       return entry;
     }
 
-    // Check if target entry exists AND is not soft-deleted
-    const targetExists = allEntries.some(e => e.id === entry.migratedTo && !e.deletedAt);
+    // Check if target entry exists in the event log at all (including soft-deleted).
+    // A soft-deleted target can be restored, so we preserve the migratedTo pointer.
+    // We only clear it if the target is completely absent from the event log.
+    const targetExists = allEntries.some(e => e.id === entry.migratedTo);
 
-    // If target exists (not deleted), return unchanged
+    // If target exists (even if soft-deleted), return unchanged
     if (targetExists) {
       return entry;
     }
 
-    // Target is deleted or doesn't exist, clear migration pointers
+    // Target doesn't exist at all in the event log — clear migration pointers
     // Create new object without migratedTo and migratedToCollectionId properties
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { migratedTo, migratedToCollectionId, ...entryWithoutMigration } = entry as any;
