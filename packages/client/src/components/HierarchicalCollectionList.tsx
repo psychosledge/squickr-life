@@ -1,5 +1,5 @@
 import type { Collection, Entry } from '@squickr/domain';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useCollectionHierarchy, type HierarchyNode } from '../hooks/useCollectionHierarchy';
@@ -16,6 +16,8 @@ interface HierarchicalCollectionListProps {
   selectedCollectionId?: string;
   onReorder?: (collectionId: string, previousCollectionId: string | null, nextCollectionId: string | null) => void;
   entriesByCollection?: Map<string | null, Entry[]>;
+  deletedCollections?: Collection[];
+  onRestoreCollection?: (collectionId: string) => void;
 }
 
 /**
@@ -61,11 +63,16 @@ export function HierarchicalCollectionList({
   selectedCollectionId,
   onReorder,
   entriesByCollection,
+  deletedCollections,
+  onRestoreCollection,
 }: HierarchicalCollectionListProps) {
   // Get userPreferences from context
   const { userPreferences } = useApp();
   
   const { nodes, toggleExpand } = useCollectionHierarchy(collections, userPreferences);
+  
+  // Deleted section accordion state
+  const [isDeletedSectionExpanded, setIsDeletedSectionExpanded] = useState(false);
   
   // Memoize sensor configuration to prevent recreation on every render
   const mouseSensor = useMemo(() => MouseSensor, []);
@@ -351,6 +358,43 @@ export function HierarchicalCollectionList({
                 />
               );
             })}
+          </>
+        )}
+
+        {/* Deleted Collections Accordion */}
+        {deletedCollections && deletedCollections.length > 0 && (
+          <>
+            <SectionDivider />
+            <button
+              type="button"
+              aria-expanded={isDeletedSectionExpanded}
+              onClick={() => setIsDeletedSectionExpanded(prev => !prev)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <span>Deleted ({deletedCollections.length})</span>
+              <span aria-hidden="true">{isDeletedSectionExpanded ? '▲' : '▼'}</span>
+            </button>
+            {isDeletedSectionExpanded && (
+              <div>
+                {deletedCollections.map(collection => (
+                  <div
+                    key={collection.id}
+                    className="flex items-center justify-between px-4 py-2 text-sm text-gray-500 dark:text-gray-400"
+                  >
+                    <span>{collection.name}</span>
+                    {onRestoreCollection && (
+                      <button
+                        type="button"
+                        onClick={() => onRestoreCollection(collection.id)}
+                        className="ml-2 px-2 py-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Restore
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

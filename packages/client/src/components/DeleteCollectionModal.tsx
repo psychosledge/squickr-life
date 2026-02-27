@@ -79,8 +79,8 @@ export function DeleteCollectionModal({
   const entryCountText = entryCount === 0 
     ? 'This is an empty collection.' 
     : entryCount === 1 
-      ? 'This will delete 1 entry inside this collection.'
-      : `This will delete ${entryCount} entries inside this collection.`;
+      ? '1 entry will remain accessible in its other collections.'
+      : `${entryCount} entries will remain accessible in their other collections.`;
 
   return (
     <div 
@@ -101,8 +101,11 @@ export function DeleteCollectionModal({
           <p className="text-gray-700 dark:text-gray-300 mb-2">
             Are you sure you want to delete "{collectionName}"?
           </p>
-          <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+          <p className="text-sm text-gray-600 dark:text-gray-400 font-medium mb-2">
             {entryCountText}
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            You can restore this collection from the Deleted section in your collections list.
           </p>
         </div>
 

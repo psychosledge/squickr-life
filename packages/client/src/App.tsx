@@ -5,6 +5,7 @@ import type { Step } from 'react-joyride';
 import {
   CreateCollectionHandler,
   ReorderCollectionHandler,
+  RestoreCollectionHandler,
   MigrateTaskHandler,
   MigrateNoteHandler,
   MigrateEventHandler,
@@ -233,6 +234,7 @@ function AppContent() {
   // Collection handlers
   const [createCollectionHandler] = useState(() => new CreateCollectionHandler(eventStore, collectionProjection));
   const [reorderCollectionHandler] = useState(() => new ReorderCollectionHandler(eventStore, collectionProjection));
+  const [restoreCollectionHandler] = useState(() => new RestoreCollectionHandler(eventStore, collectionProjection));
   
   // Migration handlers (legacy single-collection)
   const [migrateTaskHandler] = useState(() => new MigrateTaskHandler(eventStore, entryProjection));
@@ -386,6 +388,7 @@ function AppContent() {
     collectionProjection,
     createCollectionHandler,
     reorderCollectionHandler,
+    restoreCollectionHandler,
     migrateTaskHandler,
     migrateNoteHandler,
     migrateEventHandler,

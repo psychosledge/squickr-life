@@ -17,6 +17,7 @@ import type {
   CollectionListProjection,
   CreateCollectionHandler,
   ReorderCollectionHandler,
+  RestoreCollectionHandler,
   MigrateTaskHandler,
   MigrateNoteHandler,
   MigrateEventHandler,
@@ -40,6 +41,7 @@ interface AppContextValue {
   collectionProjection: CollectionListProjection;
   createCollectionHandler: CreateCollectionHandler;
   reorderCollectionHandler?: ReorderCollectionHandler;
+  restoreCollectionHandler: RestoreCollectionHandler;
   migrateTaskHandler: MigrateTaskHandler;
   migrateNoteHandler: MigrateNoteHandler;
   migrateEventHandler: MigrateEventHandler;

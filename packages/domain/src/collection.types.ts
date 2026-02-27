@@ -223,6 +223,22 @@ export interface CollectionAccessed extends DomainEvent {
   };
 }
 
+/**
+ * CollectionRestored Event
+ * Emitted when a soft-deleted collection is restored
+ * 
+ * Invariants:
+ * - aggregateId must match an existing deleted collection
+ */
+export interface CollectionRestored extends DomainEvent {
+  readonly type: 'CollectionRestored';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly collectionId: string;
+    readonly restoredAt: string;
+  };
+}
+
 // ============================================================================
 // Collection Commands
 // ============================================================================
@@ -303,6 +319,14 @@ export interface UnfavoriteCollectionCommand {
 }
 
 /**
+ * RestoreCollection Command
+ * Represents the user's intent to restore a soft-deleted collection
+ */
+export interface RestoreCollectionCommand {
+  readonly collectionId: string;
+}
+
+/**
  * AccessCollection Command
  * Represents the user's intent to track collection access
  */
@@ -319,6 +343,7 @@ export type CollectionEvent =
   | CollectionRenamed 
   | CollectionReordered 
   | CollectionDeleted 
+  | CollectionRestored
   | CollectionSettingsUpdated
   | CollectionFavorited
   | CollectionUnfavorited

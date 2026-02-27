@@ -17,7 +17,12 @@
 
 ## Post-v1.1.0
 
-**Next session — projection snapshots (learning exercise):**
+**Next session — v1.2.0 (user testing feedback):** Plan approved, ready to implement.
+- Bug fix: collection stats counting moved tasks as active (stats methods using legacy `collectionId` instead of `collections[]`)
+- Recoverable deleted collections: `CollectionRestored` event, collapsed Deleted accordion in sidebar
+- Recoverable deleted entries: soft-delete all entry types, visual distinction (deleted = strikethrough, completed unchanged), restore via actions menu, follows completed task show/hide setting, cascades to sub-tasks
+
+**Future session — projection snapshots (learning exercise):**
 - Incremental projection snapshots — `ISnapshotStore` in infrastructure layer, delta replay on startup, snapshot on tab close + every 50 events. ADR required. Open design questions: per-collection vs. full-projection snapshots? Firestore snapshot sync for new-device cold start?
 - Note: not yet needed for performance (event count well below ~5,000) — implementing as a learning exercise
 

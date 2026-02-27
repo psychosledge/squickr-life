@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { CollectionListProjection } from './collection.projections';
 import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
-import type { CollectionCreated, CollectionRenamed, CollectionReordered, CollectionDeleted, CollectionSettingsUpdated } from './collection.types';
+import type { CollectionCreated, CollectionRenamed, CollectionReordered, CollectionDeleted, CollectionSettingsUpdated, CollectionRestored } from './collection.types';
 import { generateEventMetadata } from './event-helpers';
 
 describe('CollectionListProjection', () => {
@@ -696,6 +696,353 @@ describe('CollectionListProjection', () => {
     });
   });
 
+
+  describe('getDeletedCollections', () => {
+    it('should return empty array when no collections are deleted', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Active',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+      await eventStore.append(created);
+
+      const deleted = await projection.getDeletedCollections();
+      expect(deleted).toEqual([]);
+    });
+
+    it('should return only deleted collections', async () => {
+      const created1: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Deleted One',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+      const created2: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-2',
+        payload: {
+          id: 'col-2',
+          name: 'Active',
+          type: 'log',
+          order: 'a1',
+          createdAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+      const deleted: CollectionDeleted = {
+        ...generateEventMetadata(),
+        type: 'CollectionDeleted',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          deletedAt: '2026-01-26T00:02:00.000Z',
+        },
+      };
+      await eventStore.append(created1);
+      await eventStore.append(created2);
+      await eventStore.append(deleted);
+
+      const deletedCollections = await projection.getDeletedCollections();
+      expect(deletedCollections).toHaveLength(1);
+      expect(deletedCollections[0].id).toBe('col-1');
+      expect(deletedCollections[0].deletedAt).toBe('2026-01-26T00:02:00.000Z');
+    });
+
+    it('should sort deleted collections by deletedAt descending (most recent first)', async () => {
+      const created1: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'First Deleted',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+      const created2: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-2',
+        payload: {
+          id: 'col-2',
+          name: 'Second Deleted',
+          type: 'log',
+          order: 'a1',
+          createdAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+      const deleted1: CollectionDeleted = {
+        ...generateEventMetadata(),
+        type: 'CollectionDeleted',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          deletedAt: '2026-01-26T00:02:00.000Z',
+        },
+      };
+      const deleted2: CollectionDeleted = {
+        ...generateEventMetadata(),
+        type: 'CollectionDeleted',
+        aggregateId: 'col-2',
+        payload: {
+          collectionId: 'col-2',
+          deletedAt: '2026-01-26T00:03:00.000Z', // More recent
+        },
+      };
+      await eventStore.append(created1);
+      await eventStore.append(created2);
+      await eventStore.append(deleted1);
+      await eventStore.append(deleted2);
+
+      const deletedCollections = await projection.getDeletedCollections();
+      expect(deletedCollections).toHaveLength(2);
+      // Most recently deleted first
+      expect(deletedCollections[0].id).toBe('col-2');
+      expect(deletedCollections[1].id).toBe('col-1');
+    });
+
+    it('should not include restored collections', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Restored',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+      const deleted: CollectionDeleted = {
+        ...generateEventMetadata(),
+        type: 'CollectionDeleted',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          deletedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+      const restored: CollectionRestored = {
+        ...generateEventMetadata(),
+        type: 'CollectionRestored',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          restoredAt: '2026-01-26T00:02:00.000Z',
+        },
+      };
+      await eventStore.append(created);
+      await eventStore.append(deleted);
+      await eventStore.append(restored);
+
+      const deletedCollections = await projection.getDeletedCollections();
+      expect(deletedCollections).toHaveLength(0);
+    });
+  });
+
+  describe('getCollectionByIdIncludingDeleted', () => {
+    it('should return undefined for non-existent ID', async () => {
+      const result = await projection.getCollectionByIdIncludingDeleted('non-existent');
+      expect(result).toBeUndefined();
+    });
+
+    it('should return active collection', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Active',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+      await eventStore.append(created);
+
+      const result = await projection.getCollectionByIdIncludingDeleted('col-1');
+      expect(result).toBeDefined();
+      expect(result?.id).toBe('col-1');
+      expect(result?.deletedAt).toBeUndefined();
+    });
+
+    it('should return deleted collection (including deletedAt)', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Deleted',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+      const deleted: CollectionDeleted = {
+        ...generateEventMetadata(),
+        type: 'CollectionDeleted',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          deletedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+      await eventStore.append(created);
+      await eventStore.append(deleted);
+
+      const result = await projection.getCollectionByIdIncludingDeleted('col-1');
+      expect(result).toBeDefined();
+      expect(result?.id).toBe('col-1');
+      expect(result?.deletedAt).toBe('2026-01-26T00:01:00.000Z');
+    });
+
+    it('should return restored collection without deletedAt', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Restored',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+      const deleted: CollectionDeleted = {
+        ...generateEventMetadata(),
+        type: 'CollectionDeleted',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          deletedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+      const restored: CollectionRestored = {
+        ...generateEventMetadata(),
+        type: 'CollectionRestored',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          restoredAt: '2026-01-26T00:02:00.000Z',
+        },
+      };
+      await eventStore.append(created);
+      await eventStore.append(deleted);
+      await eventStore.append(restored);
+
+      const result = await projection.getCollectionByIdIncludingDeleted('col-1');
+      expect(result).toBeDefined();
+      expect(result?.id).toBe('col-1');
+      expect(result?.deletedAt).toBeUndefined();
+    });
+  });
+
+  describe('CollectionRestored event', () => {
+    it('should re-include restored collection in getCollections()', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Restorable',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+      const deleted: CollectionDeleted = {
+        ...generateEventMetadata(),
+        type: 'CollectionDeleted',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          deletedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+      const restored: CollectionRestored = {
+        ...generateEventMetadata(),
+        type: 'CollectionRestored',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          restoredAt: '2026-01-26T00:02:00.000Z',
+        },
+      };
+
+      await eventStore.append(created);
+      await eventStore.append(deleted);
+
+      let collections = await projection.getCollections();
+      expect(collections).toHaveLength(0);
+
+      await eventStore.append(restored);
+
+      collections = await projection.getCollections();
+      expect(collections).toHaveLength(1);
+      expect(collections[0].id).toBe('col-1');
+      expect(collections[0].deletedAt).toBeUndefined();
+    });
+
+    it('should not include restored collection in getDeletedCollections()', async () => {
+      const created: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Restorable',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+      const deleted: CollectionDeleted = {
+        ...generateEventMetadata(),
+        type: 'CollectionDeleted',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          deletedAt: '2026-01-26T00:01:00.000Z',
+        },
+      };
+      const restored: CollectionRestored = {
+        ...generateEventMetadata(),
+        type: 'CollectionRestored',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          restoredAt: '2026-01-26T00:02:00.000Z',
+        },
+      };
+
+      await eventStore.append(created);
+      await eventStore.append(deleted);
+      await eventStore.append(restored);
+
+      const deletedCollections = await projection.getDeletedCollections();
+      expect(deletedCollections).toHaveLength(0);
+    });
+  });
 
   describe('reactive updates', () => {
     it('should notify subscribers when events are appended', async () => {

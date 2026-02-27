@@ -7,7 +7,8 @@ import {
   UpdateCollectionSettingsHandler,
   FavoriteCollectionHandler,
   UnfavoriteCollectionHandler,
-  AccessCollectionHandler
+  AccessCollectionHandler,
+  RestoreCollectionHandler
 } from './collection.handlers';
 import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
@@ -25,7 +26,8 @@ import type {
   CollectionSettingsUpdated,
   CollectionFavorited,
   CollectionUnfavorited,
-  CollectionAccessed
+  CollectionAccessed,
+  CollectionRestored
 } from './collection.types';
 
 describe('CreateCollectionHandler', () => {
@@ -1297,6 +1299,130 @@ describe('AccessCollectionHandler', () => {
 
       const eventsAfter = await eventStore.getAll();
       expect(eventsAfter.length).toBe(countBefore + 1); // New event created
+    });
+  });
+});
+
+describe('RestoreCollectionHandler', () => {
+  let eventStore: IEventStore;
+  let projection: CollectionListProjection;
+  let createHandler: CreateCollectionHandler;
+  let deleteHandler: DeleteCollectionHandler;
+  let restoreHandler: RestoreCollectionHandler;
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    projection = new CollectionListProjection(eventStore);
+    createHandler = new CreateCollectionHandler(eventStore, projection);
+    deleteHandler = new DeleteCollectionHandler(eventStore, projection);
+    restoreHandler = new RestoreCollectionHandler(eventStore, projection);
+  });
+
+  describe('handle', () => {
+    it('should emit CollectionRestored event for a deleted collection', async () => {
+      const collectionId = await createHandler.handle({ name: 'To Restore', type: 'custom' });
+      await deleteHandler.handle({ collectionId });
+
+      await restoreHandler.handle({ collectionId });
+
+      const events = await eventStore.getAll();
+      const restoreEvent = events.find(e => e.type === 'CollectionRestored') as CollectionRestored;
+      expect(restoreEvent).toBeDefined();
+      expect(restoreEvent.type).toBe('CollectionRestored');
+      expect(restoreEvent.payload.collectionId).toBe(collectionId);
+      expect(restoreEvent.aggregateId).toBe(collectionId);
+      expect(restoreEvent.payload.restoredAt).toBeDefined();
+    });
+
+    it('should set restoredAt timestamp', async () => {
+      const collectionId = await createHandler.handle({ name: 'Test', type: 'custom' });
+      await deleteHandler.handle({ collectionId });
+
+      const beforeTime = new Date().toISOString();
+      await restoreHandler.handle({ collectionId });
+      const afterTime = new Date().toISOString();
+
+      const events = await eventStore.getAll();
+      const restoreEvent = events.find(e => e.type === 'CollectionRestored') as CollectionRestored;
+      expect(restoreEvent.payload.restoredAt >= beforeTime).toBe(true);
+      expect(restoreEvent.payload.restoredAt <= afterTime).toBe(true);
+    });
+
+    it('should throw error if collection does not exist at all', async () => {
+      await expect(
+        restoreHandler.handle({ collectionId: 'non-existent' })
+      ).rejects.toThrow('Collection non-existent not found');
+    });
+
+    it('should be idempotent — no event emitted if collection is already active', async () => {
+      const collectionId = await createHandler.handle({ name: 'Active', type: 'custom' });
+
+      const eventsBefore = await eventStore.getAll();
+      const countBefore = eventsBefore.length;
+
+      // Collection is active (not deleted) — should do nothing
+      await restoreHandler.handle({ collectionId });
+
+      const eventsAfter = await eventStore.getAll();
+      expect(eventsAfter.length).toBe(countBefore); // No new event
+    });
+
+    it('should restore collection so getCollections() includes it', async () => {
+      const collectionId = await createHandler.handle({ name: 'Restorable', type: 'custom' });
+      await deleteHandler.handle({ collectionId });
+
+      let collections = await projection.getCollections();
+      expect(collections).toHaveLength(0);
+
+      await restoreHandler.handle({ collectionId });
+
+      collections = await projection.getCollections();
+      expect(collections).toHaveLength(1);
+      expect(collections[0].id).toBe(collectionId);
+    });
+
+    it('should restore collection so getDeletedCollections() excludes it', async () => {
+      const collectionId = await createHandler.handle({ name: 'Restorable', type: 'custom' });
+      await deleteHandler.handle({ collectionId });
+
+      let deleted = await projection.getDeletedCollections();
+      expect(deleted).toHaveLength(1);
+
+      await restoreHandler.handle({ collectionId });
+
+      deleted = await projection.getDeletedCollections();
+      expect(deleted).toHaveLength(0);
+    });
+
+    it('should restore collection so getCollectionByIdIncludingDeleted() returns it without deletedAt', async () => {
+      const collectionId = await createHandler.handle({ name: 'Restorable', type: 'custom' });
+      await deleteHandler.handle({ collectionId });
+      await restoreHandler.handle({ collectionId });
+
+      const collection = await projection.getCollectionByIdIncludingDeleted(collectionId);
+      expect(collection).toBeDefined();
+      expect(collection?.deletedAt).toBeUndefined();
+    });
+
+    it('should be able to delete and restore multiple times', async () => {
+      const collectionId = await createHandler.handle({ name: 'Yo-yo', type: 'custom' });
+
+      // Delete → Restore → Delete → Restore
+      await deleteHandler.handle({ collectionId });
+      await restoreHandler.handle({ collectionId });
+
+      let collections = await projection.getCollections();
+      expect(collections).toHaveLength(1);
+
+      await deleteHandler.handle({ collectionId });
+
+      collections = await projection.getCollections();
+      expect(collections).toHaveLength(0);
+
+      await restoreHandler.handle({ collectionId });
+
+      collections = await projection.getCollections();
+      expect(collections).toHaveLength(1);
     });
   });
 });

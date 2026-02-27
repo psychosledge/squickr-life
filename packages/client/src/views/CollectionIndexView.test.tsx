@@ -63,6 +63,7 @@ describe('CollectionIndexView - Header Branding', () => {
   beforeEach(() => {
     mockCollectionProjection = {
       getCollections: vi.fn().mockResolvedValue([]),
+      getDeletedCollections: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -91,6 +92,7 @@ describe('CollectionIndexView - Header Branding', () => {
       taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateTaskHandler: {} as any,
       migrateNoteHandler: {} as any,
       migrateEventHandler: {} as any,
@@ -159,6 +161,7 @@ describe('CollectionIndexView - Navigation Arrows', () => {
 
     mockCollectionProjection = {
       getCollections: vi.fn().mockResolvedValue(mockCollectionsForNav),
+      getDeletedCollections: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -192,6 +195,7 @@ describe('CollectionIndexView - Navigation Arrows', () => {
       taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateTaskHandler: {} as any,
       migrateNoteHandler: {} as any,
       migrateEventHandler: {} as any,
@@ -339,6 +343,7 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
   beforeEach(() => {
     mockCollectionProjection = {
       getCollections: vi.fn().mockResolvedValue(mockCollections),
+      getDeletedCollections: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -385,6 +390,7 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
       taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateTaskHandler: {} as any,
       migrateNoteHandler: {} as any,
       migrateEventHandler: {} as any,
@@ -554,6 +560,7 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
   beforeEach(() => {
     mockCollectionProjection = {
       getCollections: vi.fn().mockResolvedValue(mockCollections),
+      getDeletedCollections: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -604,6 +611,7 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
       reorderCollectionHandler: mockReorderCollectionHandler,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateTaskHandler: mockMigrateTaskHandler,
       migrateNoteHandler: mockMigrateNoteHandler,
       migrateEventHandler: mockMigrateEventHandler,
@@ -673,6 +681,7 @@ describe('CollectionIndexView - Auto-trigger tutorial (integration)', () => {
 
     mockCollectionProjection = {
       getCollections: vi.fn().mockResolvedValue([]),
+      getDeletedCollections: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -706,6 +715,7 @@ describe('CollectionIndexView - Auto-trigger tutorial (integration)', () => {
       taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateTaskHandler: {} as any,
       migrateNoteHandler: {} as any,
       migrateEventHandler: {} as any,
@@ -775,6 +785,7 @@ describe('CollectionIndexView - data-tutorial-id anchor on h1', () => {
   beforeEach(() => {
     mockCollectionProjection = {
       getCollections: vi.fn().mockResolvedValue([]),
+      getDeletedCollections: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
@@ -803,6 +814,7 @@ describe('CollectionIndexView - data-tutorial-id anchor on h1', () => {
       taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       migrateTaskHandler: {} as any,
       migrateNoteHandler: {} as any,
       migrateEventHandler: {} as any,

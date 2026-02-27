@@ -1,5 +1,5 @@
 import { renderWithAppProvider } from "./../test/test-utils";
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
@@ -653,6 +653,181 @@ describe('HierarchicalCollectionList', () => {
 
       const anchor = container.querySelector('[data-tutorial-id="tutorial-collection-list"]');
       expect(anchor).toBeInTheDocument();
+    });
+  });
+
+  describe('Deleted Collections Section', () => {
+    const activeCollection: Collection = {
+      id: 'active-1',
+      name: 'Active Collection',
+      type: 'custom',
+      order: 'a',
+      createdAt: '2026-01-01T00:00:00Z',
+    };
+
+    const deletedCollection1: Collection = {
+      id: 'deleted-1',
+      name: 'Deleted Collection',
+      type: 'custom',
+      order: 'b',
+      createdAt: '2026-01-01T00:00:00Z',
+      deletedAt: '2026-02-01T10:00:00Z',
+    };
+
+    const deletedCollection2: Collection = {
+      id: 'deleted-2',
+      name: 'Another Deleted',
+      type: 'custom',
+      order: 'c',
+      createdAt: '2026-01-01T00:00:00Z',
+      deletedAt: '2026-02-02T10:00:00Z',
+    };
+
+    it('should not render the deleted section when no deletedCollections prop is provided', () => {
+      renderWithRouter(
+        <HierarchicalCollectionList collections={[activeCollection]} />
+      );
+
+      expect(screen.queryByText(/Deleted/i)).not.toBeInTheDocument();
+    });
+
+    it('should not render the deleted section when deletedCollections is empty', () => {
+      renderWithRouter(
+        <HierarchicalCollectionList
+          collections={[activeCollection]}
+          deletedCollections={[]}
+        />
+      );
+
+      expect(screen.queryByText(/Deleted \(/i)).not.toBeInTheDocument();
+    });
+
+    it('should render a collapsed "Deleted (N)" accordion when deletedCollections are provided', () => {
+      renderWithRouter(
+        <HierarchicalCollectionList
+          collections={[activeCollection]}
+          deletedCollections={[deletedCollection1]}
+        />
+      );
+
+      expect(screen.getByText('Deleted (1)')).toBeInTheDocument();
+    });
+
+    it('should show count of deleted collections in accordion header', () => {
+      renderWithRouter(
+        <HierarchicalCollectionList
+          collections={[activeCollection]}
+          deletedCollections={[deletedCollection1, deletedCollection2]}
+        />
+      );
+
+      expect(screen.getByText('Deleted (2)')).toBeInTheDocument();
+    });
+
+    it('should start collapsed — deleted collection names not visible', () => {
+      renderWithRouter(
+        <HierarchicalCollectionList
+          collections={[activeCollection]}
+          deletedCollections={[deletedCollection1]}
+        />
+      );
+
+      expect(screen.queryByText('Deleted Collection')).not.toBeInTheDocument();
+    });
+
+    it('should expand to show deleted collections on click', async () => {
+      const user = userEvent.setup();
+
+      renderWithRouter(
+        <HierarchicalCollectionList
+          collections={[activeCollection]}
+          deletedCollections={[deletedCollection1]}
+        />
+      );
+
+      await user.click(screen.getByText('Deleted (1)'));
+
+      expect(screen.getByText('Deleted Collection')).toBeInTheDocument();
+    });
+
+    it('should show Restore button for each deleted collection when expanded', async () => {
+      const user = userEvent.setup();
+
+      renderWithRouter(
+        <HierarchicalCollectionList
+          collections={[activeCollection]}
+          deletedCollections={[deletedCollection1, deletedCollection2]}
+          onRestoreCollection={vi.fn()}
+        />
+      );
+
+      await user.click(screen.getByText('Deleted (2)'));
+
+      const restoreButtons = screen.getAllByRole('button', { name: /restore/i });
+      expect(restoreButtons).toHaveLength(2);
+    });
+
+    it('should call onRestoreCollection with correct id when Restore is clicked', async () => {
+      const user = userEvent.setup();
+      const onRestore = vi.fn();
+
+      renderWithRouter(
+        <HierarchicalCollectionList
+          collections={[activeCollection]}
+          deletedCollections={[deletedCollection1]}
+          onRestoreCollection={onRestore}
+        />
+      );
+
+      await user.click(screen.getByText('Deleted (1)'));
+      await user.click(screen.getByRole('button', { name: /restore/i }));
+
+      expect(onRestore).toHaveBeenCalledWith('deleted-1');
+    });
+
+    it('should collapse again on second click', async () => {
+      const user = userEvent.setup();
+
+      renderWithRouter(
+        <HierarchicalCollectionList
+          collections={[activeCollection]}
+          deletedCollections={[deletedCollection1]}
+        />
+      );
+
+      // Expand
+      await user.click(screen.getByText('Deleted (1)'));
+      expect(screen.getByText('Deleted Collection')).toBeInTheDocument();
+
+      // Collapse
+      await user.click(screen.getByText('Deleted (1)'));
+      expect(screen.queryByText('Deleted Collection')).not.toBeInTheDocument();
+    });
+
+    it('should render a divider before the deleted section when collections exist', () => {
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList
+          collections={[activeCollection]}
+          deletedCollections={[deletedCollection1]}
+        />
+      );
+
+      // There should be at least one divider (the one before the deleted section)
+      const dividers = container.querySelectorAll('[role="separator"]');
+      expect(dividers.length).toBeGreaterThan(0);
+    });
+
+    it('should not add extra dividers to existing sections when deletedCollections are added', () => {
+      // One active custom + one deleted = 1 divider (before deleted section)
+      const { container } = renderWithRouter(
+        <HierarchicalCollectionList
+          collections={[activeCollection]}
+          deletedCollections={[deletedCollection1]}
+        />
+      );
+
+      const dividers = container.querySelectorAll('.border-t');
+      expect(dividers.length).toBe(1);
     });
   });
 });

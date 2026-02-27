@@ -30,13 +30,14 @@ import { SWIPE } from '../utils/constants';
 import { buildEntriesByCollectionMap } from '../utils/buildEntriesByCollectionMap';
 
 export function CollectionIndexView() {
-  const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler, isAppReady } = useApp();
+  const { collectionProjection, entryProjection, createCollectionHandler, reorderCollectionHandler, restoreCollectionHandler, isAppReady } = useApp();
   const { user } = useAuth();
   const navigate = useNavigate();
   const userPreferences = useUserPreferences();
   const tutorial = useTutorial();
   
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [deletedCollections, setDeletedCollections] = useState<Collection[]>([]);
   const [entriesByCollection, setEntriesByCollection] = useState<Map<string | null, Entry[]>>(new Map());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -50,6 +51,10 @@ export function CollectionIndexView() {
   const loadData = useCallback(async () => {
     // Load real collections
     const loadedCollections = await collectionProjection.getCollections();
+    
+    // Load deleted collections
+    const loadedDeletedCollections = await collectionProjection.getDeletedCollections();
+    setDeletedCollections(loadedDeletedCollections);
     
     // Get active task counts for all collections in a single query (avoids N+1 pattern)
     const allCounts = await entryProjection.getActiveTaskCountsByCollection();
@@ -247,6 +252,10 @@ export function CollectionIndexView() {
     });
   };
 
+  const handleRestoreCollection = async (collectionId: string) => {
+    await restoreCollectionHandler.handle({ collectionId });
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -306,6 +315,8 @@ export function CollectionIndexView() {
           collections={collections}
           onReorder={handleReorderCollection}
           entriesByCollection={entriesByCollection}
+          deletedCollections={deletedCollections}
+          onRestoreCollection={handleRestoreCollection}
         />
       </div>
 

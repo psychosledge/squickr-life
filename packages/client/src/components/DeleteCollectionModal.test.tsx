@@ -230,4 +230,62 @@ describe('DeleteCollectionModal', () => {
     // Should have red/danger classes (checking for bg-red)
     expect(deleteButton.className).toMatch(/bg-red/);
   });
+
+  describe('Updated messaging (soft delete)', () => {
+    it('should say entries will remain accessible when count > 1', () => {
+      render(
+        <DeleteCollectionModal
+          isOpen={true}
+          collectionName="Test"
+          entryCount={5}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText(/5 entries will remain accessible/i)).toBeInTheDocument();
+    });
+
+    it('should say entry (singular) will remain accessible when count is 1', () => {
+      render(
+        <DeleteCollectionModal
+          isOpen={true}
+          collectionName="Test"
+          entryCount={1}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText(/1 entry will remain accessible/i)).toBeInTheDocument();
+    });
+
+    it('should show restore hint note', () => {
+      render(
+        <DeleteCollectionModal
+          isOpen={true}
+          collectionName="Test"
+          entryCount={5}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText(/You can restore this collection/i)).toBeInTheDocument();
+    });
+
+    it('should NOT say "This will delete" for non-empty collections', () => {
+      render(
+        <DeleteCollectionModal
+          isOpen={true}
+          collectionName="Test"
+          entryCount={5}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+
+      expect(screen.queryByText(/This will delete/i)).not.toBeInTheDocument();
+    });
+  });
 });

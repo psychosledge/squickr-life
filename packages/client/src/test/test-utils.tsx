@@ -33,6 +33,7 @@ export function renderWithAppProvider(
     taskProjection: {} as any,
     collectionProjection: {} as any,
     createCollectionHandler: {} as any,
+    restoreCollectionHandler: {} as any,
     migrateTaskHandler: {} as any,
     migrateNoteHandler: {} as any,
     migrateEventHandler: {} as any,

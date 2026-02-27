@@ -9,6 +9,8 @@ import type {
   CollectionReordered,
   DeleteCollectionCommand,
   CollectionDeleted,
+  RestoreCollectionCommand,
+  CollectionRestored,
   UpdateCollectionSettingsCommand,
   CollectionSettingsUpdated,
   FavoriteCollectionCommand,
@@ -522,6 +524,64 @@ export class UnfavoriteCollectionHandler {
       payload: {
         collectionId: command.collectionId,
         unfavoritedAt: metadata.timestamp,
+      },
+    };
+
+    // Persist event
+    await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Command Handler for RestoreCollection
+ * 
+ * Responsibilities:
+ * - Validate collection exists (including soft-deleted ones)
+ * - Create CollectionRestored event
+ * - Persist event to EventStore
+ */
+export class RestoreCollectionHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly projection: CollectionListProjection
+  ) {}
+
+  /**
+   * Handle RestoreCollection command
+   * 
+   * Validation rules:
+   * - Collection must exist (even if deleted)
+   * 
+   * Idempotency:
+   * - If the collection is already active (not deleted), no event is emitted.
+   *   This prevents duplicate events from double-clicks or retries.
+   * 
+   * @param command - The RestoreCollection command
+   * @throws Error if collection does not exist at all
+   */
+  async handle(command: RestoreCollectionCommand): Promise<void> {
+    // Validate collection exists (including soft-deleted ones)
+    const collection = await this.projection.getCollectionByIdIncludingDeleted(command.collectionId);
+    if (!collection) {
+      throw new Error(`Collection ${command.collectionId} not found`);
+    }
+
+    // Idempotency: if collection is already active (not deleted), do nothing
+    if (!collection.deletedAt) {
+      return; // Already in desired state, no event needed
+    }
+
+    // Generate event metadata
+    const metadata = generateEventMetadata();
+
+    // Create CollectionRestored event
+    const event: CollectionRestored = {
+      ...metadata,
+      type: 'CollectionRestored',
+      aggregateId: command.collectionId,
+      payload: {
+        collectionId: command.collectionId,
+        restoredAt: metadata.timestamp,
       },
     };
 

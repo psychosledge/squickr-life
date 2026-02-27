@@ -6,6 +6,7 @@ import type {
   CollectionRenamed,
   CollectionReordered,
   CollectionDeleted,
+  CollectionRestored,
   CollectionSettingsUpdated,
   CollectionFavorited,
   CollectionUnfavorited,
@@ -102,6 +103,34 @@ export class CollectionListProjection {
   }
 
   /**
+   * Get all soft-deleted collections, sorted by deletedAt descending (most recently deleted first)
+   */
+  async getDeletedCollections(): Promise<Collection[]> {
+    const events = await this.eventStore.getAll();
+    const allCollections = Array.from(this.buildCollectionMap(events).values());
+    return allCollections
+      .filter(c => c.deletedAt !== undefined)
+      .sort((a, b) => {
+        // Most recently deleted first (descending)
+        if (a.deletedAt! > b.deletedAt!) return -1;
+        if (a.deletedAt! < b.deletedAt!) return 1;
+        return 0;
+      });
+  }
+
+  /**
+   * Get a collection by ID, including soft-deleted ones
+   * 
+   * @param collectionId - The collection ID to find
+   * @returns The collection (active or deleted), or undefined if not found
+   */
+  async getCollectionByIdIncludingDeleted(collectionId: string): Promise<Collection | undefined> {
+    const events = await this.eventStore.getById(collectionId);
+    const map = this.buildCollectionMap(events);
+    return map.get(collectionId);
+  }
+
+  /**
    * Get a specific collection by ID
    * 
    * @param collectionId - The collection ID to find
@@ -136,17 +165,25 @@ export class CollectionListProjection {
   }
 
   /**
-   * Apply events to build collection state
-   * This handles CollectionCreated, Renamed, Reordered, and Deleted events
+   * Build a map of all collections (including deleted) by replaying events.
+   * Shared by applyEvents, getDeletedCollections, and getCollectionByIdIncludingDeleted.
    */
-  private applyEvents(events: readonly DomainEvent[]): Collection[] {
+  private buildCollectionMap(events: readonly DomainEvent[]): Map<string, Collection> {
     const collections: Map<string, Collection> = new Map();
-
     for (const event of events) {
       if (this.isCollectionEvent(event)) {
         this.applyCollectionEvent(collections, event);
       }
     }
+    return collections;
+  }
+
+  /**
+   * Apply events to build collection state
+   * This handles CollectionCreated, Renamed, Reordered, Deleted, Restored, and other events
+   */
+  private applyEvents(events: readonly DomainEvent[]): Collection[] {
+    const collections = this.buildCollectionMap(events);
 
     // Convert to array and filter out deleted collections
     const allCollections = Array.from(collections.values())
@@ -163,7 +200,7 @@ export class CollectionListProjection {
    */
   private applyCollectionEvent(
     collections: Map<string, Collection>,
-    event: CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated | CollectionFavorited | CollectionUnfavorited | CollectionAccessed
+    event: CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionRestored | CollectionSettingsUpdated | CollectionFavorited | CollectionUnfavorited | CollectionAccessed
   ): void {
     switch (event.type) {
       case 'CollectionCreated': {
@@ -206,6 +243,14 @@ export class CollectionListProjection {
             ...collection,
             deletedAt: event.payload.deletedAt,
           });
+        }
+        break;
+      }
+      case 'CollectionRestored': {
+        const collection = collections.get(event.payload.collectionId);
+        if (collection) {
+          const { deletedAt, ...restoredCollection } = collection;
+          collections.set(collection.id, restoredCollection as Collection);
         }
         break;
       }
@@ -259,12 +304,13 @@ export class CollectionListProjection {
    */
   private isCollectionEvent(
     event: DomainEvent
-  ): event is CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionSettingsUpdated | CollectionFavorited | CollectionUnfavorited | CollectionAccessed {
+  ): event is CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionRestored | CollectionSettingsUpdated | CollectionFavorited | CollectionUnfavorited | CollectionAccessed {
     return (
       event.type === 'CollectionCreated' ||
       event.type === 'CollectionRenamed' ||
       event.type === 'CollectionReordered' ||
       event.type === 'CollectionDeleted' ||
+      event.type === 'CollectionRestored' ||
       event.type === 'CollectionSettingsUpdated' ||
       event.type === 'CollectionFavorited' ||
       event.type === 'CollectionUnfavorited' ||
