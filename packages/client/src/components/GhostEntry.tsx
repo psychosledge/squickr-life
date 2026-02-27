@@ -85,19 +85,13 @@ export function GhostEntry({
 
           {/* Ghost entry content */}
           <div className="flex-1 min-w-0">
-            {/* Crossed-out text */}
+          {/* Ghost entry content — faded, no strikethrough (strikethrough is reserved for deleted entries) */}
             <div 
               className="
-                text-gray-600 dark:text-gray-300
+                text-gray-500 dark:text-gray-400
                 text-base
                 break-words
               "
-              style={{ 
-                textDecoration: 'line-through',
-                textDecorationColor: 'currentColor',
-                textDecorationThickness: '2px',
-                textDecorationStyle: 'solid'
-              }}
             >
               {getEntryText()}
             </div>

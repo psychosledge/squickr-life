@@ -39,7 +39,7 @@ describe('GhostEntry', () => {
   // ============================================================================
 
   describe('Visual Rendering', () => {
-    it('should render ghost styling with strikethrough', () => {
+     it('should render ghost styling without strikethrough (strikethrough is reserved for deleted entries)', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
@@ -62,7 +62,7 @@ describe('GhostEntry', () => {
       );
 
       const entryText = screen.getByText('Buy milk');
-      expect(entryText).toHaveStyle({ textDecoration: 'line-through' });
+      expect(entryText).not.toHaveStyle({ textDecoration: 'line-through' });
     });
 
     it('should render with muted gray colors', () => {
@@ -88,7 +88,7 @@ describe('GhostEntry', () => {
       );
 
       const entryText = screen.getByText('Buy milk');
-      expect(entryText).toHaveClass('text-gray-600', 'dark:text-gray-300');
+      expect(entryText).toHaveClass('text-gray-500', 'dark:text-gray-400');
     });
 
     it('should render with reduced opacity', () => {
@@ -628,7 +628,7 @@ describe('GhostEntry', () => {
       // Should still render, just with empty text
       const styledDiv = container.querySelector('.break-words');
       expect(styledDiv).toBeInTheDocument();
-      expect(styledDiv).toHaveStyle({ textDecoration: 'line-through' });
+      expect(styledDiv).not.toHaveStyle({ textDecoration: 'line-through' });
     });
 
     it('should handle empty note content', () => {
@@ -653,7 +653,7 @@ describe('GhostEntry', () => {
       // Should still render, just with empty text
       const styledDiv = container.querySelector('.break-words');
       expect(styledDiv).toBeInTheDocument();
-      expect(styledDiv).toHaveStyle({ textDecoration: 'line-through' });
+      expect(styledDiv).not.toHaveStyle({ textDecoration: 'line-through' });
     });
 
     it('should handle long entry text with word wrapping', () => {
