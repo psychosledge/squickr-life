@@ -84,6 +84,7 @@ describe('CollectionDetailView', () => {
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -124,6 +125,10 @@ describe('CollectionDetailView', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
@@ -298,6 +303,7 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
     };
 
     mockTaskProjection = {
@@ -327,6 +333,10 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
@@ -502,6 +512,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -528,6 +539,10 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
@@ -842,6 +857,7 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
+    getDeletedEntries: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -873,6 +889,10 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
@@ -1049,6 +1069,7 @@ describe('CollectionDetailView - Temporal Route Navigation Fix', () => {
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
+    getDeletedEntries: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -1077,6 +1098,10 @@ describe('CollectionDetailView - Temporal Route Navigation Fix', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
@@ -1159,6 +1184,7 @@ describe('CollectionDetailView - Error Toast', () => {
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
+    getDeletedEntries: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -1183,6 +1209,10 @@ describe('CollectionDetailView - Error Toast', () => {
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
@@ -1480,6 +1510,7 @@ describe('CollectionDetailView - Completed sub-task stays with parent (Fix 3)', 
       }),
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(true),
+    getDeletedEntries: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -1504,6 +1535,10 @@ describe('CollectionDetailView - Completed sub-task stays with parent (Fix 3)', 
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     };
 
     return render(
@@ -1600,6 +1635,7 @@ describe('CollectionDetailView - Ghost entries excluded from selection (Fix 4)',
       getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
+    getDeletedEntries: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -1624,6 +1660,10 @@ describe('CollectionDetailView - Ghost entries excluded from selection (Fix 4)',
       removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     };
 
     return render(

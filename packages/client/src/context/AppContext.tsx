@@ -31,6 +31,9 @@ import type {
   RemoveEventFromCollectionHandler,
   MoveEventToCollectionHandler,
   BulkMigrateEntriesHandler,
+  RestoreTaskHandler,
+  RestoreNoteHandler,
+  RestoreEventHandler,
   UserPreferences,
 } from '@squickr/domain';
 
@@ -55,6 +58,9 @@ interface AppContextValue {
   removeEventFromCollectionHandler: RemoveEventFromCollectionHandler;
   moveEventToCollectionHandler: MoveEventToCollectionHandler;
   bulkMigrateEntriesHandler: BulkMigrateEntriesHandler;
+  restoreTaskHandler: RestoreTaskHandler;
+  restoreNoteHandler: RestoreNoteHandler;
+  restoreEventHandler: RestoreEventHandler;
   userPreferences: UserPreferences;
   /** True once IndexedDB has loaded AND the initial Firestore sync has completed (or timed out). */
   isAppReady: boolean;

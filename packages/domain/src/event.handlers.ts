@@ -10,10 +10,13 @@ import type {
   EventDateChanged,
   DeleteEventCommand,
   EventDeleted,
+  EventRemovedFromCollection,
   ReorderEventCommand,
   EventReordered,
   MigrateEventCommand,
-  EventMigrated
+  EventMigrated,
+  EventRestored,
+  RestoreEventCommand,
 } from './task.types';
 import { generateEventMetadata } from './event-helpers';
 import { generateKeyBetween } from 'fractional-indexing';
@@ -210,35 +213,65 @@ export class UpdateEventDateHandler {
  * 
  * Responsibilities:
  * - Validate event exists
- * - Create EventDeleted event
+ * - Multi-collection logic: if currentCollectionId and event is in multiple collections,
+ *   emit EventRemovedFromCollection only. Otherwise emit EventDeleted (soft delete).
  * - Persist event to EventStore
  */
 export class DeleteEventHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly projection: IEventProjection
+    private readonly projection: EntryListProjection
   ) {}
 
   /**
    * Handle DeleteEvent command
    * 
-   * Validation rules:
-   * - Event must exist
+   * Multi-collection logic:
+   * - If `currentCollectionId` is provided AND event is in multiple collections:
+   *   emit `EventRemovedFromCollection` only (keep event alive in other collections)
+   * - Otherwise: emit `EventDeleted` (soft delete)
    * 
    * @param command - The DeleteEvent command
    * @throws Error if validation fails
    */
   async handle(command: DeleteEventCommand): Promise<void> {
-    // Validate event exists
+    // Validate event exists (getEventById returns all including soft-deleted)
     const evt = await this.projection.getEventById(command.eventId);
     if (!evt) {
       throw new Error(`Event ${command.eventId} not found`);
+    }
+    if (evt.deletedAt) {
+      throw new Error(`Event ${command.eventId} already deleted`);
+    }
+
+    // Multi-collection logic: if a specific collection is given AND event is in >1 collections,
+    // only remove from that collection instead of soft-deleting the entire event.
+    // Guard: currentCollectionId must actually be a member of the event's collections —
+    // a bogus/stale collectionId must not accidentally suppress the full soft-delete.
+    if (
+      command.currentCollectionId &&
+      evt.collections.includes(command.currentCollectionId) &&
+      evt.collections.length > 1
+    ) {
+      const metadata = generateEventMetadata();
+      const event: EventRemovedFromCollection = {
+        ...metadata,
+        type: 'EventRemovedFromCollection',
+        aggregateId: command.eventId,
+        payload: {
+          eventId: command.eventId,
+          collectionId: command.currentCollectionId,
+          removedAt: metadata.timestamp,
+        },
+      };
+      await this.eventStore.append(event);
+      return;
     }
 
     // Generate event metadata
     const metadata = generateEventMetadata();
 
-    // Create EventDeleted event
+    // Create EventDeleted event (soft delete)
     const event: EventDeleted = {
       ...metadata,
       type: 'EventDeleted',
@@ -414,5 +447,51 @@ export class MigrateEventHandler {
     await this.eventStore.append(event);
     
     return newEventId;
+  }
+}
+
+/**
+ * Command Handler for RestoreEvent (Item 3: Recoverable Deleted Entries)
+ * 
+ * Responsibilities:
+ * - Validate event exists and is soft-deleted
+ * - Emit EventRestored event to clear deletedAt
+ */
+export class RestoreEventHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly entryProjection: EntryListProjection
+  ) {}
+
+  /**
+   * Handle RestoreEvent command
+   * 
+   * Validation rules:
+   * - Event must exist (found via getEntryById which includes soft-deleted)
+   * - Event must have deletedAt set (must be soft-deleted)
+   * 
+   * @param command - The RestoreEvent command
+   * @throws Error if event not found or not deleted
+   */
+  async handle(command: RestoreEventCommand): Promise<void> {
+    const entry = await this.entryProjection.getEntryById(command.eventId);
+    if (!entry || entry.type !== 'event') {
+      throw new Error(`Event ${command.eventId} not found`);
+    }
+    if (!entry.deletedAt) {
+      throw new Error(`Event ${command.eventId} is not deleted`);
+    }
+
+    const metadata = generateEventMetadata();
+    const restoreEvent: EventRestored = {
+      ...metadata,
+      type: 'EventRestored',
+      aggregateId: command.eventId,
+      payload: {
+        id: command.eventId,
+        restoredAt: metadata.timestamp,
+      },
+    };
+    await this.eventStore.append(restoreEvent);
   }
 }

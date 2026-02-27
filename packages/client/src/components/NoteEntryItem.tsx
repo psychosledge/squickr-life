@@ -10,6 +10,7 @@ interface NoteEntryItemProps {
   entry: Entry & { type: 'note' };
   onUpdateNoteContent?: (noteId: string, newContent: string) => void | Promise<void>;
   onDelete: (entryId: string) => void;
+  onRestore?: () => void; // Item 3: Restore deleted entry
   onMigrate?: (noteId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
@@ -28,6 +29,7 @@ export function NoteEntryItem({
   entry,
   onUpdateNoteContent,
   onDelete,
+  onRestore,
   onMigrate,
   collections,
   currentCollectionId,
@@ -108,12 +110,15 @@ export function NoteEntryItem({
 
   const canEdit = !!onUpdateNoteContent;
   const isLegacyMigrated = !!entry.migratedTo;
+  const isDeleted = !!entry.deletedAt;
 
   return (
     <div className="relative">
       <div className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
                       rounded-lg p-4 hover:shadow-md transition-shadow ${
                         isLegacyMigrated ? 'opacity-50' : ''
+                      } ${
+                        isDeleted ? 'line-through opacity-60 text-gray-400 dark:text-gray-600' : ''
                       }`}>
         <div className="flex items-start justify-between gap-3">
           {/* Bullet and Content */}
@@ -144,12 +149,12 @@ export function NoteEntryItem({
               <>
                 <div 
                   className={`text-lg font-medium cursor-pointer select-none ${
-                    isLegacyMigrated
+                    isLegacyMigrated || isDeleted
                       ? 'text-gray-500 dark:text-gray-400 line-through'
                       : 'text-gray-900 dark:text-white'
-                  } ${canEdit ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
+                  } ${canEdit && !isDeleted ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
                   onDoubleClick={handleDoubleClick}
-                  title={canEdit ? 'Double-click to edit' : undefined}
+                  title={canEdit && !isDeleted ? 'Double-click to edit' : undefined}
                   style={{ whiteSpace: 'pre-wrap' }}
                 >
                   {entry.content}
@@ -171,9 +176,11 @@ export function NoteEntryItem({
           onEdit={handleEdit}
           onMove={handleMove}
           onDelete={handleDelete}
+          onRestore={onRestore}
           collections={collections}
           currentCollectionId={currentCollectionId}
           onNavigateToMigrated={onNavigateToMigrated}
+          isDeleted={isDeleted}
         />
       </div>
       

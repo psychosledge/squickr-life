@@ -19,6 +19,9 @@ import {
   RemoveEventFromCollectionHandler,
   MoveEventToCollectionHandler,
   BulkMigrateEntriesHandler,
+  RestoreTaskHandler,
+  RestoreNoteHandler,
+  RestoreEventHandler,
   EntryListProjection,
   TaskListProjection,
   CollectionListProjection,
@@ -271,6 +274,11 @@ function AppContent() {
   // Bulk migration handler (Phase 4: ADR-013)
   const [bulkMigrateEntriesHandler] = useState(() => new BulkMigrateEntriesHandler(eventStore, entryProjection));
   
+  // Restore handlers (Item 3: Recoverable Deleted Entries)
+  const [restoreTaskHandler] = useState(() => new RestoreTaskHandler(eventStore, entryProjection));
+  const [restoreNoteHandler] = useState(() => new RestoreNoteHandler(eventStore, entryProjection));
+  const [restoreEventHandler] = useState(() => new RestoreEventHandler(eventStore, entryProjection));
+  
   // User preferences (reactive)
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(DEFAULT_USER_PREFERENCES);
   
@@ -402,6 +410,9 @@ function AppContent() {
     removeEventFromCollectionHandler,
     moveEventToCollectionHandler,
     bulkMigrateEntriesHandler,
+    restoreTaskHandler,
+    restoreNoteHandler,
+    restoreEventHandler,
     userPreferences,
     isAppReady,
   };

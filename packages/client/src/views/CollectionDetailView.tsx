@@ -63,6 +63,9 @@ export function CollectionDetailView({
     addTaskToCollectionHandler,
     moveTaskToCollectionHandler,
     bulkMigrateEntriesHandler, // Phase 4: Batch migration
+    restoreTaskHandler,  // Item 3: Recoverable deleted entries
+    restoreNoteHandler,  // Item 3: Recoverable deleted entries
+    restoreEventHandler, // Item 3: Recoverable deleted entries
   } = useApp();
   const userPreferences = useUserPreferences();
 
@@ -128,6 +131,9 @@ export function CollectionDetailView({
       addTaskToCollectionHandler, // Phase 3: Multi-collection add
       moveTaskToCollectionHandler, // Phase 3: Multi-collection move
       bulkMigrateEntriesHandler, // Phase 4: Batch migration
+      restoreTaskHandler,  // Item 3: Recoverable deleted entries
+      restoreNoteHandler,  // Item 3: Recoverable deleted entries
+      restoreEventHandler, // Item 3: Recoverable deleted entries
     },
     {
       collectionId: resolvedCollectionId,
@@ -218,7 +224,9 @@ export function CollectionDetailView({
       if (idForEntries) {
         // Phase 2: Use getEntriesForCollectionView to get entries with ghost metadata
         const collectionEntries = await entryProjection.getEntriesForCollectionView(idForEntries);
-        setEntries(collectionEntries);
+        // Item 3: Also load soft-deleted entries for this collection (shown in collapsed section)
+        const deletedEntries = await entryProjection.getDeletedEntries(idForEntries);
+        setEntries([...collectionEntries, ...deletedEntries]);
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to load collection data');
@@ -265,20 +273,21 @@ export function CollectionDetailView({
   // Selection mode handlers
   const handleSelectAll = () => {
     const allNonGhost = entries
-      .filter(e => !(e as any).renderAsGhost)
+      .filter(e => !(e as any).renderAsGhost && !e.deletedAt)
       .map(e => e.id);
     selection.selectAll(allNonGhost);
   };
 
   const handleSelectActive = () => {
     // BUG FIX #2: Only select incomplete (open) tasks, not all non-migrated entries
-    // Also exclude ghost entries (renderAsGhost: true) — they are visually invisible
+    // Also exclude ghost entries (renderAsGhost: true) and deleted entries — they are not actionable
     const activeEntries = entries
       .filter(e =>
         e.type === 'task' &&
         e.status === 'open' &&
         !e.migratedTo &&
-        !(e as any).renderAsGhost
+        !(e as any).renderAsGhost &&
+        !e.deletedAt
       )
       .map(e => e.id);
     selection.selectAll(activeEntries);
@@ -286,7 +295,7 @@ export function CollectionDetailView({
 
   const handleSelectNotes = () => {
     const notes = entries
-      .filter(e => e.type === 'note')
+      .filter(e => e.type === 'note' && !e.deletedAt)
       .map(e => e.id);
     selection.selectAll(notes);
   };
@@ -409,11 +418,20 @@ export function CollectionDetailView({
     !!(e as any).parentEntryId &&
     parentIdsInCollection.has((e as any).parentEntryId as string);
 
+  // Item 3: Always separate deleted entries into their own bucket (independent of completedTaskBehavior)
+  const deletedEntries = entries.filter(e => e.deletedAt);
+
   const activeTasks = shouldPartition
-    ? entries.filter(e => !(e.type === 'task' && e.status === 'completed' && !isSubTaskWithParentPresent(e)))
-    : entries;
+    ? entries.filter(e => {
+        if (e.deletedAt) return false; // Deleted entries always go to deletedEntries bucket
+        return !(e.type === 'task' && e.status === 'completed' && !isSubTaskWithParentPresent(e));
+      })
+    : entries.filter(e => !e.deletedAt); // keep-in-place: exclude deleted entries
   const completedTasks = shouldPartition
-    ? entries.filter(e => e.type === 'task' && e.status === 'completed' && !isSubTaskWithParentPresent(e))
+    ? entries.filter(e => {
+        if (e.deletedAt) return false; // Deleted entries always go to deletedEntries bucket
+        return e.type === 'task' && e.status === 'completed' && !isSubTaskWithParentPresent(e);
+      })
     : [];
 
   return (
@@ -443,6 +461,7 @@ export function CollectionDetailView({
           onUpdateEventContent={operations.handleUpdateEventContent}
           onUpdateEventDate={operations.handleUpdateEventDate}
           onDelete={operations.handleDelete}
+          onRestore={operations.handleRestore}
           onReorder={operations.handleReorder}
           onMigrate={operations.handleMigrateWithMode}
           collections={allCollections}
@@ -474,6 +493,7 @@ export function CollectionDetailView({
               onUpdateEventContent={operations.handleUpdateEventContent}
               onUpdateEventDate={operations.handleUpdateEventDate}
               onDelete={operations.handleDelete}
+              onRestore={operations.handleRestore}
               onReorder={operations.handleReorder}
               onMigrate={operations.handleMigrateWithMode}
               collections={allCollections}
@@ -531,6 +551,7 @@ export function CollectionDetailView({
                 onUpdateEventContent={operations.handleUpdateEventContent}
                 onUpdateEventDate={operations.handleUpdateEventDate}
                 onDelete={operations.handleDelete}
+                onRestore={operations.handleRestore}
                 onReorder={operations.handleReorder}
                 onMigrate={operations.handleMigrateWithMode}
                 collections={allCollections}
@@ -549,6 +570,66 @@ export function CollectionDetailView({
             </div>
           )}
         </div>
+        )}
+
+        {/* Item 3: Deleted entries section - always collapsible, independent of completedTaskBehavior */}
+        {deletedEntries.length > 0 && (
+          <div className="mt-4 max-w-2xl mx-auto">
+            <button
+              onClick={modals.toggleDeletedExpanded}
+              className="
+                w-full py-3 px-4
+                flex items-center justify-center gap-2
+                text-sm text-gray-400 dark:text-gray-500
+                hover:text-gray-600 dark:hover:text-gray-400
+                border-t border-b border-gray-200 dark:border-gray-700
+                hover:bg-gray-50 dark:hover:bg-gray-800
+                transition-colors
+                focus:outline-none focus:ring-2 focus:ring-blue-500
+              "
+              type="button"
+            >
+              <span>─── {deletedEntries.length} deleted {deletedEntries.length === 1 ? 'entry' : 'entries'}</span>
+              <svg
+                className={`w-4 h-4 transition-transform ${modals.isDeletedExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {modals.isDeletedExpanded && (
+              <div className="mt-4">
+                <EntryList
+                  entries={deletedEntries}
+                  onCompleteTask={operations.handleCompleteTask}
+                  onReopenTask={operations.handleReopenTask}
+                  onUpdateTaskTitle={operations.handleUpdateTaskTitle}
+                  onUpdateNoteContent={operations.handleUpdateNoteContent}
+                  onUpdateEventContent={operations.handleUpdateEventContent}
+                  onUpdateEventDate={operations.handleUpdateEventDate}
+                  onDelete={operations.handleDelete}
+                  onRestore={operations.handleRestore}
+                  onReorder={operations.handleReorder}
+                  onMigrate={operations.handleMigrateWithMode}
+                  collections={allCollections}
+                  currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
+                  onNavigateToMigrated={operations.handleNavigateToMigrated}
+                  onCreateCollection={operations.handleCreateCollection}
+                  onAddSubTask={handleOpenSubTaskModal}
+                  isSelectionMode={selection.isSelectionMode}
+                  selectedEntryIds={selection.selectedEntryIds}
+                  onToggleSelection={selection.toggleSelection}
+                  getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
+                  getSubTasks={(parentEntryId) => entryProjection.getSubTasks(parentEntryId)}
+                  getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
+                  getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
+                />
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -576,7 +657,7 @@ export function CollectionDetailView({
       <DeleteCollectionModal
         isOpen={modals.isDeleteModalOpen}
         collectionName={collection.name}
-        entryCount={entries.length}
+        entryCount={entries.filter(e => !e.deletedAt).length}
         onClose={modals.closeDeleteModal}
         onConfirm={operations.handleDeleteConfirm}
       />

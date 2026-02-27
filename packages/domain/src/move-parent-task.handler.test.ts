@@ -39,7 +39,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
     taskProjection = new TaskListProjection(eventStore);
     projection = new EntryListProjection(eventStore);
     createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
-    createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, projection);
+    createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
     moveParentTaskHandler = new MoveParentTaskHandler(eventStore, projection);
     moveEntryHandler = new MoveEntryToCollectionHandler(eventStore, projection);
   });

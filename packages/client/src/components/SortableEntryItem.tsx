@@ -17,6 +17,8 @@ interface SortableEntryItemProps {
   onUpdateEventDate?: (eventId: string, newDate: string | null) => void;
   // Common handlers
   onDelete: (entryId: string) => void;
+  // Item 3: Restore deleted entry
+  onRestore?: (entryId: string, entryType: 'task' | 'note' | 'event') => Promise<void>;
   // Migration handlers
   onMigrate?: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
@@ -61,6 +63,7 @@ export function SortableEntryItem({
   onUpdateEventContent,
   onUpdateEventDate,
   onDelete,
+  onRestore,
   onMigrate,
   collections,
   currentCollectionId,
@@ -140,6 +143,7 @@ export function SortableEntryItem({
           onUpdateEventContent={onUpdateEventContent}
           onUpdateEventDate={onUpdateEventDate}
           onDelete={onDelete}
+          onRestore={onRestore ? () => onRestore(entry.id, entry.type) : undefined}
           onMigrate={onMigrate}
           collections={collections}
           currentCollectionId={currentCollectionId}

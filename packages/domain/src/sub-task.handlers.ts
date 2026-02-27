@@ -1,5 +1,4 @@
 import type { IEventStore } from './event-store';
-import type { TaskListProjection } from './task.projections';
 import type { EntryListProjection } from './entry.projections';
 import type { 
   CreateSubTaskCommand,
@@ -25,7 +24,6 @@ import { generateKeyBetween } from 'fractional-indexing';
 export class CreateSubTaskHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    _taskProjection: TaskListProjection, // Not used (kept for signature compatibility)
     private readonly entryProjection: EntryListProjection
   ) {}
 
@@ -54,9 +52,9 @@ export class CreateSubTaskHandler {
       throw new Error('Title must be between 1 and 500 characters');
     }
 
-    // Validate parent task exists
+    // Validate parent task exists and is not soft-deleted
     const parentTask = await this.entryProjection.getTaskById(command.parentEntryId);
-    if (!parentTask) {
+    if (!parentTask || parentTask.deletedAt) {
       throw new Error(`Parent task ${command.parentEntryId} not found`);
     }
 

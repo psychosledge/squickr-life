@@ -100,8 +100,8 @@ export function useCollectionHandlers({
   
   // Phase 1: Sub-Tasks handler
   const createSubTaskHandler = useMemo(
-    () => new CreateSubTaskHandler(eventStore, taskProjection, entryProjection),
-    [eventStore, taskProjection, entryProjection]
+    () => new CreateSubTaskHandler(eventStore, entryProjection),
+    [eventStore, entryProjection]
   );
   
   const createNoteHandler = useMemo(

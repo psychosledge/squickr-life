@@ -8,10 +8,13 @@ import type {
   NoteContentChanged,
   DeleteNoteCommand,
   NoteDeleted,
+  NoteRemovedFromCollection,
   ReorderNoteCommand,
   NoteReordered,
   MigrateNoteCommand,
-  NoteMigrated
+  NoteMigrated,
+  NoteRestored,
+  RestoreNoteCommand,
 } from './task.types';
 import { generateEventMetadata } from './event-helpers';
 import { generateKeyBetween } from 'fractional-indexing';
@@ -148,35 +151,65 @@ export class UpdateNoteContentHandler {
  * 
  * Responsibilities:
  * - Validate note exists
- * - Create NoteDeleted event
+ * - Multi-collection logic: if currentCollectionId and note is in multiple collections,
+ *   emit NoteRemovedFromCollection only. Otherwise emit NoteDeleted (soft delete).
  * - Persist event to EventStore
  */
 export class DeleteNoteHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    private readonly projection: INoteProjection
+    private readonly projection: EntryListProjection
   ) {}
 
   /**
    * Handle DeleteNote command
    * 
-   * Validation rules:
-   * - Note must exist
+   * Multi-collection logic:
+   * - If `currentCollectionId` is provided AND note is in multiple collections:
+   *   emit `NoteRemovedFromCollection` only (keep note alive in other collections)
+   * - Otherwise: emit `NoteDeleted` (soft delete)
    * 
    * @param command - The DeleteNote command
    * @throws Error if validation fails
    */
   async handle(command: DeleteNoteCommand): Promise<void> {
-    // Validate note exists
+    // Validate note exists (use getNoteById which bypasses active filter)
     const note = await this.projection.getNoteById(command.noteId);
     if (!note) {
       throw new Error(`Note ${command.noteId} not found`);
+    }
+    if (note.deletedAt) {
+      throw new Error(`Note ${command.noteId} already deleted`);
+    }
+
+    // Multi-collection logic: if a specific collection is given AND note is in >1 collections,
+    // only remove from that collection instead of soft-deleting the entire note.
+    // Guard: currentCollectionId must actually be a member of the note's collections —
+    // a bogus/stale collectionId must not accidentally suppress the full soft-delete.
+    if (
+      command.currentCollectionId &&
+      note.collections.includes(command.currentCollectionId) &&
+      note.collections.length > 1
+    ) {
+      const metadata = generateEventMetadata();
+      const event: NoteRemovedFromCollection = {
+        ...metadata,
+        type: 'NoteRemovedFromCollection',
+        aggregateId: command.noteId,
+        payload: {
+          noteId: command.noteId,
+          collectionId: command.currentCollectionId,
+          removedAt: metadata.timestamp,
+        },
+      };
+      await this.eventStore.append(event);
+      return;
     }
 
     // Generate event metadata
     const metadata = generateEventMetadata();
 
-    // Create NoteDeleted event
+    // Create NoteDeleted event (soft delete)
     const event: NoteDeleted = {
       ...metadata,
       type: 'NoteDeleted',
@@ -352,5 +385,51 @@ export class MigrateNoteHandler {
     await this.eventStore.append(event);
     
     return newNoteId;
+  }
+}
+
+/**
+ * Command Handler for RestoreNote (Item 3: Recoverable Deleted Entries)
+ * 
+ * Responsibilities:
+ * - Validate note exists and is soft-deleted
+ * - Emit NoteRestored event to clear deletedAt
+ */
+export class RestoreNoteHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly entryProjection: EntryListProjection
+  ) {}
+
+  /**
+   * Handle RestoreNote command
+   * 
+   * Validation rules:
+   * - Note must exist (found via getEntryById which includes soft-deleted)
+   * - Note must have deletedAt set (must be soft-deleted)
+   * 
+   * @param command - The RestoreNote command
+   * @throws Error if note not found or not deleted
+   */
+  async handle(command: RestoreNoteCommand): Promise<void> {
+    const entry = await this.entryProjection.getEntryById(command.noteId);
+    if (!entry || entry.type !== 'note') {
+      throw new Error(`Note ${command.noteId} not found`);
+    }
+    if (!entry.deletedAt) {
+      throw new Error(`Note ${command.noteId} is not deleted`);
+    }
+
+    const metadata = generateEventMetadata();
+    const restoreEvent: NoteRestored = {
+      ...metadata,
+      type: 'NoteRestored',
+      aggregateId: command.noteId,
+      payload: {
+        id: command.noteId,
+        restoredAt: metadata.timestamp,
+      },
+    };
+    await this.eventStore.append(restoreEvent);
   }
 }

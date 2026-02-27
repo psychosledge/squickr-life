@@ -33,7 +33,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     projection = new EntryListProjection(eventStore);
     taskProjection = new TaskListProjection(eventStore);
     createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
-    createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, projection);
+    createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
     completeTaskHandler = new CompleteTaskHandler(eventStore, projection);
     migrateTaskHandler = new MigrateTaskHandler(eventStore, projection);
   });

@@ -34,7 +34,7 @@ describe('CompleteParentTaskHandler', () => {
     projection = new EntryListProjection(eventStore);
     handler = new CompleteParentTaskHandler(eventStore, projection);
     createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
-    createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, projection);
+    createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
     completeTaskHandler = new CompleteTaskHandler(eventStore, projection);
   });
 

@@ -22,6 +22,8 @@ interface EntryListProps {
   onUpdateEventDate: (eventId: string, newDate: string | null) => void;
   // Common handlers
   onDelete: (entryId: string) => void;
+  // Item 3: Restore deleted entry
+  onRestore?: (entryId: string, entryType: 'task' | 'note' | 'event') => Promise<void>;
   onReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => void;
   // Migration handlers
   onMigrate?: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
@@ -67,6 +69,7 @@ export function EntryList({
   onUpdateEventContent,
   onUpdateEventDate,
   onDelete, 
+  onRestore,
   onReorder,
   onMigrate,
   collections,
@@ -352,7 +355,7 @@ export function EntryList({
               return (
                 <div key={entry.id}>
                   {/* Render parent entry (draggable) */}
-                  <SortableEntryItem
+                   <SortableEntryItem
                     entry={entry}
                     onCompleteTask={onCompleteTask}
                     onReopenTask={onReopenTask}
@@ -361,6 +364,7 @@ export function EntryList({
                     onUpdateEventContent={onUpdateEventContent}
                     onUpdateEventDate={onUpdateEventDate}
                     onDelete={onDelete}
+                    onRestore={onRestore}
                     onMigrate={onMigrate}
                     collections={collections}
                     currentCollectionId={currentCollectionId}
@@ -403,6 +407,7 @@ export function EntryList({
                               onUpdateEventContent={onUpdateEventContent}
                               onUpdateEventDate={onUpdateEventDate}
                               onDelete={onDelete}
+                              onRestore={onRestore ? () => onRestore(subTask.id, 'task') : undefined}
                               onMigrate={onMigrate}
                               collections={collections}
                               currentCollectionId={currentCollectionId}

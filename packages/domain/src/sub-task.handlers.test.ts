@@ -25,7 +25,7 @@ describe('CreateSubTaskHandler', () => {
     eventStore = new InMemoryEventStore();
     taskProjection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
-    handler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+    handler = new CreateSubTaskHandler(eventStore, entryProjection);
   });
 
   describe('successful sub-task creation', () => {

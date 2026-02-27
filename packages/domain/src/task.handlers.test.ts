@@ -432,7 +432,7 @@ describe('DeleteTaskHandler', () => {
       await deleteHandler.handle({ taskId });
 
       // Try to delete again
-      await expect(deleteHandler.handle({ taskId })).rejects.toThrow('Task ' + taskId + ' not found');
+      await expect(deleteHandler.handle({ taskId })).rejects.toThrow('Task ' + taskId + ' already deleted');
     });
   });
 });

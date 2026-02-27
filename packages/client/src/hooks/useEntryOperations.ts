@@ -27,6 +27,9 @@ import type {
   AddTaskToCollectionHandler,
   MoveTaskToCollectionHandler,
   BulkMigrateEntriesHandler,
+  RestoreTaskHandler,
+  RestoreNoteHandler,
+  RestoreEventHandler,
 } from '@squickr/domain';
 import type { CollectionHandlers } from './useCollectionHandlers';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
@@ -43,6 +46,9 @@ export interface UseEntryOperationsParams {
   addTaskToCollectionHandler: AddTaskToCollectionHandler; // Phase 3: Multi-collection add
   moveTaskToCollectionHandler: MoveTaskToCollectionHandler; // Phase 3: Multi-collection move
   bulkMigrateEntriesHandler: BulkMigrateEntriesHandler; // Phase 4: Batch migration
+  restoreTaskHandler: RestoreTaskHandler; // Item 3: Recoverable deleted entries
+  restoreNoteHandler: RestoreNoteHandler; // Item 3: Recoverable deleted entries
+  restoreEventHandler: RestoreEventHandler; // Item 3: Recoverable deleted entries
 }
 
 export interface EntryOperations {
@@ -63,7 +69,10 @@ export interface EntryOperations {
   handleUpdateEventDate: (eventId: string, eventDate: string | null) => Promise<void>;
   
   // Entry deletion operations
-  handleDelete: (entryId: string) => Promise<void>;
+  handleDelete: (entryId: string, currentCollectionId?: string) => Promise<void>;
+  
+  // Entry restore operations (Item 3: Recoverable deleted entries)
+  handleRestore: (entryId: string, entryType: 'task' | 'note' | 'event') => Promise<void>;
   
   // Entry reordering operations
   handleReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => Promise<void>;
@@ -115,6 +124,9 @@ export function useEntryOperations(
     addTaskToCollectionHandler, // Phase 3: Multi-collection add
     moveTaskToCollectionHandler, // Phase 3: Multi-collection move
     bulkMigrateEntriesHandler, // Phase 4: Batch migration
+    restoreTaskHandler, // Item 3: Recoverable deleted entries
+    restoreNoteHandler, // Item 3: Recoverable deleted entries
+    restoreEventHandler, // Item 3: Recoverable deleted entries
   }: UseEntryOperationsParams,
   config: UseEntryOperationsConfig
 ): EntryOperations {
@@ -212,7 +224,7 @@ export function useEntryOperations(
   }, [handlers.updateEventDateHandler]);
 
   // Entry deletion operations
-  const handleDelete = useCallback(async (entryId: string) => {
+  const handleDelete = useCallback(async (entryId: string, currentCollectionId?: string) => {
     const entry = entries.find(e => e.id === entryId);
     if (!entry) return;
 
@@ -237,7 +249,7 @@ export function useEntryOperations(
                 await handlers.deleteParentTaskHandler.handle({ taskId: entryId, confirmed: true });
               } else {
                 // No more children (deleted while dialog open) → standard delete
-                await handlers.deleteTaskHandler.handle({ taskId: entryId });
+                await handlers.deleteTaskHandler.handle({ taskId: entryId, currentCollectionId });
               }
             }
           );
@@ -253,13 +265,24 @@ export function useEntryOperations(
     
     // No children or not a task → use standard delete handlers
     if (entry.type === 'task') {
-      await handlers.deleteTaskHandler.handle({ taskId: entryId });
+      await handlers.deleteTaskHandler.handle({ taskId: entryId, currentCollectionId });
     } else if (entry.type === 'note') {
-      await handlers.deleteNoteHandler.handle({ noteId: entryId });
+      await handlers.deleteNoteHandler.handle({ noteId: entryId, currentCollectionId });
     } else if (entry.type === 'event') {
-      await handlers.deleteEventHandler.handle({ eventId: entryId });
+      await handlers.deleteEventHandler.handle({ eventId: entryId, currentCollectionId });
     }
   }, [entries, handlers.deleteTaskHandler, handlers.deleteParentTaskHandler, handlers.deleteNoteHandler, handlers.deleteEventHandler, entryProjection, config]);
+
+  // Entry restore operations (Item 3: Recoverable deleted entries)
+  const handleRestore = useCallback(async (entryId: string, entryType: 'task' | 'note' | 'event') => {
+    if (entryType === 'task') {
+      await restoreTaskHandler.handle({ taskId: entryId });
+    } else if (entryType === 'note') {
+      await restoreNoteHandler.handle({ noteId: entryId });
+    } else if (entryType === 'event') {
+      await restoreEventHandler.handle({ eventId: entryId });
+    }
+  }, [restoreTaskHandler, restoreNoteHandler, restoreEventHandler]);
 
   // Entry reordering operations
   const handleReorder = useCallback(async (
@@ -444,6 +467,7 @@ export function useEntryOperations(
     handleUpdateEventContent,
     handleUpdateEventDate,
     handleDelete,
+    handleRestore,
     handleReorder,
     handleMigrate,
     handleBulkMigrate,

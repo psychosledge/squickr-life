@@ -65,15 +65,19 @@ export class EntryListProjection {
       this.applicator.sanitizeMigrationPointers(entry, entries)
     );
 
+    // Exclude soft-deleted entries from active views
+    const activeEntries = sanitizedEntries.filter(entry => !entry.deletedAt);
+
     // Apply filter
-    return this.applicator.filterEntries(sanitizedEntries, filter);
+    return this.applicator.filterEntries(activeEntries, filter);
   }
 
   /**
    * Get a specific entry by ID (works for tasks, notes, or events)
+   * Returns ALL entries including soft-deleted ones (used by restore handlers).
    * 
    * @param entryId - The entry ID to find
-   * @returns The entry, or undefined if not found
+   * @returns The entry (including soft-deleted), or undefined if not found
    */
   async getEntryById(entryId: string): Promise<Entry | undefined> {
     // IMPORTANT: We must get ALL events and apply them, not just events with this aggregateId
@@ -92,6 +96,7 @@ export class EntryListProjection {
 
   /**
    * Get all tasks (for backward compatibility with existing code)
+   * Only returns ACTIVE (non-deleted) tasks.
    */
   async getTasks(): Promise<Task[]> {
     const entries = await this.getEntries('tasks');
@@ -101,6 +106,8 @@ export class EntryListProjection {
 
   /**
    * Get task by ID (for backward compatibility)
+   * Returns the task including soft-deleted ones (so callers can check deletedAt).
+   * Use getEntries() / getTasks() for active-only lists.
    */
   async getTaskById(taskId: string): Promise<Task | undefined> {
     const entry = await this.getEntryById(taskId);
@@ -122,6 +129,8 @@ export class EntryListProjection {
 
   /**
    * Get note by ID
+   * Returns the note including soft-deleted ones (so callers can check deletedAt).
+   * Use getEntries() / getNotes() for active-only lists.
    */
   async getNoteById(noteId: string): Promise<Note | undefined> {
     const entry = await this.getEntryById(noteId);
@@ -143,6 +152,8 @@ export class EntryListProjection {
 
   /**
    * Get event by ID
+   * Returns the event including soft-deleted ones (so callers can check deletedAt).
+   * Use getEntries() / getEvents() for active-only lists.
    */
   async getEventById(eventId: string): Promise<EventEntry | undefined> {
     const entry = await this.getEntryById(eventId);
@@ -385,7 +396,7 @@ export class EntryListProjection {
   async getSubTasks(parentEntryId: string): Promise<Task[]> {
     const allTasks = await this.getTasks();
     return allTasks.filter(task => 
-      task.parentEntryId === parentEntryId && !task.migratedTo
+      task.parentEntryId === parentEntryId && !task.migratedTo && !task.deletedAt
     );
   }
 
@@ -406,8 +417,8 @@ export class EntryListProjection {
     
     // Group tasks by parentEntryId in a single pass
     for (const task of allTasks) {
-      // Skip if not a sub-task, or if migrated (original version)
-      if (!task.parentEntryId || task.migratedTo) {
+      // Skip if not a sub-task, or if migrated (original version), or if deleted
+      if (!task.parentEntryId || task.migratedTo || task.deletedAt) {
         continue;
       }
       
@@ -487,7 +498,12 @@ export class EntryListProjection {
     if (!task.parentEntryId) {
       return undefined;
     }
-    return this.getTaskById(task.parentEntryId);
+    const parent = await this.getTaskById(task.parentEntryId);
+    // Treat soft-deleted parents as non-existent (orphaned sub-task)
+    if (!parent || parent.deletedAt) {
+      return undefined;
+    }
+    return parent;
   }
 
   /**
@@ -571,8 +587,8 @@ export class EntryListProjection {
       // Find parent task
       const parent = entriesMap.get(subTask.parentEntryId);
       
-      // Skip if parent doesn't exist or is not a task
-      if (!parent || parent.type !== 'task') continue;
+      // Skip if parent doesn't exist, is not a task, or is soft-deleted
+      if (!parent || parent.type !== 'task' || parent.deletedAt) continue;
       
       // Add parent title to map
       parentTitles.set(subTaskId, parent.title);
@@ -597,6 +613,8 @@ export class EntryListProjection {
     const allEntries = await this.getEntries();
     
     // Active entries: Currently in this collection (all types use collections[])
+    // Note: getEntries() already excludes soft-deleted entries via its active-only filter,
+    // so no additional deletedAt check is needed here.
     const activeEntries = allEntries
       .filter(entry => entry.collections.includes(collectionId))
       .map(entry => ({
@@ -617,6 +635,41 @@ export class EntryListProjection {
       }));
     
     return [...activeEntries, ...ghostEntries];
+  }
+
+  /**
+   * Get ALL entries including soft-deleted ones, without any active filter.
+   * 
+   * This is the escape hatch for handlers that need to see deleted entries
+   * (e.g. RestoreTaskHandler cascade). Prefer getEntries() for normal read models.
+   * 
+   * @returns Array of all entries including soft-deleted
+   */
+  async getAllEntriesIncludingDeleted(): Promise<Entry[]> {
+    const events = await this.eventStore.getAll();
+    return this.applicator.applyEvents(events);
+  }
+
+  /**
+   * Get all soft-deleted entries for a specific collection
+   * 
+   * Returns entries that have `deletedAt` set and belong to the given collection.
+   * Useful for a "Trash" / "Recently Deleted" view.
+   * 
+   * @param collectionId - The collection to query deleted entries for
+   * @returns Array of soft-deleted entries in this collection
+   */
+  async getDeletedEntries(collectionId: string): Promise<Entry[]> {
+    const events = await this.eventStore.getAll();
+    // Bypass the active-only filter in getEntries() by calling applyEvents directly
+    const allEntries = this.applicator.applyEvents(events);
+
+    return allEntries.filter(entry =>
+      entry.deletedAt !== undefined &&
+      // COMPAT: fall back to legacy entry.collectionId for entries created before
+      // multi-collection support (collections[] may still be empty for old entries)
+      (entry.collections.includes(collectionId) || entry.collectionId === collectionId)
+    );
   }
 
 }

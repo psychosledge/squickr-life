@@ -211,7 +211,7 @@ describe('MoveEntryToCollectionHandler', () => {
     it('should cascade migrate unmigrated children when parent moves', async () => {
       // Import CreateSubTaskHandler for creating children
       const { CreateSubTaskHandler } = await import('./sub-task.handlers');
-      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, entryProjection);
 
       // Create parent task in collection-A
       const parentId = await createTaskHandler.handle({
@@ -258,7 +258,7 @@ describe('MoveEntryToCollectionHandler', () => {
 
     it('should cascade ALL children when parent moves (including previously migrated)', async () => {
       const { CreateSubTaskHandler } = await import('./sub-task.handlers');
-      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, entryProjection);
 
       // Create parent in collection-A
       const parentId = await createTaskHandler.handle({

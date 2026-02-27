@@ -30,7 +30,7 @@ describe('Migration Chain - UI Indicators', () => {
     taskProjection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
-    createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+    createSubTaskHandler = new CreateSubTaskHandler(eventStore, entryProjection);
     migrateTaskHandler = new MigrateTaskHandler(eventStore, entryProjection);
   });
 

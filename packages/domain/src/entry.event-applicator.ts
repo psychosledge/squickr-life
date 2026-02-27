@@ -8,6 +8,7 @@ import type {
   TaskCompleted,
   TaskReopened,
   TaskDeleted,
+  TaskRestored,
   TaskReordered,
   TaskTitleChanged,
   TaskMigrated,
@@ -16,6 +17,7 @@ import type {
   NoteCreated,
   NoteContentChanged,
   NoteDeleted,
+  NoteRestored,
   NoteReordered,
   NoteMigrated,
   NoteAddedToCollection,
@@ -24,6 +26,7 @@ import type {
   EventContentChanged,
   EventDateChanged,
   EventDeleted,
+  EventRestored,
   EventReordered,
   EventMigrated,
   EventAddedToCollection,
@@ -116,8 +119,8 @@ export class EntryEventApplicator {
       return entry;
     }
 
-    // Check if target entry exists in any of the three types
-    const targetExists = allEntries.some(e => e.id === entry.migratedTo);
+    // Check if target entry exists AND is not soft-deleted
+    const targetExists = allEntries.some(e => e.id === entry.migratedTo && !e.deletedAt);
 
     // If target exists (not deleted), return unchanged
     if (targetExists) {
@@ -168,6 +171,7 @@ export class EntryEventApplicator {
     | TaskCompleted
     | TaskReopened
     | TaskDeleted
+    | TaskRestored
     | TaskReordered
     | TaskTitleChanged
     | TaskMigrated
@@ -178,6 +182,7 @@ export class EntryEventApplicator {
       event.type === 'TaskCompleted' ||
       event.type === 'TaskReopened' ||
       event.type === 'TaskDeleted' ||
+      event.type === 'TaskRestored' ||
       event.type === 'TaskReordered' ||
       event.type === 'TaskTitleChanged' ||
       event.type === 'TaskMigrated' ||
@@ -188,11 +193,12 @@ export class EntryEventApplicator {
 
   isNoteEvent(
     event: DomainEvent
-  ): event is NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | NoteMigrated | NoteAddedToCollection | NoteRemovedFromCollection {
+  ): event is NoteCreated | NoteContentChanged | NoteDeleted | NoteRestored | NoteReordered | NoteMigrated | NoteAddedToCollection | NoteRemovedFromCollection {
     return (
       event.type === 'NoteCreated' ||
       event.type === 'NoteContentChanged' ||
       event.type === 'NoteDeleted' ||
+      event.type === 'NoteRestored' ||
       event.type === 'NoteReordered' ||
       event.type === 'NoteMigrated' ||
       event.type === 'NoteAddedToCollection' ||
@@ -207,6 +213,7 @@ export class EntryEventApplicator {
     | EventContentChanged
     | EventDateChanged
     | EventDeleted
+    | EventRestored
     | EventReordered
     | EventMigrated
     | EventAddedToCollection
@@ -216,6 +223,7 @@ export class EntryEventApplicator {
       event.type === 'EventContentChanged' ||
       event.type === 'EventDateChanged' ||
       event.type === 'EventDeleted' ||
+      event.type === 'EventRestored' ||
       event.type === 'EventReordered' ||
       event.type === 'EventMigrated' ||
       event.type === 'EventAddedToCollection' ||
@@ -229,7 +237,7 @@ export class EntryEventApplicator {
 
   /**
    * Apply a single task event to the in-memory task map.
-   * Covers all 9 task event types including collection membership changes.
+   * Covers all task event types including collection membership changes.
    */
   applyTaskEvent(
     tasks: Map<string, Task>,
@@ -238,6 +246,7 @@ export class EntryEventApplicator {
       | TaskCompleted
       | TaskReopened
       | TaskDeleted
+      | TaskRestored
       | TaskReordered
       | TaskTitleChanged
       | TaskMigrated
@@ -292,7 +301,21 @@ export class EntryEventApplicator {
         break;
       }
       case 'TaskDeleted': {
-        tasks.delete(event.payload.taskId);
+        const task = tasks.get(event.payload.taskId);
+        if (task) {
+          tasks.set(task.id, {
+            ...task,
+            deletedAt: event.payload.deletedAt,
+          });
+        }
+        break;
+      }
+      case 'TaskRestored': {
+        const task = tasks.get(event.payload.id);
+        if (task) {
+          const { deletedAt, ...taskWithoutDeletedAt } = task as Task & { deletedAt?: string };
+          tasks.set(task.id, taskWithoutDeletedAt as Task);
+        }
         break;
       }
       case 'TaskReordered': {
@@ -489,7 +512,7 @@ export class EntryEventApplicator {
    */
   applyNoteEvent(
     notes: Map<string, Note>,
-    event: NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | NoteMigrated | NoteAddedToCollection | NoteRemovedFromCollection
+    event: NoteCreated | NoteContentChanged | NoteDeleted | NoteRestored | NoteReordered | NoteMigrated | NoteAddedToCollection | NoteRemovedFromCollection
   ): void {
     switch (event.type) {
       case 'NoteCreated': {
@@ -520,7 +543,21 @@ export class EntryEventApplicator {
         break;
       }
       case 'NoteDeleted': {
-        notes.delete(event.payload.noteId);
+        const note = notes.get(event.payload.noteId);
+        if (note) {
+          notes.set(note.id, {
+            ...note,
+            deletedAt: event.payload.deletedAt,
+          });
+        }
+        break;
+      }
+      case 'NoteRestored': {
+        const note = notes.get(event.payload.id);
+        if (note) {
+          const { deletedAt, ...noteWithoutDeletedAt } = note as Note & { deletedAt?: string };
+          notes.set(note.id, noteWithoutDeletedAt as Note);
+        }
         break;
       }
       case 'NoteReordered': {
@@ -642,6 +679,7 @@ export class EntryEventApplicator {
       | EventContentChanged
       | EventDateChanged
       | EventDeleted
+      | EventRestored
       | EventReordered
       | EventMigrated
       | EventAddedToCollection
@@ -687,7 +725,21 @@ export class EntryEventApplicator {
         break;
       }
       case 'EventDeleted': {
-        eventEntries.delete(event.payload.eventId);
+        const evt = eventEntries.get(event.payload.eventId);
+        if (evt) {
+          eventEntries.set(evt.id, {
+            ...evt,
+            deletedAt: event.payload.deletedAt,
+          });
+        }
+        break;
+      }
+      case 'EventRestored': {
+        const evt = eventEntries.get(event.payload.id);
+        if (evt) {
+          const { deletedAt, ...evtWithoutDeletedAt } = evt as EventEntry & { deletedAt?: string };
+          eventEntries.set(evt.id, evtWithoutDeletedAt as EventEntry);
+        }
         break;
       }
       case 'EventReordered': {

@@ -32,7 +32,7 @@ describe('DeleteParentTaskHandler', () => {
     projection = new EntryListProjection(eventStore);
     handler = new DeleteParentTaskHandler(eventStore, projection);
     createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
-    createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, projection);
+    createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
   });
 
   describe('handle - parent without children', () => {
@@ -55,9 +55,10 @@ describe('DeleteParentTaskHandler', () => {
       expect(deletionEvents).toHaveLength(1);
       expect(deletionEvents[0]!.payload.taskId).toBe(taskId);
 
-      // Verify task is deleted (no longer exists)
+      // Verify task is deleted (soft-deleted: still retrievable but has deletedAt set)
       const task = await projection.getTaskById(taskId);
-      expect(task).toBeUndefined();
+      expect(task).toBeDefined();
+      expect(task!.deletedAt).toBeDefined();
     });
 
     it('should work with confirmed=true even when no children exist', async () => {
@@ -174,16 +175,20 @@ describe('DeleteParentTaskHandler', () => {
       expect(lastEvent).toBeDefined();
       expect(lastEvent!.payload.taskId).toBe(parentId);
 
-      // Verify all tasks are now deleted (no longer exist)
+      // Verify all tasks are now soft-deleted (still retrievable but have deletedAt set)
       const parent = await projection.getTaskById(parentId);
       const child1 = await projection.getTaskById(child1Id);
       const child2 = await projection.getTaskById(child2Id);
       const child3 = await projection.getTaskById(child3Id);
 
-      expect(parent).toBeUndefined();
-      expect(child1).toBeUndefined();
-      expect(child2).toBeUndefined();
-      expect(child3).toBeUndefined();
+      expect(parent).toBeDefined();
+      expect(parent!.deletedAt).toBeDefined();
+      expect(child1).toBeDefined();
+      expect(child1!.deletedAt).toBeDefined();
+      expect(child2).toBeDefined();
+      expect(child2!.deletedAt).toBeDefined();
+      expect(child3).toBeDefined();
+      expect(child3!.deletedAt).toBeDefined();
     });
 
     it('should delete all children regardless of completion status', async () => {
@@ -219,10 +224,14 @@ describe('DeleteParentTaskHandler', () => {
       const child2 = await projection.getTaskById(child2Id);
       const child3 = await projection.getTaskById(child3Id);
 
-      expect(parent).toBeUndefined();
-      expect(child1).toBeUndefined();
-      expect(child2).toBeUndefined();
-      expect(child3).toBeUndefined();
+      expect(parent).toBeDefined();
+      expect(parent!.deletedAt).toBeDefined();
+      expect(child1).toBeDefined();
+      expect(child1!.deletedAt).toBeDefined();
+      expect(child2).toBeDefined();
+      expect(child2!.deletedAt).toBeDefined();
+      expect(child3).toBeDefined();
+      expect(child3!.deletedAt).toBeDefined();
     });
 
     it('should delete children before parent (event order)', async () => {
@@ -311,16 +320,20 @@ describe('DeleteParentTaskHandler', () => {
       // Act
       await handler.handle(command);
 
-      // Assert: All children deleted regardless of collection
+      // Assert: All children soft-deleted regardless of collection
       const child1 = await projection.getTaskById(child1Id);
       const child2 = await projection.getTaskById(child2Id);
       const child3 = await projection.getTaskById(child3Id);
       const parent = await projection.getTaskById(parentId);
 
-      expect(child1).toBeUndefined();
-      expect(child2).toBeUndefined();
-      expect(child3).toBeUndefined();
-      expect(parent).toBeUndefined();
+      expect(child1).toBeDefined();
+      expect(child1!.deletedAt).toBeDefined();
+      expect(child2).toBeDefined();
+      expect(child2!.deletedAt).toBeDefined();
+      expect(child3).toBeDefined();
+      expect(child3!.deletedAt).toBeDefined();
+      expect(parent).toBeDefined();
+      expect(parent!.deletedAt).toBeDefined();
     });
   });
 });

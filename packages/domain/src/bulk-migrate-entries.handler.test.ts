@@ -501,7 +501,7 @@ describe('BulkMigrateEntriesHandler', () => {
       // Setup: Need AddTaskToCollectionHandler, TaskListProjection, and CreateSubTaskHandler
       const taskProjection = new TaskListProjection(eventStore);
       const addTaskHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
-      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, entryProjection);
       
       // Scenario: Parent in monthly log, sub-task migrated to 2/15, then bulk migrate to 2/16
       // 1. Create parent task in monthly log
@@ -569,9 +569,11 @@ describe('BulkMigrateEntriesHandler', () => {
       const taskProjection = new TaskListProjection(eventStore);
       const addTaskHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
       const removeTaskHandler = new (await import('./collection-management.handlers')).RemoveTaskFromCollectionHandler(eventStore, entryProjection);
-      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, entryProjection);
       
-      // Step 1: Create parent task in monthly log
+      // Setup: Need AddTaskToCollectionHandler, TaskListProjection, and CreateSubTaskHandler
+      const taskProjection2 = new TaskListProjection(eventStore);
+      void taskProjection2; // used below indirectly
       const parentId = await createTaskHandler.handle({
         title: 'Monthly Parent Task',
         collectionId: 'monthly-log',

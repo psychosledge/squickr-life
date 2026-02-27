@@ -13,6 +13,7 @@ interface TaskEntryItemProps {
   onReopenTask?: (taskId: string) => void | Promise<void>;
   onUpdateTaskTitle?: (taskId: string, newTitle: string) => void | Promise<void>;
   onDelete: (entryId: string) => void;
+  onRestore?: () => void; // Item 3: Restore deleted entry
   onMigrate?: (taskId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
   currentCollectionId?: string;
@@ -49,6 +50,7 @@ export function TaskEntryItem({
   onReopenTask,
   onUpdateTaskTitle,
   onDelete,
+  onRestore,
   onMigrate,
   collections,
   currentCollectionId,
@@ -146,7 +148,8 @@ export function TaskEntryItem({
   };
 
   const isCompleted = entry.status === 'completed';
-  const canEdit = !!onUpdateTaskTitle;
+  const isDeleted = !!entry.deletedAt;
+  const canEdit = !!onUpdateTaskTitle && !isDeleted;
   const isSubTask = !!entry.parentEntryId;
   const hasSubTasks = completionStatus && completionStatus.total > 0;
   const isLegacyMigrated = !!entry.migratedTo;
@@ -164,12 +167,14 @@ export function TaskEntryItem({
       <div className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
                       rounded-lg p-4 hover:shadow-md transition-shadow ${
                         isLegacyMigrated ? 'opacity-50' : ''
+                      } ${
+                        isDeleted ? 'line-through opacity-60 text-gray-400 dark:text-gray-600' : ''
                       }`}>
         <div className="flex items-start gap-3">
           {/* Bullet Journal Icon - integrates type + state + migration */}
           <BulletIcon 
             entry={entry} 
-            onClick={entry.migratedTo ? undefined : handleToggleComplete}
+            onClick={entry.migratedTo || isDeleted ? undefined : handleToggleComplete}
           />
           
           {/* Content Area */}
@@ -219,7 +224,7 @@ export function TaskEntryItem({
                 
                 <div 
                   className={`text-lg font-medium cursor-pointer select-none ${
-                    isCompleted || isLegacyMigrated
+                    isCompleted || isLegacyMigrated || isDeleted
                       ? 'text-gray-500 dark:text-gray-400 line-through' 
                       : 'text-gray-900 dark:text-white'
                   } ${canEdit ? 'hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
@@ -288,12 +293,14 @@ export function TaskEntryItem({
           onEdit={handleEdit}
           onMove={handleMove}
           onDelete={handleDelete}
+          onRestore={onRestore}
           onAddSubTask={onAddSubTask ? handleAddSubTask : undefined}
           collections={collections}
           currentCollectionId={currentCollectionId}
           onNavigateToMigrated={onNavigateToMigrated}
           isSubTask={isSubTask}
           isGhost={false}
+          isDeleted={isDeleted}
         />
       </div>
       

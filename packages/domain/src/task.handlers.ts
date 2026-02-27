@@ -10,6 +10,7 @@ import type {
   TaskReopened,
   DeleteTaskCommand,
   TaskDeleted,
+  TaskRemovedFromCollection,
   ReorderTaskCommand,
   TaskReordered,
   UpdateTaskTitleCommand,
@@ -17,7 +18,9 @@ import type {
   MoveEntryToCollectionCommand,
   EntryMovedToCollection,
   MigrateTaskCommand,
-  TaskMigrated
+  TaskMigrated,
+  TaskRestored,
+  RestoreTaskCommand,
 } from './task.types';
 import { generateEventMetadata } from './event-helpers';
 import { generateKeyBetween } from 'fractional-indexing';
@@ -220,6 +223,11 @@ export class DeleteTaskHandler {
   /**
    * Handle DeleteTask command
    * 
+   * Multi-collection logic:
+   * - If `currentCollectionId` is provided AND task is in multiple collections:
+   *   emit `TaskRemovedFromCollection` only (keep task alive in other collections)
+   * - Otherwise: emit `TaskDeleted` (soft delete)
+   * 
    * Validation rules:
    * - Task must exist (including migrated tasks)
    * - Task can be in any status (open or completed)
@@ -233,11 +241,38 @@ export class DeleteTaskHandler {
     if (!task) {
       throw new Error(`Task ${command.taskId} not found`);
     }
+    if (task.deletedAt) {
+      throw new Error(`Task ${command.taskId} already deleted`);
+    }
+
+    // Multi-collection logic: if a specific collection is given AND task is in >1 collections,
+    // only remove from that collection instead of soft-deleting the entire task.
+    // Guard: currentCollectionId must actually be a member of the task's collections —
+    // a bogus/stale collectionId must not accidentally suppress the full soft-delete.
+    if (
+      command.currentCollectionId &&
+      task.collections.includes(command.currentCollectionId) &&
+      task.collections.length > 1
+    ) {
+      const metadata = generateEventMetadata();
+      const event: TaskRemovedFromCollection = {
+        ...metadata,
+        type: 'TaskRemovedFromCollection',
+        aggregateId: command.taskId,
+        payload: {
+          taskId: command.taskId,
+          collectionId: command.currentCollectionId,
+          removedAt: metadata.timestamp,
+        },
+      };
+      await this.eventStore.append(event);
+      return;
+    }
 
     // Generate event metadata
     const metadata = generateEventMetadata();
 
-    // Create TaskDeleted event
+    // Create TaskDeleted event (soft delete)
     const event: TaskDeleted = {
       ...metadata,
       type: 'TaskDeleted',
@@ -625,5 +660,90 @@ export class MigrateTaskHandler {
     }
     
     return newTaskId;
+  }
+}
+
+/**
+ * Command Handler for RestoreTask (Item 3: Recoverable Deleted Entries)
+ * 
+ * Responsibilities:
+ * - Validate task exists and is soft-deleted
+ * - Emit TaskRestored event
+ * - Cascade restore sub-tasks deleted within 1 second of the parent
+ */
+export class RestoreTaskHandler {
+  constructor(
+    private readonly eventStore: IEventStore,
+    private readonly entryProjection: EntryListProjection
+  ) {}
+
+  /**
+   * Handle RestoreTask command
+   * 
+   * Validation rules:
+   * - Task must exist (found via getTaskById which bypasses active filter)
+   * - Task must have deletedAt set (must be soft-deleted)
+   * 
+   * Sub-task cascade restore:
+   * - Find all sub-tasks of this task whose deletedAt is within 1000ms of parent's deletedAt
+   * - Emit TaskRestored for each such child
+   * 
+   * @param command - The RestoreTask command
+   * @throws Error if task not found or not deleted
+   */
+  async handle(command: RestoreTaskCommand): Promise<void> {
+    // Must look up via getEntryById to find soft-deleted tasks
+    const entry = await this.entryProjection.getEntryById(command.taskId);
+    if (!entry || entry.type !== 'task') {
+      throw new Error(`Task ${command.taskId} not found`);
+    }
+    if (!entry.deletedAt) {
+      throw new Error(`Task ${command.taskId} is not deleted`);
+    }
+
+    const parentDeletedAt = entry.deletedAt;
+
+    // Generate metadata and emit TaskRestored for parent
+    const metadata = generateEventMetadata();
+    const restoreEvent: TaskRestored = {
+      ...metadata,
+      type: 'TaskRestored',
+      aggregateId: command.taskId,
+      payload: {
+        id: command.taskId,
+        restoredAt: metadata.timestamp,
+      },
+    };
+    await this.eventStore.append(restoreEvent);
+
+    // Cascade restore: find all sub-tasks whose deletedAt is within 1000ms of parent's deletedAt
+    // We need to query ALL tasks including deleted ones
+    const allEntries = await this.entryProjection.getAllEntriesIncludingDeleted();
+
+    for (const e of allEntries) {
+      if (
+        e.type === 'task' &&
+        e.parentEntryId === command.taskId &&
+        e.deletedAt !== undefined
+      ) {
+        const childDeletedAt = e.deletedAt;
+        const timeDiff = Math.abs(
+          new Date(childDeletedAt).getTime() - new Date(parentDeletedAt).getTime()
+        );
+        if (timeDiff <= 1000) {
+          const childMeta = generateEventMetadata();
+          const childRestoreEvent: TaskRestored = {
+            ...childMeta,
+            type: 'TaskRestored',
+            aggregateId: e.id,
+            payload: {
+              id: e.id,
+              restoredAt: childMeta.timestamp,
+            },
+          };
+          await this.eventStore.append(childRestoreEvent);
+        }
+      }
+    }
   }
 }

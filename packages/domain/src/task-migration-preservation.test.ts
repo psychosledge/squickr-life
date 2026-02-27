@@ -249,7 +249,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
       // Create sub-tasks (implementation detail: use CreateSubTaskCommand if available)
       // For now, we'll simulate by creating tasks with parentTaskId
       const { CreateSubTaskHandler } = await import('./sub-task.handlers');
-      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, null as any, projection);
+      const createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
       
       await createSubTaskHandler.handle({
         title: 'Child 1',

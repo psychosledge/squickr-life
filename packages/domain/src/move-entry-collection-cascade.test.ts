@@ -29,7 +29,7 @@ describe('MoveEntryToCollectionHandler - Phase 3 Parent Cascade (Bug Reproductio
     taskProjection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
-    createSubTaskHandler = new CreateSubTaskHandler(eventStore, taskProjection, entryProjection);
+    createSubTaskHandler = new CreateSubTaskHandler(eventStore, entryProjection);
     moveEntryHandler = new MoveEntryToCollectionHandler(eventStore, entryProjection);
   });
 

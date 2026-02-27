@@ -42,6 +42,8 @@ export interface BaseEntry {
   readonly migratedFrom?: string;
   readonly migratedToCollectionId?: string;
   readonly migratedFromCollectionId?: string;
+  /** ISO timestamp set when entry is soft-deleted; undefined means the entry is active */
+  readonly deletedAt?: string;
 }
 
 /**
@@ -213,6 +215,29 @@ export interface TaskDeleted extends DomainEvent {
  * Represents the user's intent to delete a task
  */
 export interface DeleteTaskCommand {
+  readonly taskId: string;
+  /** If provided and the task is in multiple collections, only remove from this collection */
+  readonly currentCollectionId?: string;
+}
+
+/**
+ * TaskRestored Event
+ * Emitted when a soft-deleted task is restored
+ */
+export interface TaskRestored extends DomainEvent {
+  readonly type: 'TaskRestored';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly id: string;
+    readonly restoredAt: string;
+  };
+}
+
+/**
+ * RestoreTask Command
+ * Represents the user's intent to restore a soft-deleted task
+ */
+export interface RestoreTaskCommand {
   readonly taskId: string;
 }
 
@@ -457,7 +482,7 @@ export interface MoveTaskToCollectionCommand {
  * Union type of all task-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskReordered | TaskTitleChanged | EntryMovedToCollection | TaskMigrated | TaskAddedToCollection | TaskRemovedFromCollection;
+export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskRestored | TaskReordered | TaskTitleChanged | EntryMovedToCollection | TaskMigrated | TaskAddedToCollection | TaskRemovedFromCollection;
 
 // ============================================================================
 // Note Domain Types (Bullet Journal Notes)
@@ -549,6 +574,29 @@ export interface NoteDeleted extends DomainEvent {
  */
 export interface DeleteNoteCommand {
   readonly noteId: string;
+  /** If provided and the note is in multiple collections, only remove from this collection */
+  readonly currentCollectionId?: string;
+}
+
+/**
+ * NoteRestored Event
+ * Emitted when a soft-deleted note is restored
+ */
+export interface NoteRestored extends DomainEvent {
+  readonly type: 'NoteRestored';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly id: string;
+    readonly restoredAt: string;
+  };
+}
+
+/**
+ * RestoreNote Command
+ * Represents the user's intent to restore a soft-deleted note
+ */
+export interface RestoreNoteCommand {
+  readonly noteId: string;
 }
 
 /**
@@ -612,7 +660,7 @@ export interface MigrateNoteCommand {
 /**
  * Union type of all note-related events
  */
-export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteReordered | EntryMovedToCollection | NoteMigrated | NoteAddedToCollection | NoteRemovedFromCollection;
+export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteRestored | NoteReordered | EntryMovedToCollection | NoteMigrated | NoteAddedToCollection | NoteRemovedFromCollection;
 
 // ============================================================================
 // Note Multi-Collection Events
@@ -798,6 +846,29 @@ export interface EventDeleted extends DomainEvent {
  */
 export interface DeleteEventCommand {
   readonly eventId: string;
+  /** If provided and the event is in multiple collections, only remove from this collection */
+  readonly currentCollectionId?: string;
+}
+
+/**
+ * EventRestored Event
+ * Emitted when a soft-deleted event entry is restored
+ */
+export interface EventRestored extends DomainEvent {
+  readonly type: 'EventRestored';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly id: string;
+    readonly restoredAt: string;
+  };
+}
+
+/**
+ * RestoreEvent Command
+ * Represents the user's intent to restore a soft-deleted event entry
+ */
+export interface RestoreEventCommand {
+  readonly eventId: string;
 }
 
 /**
@@ -861,7 +932,7 @@ export interface MigrateEventCommand {
 /**
  * Union type of all event-related events
  */
-export type EventEvent = EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventReordered | EntryMovedToCollection | EventMigrated | EventAddedToCollection | EventRemovedFromCollection;
+export type EventEvent = EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventRestored | EventReordered | EntryMovedToCollection | EventMigrated | EventAddedToCollection | EventRemovedFromCollection;
 
 // ============================================================================
 // Event Multi-Collection Events

@@ -8,6 +8,7 @@ interface EntryActionsMenuProps {
   onEdit: () => void;
   onMove: () => void;
   onDelete: () => void;
+  onRestore?: () => void; // Item 3: Restore deleted entry
   onAddSubTask?: () => void; // Phase 1: Sub-Tasks
   collections?: Collection[];
   currentCollectionId?: string; // Current collection we're viewing from
@@ -15,6 +16,8 @@ interface EntryActionsMenuProps {
   isSubTask?: boolean; // Whether this entry is a sub-task
   // Phase 4: Ghost entries
   isGhost?: boolean; // Whether this entry is a ghost (show only "Go to" and "Delete")
+  // Item 3: Deleted entries
+  isDeleted?: boolean; // Whether this entry is soft-deleted
 }
 
 /**
@@ -35,12 +38,14 @@ export function EntryActionsMenu({
   onEdit,
   onMove,
   onDelete,
+  onRestore,
   onAddSubTask,
   collections,
   currentCollectionId,
   onNavigateToMigrated,
   isSubTask = false,
   isGhost = false,
+  isDeleted = false,
 }: EntryActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -50,15 +55,12 @@ export function EntryActionsMenu({
   // Get ALL navigation collections (active + ghost) using utility function
   const navigationCollections = getNavigationCollections(entry, currentCollectionId);
 
-  // Phase 1: Sub-Tasks - Check if "Add Sub-Task" should be available
-  // Only show for tasks that are NOT already sub-tasks (enforce 2-level limit)
-  // Do NOT show for ghost entries
-  const isTask = entry.type === 'task';
-  const canAddSubTask = isTask && !isSubTask && !isGhost && onAddSubTask;
-  
   // Phase 4: Ghost entries - Hide Edit/Migrate for ghost entries
-  const showEdit = !isGhost;
-  const showMigrate = !isGhost;
+  // Item 3: Deleted entries - Also hide Edit/Migrate/AddSubTask for deleted entries
+  const isTask = entry.type === 'task';
+  const showEdit = !isGhost && !isDeleted;
+  const showMigrate = !isGhost && !isDeleted;
+  const canAddSubTask = isTask && !isSubTask && !isGhost && !isDeleted && onAddSubTask;
 
   // Close menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -166,6 +168,13 @@ export function EntryActionsMenu({
     setIsOpen(false);
   };
 
+  const handleRestore = () => {
+    if (onRestore) {
+      onRestore();
+      setIsOpen(false);
+    }
+  };
+
   const handleAddSubTask = () => {
     if (onAddSubTask) {
       onAddSubTask();
@@ -254,13 +263,25 @@ export function EntryActionsMenu({
               Add Sub-Task
             </button>
           )}
-          <button
-            role="menuitem"
-            onClick={handleDelete}
-            className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg transition-colors"
-          >
-            Delete
-          </button>
+          {/* Item 3: Show Restore for deleted entries, Delete for active entries */}
+          {isDeleted ? (
+            <button
+              role="menuitem"
+              onClick={handleRestore}
+              disabled={!onRestore}
+              className="w-full text-left px-4 py-2 text-sm text-green-600 dark:text-green-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Restore
+            </button>
+          ) : (
+            <button
+              role="menuitem"
+              onClick={handleDelete}
+              className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg transition-colors"
+            >
+              Delete
+            </button>
+          )}
         </div>,
         document.body
       )}

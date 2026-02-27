@@ -16,6 +16,7 @@ export type {
   TaskCompleted,
   TaskReopened,
   TaskDeleted,
+  TaskRestored,
   TaskReordered,
   TaskTitleChanged,
   TaskMigrated,
@@ -28,6 +29,7 @@ export type {
   ReopenTaskCommand,
   DeleteTaskCommand,
   DeleteParentTaskCommand,
+  RestoreTaskCommand,
   ReorderTaskCommand,
   UpdateTaskTitleCommand,
   MigrateTaskCommand,
@@ -45,6 +47,7 @@ export type {
   NoteCreated,
   NoteContentChanged,
   NoteDeleted,
+  NoteRestored,
   NoteReordered,
   NoteMigrated,
   NoteAddedToCollection,
@@ -52,6 +55,7 @@ export type {
   CreateNoteCommand,
   UpdateNoteContentCommand,
   DeleteNoteCommand,
+  RestoreNoteCommand,
   ReorderNoteCommand,
   MigrateNoteCommand,
   AddNoteToCollectionCommand,
@@ -67,6 +71,7 @@ export type {
   EventContentChanged,
   EventDateChanged,
   EventDeleted,
+  EventRestored,
   EventReordered,
   EventMigrated,
   EventAddedToCollection,
@@ -75,6 +80,7 @@ export type {
   UpdateEventContentCommand,
   UpdateEventDateCommand,
   DeleteEventCommand,
+  RestoreEventCommand,
   ReorderEventCommand,
   MigrateEventCommand,
   AddEventToCollectionCommand,
@@ -135,7 +141,7 @@ export type { TaskEvent as SquickrEvent } from './task.types';
 export type { IEventStore } from './event-store';
 
 // Task Command Handlers
-export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler, MoveEntryToCollectionHandler, MigrateTaskHandler } from './task.handlers';
+export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, RestoreTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler, MoveEntryToCollectionHandler, MigrateTaskHandler } from './task.handlers';
 
 // Multi-Collection Command Handlers
 export { AddTaskToCollectionHandler, RemoveTaskFromCollectionHandler, MoveTaskToCollectionHandler } from './collection-management.handlers';
@@ -163,10 +169,10 @@ export { BulkMigrateEntriesHandler } from './bulk-migrate-entries.handler';
 export type { BulkMigrateEntriesCommand } from './bulk-migrate-entries.handler';
 
 // Note Command Handlers
-export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, ReorderNoteHandler, MigrateNoteHandler } from './note.handlers';
+export { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler, RestoreNoteHandler, ReorderNoteHandler, MigrateNoteHandler } from './note.handlers';
 
 // Event Command Handlers
-export { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler, ReorderEventHandler, MigrateEventHandler } from './event.handlers';
+export { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler, RestoreEventHandler, ReorderEventHandler, MigrateEventHandler } from './event.handlers';
 
 // Collection Command Handlers
 export { 

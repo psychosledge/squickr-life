@@ -11,7 +11,7 @@ export function formatCollectionStats(
   // Handle month nodes with attached monthly log (Feature 3)
   if (node.type === 'month' && node.monthlyLog) {
     const allEntries = entriesByCollection?.get(node.monthlyLog.id) || [];
-    const entries = allEntries.filter(e => !e.migratedTo);
+    const entries = allEntries.filter(e => !e.migratedTo && !e.deletedAt);
     const count = entries.length;
     return count > 0 ? `${count} ${count === 1 ? 'entry' : 'entries'}` : '';
   }
@@ -30,8 +30,8 @@ export function formatCollectionStats(
   }
 
   const allEntries = entriesByCollection?.get(node.collection.id) || [];
-  // Exclude migrated entries (ghost entries should not count in stats)
-  const entries = allEntries.filter(e => !e.migratedTo);
+  // Exclude migrated and deleted entries (ghost entries and deleted should not count in stats)
+  const entries = allEntries.filter(e => !e.migratedTo && !e.deletedAt);
 
   if (node.type === 'monthly') {
     const count = entries.length;

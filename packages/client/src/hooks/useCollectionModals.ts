@@ -21,6 +21,7 @@ export interface CollectionModalsState {
   isDeleteModalOpen: boolean;
   isSettingsModalOpen: boolean;
   isCompletedExpanded: boolean;
+  isDeletedExpanded: boolean; // Item 3
   isConfirmCompleteParentOpen: boolean; // Phase 4
   confirmCompleteParentData: { // Phase 4
     taskId: string;
@@ -44,6 +45,7 @@ export interface CollectionModalsState {
   openSettingsModal: () => void;
   closeSettingsModal: () => void;
   toggleCompletedExpanded: () => void;
+  toggleDeletedExpanded: () => void; // Item 3
   openConfirmCompleteParent: (taskId: string, incompleteCount: number, onConfirm: () => void) => void; // Phase 4
   closeConfirmCompleteParent: () => void; // Phase 4
   openConfirmDeleteParent: (taskId: string, childCount: number, onConfirm: () => void) => void; // Phase 5
@@ -59,6 +61,7 @@ export function useCollectionModals(): CollectionModalsState {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
+  const [isDeletedExpanded, setIsDeletedExpanded] = useState(false); // Item 3
   
   // Phase 4: Confirm complete parent modal state
   const [isConfirmCompleteParentOpen, setIsConfirmCompleteParentOpen] = useState(false);
@@ -83,6 +86,7 @@ export function useCollectionModals(): CollectionModalsState {
     isDeleteModalOpen,
     isSettingsModalOpen,
     isCompletedExpanded,
+    isDeletedExpanded,
     isConfirmCompleteParentOpen,
     confirmCompleteParentData,
     isConfirmDeleteParentOpen,
@@ -106,6 +110,9 @@ export function useCollectionModals(): CollectionModalsState {
     
     // Completed tasks expansion controls
     toggleCompletedExpanded: () => setIsCompletedExpanded(prev => !prev),
+    
+    // Item 3: Deleted entries expansion controls
+    toggleDeletedExpanded: () => setIsDeletedExpanded(prev => !prev),
     
     // Phase 4: Confirm complete parent controls
     openConfirmCompleteParent: (taskId: string, incompleteCount: number, onConfirm: () => void) => {

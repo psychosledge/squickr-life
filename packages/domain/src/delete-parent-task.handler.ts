@@ -57,30 +57,33 @@ export class DeleteParentTaskHandler {
 
     const events: TaskDeleted[] = [];
 
+    // Capture ONE timestamp for the entire batch so that all child deletedAt values
+    // are identical to the parent's — this makes the 1-second window check in
+    // RestoreTaskHandler reliable (all children will pass the ≤1000 ms test).
+    const batchMetadata = generateEventMetadata();
+
     // Delete all children first (simpler than completion - no filtering by status)
     for (const child of children) {
-      const metadata = generateEventMetadata();
       const event: TaskDeleted = {
-        ...metadata,
+        ...batchMetadata,
         type: 'TaskDeleted',
         aggregateId: child.id,
         payload: {
           taskId: child.id,
-          deletedAt: metadata.timestamp,
+          deletedAt: batchMetadata.timestamp,
         },
       };
       events.push(event);
     }
 
-    // Delete parent last
-    const parentMetadata = generateEventMetadata();
+    // Delete parent last (same timestamp as children)
     const parentEvent: TaskDeleted = {
-      ...parentMetadata,
+      ...batchMetadata,
       type: 'TaskDeleted',
       aggregateId: command.taskId,
       payload: {
         taskId: command.taskId,
-        deletedAt: parentMetadata.timestamp,
+        deletedAt: batchMetadata.timestamp,
       },
     };
     events.push(parentEvent);

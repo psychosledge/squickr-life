@@ -16,6 +16,8 @@ interface EntryItemProps {
   onUpdateEventDate?: (eventId: string, newDate: string | null) => void | Promise<void>;
   // Common handlers
   onDelete: (entryId: string) => void;
+  // Item 3: Restore deleted entry
+  onRestore?: () => void;
   // Migration handlers
   onMigrate?: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   collections?: Collection[];
@@ -58,6 +60,7 @@ export function EntryItem({
   onUpdateEventContent,
   onUpdateEventDate,
   onDelete,
+  onRestore,
   onMigrate,
   collections,
   currentCollectionId,
@@ -79,6 +82,7 @@ export function EntryItem({
         onReopenTask={onReopenTask}
         onUpdateTaskTitle={onUpdateTaskTitle}
         onDelete={onDelete}
+        onRestore={onRestore}
         onMigrate={onMigrate}
         collections={collections}
         currentCollectionId={currentCollectionId}
@@ -100,6 +104,7 @@ export function EntryItem({
         entry={entry}
         onUpdateNoteContent={onUpdateNoteContent}
         onDelete={onDelete}
+        onRestore={onRestore}
         onMigrate={onMigrate}
         collections={collections}
         currentCollectionId={currentCollectionId}
@@ -116,6 +121,7 @@ export function EntryItem({
         onUpdateEventContent={onUpdateEventContent}
         onUpdateEventDate={onUpdateEventDate}
         onDelete={onDelete}
+        onRestore={onRestore}
         onMigrate={onMigrate}
         collections={collections}
         currentCollectionId={currentCollectionId}
