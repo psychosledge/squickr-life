@@ -434,11 +434,16 @@ export class MoveEntryToCollectionHandler {
     }
 
     // Idempotency check: Don't create event if already in target collection
-    // Compare with undefined/null handling: both undefined and null mean uncategorized
-    const currentCollectionId = entry.collectionId ?? null;
+    // Use collections[] (ADR-015 multi-collection pattern) rather than the legacy
+    // collectionId field, which is never updated when a task is moved via the
+    // Remove+Add path (TaskRemovedFromCollection + TaskAddedToCollection).
     const targetCollectionId = command.collectionId;
-    
-    if (currentCollectionId === targetCollectionId) {
+    const alreadyInTarget =
+      targetCollectionId === null
+        ? entry.collections.length === 0
+        : entry.collections.includes(targetCollectionId);
+
+    if (alreadyInTarget) {
       // Already in target collection - no event needed (idempotent)
       return;
     }

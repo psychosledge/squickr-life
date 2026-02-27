@@ -56,18 +56,24 @@ export class EntryEventApplicator {
       // This event can apply to any entry type, so we check all three maps
       if (this.isEntryMovedEvent(event)) {
         const entryId = event.payload.entryId;
-        const collectionId = event.payload.collectionId ?? undefined;
+        const newCollectionId = event.payload.collectionId ?? undefined;
+
+        // Helper: update collectionId AND replace the entire collections[] array.
+        // EntryMovedToCollection is a legacy "move to exactly one collection" event,
+        // so the resulting collections[] should be exactly [newCollectionId] (or [])
+        // when moving to uncategorized.
+        const newCollections = newCollectionId ? [newCollectionId] : [];
 
         // Check which map contains this entry and update it
         if (tasks.has(entryId)) {
           const task = tasks.get(entryId)!;
-          tasks.set(task.id, { ...task, collectionId });
+          tasks.set(task.id, { ...task, collectionId: newCollectionId, collections: newCollections });
         } else if (notes.has(entryId)) {
           const note = notes.get(entryId)!;
-          notes.set(note.id, { ...note, collectionId });
+          notes.set(note.id, { ...note, collectionId: newCollectionId, collections: newCollections });
         } else if (eventEntries.has(entryId)) {
           const evt = eventEntries.get(entryId)!;
-          eventEntries.set(evt.id, { ...evt, collectionId });
+          eventEntries.set(evt.id, { ...evt, collectionId: newCollectionId, collections: newCollections });
         }
       }
       // Handle type-specific events

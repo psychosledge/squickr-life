@@ -3,9 +3,10 @@ import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import { TaskListProjection } from './task.projections';
-import { CreateTaskHandler, CompleteTaskHandler, DeleteTaskHandler, MigrateTaskHandler } from './task.handlers';
+import { CreateTaskHandler, CompleteTaskHandler, DeleteTaskHandler, MigrateTaskHandler, MoveEntryToCollectionHandler } from './task.handlers';
 import { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler } from './note.handlers';
 import { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler } from './event.handlers';
+import { AddTaskToCollectionHandler, RemoveTaskFromCollectionHandler } from './collection-management.handlers';
 import type { CreateTaskCommand, CreateNoteCommand, CreateEventCommand } from './task.types';
 
 describe('EntryListProjection', () => {
@@ -1503,6 +1504,273 @@ describe('EntryListProjection', () => {
         expect(entry.migratedTo).toBeUndefined();
         expect(entry.migratedToCollectionId).toBeUndefined();
       });
+    });
+  });
+
+  // ============================================================================
+  // Bug Fix: Collection stats should use collections[] not legacy collectionId
+  // ADR-015: Under the multi-collection pattern, only collections[] is kept current.
+  // collectionId is legacy and is NOT updated when a task is moved.
+  // ============================================================================
+  describe('collection stats bucketing — uses collections[] not legacy collectionId', () => {
+    let addHandler: AddTaskToCollectionHandler;
+    let removeHandler: RemoveTaskFromCollectionHandler;
+
+    beforeEach(() => {
+      addHandler = new AddTaskToCollectionHandler(eventStore, projection);
+      removeHandler = new RemoveTaskFromCollectionHandler(eventStore, projection);
+    });
+
+    // ── getActiveTaskCountsByCollection ────────────────────────────────────────
+
+    describe('getActiveTaskCountsByCollection — moved task', () => {
+      it('should count 0 for collection A and 1 for collection B after task is moved A → B', async () => {
+        // Arrange: create task in collection A
+        const taskId = await taskHandler.handle({ title: 'Task to move', collectionId: 'collection-A' });
+
+        // Act: move task from A to B via Remove + Add (multi-collection pattern)
+        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+        await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+        // Assert: counts reflect current collections[], not stale collectionId
+        const counts = await projection.getActiveTaskCountsByCollection();
+        expect(counts.get('collection-A')).toBeUndefined(); // A has no active tasks
+        expect(counts.get('collection-B')).toBe(1);         // B has the moved task
+      });
+
+      it('should not double-count a task that was moved from A to B', async () => {
+        // Arrange
+        const taskId = await taskHandler.handle({ title: 'Moved task', collectionId: 'collection-A' });
+
+        // Act
+        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+        await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+        // Assert: total across all collections is exactly 1
+        const counts = await projection.getActiveTaskCountsByCollection();
+        let total = 0;
+        for (const count of counts.values()) total += count;
+        expect(total).toBe(1);
+      });
+    });
+
+    describe('getActiveTaskCountsByCollection — multi-collection task', () => {
+      it('should count task in BOTH collections when it belongs to A and B simultaneously', async () => {
+        // Arrange: create task in A, then add to B (multi-collection — still in A too)
+        const taskId = await taskHandler.handle({ title: 'Multi-collection task', collectionId: 'collection-A' });
+        await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+        // Assert: task counted in both A and B
+        const counts = await projection.getActiveTaskCountsByCollection();
+        expect(counts.get('collection-A')).toBe(1);
+        expect(counts.get('collection-B')).toBe(1);
+      });
+    });
+
+    // ── getEntryCountsByCollection ─────────────────────────────────────────────
+
+    describe('getEntryCountsByCollection — moved task', () => {
+      it('should count 0 for A and 1 for B after task is moved A → B', async () => {
+        // Arrange
+        const taskId = await taskHandler.handle({ title: 'Task to move', collectionId: 'collection-A' });
+
+        // Act: move
+        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+        await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+        // Assert
+        const counts = await projection.getEntryCountsByCollection();
+        expect(counts.get('collection-A')).toBeUndefined();
+        expect(counts.get('collection-B')).toBe(1);
+      });
+
+      it('should count task in both A and B when it belongs to both simultaneously', async () => {
+        // Arrange: task in A, also added to B
+        const taskId = await taskHandler.handle({ title: 'Multi task', collectionId: 'collection-A' });
+        await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+        // Assert: counted in both
+        const counts = await projection.getEntryCountsByCollection();
+        expect(counts.get('collection-A')).toBe(1);
+        expect(counts.get('collection-B')).toBe(1);
+      });
+    });
+
+    // ── getEntryStatsByCollection ──────────────────────────────────────────────
+
+    describe('getEntryStatsByCollection — moved task', () => {
+      it('should show 0 open tasks for A and 1 open task for B after task is moved A → B', async () => {
+        // Arrange
+        const taskId = await taskHandler.handle({ title: 'Task to move', collectionId: 'collection-A' });
+
+        // Act: move
+        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+        await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+        // Assert
+        const stats = await projection.getEntryStatsByCollection();
+        expect(stats.get('collection-A')).toBeUndefined();     // A has no entries
+        expect(stats.get('collection-B')!.openTasks).toBe(1); // B has the moved task
+      });
+
+      it('should show open task counted in both A and B when task belongs to both', async () => {
+        // Arrange: task in A, also added to B (still in A)
+        const taskId = await taskHandler.handle({ title: 'Multi task', collectionId: 'collection-A' });
+        await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+        // Assert: openTasks counted in both collections
+        const stats = await projection.getEntryStatsByCollection();
+        expect(stats.get('collection-A')!.openTasks).toBe(1);
+        expect(stats.get('collection-B')!.openTasks).toBe(1);
+      });
+
+      it('should handle completed task moved A → B: completedTasks in B, not A', async () => {
+        // Arrange: create + complete task in A, then move to B
+        const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+        const completeHandler = new CompleteTaskHandler(eventStore, projection);
+        await completeHandler.handle({ taskId });
+
+        // Act: move to B
+        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+        await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+        // Assert
+        const stats = await projection.getEntryStatsByCollection();
+        expect(stats.get('collection-A')).toBeUndefined();
+        expect(stats.get('collection-B')!.completedTasks).toBe(1);
+        expect(stats.get('collection-B')!.openTasks).toBe(0);
+      });
+    });
+  });
+
+  // ============================================================================
+  // Bug Fix B2: getEntriesByCollection should use collections[] not legacy collectionId
+  // After a task is moved A → B via Remove+Add (ADR-015 path), collectionId stays 'A'
+  // but collections[] correctly reflects ['B']. The query must use collections[].
+  // ============================================================================
+  describe('B2 — getEntriesByCollection uses collections[] not legacy collectionId', () => {
+    let addHandler: AddTaskToCollectionHandler;
+    let removeHandler: RemoveTaskFromCollectionHandler;
+
+    beforeEach(() => {
+      addHandler = new AddTaskToCollectionHandler(eventStore, projection);
+      removeHandler = new RemoveTaskFromCollectionHandler(eventStore, projection);
+    });
+
+    it('should return task in B (not A) after moved A → B via Remove+Add', async () => {
+      // Arrange: create task in collection A
+      const taskId = await taskHandler.handle({ title: 'Task to move', collectionId: 'collection-A' });
+
+      // Act: move via ADR-015 Remove+Add path (collectionId stays stale as 'collection-A')
+      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+      await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+      // Assert: task appears in B but NOT in A
+      const inA = await projection.getEntriesByCollection('collection-A');
+      const inB = await projection.getEntriesByCollection('collection-B');
+
+      expect(inA.some(e => e.id === taskId)).toBe(false); // not in A any more
+      expect(inB.some(e => e.id === taskId)).toBe(true);  // now in B
+    });
+
+    it('should return 0 entries in A and 1 entry in B after move', async () => {
+      // Arrange
+      const taskId = await taskHandler.handle({ title: 'Solo task', collectionId: 'collection-A' });
+
+      // Act
+      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+      await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+      // Assert exact counts
+      const inA = await projection.getEntriesByCollection('collection-A');
+      const inB = await projection.getEntriesByCollection('collection-B');
+
+      expect(inA).toHaveLength(0);
+      expect(inB).toHaveLength(1);
+      expect(inB[0].id).toBe(taskId);
+    });
+
+    it('should return uncategorized entry as uncategorized after being removed from all collections', async () => {
+      // Arrange: create task in collection A
+      const taskId = await taskHandler.handle({ title: 'Task to unassign', collectionId: 'collection-A' });
+
+      // Act: remove from A without adding to another (task ends up with collections=[])
+      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+
+      // Assert: task appears in uncategorized (null), not in A
+      const inA = await projection.getEntriesByCollection('collection-A');
+      const uncategorized = await projection.getEntriesByCollection(null);
+
+      expect(inA.some(e => e.id === taskId)).toBe(false);
+      expect(uncategorized.some(e => e.id === taskId)).toBe(true);
+    });
+  });
+
+  // ============================================================================
+  // Bug Fix B1: MoveEntryToCollectionHandler idempotency uses collections[] not legacy collectionId
+  // After a task is moved A → B via Remove+Add (ADR-015), collectionId stays stale as 'A'.
+  // Calling MoveEntryToCollectionHandler({ collectionId: 'B' }) must recognise the task is
+  // already in B and NOT append a new event.
+  // ============================================================================
+  describe('B1 — MoveEntryToCollectionHandler idempotency uses collections[] not legacy collectionId', () => {
+    let addHandler: AddTaskToCollectionHandler;
+    let removeHandler: RemoveTaskFromCollectionHandler;
+
+    beforeEach(() => {
+      addHandler = new AddTaskToCollectionHandler(eventStore, projection);
+      removeHandler = new RemoveTaskFromCollectionHandler(eventStore, projection);
+    });
+
+    it('should be a no-op when calling Move to B after task already moved A → B via Remove+Add', async () => {
+      // Arrange: create task in A, then move to B via ADR-015 Remove+Add
+      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+      await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+      // Capture event count after the move
+      const eventsBefore = await eventStore.getAll();
+      const countBefore = eventsBefore.length;
+
+      // Act: call MoveEntryToCollectionHandler targeting B (where task already lives)
+      const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
+      await moveHandler.handle({ entryId: taskId, collectionId: 'collection-B' });
+
+      // Assert: no new event was appended (idempotent)
+      const eventsAfter = await eventStore.getAll();
+      expect(eventsAfter.length).toBe(countBefore);
+    });
+
+    it('should still move task from B to C (not treat as no-op) when collections differs from target', async () => {
+      // Arrange: create task in A, move to B via Remove+Add
+      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+      await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+      // Capture event count
+      const countBefore = (await eventStore.getAll()).length;
+
+      // Act: call MoveEntryToCollectionHandler to move to C (different from B)
+      const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
+      await moveHandler.handle({ entryId: taskId, collectionId: 'collection-C' });
+
+      // Assert: a new event WAS appended (real move, not no-op)
+      const countAfter = (await eventStore.getAll()).length;
+      expect(countAfter).toBeGreaterThan(countBefore);
+    });
+
+    it('should be a no-op when task has no collections and we move to uncategorized (null)', async () => {
+      // Arrange: create task with no collection (collections = [], collectionId = undefined)
+      const taskId = await taskHandler.handle({ title: 'Uncategorized task' });
+
+      const countBefore = (await eventStore.getAll()).length;
+
+      // Act: move to null (uncategorized) — task is already uncategorized
+      const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
+      await moveHandler.handle({ entryId: taskId, collectionId: null });
+
+      // Assert: no new event appended
+      const countAfter = (await eventStore.getAll()).length;
+      expect(countAfter).toBe(countBefore);
     });
   });
 });

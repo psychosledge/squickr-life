@@ -221,16 +221,35 @@ export class EntryListProjection {
   async getEntriesByCollection(collectionId: string | null): Promise<Entry[]> {
     const allEntries = await this.getEntries('all');
     
-    // Filter entries by collectionId
-    // Note: both undefined and null are treated as "uncategorized"
+    // Filter entries by their current collections[] (ADR-015 multi-collection pattern).
+    // We must NOT use the legacy collectionId field here — it is stale after a task is
+    // moved via TaskRemovedFromCollection + TaskAddedToCollection (the Remove+Add path).
     return allEntries.filter(entry => {
-      const entryCollectionId = entry.collectionId ?? null;
-      return entryCollectionId === collectionId;
+      if (collectionId === null) {
+        return entry.collections.length === 0;
+      }
+      return entry.collections.includes(collectionId);
     });
   }
 
   /**
-   * Get entry counts grouped by collection ID
+   * Get the effective collection IDs for an entry (ADR-015 multi-collection pattern).
+   *
+   * Under ADR-015, `collections[]` is the authoritative source of truth.
+   * The legacy `collectionId` field is only used as a fallback for entries that were
+   * created before multi-collection support and have never been touched by the
+   * Remove+Add move path (i.e., `collections` is still empty).
+   *
+   * @param entry - The entry to inspect
+   * @returns Array of collection IDs (or `[null]` for uncategorized entries)
+   */
+  private getEffectiveCollections(entry: Entry): (string | null)[] {
+    return entry.collections.length > 0
+      ? entry.collections
+      : [entry.collectionId ?? null];
+  }
+
+  /**
    * Efficiently counts all entries and groups them by collection in a single query.
    * This avoids the N+1 query pattern when displaying collection badges.
    * 
@@ -242,8 +261,9 @@ export class EntryListProjection {
     
     // Count entries by collection ID in memory (fast!)
     for (const entry of allEntries) {
-      const collectionId = entry.collectionId ?? null;
-      counts.set(collectionId, (counts.get(collectionId) ?? 0) + 1);
+      for (const collectionId of this.getEffectiveCollections(entry)) {
+        counts.set(collectionId, (counts.get(collectionId) ?? 0) + 1);
+      }
     }
     
     return counts;
@@ -272,8 +292,9 @@ export class EntryListProjection {
       // - Must have 'open' status
       // - Must not be migrated (no migratedTo pointer)
       if (entry.type === 'task' && entry.status === 'open' && !entry.migratedTo) {
-        const collectionId = entry.collectionId ?? null;
-        counts.set(collectionId, (counts.get(collectionId) ?? 0) + 1);
+        for (const collectionId of this.getEffectiveCollections(entry)) {
+          counts.set(collectionId, (counts.get(collectionId) ?? 0) + 1);
+        }
       }
     }
     
@@ -309,35 +330,35 @@ export class EntryListProjection {
       // Skip migrated entries (they shouldn't count in stats)
       if (entry.migratedTo) continue;
       
-      const collectionId = entry.collectionId ?? null;
-      
-      // Initialize stats for this collection if not exists
-      if (!statsMap.has(collectionId)) {
-        statsMap.set(collectionId, {
-          openTasks: 0,
-          completedTasks: 0,
-          notes: 0,
-          events: 0
-        });
-      }
-      
-      const stats = statsMap.get(collectionId)!;
-      
-      // Count by entry type
-      switch (entry.type) {
-        case 'task':
-          if (entry.status === 'completed') {
-            stats.completedTasks++;
-          } else {
-            stats.openTasks++;
-          }
-          break;
-        case 'note':
-          stats.notes++;
-          break;
-        case 'event':
-          stats.events++;
-          break;
+      for (const collectionId of this.getEffectiveCollections(entry)) {
+        // Initialize stats for this collection if not exists
+        if (!statsMap.has(collectionId)) {
+          statsMap.set(collectionId, {
+            openTasks: 0,
+            completedTasks: 0,
+            notes: 0,
+            events: 0
+          });
+        }
+        
+        const stats = statsMap.get(collectionId)!;
+        
+        // Count by entry type
+        switch (entry.type) {
+          case 'task':
+            if (entry.status === 'completed') {
+              stats.completedTasks++;
+            } else {
+              stats.openTasks++;
+            }
+            break;
+          case 'note':
+            stats.notes++;
+            break;
+          case 'event':
+            stats.events++;
+            break;
+        }
       }
     }
     
