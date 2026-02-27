@@ -1,7 +1,7 @@
 # Current Session Plan
-**Date:** February 26, 2026  
-**Status:** 🟡 In Progress — plan approved, not yet started  
-**Version:** v1.1.0 → v1.2.0 (planned)
+**Date:** February 27, 2026  
+**Status:** ✅ Complete — v1.2.0 shipped  
+**Version:** v1.1.0 → v1.2.0
 
 ---
 
@@ -11,160 +11,30 @@ Three items from user testing feedback: one bug fix (collection stats) + two rec
 
 ## If Interrupted
 
-Resume here. The plan is fully approved. Pick up at the first incomplete item in the sequence below. Each item follows: Sam implements → Casey reviews → OpenCode commits. UAT at end of session.
+v1.2.0 is fully shipped and tagged. Start a new session for the next roadmap item (projection snapshots).
 
 ---
 
 ## Approved Implementation Sequence
 
 ### Item 1 — Bug: Collection Stats Counting Moved Tasks as Active
-**Status:** Pending  
-**Type:** Bug fix (domain only, no new events)  
-**Complexity:** 🟢 Low
-
-**Root cause:** `getEntryCountsByCollection()`, `getActiveTaskCountsByCollection()`, and `getEntryStatsByCollection()` in `entry.projections.ts` bucket entries by `entry.collectionId` (a legacy field never updated when tasks are moved). They must use `entry.collections[]` as the source of truth, with `[entry.collectionId ?? null]` as the legacy fallback — the same pattern already used correctly by `buildEntriesByCollectionMap.ts`.
-
-**Fix:** In each of the 3 methods, replace:
-```typescript
-const collectionId = entry.collectionId ?? null;
-counts.set(collectionId, (counts.get(collectionId) ?? 0) + 1);
-```
-With a loop over:
-```typescript
-const collectionIds = entry.collections.length > 0
-  ? entry.collections
-  : [entry.collectionId ?? null];
-for (const collectionId of collectionIds) { ... }
-```
-
-Also add `if (entry.deletedAt) continue;` guard in each method (Item 3 dependency — implement both together or add the guard when Item 3 lands).
-
-**Files:**
-- `packages/domain/src/entry.projections.ts`
-
-**Tutorial impact:** None
-
----
+**Status:** ✅ Done (commit `7b26a0c`)
 
 ### Item 2 — Recoverable Deleted Collections
-**Status:** Pending  
-**Type:** New feature  
-**Complexity:** 🟡 Medium  
-**ADR:** ADR-016 (to be created by Sam)
-
-**Domain plan:**
-- `CollectionDeleted` is already a soft delete (sets `deletedAt`). Infrastructure is mostly ready.
-- New event: `CollectionRestored` (payload: `collectionId`, `restoredAt`)
-- New command: `RestoreCollectionCommand`
-- New handler: `RestoreCollectionHandler` (validates collection is deleted; idempotent if already active)
-- New projection methods: `getDeletedCollections()` (sorted by `deletedAt` desc), `getCollectionByIdIncludingDeleted()`
-- Refactor `applyEvents()` in `CollectionListProjection` to use a new private `buildCollectionMap()` helper so both `getCollections()` (filters deleted) and `getDeletedCollections()` (returns deleted) can share the same event-application logic
-
-**UX decisions (approved):**
-- **Sidebar UI (A1):** Collapsed accordion row at the bottom of the sidebar: `▸ Deleted (3)`. Starts collapsed every session. Each deleted collection shown with a Restore button.
-- **After delete (B1):** Collection immediately disappears from the active list. No undo toast — the existing `DeleteCollectionModal` confirmation is sufficient.
-- **Entries:** Remain accessible in their other active collections; the deleted collection simply disappears as a nav link. If an entry was only in the deleted collection, it is effectively hidden until restored.
-- **Permanent delete:** Not supported — recoverable forever.
-
-**`DeleteCollectionModal.tsx` copy update:**
-- Remove text implying entries are deleted
-- Add: "You can restore this collection from the Deleted section in your collections list."
-
-**`HierarchicalCollectionList.tsx` changes:**
-- New props: `deletedCollections?: Collection[]`, `onRestoreCollection?: (collectionId: string) => void`
-- New local state: `isDeletedSectionExpanded` (boolean, starts `false`, not persisted)
-- New JSX section below the date hierarchy: accordion header (`▸ Deleted (N)`) + content (list of deleted collection names, each with a Restore button)
-
-**Parent wiring** (wherever `HierarchicalCollectionList` is rendered):
-- Load `getDeletedCollections()` alongside `getCollections()`
-- Wire `onRestoreCollection` to call `restoreCollectionHandler.handle({ collectionId })`
-
-**Files:**
-- `packages/domain/src/collection.types.ts`
-- `packages/domain/src/collection.projections.ts`
-- `packages/domain/src/collection.handlers.ts`
-- `packages/domain/src/index.ts`
-- `packages/client/src/context/AppContext.tsx`
-- `packages/client/src/components/DeleteCollectionModal.tsx`
-- `packages/client/src/components/HierarchicalCollectionList.tsx`
-- Parent view(s) that render `HierarchicalCollectionList` (likely `CollectionIndexView.tsx` or sidebar layout)
-
-**Tutorial impact:** None
-
----
+**Status:** ✅ Done (commit `3c8c1e2`)
 
 ### Item 3 — Recoverable Deleted Entries with Visual Distinction
-**Status:** Pending  
-**Type:** New feature  
-**Complexity:** 🔴 High  
-**ADR:** ADR-017 (to be created by Sam)
+**Status:** ✅ Done (commit `1ea5021`)
 
-**Core design:**
-- Existing delete events (`TaskDeleted`, `NoteDeleted`, `EventDeleted`) shift from hard-delete to **soft-delete at the projection level** — entries gain `deletedAt` on `BaseEntry` and stay in the map
-- New restore events: `TaskRestored`, `NoteRestored`, `EventRestored`
-- New restore commands: `RestoreTaskCommand`, `RestoreNoteCommand`, `RestoreEventCommand`
-- New restore handlers: `RestoreTaskHandler`, `RestoreNoteHandler`, `RestoreEventHandler`
+### UAT Bug 1 — Stats ghost (sidebar counter showing "1 task" for migrated collections)
+**Status:** ✅ Fixed (commit `ee629f6`)
+- Root cause: `sanitizeMigrationPointers` was incorrectly clearing `migratedTo` on source entries when the migration target was soft-deleted.
+- Fix: revert to `allEntries.some(e => e.id === entry.migratedTo)` — preserve pointer as long as target exists (even if deleted).
 
-**`BaseEntry` change:**
-```typescript
-readonly deletedAt?: string; // ISO 8601 — set on soft-delete; undefined = active
-```
-
-**Multi-collection delete semantics (Q3.4):**
-- "Delete" in a collection where the entry also belongs to other active collections → emit `TaskRemovedFromCollection` only (entry survives elsewhere). No `TaskDeleted` event.
-- "Delete" in the last/only collection → emit `TaskDeleted` (soft-delete the entity).
-- `DeleteTaskCommand` gains optional `currentCollectionId?: string` to drive this logic in the handler.
-- Same pattern for `DeleteNoteCommand` and `DeleteEventCommand`.
-
-**Sub-task cascade (Q3.5):**
-- Parent deleted → all sub-tasks also soft-deleted (cascade within `DeleteParentTaskHandler` / `DeleteTaskHandler`)
-- Parent restored → all sub-tasks that were co-deleted (within 1s window) also restored (cascade within `RestoreTaskHandler`)
-
-**Show/hide behaviour (Q3.2/Q3.3):**
-- Deleted entries follow the existing `CompletedTaskBehavior` setting:
-  - `keep-in-place` → shown inline with deleted styling
-  - `move-to-bottom` → shown below the separator alongside completed entries
-  - `collapse` → hidden in the existing collapsed section (label updates to "Completed & Deleted" when both are present)
-- No new preference needed — reuse the existing setting.
-
-**Visual distinction:**
-- **Completed tasks:** retain existing styling (no strikethrough change — confirmed intentional per spec)
-- **Deleted entries (all types):** greyed out + strikethrough + reduced opacity — visually distinct from completed
-
-**Restore action:**
-- Appears in the existing entry actions menu (`EntryActionsMenu`)
-- When `entry.deletedAt` is set: show "Restore" button instead of "Delete"
-- Checkbox and edit interactions disabled for deleted entries
-
-**Stats:**
-- All stats methods (`getEntryCountsByCollection`, `getActiveTaskCountsByCollection`, `getEntryStatsByCollection`, `collectionStatsFormatter`) exclude entries with `deletedAt`
-
-**`getEntriesForCollectionView()` update:**
-- Adds `renderAsDeleted?: boolean` flag alongside existing `renderAsGhost`
-- Deleted entries scoped to the collection are included in the result with `renderAsDeleted: true`
-
-**`applyEvents()` in `EntryEventApplicator`:**
-- Gains `includeDeleted = false` parameter (default preserves all existing callers)
-- When `false`: filters out entries with `deletedAt` from the returned array (default behaviour — no breaking changes)
-
-**Files:**
-- `packages/domain/src/task.types.ts`
-- `packages/domain/src/entry.event-applicator.ts`
-- `packages/domain/src/entry.projections.ts`
-- `packages/domain/src/task.handlers.ts`
-- `packages/domain/src/note.handlers.ts`
-- `packages/domain/src/event.handlers.ts`
-- `packages/domain/src/index.ts`
-- `packages/client/src/context/AppContext.tsx`
-- `packages/client/src/hooks/useEntryOperations.ts`
-- `packages/client/src/components/EntryActionsMenu.tsx`
-- `packages/client/src/components/TaskEntryItem.tsx`
-- `packages/client/src/components/NoteEntryItem.tsx`
-- `packages/client/src/components/EventEntryItem.tsx`
-- `packages/client/src/views/CollectionDetailView.tsx`
-- `packages/client/src/utils/collectionStatsFormatter.ts`
-
-**Tutorial impact:** None
+### UAT Bug 2 — Migrated entries showing strikethrough (conflicts with deleted entry styling)
+**Status:** ✅ Fixed (commits `ee629f6` + `8363946`)
+- Part 1 (`ee629f6`): Removed `line-through` from `isLegacyMigrated` ternary in `TaskEntryItem`, `NoteEntryItem`, `EventEntryItem`.
+- Part 2 (`8363946`): Removed `textDecoration: 'line-through'` inline style from `GhostEntry.tsx`; changed color to faded `text-gray-500/dark:text-gray-400`.
 
 ---
 
@@ -191,9 +61,7 @@ Per `docs/opencode-workflow.md`:
 1. **Plan** — Alex plans all items upfront ✅ (done)
 2. **User approves plan** ✅ (done)
 3. **Execute one item at a time:** Sam implements → Casey reviews → OpenCode commits
-4. **UAT at end of session** (unless user requests earlier)
-
-Any agent may ask clarifying questions at any point.
+4. **UAT at end of session** ✅ (done — 2 bugs found and fixed)
 
 ---
 
