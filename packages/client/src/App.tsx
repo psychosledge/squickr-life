@@ -29,7 +29,7 @@ import {
   DEFAULT_USER_PREFERENCES,
   UserPreferences,
 } from '@squickr/domain';
-import { IndexedDBEventStore, FirestoreEventStore, IndexedDBSnapshotStore } from '@squickr/infrastructure';
+import { IndexedDBEventStore, FirestoreEventStore, IndexedDBSnapshotStore, FirestoreSnapshotStore } from '@squickr/infrastructure';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DebugProvider } from './context/DebugContext';
@@ -300,6 +300,9 @@ function AppContent() {
   // Snapshot manager
   const snapshotManagerRef = useRef<SnapshotManager | null>(null);
 
+  // Track if a remote snapshot was restored (skips sync overlay on cold-start)
+  const restoredFromRemoteRef = useRef(false);
+
   // Initialize IndexedDB and load tasks on mount
   useEffect(() => {
     // Prevent double initialization in React StrictMode (dev mode)
@@ -309,7 +312,7 @@ function AppContent() {
     isInitialized.current = true;
 
     initializeApp().then(() => {
-      const sm = new SnapshotManager(entryProjection, snapshotStore, eventStore);
+      const sm = new SnapshotManager(entryProjection, snapshotStore, null, eventStore);
       sm.start();
       snapshotManagerRef.current = sm;
     });
@@ -329,28 +332,76 @@ function AppContent() {
     }
     
     // User signed in - start background sync
-    const remoteStore = new FirestoreEventStore(firestore, user.uid);
-    const manager = new SyncManager(eventStore, remoteStore);
+    const remoteEventStore = new FirestoreEventStore(firestore, user.uid);
+    const remoteSnapshotStore = new FirestoreSnapshotStore(firestore, user.uid);
 
-    // Wire sync state changes to React state so the overlay reacts.
-    // Pre-set isSyncing=true before start() so the overlay appears immediately
-    // (before the first onSyncStateChange(true) call from the async syncNow()).
-    setIsSyncing(true);
-    manager.onSyncStateChange = (syncing: boolean, error?: string) => {
-      setIsSyncing(syncing);
-      setSyncError(error ?? null);
+    // Update SnapshotManager to include the remote store now that we know the user
+    snapshotManagerRef.current?.stop();
+    const sm = new SnapshotManager(entryProjection, snapshotStore, remoteSnapshotStore, eventStore);
+    sm.start();
+    snapshotManagerRef.current = sm;
+
+    let cancelled = false;
+
+    const startSync = async () => {
+      // ── Cold-start: attempt to restore projection from remote snapshot ──
+      // Uses a 5-second timeout to fail fast back to normal behaviour on slow networks.
+      try {
+        const remoteSnapshot = await Promise.race([
+          remoteSnapshotStore.load('entry-list-projection'),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 5_000)),
+        ]);
+
+        if (!cancelled && remoteSnapshot) {
+          const localSnapshot = await snapshotStore.load('entry-list-projection');
+          const remoteIsNewer =
+            !localSnapshot ||
+            new Date(remoteSnapshot.savedAt) > new Date(localSnapshot.savedAt);
+
+          if (remoteIsNewer) {
+            await snapshotStore.save('entry-list-projection', remoteSnapshot);
+            await entryProjection.hydrate();
+            restoredFromRemoteRef.current = true;
+          }
+        }
+      } catch (err) {
+        logger.warn('[App] Remote snapshot restore failed, falling back to normal sync:', err);
+      }
+
+      if (cancelled) return;
+
+      const manager = new SyncManager(eventStore, remoteEventStore);
+
+      if (restoredFromRemoteRef.current) {
+        // Remote snapshot already hydrated the projection — skip the blocking overlay.
+        // Run sync in background without setting isSyncing so UI is immediately usable.
+        manager.onSyncStateChange = (_syncing: boolean, error?: string) => {
+          if (error) setSyncError(error);
+        };
+      } else {
+        // Normal path: show overlay until initial sync completes.
+        setIsSyncing(true);
+        manager.onSyncStateChange = (syncing: boolean, error?: string) => {
+          setIsSyncing(syncing);
+          setSyncError(error ?? null);
+        };
+      }
+
+      manager.start();
+      syncManagerRef.current = manager;
+      
+      logger.info('[App] Background sync started');
     };
 
-    manager.start();
-    syncManagerRef.current = manager;
-    
-    logger.info('[App] Background sync started');
+    void startSync();
     
     return () => {
-      manager.stop();
+      cancelled = true;
+      syncManagerRef.current?.stop();
+      syncManagerRef.current = null;
       logger.info('[App] Background sync stopped');
     };
-  }, [user, isLoading, eventStore]);
+  }, [user, isLoading, eventStore, snapshotStore, entryProjection]);
 
   const initializeApp = async () => {
     try {

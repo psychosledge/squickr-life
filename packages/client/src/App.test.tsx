@@ -40,11 +40,24 @@ vi.mock('@squickr/infrastructure', async () => {
       return Promise.resolve();
     }
   }
+
+  class MockFirestoreSnapshotStore {
+    async save() {
+      return Promise.resolve();
+    }
+    async load() {
+      return Promise.resolve(null);
+    }
+    async clear() {
+      return Promise.resolve();
+    }
+  }
   
   return {
     ...actual,
     IndexedDBEventStore: MockIndexedDBEventStore,
     IndexedDBSnapshotStore: MockIndexedDBSnapshotStore,
+    FirestoreSnapshotStore: MockFirestoreSnapshotStore,
   };
 });
 
@@ -126,6 +139,28 @@ describe('App', () => {
     });
 
     hydrateSpy.mockRestore();
+  });
+
+  it('should render without overlay when FirestoreSnapshotStore returns a remote snapshot (cold-start path)', async () => {
+    // Arrange: remote snapshot store returns a valid snapshot
+    const { FirestoreSnapshotStore } = await import('@squickr/infrastructure');
+    const remoteSnapshot = {
+      version: 1,
+      lastEventId: 'evt-remote-1',
+      state: [],
+      savedAt: new Date(Date.now() + 60_000).toISOString(), // future = newer than local
+    };
+    vi.spyOn(FirestoreSnapshotStore.prototype, 'load').mockResolvedValueOnce(remoteSnapshot as any);
+
+    render(<App />);
+
+    // App should still render the main view (not stuck on overlay)
+    await waitFor(() => {
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    });
+
+    // Sync overlay should NOT be visible (we restored from remote, skipping it)
+    expect(screen.queryByTestId('sync-overlay')).not.toBeInTheDocument();
   });
 
 });
