@@ -10,6 +10,7 @@ import {
   writeBatch,
   type Firestore 
 } from 'firebase/firestore';
+import { removeUndefinedDeep } from './firestore-utils';
 
 /**
  * Firestore-backed EventStore
@@ -45,7 +46,7 @@ export class FirestoreEventStore implements IEventStore {
     const docRef = doc(eventsRef, event.id);
     
     // Remove undefined values (Firestore doesn't allow them)
-    const cleanedEvent = removeUndefined(event);
+    const cleanedEvent = removeUndefinedDeep(event);
     
     await setDoc(docRef, cleanedEvent);
     
@@ -77,7 +78,7 @@ export class FirestoreEventStore implements IEventStore {
       
       for (const event of batchEvents) {
         const docRef = doc(eventsRef, event.id);
-        const cleanedEvent = removeUndefined(event);
+        const cleanedEvent = removeUndefinedDeep(event);
         batch.set(docRef, cleanedEvent);
       }
       
@@ -132,30 +133,4 @@ export class FirestoreEventStore implements IEventStore {
   private notifySubscribers(event: DomainEvent): void {
     this.subscribers.forEach(callback => callback(event));
   }
-}
-
-/**
- * Remove undefined values from an object (Firestore doesn't allow undefined)
- * Recursively cleans nested objects and arrays
- */
-function removeUndefined(obj: any): any {
-  if (obj === null || obj === undefined) {
-    return null;
-  }
-  
-  if (Array.isArray(obj)) {
-    return obj.map(removeUndefined);
-  }
-  
-  if (typeof obj === 'object') {
-    const cleaned: any = {};
-    for (const [key, value] of Object.entries(obj)) {
-      if (value !== undefined) {
-        cleaned[key] = removeUndefined(value);
-      }
-    }
-    return cleaned;
-  }
-  
-  return obj;
 }
