@@ -381,9 +381,16 @@ function AppContent() {
       } else {
         // Normal path: show overlay until initial sync completes.
         setIsSyncing(true);
+        let initialSnapshotSaved = false;
         manager.onSyncStateChange = (syncing: boolean, error?: string) => {
           setIsSyncing(syncing);
           setSyncError(error ?? null);
+          // After initial sync completes, proactively save a snapshot so Firestore
+          // has one available for future cold-starts on new devices / incognito.
+          if (!syncing && !initialSnapshotSaved) {
+            initialSnapshotSaved = true;
+            void snapshotManagerRef.current?.saveSnapshot('post-initial-sync');
+          }
         };
       }
 

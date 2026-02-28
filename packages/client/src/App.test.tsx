@@ -52,12 +52,28 @@ vi.mock('@squickr/infrastructure', async () => {
       return Promise.resolve();
     }
   }
+
+  class MockFirestoreEventStore {
+    async getAll() {
+      return Promise.resolve([]);
+    }
+    async append() {
+      return Promise.resolve();
+    }
+    async getById() {
+      return Promise.resolve([]);
+    }
+    subscribe() {
+      return () => {};
+    }
+  }
   
   return {
     ...actual,
     IndexedDBEventStore: MockIndexedDBEventStore,
     IndexedDBSnapshotStore: MockIndexedDBSnapshotStore,
     FirestoreSnapshotStore: MockFirestoreSnapshotStore,
+    FirestoreEventStore: MockFirestoreEventStore,
   };
 });
 
@@ -161,6 +177,64 @@ describe('App', () => {
 
     // Sync overlay should NOT be visible (we restored from remote, skipping it)
     expect(screen.queryByTestId('sync-overlay')).not.toBeInTheDocument();
+  });
+
+  it('should call saveSnapshot on SnapshotManager after initial sync completes (normal path)', async () => {
+    const { SnapshotManager } = await import('./snapshot-manager');
+
+    // Clear the mock so result indices start from 0 in this test
+    vi.mocked(SnapshotManager).mockClear();
+
+    render(<App />);
+
+    // Wait for the app to finish loading and the initial sync to complete
+    await waitFor(() => {
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    });
+
+    // After the initial sync completes on the normal path, saveSnapshot should
+    // have been called with 'post-initial-sync' on one of the SnapshotManager instances.
+    // mock.results[].value holds the object returned by mockImplementation.
+    await waitFor(() => {
+      const results = vi.mocked(SnapshotManager).mock.results;
+      const calledOnAnyInstance = results.some(
+        (result) =>
+          result.type === 'return' &&
+          result.value != null &&
+          (result.value.saveSnapshot as ReturnType<typeof vi.fn>).mock.calls.some(
+            (call: unknown[]) => call[0] === 'post-initial-sync'
+          )
+      );
+      expect(calledOnAnyInstance).toBe(true);
+    });
+  });
+
+  it('should call saveSnapshot with post-initial-sync exactly once (guard test — not called on cold-start path or repeatedly)', async () => {
+    const { SnapshotManager } = await import('./snapshot-manager');
+
+    vi.mocked(SnapshotManager).mockClear();
+
+    render(<App />);
+
+    // Wait for the app to fully load and initial sync to complete
+    await waitFor(() => {
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    });
+
+    // Collect all 'post-initial-sync' calls across all SnapshotManager instances.
+    // The initialSnapshotSaved closure guard must ensure this is called exactly once —
+    // not zero times (feature absent) and not multiple times (guard broken).
+    await waitFor(() => {
+      const results = vi.mocked(SnapshotManager).mock.results;
+      const postInitCalls = results.flatMap((result) =>
+        result.type === 'return' && result.value != null
+          ? (result.value.saveSnapshot as ReturnType<typeof vi.fn>).mock.calls.filter(
+              (call: unknown[]) => call[0] === 'post-initial-sync'
+            )
+          : []
+      );
+      expect(postInitCalls).toHaveLength(1);
+    });
   });
 
 });
