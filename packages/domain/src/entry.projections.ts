@@ -60,18 +60,15 @@ export class EntryListProjection {
   /**
    * Hydrate the projection cache from a previously saved snapshot.
    *
-   * If a snapshot store is configured and a valid snapshot exists (matching
-   * the current SNAPSHOT_SCHEMA_VERSION), this method replays ALL events
-   * from the event log and populates the in-memory cache.  Subsequent calls
-   * to getEntries() will hit the cache instead of reading from IndexedDB.
+   * Phase 2 (ADR-016 / ADR-017): Uses `snapshot.state` as the seed and applies
+   * only the delta events (those after `snapshot.lastEventId`) on top of it via
+   * `applyEventsOnto()`.  This avoids a full event replay when the snapshot is
+   * recent.
    *
-   * If no snapshot store is configured, no snapshot exists, the schema
-   * version is stale, or the snapshot's lastEventId is not found in the
-   * event log, this method is a no-op — a full replay will happen lazily on
-   * the first getEntries() call.
-   *
-   * Phase 1 insight: the performance win is "no IndexedDB scan on every
-   * getEntries()" (the cache-hit path), not reducing CPU in the applicator.
+   * If no snapshot store is configured, no snapshot exists, the schema version
+   * is stale, or the snapshot's lastEventId is not found in the event log, this
+   * method is a no-op — a full replay will happen lazily on the first
+   * getEntries() call.
    */
   async hydrate(): Promise<void> {
     if (!this.snapshotStore) return;
@@ -91,8 +88,6 @@ export class EntryListProjection {
       return;
     }
 
-    const lastEvent = allEvents[allEvents.length - 1]!;
-
     // Find the snapshot's cursor position in the event log
     const snapshotEventIndex = allEvents.findIndex(e => e.id === snapshot.lastEventId);
 
@@ -101,13 +96,18 @@ export class EntryListProjection {
       return;
     }
 
-    // Apply ALL events (Phase 1: correct and simple; see ADR-016).
-    // NOTE: snapshot.state is intentionally NOT used to seed the cache here.
-    // Phase 1: all events are replayed via applyEvents() to ensure correctness.
-    // Phase 2 will apply only delta events (those after snapshot.lastEventId)
-    // on top of snapshot.state, avoiding a full replay.
-    this.cachedEntries = this.applicator.applyEvents(allEvents);
-    this.lastAppliedEventId = lastEvent.id;
+    const deltaEvents = allEvents.slice(snapshotEventIndex + 1);
+    const lastEvent = allEvents[allEvents.length - 1]!;
+
+    if (deltaEvents.length === 0) {
+      // Snapshot is fully up-to-date — seed the cache directly, zero replay cost
+      this.cachedEntries = [...snapshot.state];
+      this.lastAppliedEventId = snapshot.lastEventId;
+    } else {
+      // Apply only the delta events on top of the snapshot state
+      this.cachedEntries = this.applicator.applyEventsOnto([...snapshot.state], deltaEvents);
+      this.lastAppliedEventId = lastEvent.id;
+    }
   }
 
   /**

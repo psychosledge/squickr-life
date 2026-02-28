@@ -2004,7 +2004,98 @@ describe('EntryListProjection', () => {
       // Both should return identical results
       expect(hydratedEntries).toEqual(freshEntries);
     });
-  });
+
+    // ---- Phase 2 (ADR-016 / ADR-017): delta application on top of snapshot state ----
+
+    it('Phase 2: fully-current snapshot seeds cache directly (no applyEventsOnto call)', async () => {
+      // Arrange: create tasks and build a snapshot that is fully up-to-date
+      await taskHandler.handle({ title: 'Task 1' });
+      await noteHandler.handle({ content: 'Note 1' });
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Fresh projection hydrated with the up-to-date snapshot
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+      await freshProjection.hydrate();
+
+      // After hydrate, getEntries() must hit the cache (no further getAll() calls)
+      const spy = vi.spyOn(eventStore, 'getAll');
+      const entries = await freshProjection.getEntries('all');
+      expect(spy).not.toHaveBeenCalled();
+
+      // And the result equals the snapshot state (restored directly, not replayed)
+      expect(entries).toEqual(snapshot!.state);
+
+      vi.restoreAllMocks();
+    });
+
+    it('Phase 2: applies delta events onto snapshot state when new events exist after snapshot', async () => {
+      // Arrange: create an initial entry and build a snapshot
+      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      await noteHandler.handle({ content: 'Note 1' });
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Add a delta event AFTER the snapshot was taken
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      await completeHandler.handle({ taskId });
+
+      // Fresh projection hydrated with snapshot + delta
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+      await freshProjection.hydrate();
+
+      // getEntries() must hit the cache (no further getAll() calls after hydrate)
+      const spy = vi.spyOn(eventStore, 'getAll');
+      const hydratedEntries = await freshProjection.getEntries('all');
+      expect(spy).not.toHaveBeenCalled();
+
+      // The hydrated result must equal a full replay
+      const fullReplayProjection = new EntryListProjection(eventStore);
+      const fullReplayEntries = await fullReplayProjection.getEntries('all');
+      expect(hydratedEntries).toEqual(fullReplayEntries);
+
+      // Specifically: the task must now be 'completed'
+      const task = hydratedEntries.find(e => e.id === taskId);
+      expect(task).toBeDefined();
+      expect((task as { status: string }).status).toBe('completed');
+
+      vi.restoreAllMocks();
+    });
+
+    it('Phase 2: delta adds new entries on top of snapshot state', async () => {
+      // Arrange: one task in the snapshot
+      await taskHandler.handle({ title: 'Existing Task' });
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Delta: add a new note after the snapshot
+      await noteHandler.handle({ content: 'New Note After Snapshot' });
+
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+      await freshProjection.hydrate();
+
+      const spy = vi.spyOn(eventStore, 'getAll');
+      const entries = await freshProjection.getEntries('all');
+      expect(spy).not.toHaveBeenCalled();
+
+      // Should see both the original task and the new note
+      expect(entries).toHaveLength(2);
+      expect(entries.some(e => e.type === 'task')).toBe(true);
+      expect(entries.some(e => e.type === 'note')).toBe(true);
+
+      vi.restoreAllMocks();
+    });
+
+  }); // end hydrate()
 
   // ============================================================================
   // Step 5: createSnapshot() — capture current projection state
