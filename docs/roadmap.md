@@ -1,7 +1,7 @@
 # Product Roadmap
-**Last Updated:** February 27, 2026  
+**Last Updated:** February 28, 2026  
 **Current Version:** v1.2.0  
-**Status:** v1.2.0 shipped
+**Status:** Post-v1.2.0 — Projection Snapshots In Progress
 
 ---
 
@@ -17,9 +17,15 @@
 
 ## Post-v1.2.0
 
-**Next session — projection snapshots (learning exercise):**
-- Incremental projection snapshots — `ISnapshotStore` in infrastructure layer, delta replay on startup, snapshot on tab close + every 50 events. ADR required. Open design questions: per-collection vs. full-projection snapshots? Firestore snapshot sync for new-device cold start?
-- Note: not yet needed for performance (event count well below ~5,000) — implementing as a learning exercise
+**Current session — projection snapshots (learning exercise):**  
+✅ Complete — February 28, 2026
+- `ISnapshotStore` interface in domain layer
+- `IndexedDBSnapshotStore` in infrastructure layer
+- In-memory cache + `hydrate()` + `createSnapshot()` in `EntryListProjection`
+- `SnapshotManager` with count trigger (50 events) + tab-close trigger
+- Delta replay on startup
+- ADR-016 written and accepted
+- 725 domain / 38 infrastructure / 1117 client tests passing
 
 **Previously completed deferred items:**
 - ✅ Timezone utility consolidation (`DateHeader.tsx`, `formatters.ts`) — done in v2ba59d8
@@ -181,6 +187,6 @@
 
 ---
 
-**Roadmap Status:** ✅ v1.2.0 Shipped  
-**Current Phase:** Post-v1.2.0  
-**Date:** February 27, 2026
+**Roadmap Status:** Post-v1.2.0 — Projection Snapshots Complete  
+**Current Phase:** Session Complete  
+**Date:** February 28, 2026

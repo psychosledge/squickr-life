@@ -1,3 +1,10 @@
+/**
+ * ⚠️ SNAPSHOT VERSIONING: If you change the shape of `Entry[]` returned by
+ * `applyEvents()` (add, rename, or remove fields on any Entry variant),
+ * increment `SNAPSHOT_SCHEMA_VERSION` in `packages/domain/src/snapshot-store.ts`
+ * to invalidate stale snapshots stored in IndexedDB. Failure to do so will
+ * cause hydrate() to seed the projection cache with structurally invalid data.
+ */
 import type { DomainEvent } from './domain-event';
 import type {
   Entry,
