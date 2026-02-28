@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-02-28
+
+### Added
+- **Cold-start acceleration via remote snapshot (ADR-017):** Returning users opening
+  the app on a new device or incognito session now see their entries immediately with
+  no sync overlay and no visual churn.
+  - `FirestoreSnapshotStore` persists the projection snapshot to
+    `users/{uid}/snapshots/entry-list-projection` in Firestore.
+  - `SnapshotManager` dual-store support: saves locally first, fire-and-forgets to
+    Firestore. Remote write failures are swallowed silently.
+  - On auth resolve, `App.tsx` fetches the remote snapshot (5-second timeout) and, if
+    newer than local, hydrates the projection before sync begins — no overlay shown.
+  - Post-initial-sync snapshot seeding: after the very first sync completes,
+    `saveSnapshot('post-initial-sync')` is called once to seed Firestore for future
+    cold-starts without requiring a tab close.
+  - Firestore security rules updated and deployed for the `snapshots` subcollection.
+
+### Fixed
+- **Tutorial no longer shows prematurely on cold-start (ADR-017):** A returning user
+  on a new device would briefly see the new-user tutorial because `isAppReady` became
+  `true` before the remote snapshot check completed. Fixed by adding `isRemoteRestoring`
+  state that gates `isAppReady` until the remote check definitively resolves (found /
+  null / timeout / error).
+
+### Performance
+- **Background sync absorption eliminates visual churn (ADR-018):** After cold-start
+  hydration, downloading ~945 events in the background previously caused ~945 React
+  re-renders (one per `append()` call). Two fixes:
+  - `SyncManager.syncNow()` now calls `appendBatch()` instead of looping `append()`,
+    reducing 945 subscriber notifications to 1.
+  - `EntryListProjection` now maintains an `absorbedEventIds` set (populated by
+    `hydrate()`). Events already baked into the snapshot are silently absorbed with no
+    cache invalidation and no re-render. The first genuinely new event clears absorption
+    mode and resumes normal reactive behaviour.
+
+### Technical
+- `packages/infrastructure/src/firestore-snapshot-store.ts` — new `FirestoreSnapshotStore`
+- `packages/domain/src/logger.ts` — minimal `{ warn }` logger for the domain package
+- ADR-017 and ADR-018 documented in `docs/architecture-decisions.md`
+
+### Tests
+- 1,127 client tests passing (up from 1,069 at v1.0.3)
+- 741 domain tests passing (up from 0 snapshot-aware tests at v1.0.3)
+- 51 infrastructure tests passing (13 new `FirestoreSnapshotStore` tests)
+- Casey review: Approved (no blocking issues)
+
 ## [1.0.3] - 2026-02-21
 
 ### Fixed

@@ -1742,5 +1742,234 @@ when profiling shows it's needed.
 - **Phase 2**: True incremental delta application in `EntryEventApplicator`
   (accept pre-seeded entry map, apply delta events only)
 - **Phase 3**: `FirestoreSnapshotStore` — sync snapshot to Firestore for new-device
-  cold start (avoid full event log download on first open)
+  cold start (avoid full event log download on first open) → **Implemented in ADR-017**
 - **Phase 4**: Snapshot `CollectionListProjection` and `UserPreferencesProjection`
+
+---
+
+## ADR-017: Remote Snapshot Store for Cold-Start Acceleration
+
+**Date**: 2026-02-28  
+**Status**: Accepted
+
+### Context
+
+ADR-016 (Phase 1) established projection snapshots saved to IndexedDB. This eliminated
+redundant full-replay reads on subsequent visits **on the same device**. However, a user
+opening the app on a **new device or incognito session** had no local snapshot and no
+local events: the full Firestore event log (~945 events for a heavy user) had to be
+downloaded and replayed before any content appeared.
+
+This produced two user-visible problems:
+1. **Sync overlay blocking the UI** for several seconds while 900+ events downloaded.
+2. **Visual churn** as collections updated ~945 times during the download loop.
+
+ADR-010 had noted a `FirestoreSnapshotStore` as a future enhancement. The user base
+has now reached a scale where the cold-start experience is materially degraded.
+
+### Decision
+
+Extend the snapshot system with a **remote snapshot store** backed by Firestore:
+
+1. **`FirestoreSnapshotStore`** in `packages/infrastructure/` — implements `ISnapshotStore`
+   against the Firestore path `users/{uid}/snapshots/{snapshotKey}`.
+2. **`SnapshotManager` dual-store support** — accepts an optional `remoteStore`; on
+   `saveSnapshot()`, saves to local first (synchronous path), then fire-and-forgets to
+   remote (Firestore write failures do not block the UI or throw to callers).
+3. **Cold-start restore in `App.tsx`** — on auth resolve, before starting `SyncManager`:
+   - Fetch remote snapshot with a **5-second timeout** (fail fast on slow networks).
+   - If remote snapshot is newer than local (or local is absent): save it to IndexedDB,
+     call `entryProjection.hydrate()` — projection is populated before any sync begins.
+   - Set `restoredFromRemoteRef = true` to skip the sync overlay on this path.
+4. **Post-initial-sync snapshot seeding** — on the normal path (first-ever sign-in, no
+   remote snapshot yet), `App.tsx` calls `saveSnapshot('post-initial-sync')` once after
+   the initial `SyncManager` sync completes. This seeds Firestore without requiring a
+   tab-close event.
+5. **`isRemoteRestoring` gate** — `App.tsx` adds `isRemoteRestoring` state (starts `true`,
+   cleared in `startSync()` finally block). `isAppReady` gates on `!isRemoteRestoring`
+   so the tutorial and empty-state logic never fire before the remote check resolves.
+6. **Firestore security rules** — `users/{userId}/snapshots/{snapshotKey}` read/write
+   rules added and deployed.
+
+### Rationale
+
+**Why a 5-second timeout?**
+The cold-start optimisation is a best-effort acceleration, not a hard requirement.
+If Firestore is slow or unavailable, the app must fall back gracefully to the normal
+sync path. A 5-second timeout is aggressive enough to fail fast on genuinely degraded
+networks without penalising normal users.
+
+**Why save remote-first then fire-and-forget?**
+`SnapshotManager` already saves to IndexedDB first (which is the source of truth for
+the local device). The Firestore write is speculative — it makes the snapshot available
+for future cold-starts on other devices. A failed remote save is acceptable; the user's
+data is safe in IndexedDB and Firestore's event log.
+
+**Why gate `isAppReady` on `isRemoteRestoring`?**
+On the cold-start path `isSyncing` is intentionally never set to `true` (the overlay
+is bypassed). Without an explicit gate, `isAppReady` would become `true` the moment
+`isLoading` cleared — before `hydrate()` ran — causing `CollectionIndexView` to see
+`collections.length === 0` and fire `startTutorial()` on a returning user.
+
+**Alternatives Rejected:**
+
+| Alternative | Rejected Because |
+|---|---|
+| Keep sync overlay on cold-start | Defeats the purpose; returning users see a long spinner on new devices |
+| Service Worker cache for events | Stale on new devices; adds significant complexity |
+| Download snapshot in Service Worker | Out of scope; SW architecture not established |
+| Per-collection remote snapshots | Over-engineered; full-projection snapshot is sufficient |
+
+### Consequences
+
+**Positive:**
+- Cold-start on new device / incognito: entries appear immediately, no overlay, no churn
+- Returning users are never shown the new-user tutorial on a new device
+- Snapshot seeds automatically after first use without requiring tab close
+- Graceful degradation: timeout / Firestore error → falls back to normal sync path
+- Clean Architecture preserved: `ISnapshotStore` unchanged; `FirestoreSnapshotStore`
+  is an infrastructure implementation detail
+
+**Negative / Risks:**
+- Remote snapshot may lag behind the event log by up to one `saveSnapshot` interval
+  (50 events or tab close). `SyncManager` background sync closes the gap silently.
+- Firestore read on every app open (mitigated: single document fetch, < 1KB)
+- `isRemoteRestoring` adds one more boolean to the `isAppReady` formula
+
+**Testing Impact:**
+- `@squickr/client`: +6 tests (2 post-initial-sync snapshot tests, 3 `isRemoteRestoring`
+  gate tests, 1 existing cold-start test updated to async assertion)
+- `@squickr/infrastructure`: +13 `FirestoreSnapshotStore` tests
+
+### Files Created / Modified
+
+**Created:**
+- `packages/infrastructure/src/firestore-snapshot-store.ts` — `FirestoreSnapshotStore`
+- `firestore.rules` — snapshot read/write rules (deployed)
+
+**Modified:**
+- `packages/client/src/snapshot-manager.ts` — dual-store support, fire-and-forget remote
+- `packages/client/src/App.tsx` — cold-start restore, `isRemoteRestoring` gate,
+  post-initial-sync `saveSnapshot`
+- `packages/client/src/App.test.tsx` — `MockFirestoreEventStore`, new tests
+
+---
+
+## ADR-018: Snapshot-Aware Background Sync Absorption
+
+**Date**: 2026-02-28  
+**Status**: Accepted
+
+### Context
+
+After ADR-017, the cold-start path correctly served entries from the hydrated snapshot
+and skipped the sync overlay. However, `SyncManager.syncNow()` then downloaded the full
+event log (~945 events) in the background. Two compounding issues caused visible churn:
+
+**Issue 1 — `SyncManager` used `append()` in a loop:**
+```typescript
+// Before ADR-018
+for (const event of eventsToDownload) {
+  await this.localStore.append(event); // fires subscriber notification 945 times
+}
+```
+Each `append()` call notified all `IEventStore` subscribers. `appendBatch()` already
+existed (ADR-013) for exactly this scenario but was not used in the download path.
+
+**Issue 2 — `EntryListProjection` subscriber ignored the event parameter:**
+The constructor subscriber always nulled `cachedEntries` and called `notifySubscribers()`
+on every event notification, even for events already baked into the hydrated snapshot.
+The `IEventStore.subscribe()` callback receives a `DomainEvent` but it was ignored.
+
+**Combined effect:** 945 subscriber notifications → 945 cache invalidations → 945
+React re-renders → collections visually flickering ~945 times during background sync.
+
+### Decision
+
+**Fix 1 — `SyncManager.syncNow()` uses `appendBatch()`:**
+```typescript
+// After ADR-018
+if (eventsToDownload.length > 0) {
+  await this.localStore.appendBatch(eventsToDownload);
+  // Single subscriber notification with the last event as sentinel
+}
+```
+Reduces 945 notifications to 1, regardless of download size.
+
+**Fix 2 — `EntryListProjection` absorbs pre-snapshot events silently:**
+```typescript
+// After ADR-018 (constructor subscriber)
+this.eventStore.subscribe((event: DomainEvent) => {
+  if (this.absorbedEventIds?.has(event.id)) {
+    this.absorbedEventIds.delete(event.id); // drain for GC
+    return; // silently absorbed — no cache invalidation, no re-render
+  }
+  this.absorbedEventIds = null; // first genuinely new event clears absorption mode
+  this.cachedEntries = null;
+  this.notifySubscribers();
+});
+```
+
+`hydrate()` populates `absorbedEventIds` with all event IDs present at hydration time
+(both snapshot events and delta events). The first genuinely new event — one whose ID
+is not in the set — clears absorption mode and resumes normal reactive behaviour.
+
+**Why all event IDs (not just `lastEventId`)?**
+`appendBatch` notifies with the last event as sentinel — so only the last event ID is
+checked in the `appendBatch` path. However, `append()` (called one-by-one) could present
+any event ID. Including all IDs in the set protects against any call path, current or
+future. The set is drained as events are absorbed, so GC cost is equivalent.
+
+**Why delta event IDs are included:**
+`SyncManager` may re-deliver delta events on a subsequent `syncNow()` pass if the
+batch download window overlaps with what `hydrate()` already applied (e.g. a retry).
+Including delta IDs ensures those re-deliveries are silently absorbed.
+
+### Rationale
+
+**Why `appendBatch` over `append` in a loop?**
+`appendBatch` already existed with the correct semantics (single notification after
+atomic batch write). The loop was an oversight — the download path pre-dated `appendBatch`.
+
+**Why absorption in the projection, not in SyncManager?**
+The projection is the correct location for this logic: it has the snapshot state
+and knows which events are already reflected in its cache. SyncManager should not need
+to know about projection internals. The `absorbedEventIds` set is an implementation
+detail of `EntryListProjection.hydrate()`.
+
+**Alternatives Rejected:**
+
+| Alternative | Rejected Because |
+|---|---|
+| Debounce subscriber notifications | Hides the root cause; adds latency to genuine updates |
+| SyncManager checks local store before append | Requires N individual lookups instead of one batch check |
+| Rebuild cache once after appendBatch completes | Would require a public `rebuildCache()` API on the projection — leaks internals |
+
+### Consequences
+
+**Positive:**
+- Background sync of 945 events produces at most 1 subscriber notification (not 945)
+- Events already baked into the snapshot produce 0 re-renders
+- First genuinely new event triggers exactly 1 re-render as expected
+- Fully backward-compatible: projections with no snapshot behave identically to before
+
+**Negative / Risks:**
+- `absorbedEventIds` set holds N UUID strings in memory until drained (negligible: ~50KB
+  for 1,000 events; drained lazily as events arrive)
+- `SNAPSHOT_SCHEMA_VERSION` bump is needed if `ProjectionSnapshot.state` shape changes —
+  same risk as ADR-016, same mitigation (warning comment in `entry.event-applicator.ts`)
+
+**Testing Impact:**
+- `@squickr/client`: +1 `SyncManager` test (download path uses `appendBatch`)
+- `@squickr/domain`: +6 `EntryListProjection` absorption tests (4 single-event, 2
+  `appendBatch`-path covering all-pre-snapshot and mixed batches)
+
+### Files Modified
+
+- `packages/client/src/firebase/SyncManager.ts` — download loop → `appendBatch()`
+- `packages/client/src/firebase/SyncManager.test.ts` — `appendBatch` mock, new test
+- `packages/domain/src/entry.projections.ts` — `absorbedEventIds` field, updated
+  constructor subscriber, `hydrate()` populates set, `resolveCache()` clears set,
+  comments explaining set-size rationale and delta-ID inclusion
+- `packages/domain/src/entry.projections.test.ts` — 6 new absorption tests
+- `packages/domain/src/logger.ts` — created: minimal `{ warn }` wrapper for domain pkg
