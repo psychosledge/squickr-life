@@ -25,6 +25,7 @@ export class SnapshotManager {
   constructor(
     private readonly projection: EntryListProjection,
     private readonly snapshotStore: ISnapshotStore,
+    private readonly remoteStore: ISnapshotStore | null,
     private readonly eventStore: IEventStore,
     private readonly eventsBeforeSnapshot: number = 50
   ) {}
@@ -94,6 +95,11 @@ export class SnapshotManager {
         return;
       }
       await this.snapshotStore.save('entry-list-projection', snapshot);
+      // Fire-and-forget: remote save is an optimisation; local is the reliable path.
+      // Errors are swallowed so a remote failure never blocks the local save.
+      this.remoteStore?.save('entry-list-projection', snapshot).catch(err =>
+        console.warn('[SnapshotManager] remote snapshot save failed:', err)
+      );
       // Reset counter so the next save window starts fresh regardless of trigger source
       this.eventCounter = 0;
     } catch (error) {

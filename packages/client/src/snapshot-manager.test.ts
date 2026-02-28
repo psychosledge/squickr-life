@@ -6,6 +6,7 @@
  * - Lifecycle triggers (visibilitychange hidden, beforeunload)
  * - Graceful error handling
  * - start() / stop() listener cleanup
+ * - Dual-store: local + remote fire-and-forget (ADR-017)
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -120,7 +121,7 @@ describe('SnapshotManager', () => {
   // -------------------------------------------------------------------------
   describe('count trigger', () => {
     it('should NOT call saveSnapshot after 49 events', async () => {
-      manager = new SnapshotManager(projection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
       manager.start();
 
       fireEvents(49);
@@ -132,7 +133,7 @@ describe('SnapshotManager', () => {
     });
 
     it('should call saveSnapshot on the 50th event', async () => {
-      manager = new SnapshotManager(projection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
       manager.start();
 
       fireEvents(50);
@@ -153,7 +154,7 @@ describe('SnapshotManager', () => {
   // -------------------------------------------------------------------------
   describe('counter reset after save', () => {
     it('should reset counter after save so 51st event alone does not trigger', async () => {
-      manager = new SnapshotManager(projection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
       manager.start();
 
       // First batch: triggers save at 50
@@ -172,7 +173,7 @@ describe('SnapshotManager', () => {
     });
 
     it('should trigger again after a full second batch of 50 events', async () => {
-      manager = new SnapshotManager(projection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
       manager.start();
 
       // First save
@@ -199,7 +200,7 @@ describe('SnapshotManager', () => {
         configurable: true,
       });
 
-      manager = new SnapshotManager(projection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
       manager.start();
 
       document.dispatchEvent(new Event('visibilitychange'));
@@ -221,7 +222,7 @@ describe('SnapshotManager', () => {
         configurable: true,
       });
 
-      manager = new SnapshotManager(projection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
       manager.start();
 
       document.dispatchEvent(new Event('visibilitychange'));
@@ -237,7 +238,7 @@ describe('SnapshotManager', () => {
   // -------------------------------------------------------------------------
   describe('lifecycle trigger: beforeunload', () => {
     it('should call saveSnapshot on window beforeunload', async () => {
-      manager = new SnapshotManager(projection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
       manager.start();
 
       window.dispatchEvent(new Event('beforeunload'));
@@ -259,7 +260,7 @@ describe('SnapshotManager', () => {
         configurable: true,
       });
 
-      manager = new SnapshotManager(projection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
       manager.start();
       manager.stop();
 
@@ -273,7 +274,7 @@ describe('SnapshotManager', () => {
     });
 
     it('should unsubscribe from eventStore on stop()', () => {
-      manager = new SnapshotManager(projection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
       manager.start();
       manager.stop();
 
@@ -291,7 +292,7 @@ describe('SnapshotManager', () => {
         createSnapshot: vi.fn().mockRejectedValue(new Error('projection exploded')),
       } as unknown as EntryListProjection;
 
-      manager = new SnapshotManager(throwingProjection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(throwingProjection, snapshotStore, null, eventStore, 50);
       manager.start();
 
       // Should not throw
@@ -304,7 +305,7 @@ describe('SnapshotManager', () => {
     it('should swallow errors when snapshotStore.save throws', async () => {
       vi.mocked(snapshotStore.save).mockRejectedValueOnce(new Error('storage full'));
 
-      manager = new SnapshotManager(projection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
       manager.start();
 
       await expect(manager.saveSnapshot('test')).resolves.toBeUndefined();
@@ -318,12 +319,57 @@ describe('SnapshotManager', () => {
     it('should not call snapshotStore.save when createSnapshot returns null', async () => {
       const nullProjection = makeProjection(null);
 
-      manager = new SnapshotManager(nullProjection, snapshotStore, eventStore, 50);
+      manager = new SnapshotManager(nullProjection, snapshotStore, null, eventStore, 50);
       manager.start();
 
       await manager.saveSnapshot('manual');
 
       expect(snapshotStore.save).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 9. Dual-store: remoteStore called fire-and-forget after local save (ADR-017)
+  // -------------------------------------------------------------------------
+  describe('dual-store (remoteStore)', () => {
+    it('should call remoteStore.save after localStore.save succeeds', async () => {
+      const remoteStore = makeSnapshotStore();
+      manager = new SnapshotManager(projection, snapshotStore, remoteStore, eventStore, 50);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+
+      expect(snapshotStore.save).toHaveBeenCalledTimes(1);
+      // Remote save is fire-and-forget; allow its microtask to flush
+      await Promise.resolve();
+      expect(remoteStore.save).toHaveBeenCalledTimes(1);
+      expect(remoteStore.save).toHaveBeenCalledWith(
+        'entry-list-projection',
+        expect.objectContaining({ version: 1, lastEventId: 'evt-1' })
+      );
+    });
+
+    it('should not throw and local save should still succeed when remoteStore.save rejects', async () => {
+      const remoteStore = makeSnapshotStore();
+      vi.mocked(remoteStore.save).mockRejectedValueOnce(new Error('network error'));
+
+      manager = new SnapshotManager(projection, snapshotStore, remoteStore, eventStore, 50);
+      manager.start();
+
+      // Should not throw despite remote failure
+      await expect(manager.saveSnapshot('test')).resolves.toBeUndefined();
+      // Local save still called
+      expect(snapshotStore.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not call remoteStore.save when remoteStore is null', async () => {
+      // No remoteStore (null) — only local store should be called
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+
+      expect(snapshotStore.save).toHaveBeenCalledTimes(1);
     });
   });
 });
