@@ -140,6 +140,10 @@ export type { TaskEvent as SquickrEvent } from './task.types';
 // Event Store (interface only - implementations are in @squickr/infrastructure)
 export type { IEventStore } from './event-store';
 
+// Snapshot Store (interface + types only - implementations are in @squickr/infrastructure)
+export type { ISnapshotStore, ProjectionSnapshot } from './snapshot-store';
+export { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
+
 // Task Command Handlers
 export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, RestoreTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler, MoveEntryToCollectionHandler, MigrateTaskHandler } from './task.handlers';
 
