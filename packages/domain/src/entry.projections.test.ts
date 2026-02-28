@@ -8,6 +8,29 @@ import { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler } from '
 import { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler } from './event.handlers';
 import { AddTaskToCollectionHandler, RemoveTaskFromCollectionHandler } from './collection-management.handlers';
 import type { CreateTaskCommand, CreateNoteCommand, CreateEventCommand } from './task.types';
+import type { ISnapshotStore, ProjectionSnapshot } from './snapshot-store';
+import { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
+
+// ---------------------------------------------------------------------------
+// Minimal in-memory snapshot store for use in tests.
+// We cannot import from @squickr/infrastructure (that package depends on
+// @squickr/domain — importing in the other direction would create a cycle).
+// ---------------------------------------------------------------------------
+class InMemorySnapshotStore implements ISnapshotStore {
+  private readonly store = new Map<string, ProjectionSnapshot>();
+
+  async save(key: string, snapshot: ProjectionSnapshot): Promise<void> {
+    this.store.set(key, snapshot);
+  }
+
+  async load(key: string): Promise<ProjectionSnapshot | null> {
+    return this.store.get(key) ?? null;
+  }
+
+  async clear(key: string): Promise<void> {
+    this.store.delete(key);
+  }
+}
 
 describe('EntryListProjection', () => {
   let eventStore: IEventStore;
@@ -1836,6 +1859,212 @@ describe('EntryListProjection', () => {
 
     afterEach(() => {
       vi.restoreAllMocks();
+    });
+  });
+
+  // ============================================================================
+  // Step 5: hydrate() — populate cache from a persisted snapshot
+  // ============================================================================
+  describe('hydrate()', () => {
+    it('resolves without error when no snapshot store is configured', async () => {
+      // Arrange: projection without a snapshot store
+      const plainProjection = new EntryListProjection(eventStore);
+      await taskHandler.handle({ title: 'Task 1' });
+
+      // Act & Assert: hydrate should be a no-op and not throw
+      await expect(plainProjection.hydrate()).resolves.toBeUndefined();
+
+      // getEntries() still works via full replay
+      const entries = await plainProjection.getEntries();
+      expect(entries).toHaveLength(1);
+    });
+
+    it('does a full replay on first getEntries() when no snapshot has been saved', async () => {
+      // Arrange: projection with snapshot store but no saved snapshot
+      const snapshotStore = new InMemorySnapshotStore();
+      const proj = new EntryListProjection(eventStore, snapshotStore);
+      await taskHandler.handle({ title: 'Task 1' });
+
+      const spy = vi.spyOn(eventStore, 'getAll');
+
+      // Act: hydrate is a no-op (no snapshot), first getEntries triggers a replay
+      await proj.hydrate();
+      // hydrate finds no snapshot → no getAll call yet from hydrate
+      const callsAfterHydrate = spy.mock.calls.length;
+
+      await proj.getEntries();
+      // Full replay happens on first getEntries()
+      expect(spy.mock.calls.length).toBeGreaterThan(callsAfterHydrate);
+
+      vi.restoreAllMocks();
+    });
+
+    it('populates cache from snapshot so subsequent getEntries() skips getAll()', async () => {
+      // Arrange: seed an event and build a snapshot
+      await taskHandler.handle({ title: 'Hydrated Task' });
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+
+      // Warm the seed projection's cache and create a snapshot
+      const snapshot = await seedProjection.createSnapshot();
+      expect(snapshot).not.toBeNull();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Create a fresh projection (cold cache) with the same snapshot store
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+
+      // Hydrate populates the cache from the snapshot
+      await freshProjection.hydrate();
+
+      // Spy AFTER hydrate — the cache is now warm
+      const spy = vi.spyOn(eventStore, 'getAll');
+
+      // getEntries() should be a cache hit: no additional getAll() call
+      await freshProjection.getEntries();
+      expect(spy).not.toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
+
+    it('ignores snapshot with stale schema version and falls back to full replay', async () => {
+      // Arrange: save a snapshot with the wrong version
+      await taskHandler.handle({ title: 'Task' });
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const staleSnapshot: ProjectionSnapshot = {
+        version: SNAPSHOT_SCHEMA_VERSION + 999, // wrong version
+        lastEventId: 'evt-stale',
+        state: [],
+        savedAt: new Date().toISOString(),
+      };
+      await snapshotStore.save('entry-list-projection', staleSnapshot);
+
+      const proj = new EntryListProjection(eventStore, snapshotStore);
+
+      // Spy before hydrate() to verify the guard fires early (before any getAll() call)
+      const spy = vi.spyOn(eventStore, 'getAll');
+
+      await proj.hydrate(); // should be no-op due to version mismatch — must NOT call getAll()
+      expect(spy).toHaveBeenCalledTimes(0); // early return: stale version guard fired
+
+      await proj.getEntries(); // triggers full replay — MUST call getAll()
+      expect(spy).toHaveBeenCalledTimes(1); // full replay happened
+
+      vi.restoreAllMocks();
+    });
+
+    it('falls back to full replay when snapshot lastEventId is not in event log', async () => {
+      // Arrange: snapshot references an event ID that does not exist in the log
+      await taskHandler.handle({ title: 'Task' });
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const orphanedSnapshot: ProjectionSnapshot = {
+        version: SNAPSHOT_SCHEMA_VERSION,
+        lastEventId: 'does-not-exist-in-log',
+        state: [],
+        savedAt: new Date().toISOString(),
+      };
+      await snapshotStore.save('entry-list-projection', orphanedSnapshot);
+
+      const proj = new EntryListProjection(eventStore, snapshotStore);
+      await proj.hydrate(); // no-op: lastEventId not found
+
+      const spy = vi.spyOn(eventStore, 'getAll');
+      await proj.getEntries(); // triggers full replay
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      vi.restoreAllMocks();
+    });
+
+    it('correctness check: hydrated projection returns same entries as a fresh full replay', async () => {
+      // Arrange: create a variety of entries
+      await taskHandler.handle({ title: 'Task 1' });
+      await noteHandler.handle({ content: 'Note 1' });
+      await eventHandler.handle({ content: 'Event 1' });
+      const completedTaskId = await taskHandler.handle({ title: 'Task to complete' });
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      await completeHandler.handle({ taskId: completedTaskId });
+
+      // Build and persist snapshot using a seed projection
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Hydrated projection
+      const hydratedProjection = new EntryListProjection(eventStore, snapshotStore);
+      await hydratedProjection.hydrate();
+      const hydratedEntries = await hydratedProjection.getEntries('all');
+
+      // Fresh full-replay projection (no snapshot store)
+      const freshProjection = new EntryListProjection(eventStore);
+      const freshEntries = await freshProjection.getEntries('all');
+
+      // Both should return identical results
+      expect(hydratedEntries).toEqual(freshEntries);
+    });
+  });
+
+  // ============================================================================
+  // Step 5: createSnapshot() — capture current projection state
+  // ============================================================================
+  describe('createSnapshot()', () => {
+    it('returns null when there are no events', async () => {
+      // eventStore is empty (freshly created in beforeEach)
+      const snap = await projection.createSnapshot();
+      expect(snap).toBeNull();
+    });
+
+    it('returns a snapshot with lastEventId equal to the last appended event', async () => {
+      // Arrange: append a couple of events
+      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ title: 'Task 2' });
+
+      // Get the last event's id directly from the store (handler returns aggregateId, not event id)
+      const allEvents = await eventStore.getAll();
+      const lastEventId = allEvents[allEvents.length - 1]!.id;
+
+      // Act
+      const snap = await projection.createSnapshot();
+
+      // Assert: lastEventId matches the event id of the last appended event
+      expect(snap).not.toBeNull();
+      expect(snap!.lastEventId).toBe(lastEventId);
+    });
+
+    it('snapshot version equals SNAPSHOT_SCHEMA_VERSION', async () => {
+      await taskHandler.handle({ title: 'Task' });
+
+      const snap = await projection.createSnapshot();
+
+      expect(snap!.version).toBe(SNAPSHOT_SCHEMA_VERSION);
+    });
+
+    it('snapshot state matches the result of getEntries("all")', async () => {
+      // Arrange: mix of entry types
+      await taskHandler.handle({ title: 'Task 1' });
+      await noteHandler.handle({ content: 'Note 1' });
+      await eventHandler.handle({ content: 'Event 1' });
+
+      // Act
+      const snap = await projection.createSnapshot();
+      const liveEntries = await projection.getEntries('all');
+
+      // Assert
+      expect(snap!.state).toEqual(liveEntries);
+    });
+
+    it('savedAt is a valid ISO 8601 date string', async () => {
+      await taskHandler.handle({ title: 'Task' });
+
+      const snap = await projection.createSnapshot();
+
+      expect(snap).not.toBeNull();
+      const parsed = new Date(snap!.savedAt);
+      expect(parsed.getTime()).not.toBeNaN();
+      // ISO 8601 strings parsed by new Date() have valid getTime()
+      expect(snap!.savedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
   });
 });

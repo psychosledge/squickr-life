@@ -9,6 +9,8 @@ import type {
 } from './task.types';
 import { isoToLocalDateKey } from './date-utils';
 import { EntryEventApplicator } from './entry.event-applicator';
+import type { ISnapshotStore, ProjectionSnapshot } from './snapshot-store';
+import { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
 
 /**
  * EntryListProjection - Unified Read Model for Tasks, Notes, and Events
@@ -26,11 +28,11 @@ export class EntryListProjection {
   private subscribers = new Set<() => void>();
   private readonly applicator = new EntryEventApplicator();
   private cachedEntries: Entry[] | null = null;
-  // Reserved for Step 5 snapshot integration: tracks the last event ID replayed into the cache.
-  // Used by hydrate() and createSnapshot() in the next step to enable delta replay on startup.
   private lastAppliedEventId: string | null = null;
+  private readonly snapshotStore?: ISnapshotStore;
 
-  constructor(private readonly eventStore: IEventStore) {
+  constructor(private readonly eventStore: IEventStore, snapshotStore?: ISnapshotStore) {
+    this.snapshotStore = snapshotStore;
     // Subscribe to event store changes to enable reactive projections
     this.eventStore.subscribe(() => {
       // Invalidate cache whenever a new event is appended
@@ -53,6 +55,94 @@ export class EntryListProjection {
       this.lastAppliedEventId = events[events.length - 1]!.id;
     }
     return this.cachedEntries;
+  }
+
+  /**
+   * Hydrate the projection cache from a previously saved snapshot.
+   *
+   * If a snapshot store is configured and a valid snapshot exists (matching
+   * the current SNAPSHOT_SCHEMA_VERSION), this method replays ALL events
+   * from the event log and populates the in-memory cache.  Subsequent calls
+   * to getEntries() will hit the cache instead of reading from IndexedDB.
+   *
+   * If no snapshot store is configured, no snapshot exists, the schema
+   * version is stale, or the snapshot's lastEventId is not found in the
+   * event log, this method is a no-op — a full replay will happen lazily on
+   * the first getEntries() call.
+   *
+   * Phase 1 insight: the performance win is "no IndexedDB scan on every
+   * getEntries()" (the cache-hit path), not reducing CPU in the applicator.
+   */
+  async hydrate(): Promise<void> {
+    if (!this.snapshotStore) return;
+
+    const snapshot = await this.snapshotStore.load('entry-list-projection');
+
+    if (!snapshot || snapshot.version !== SNAPSHOT_SCHEMA_VERSION) {
+      // No snapshot or stale schema — cache stays null, full replay on first getEntries()
+      return;
+    }
+
+    // Load all events to determine the delta
+    const allEvents = await this.eventStore.getAll();
+
+    if (allEvents.length === 0) {
+      // No events at all (shouldn't normally happen if a snapshot exists, but be safe)
+      return;
+    }
+
+    const lastEvent = allEvents[allEvents.length - 1]!;
+
+    // Find the snapshot's cursor position in the event log
+    const snapshotEventIndex = allEvents.findIndex(e => e.id === snapshot.lastEventId);
+
+    if (snapshotEventIndex < 0) {
+      // lastEventId not found in log — full replay fallback (cache stays null)
+      return;
+    }
+
+    // Apply ALL events (Phase 1: correct and simple; see ADR-016).
+    // NOTE: snapshot.state is intentionally NOT used to seed the cache here.
+    // Phase 1: all events are replayed via applyEvents() to ensure correctness.
+    // Phase 2 will apply only delta events (those after snapshot.lastEventId)
+    // on top of snapshot.state, avoiding a full replay.
+    this.cachedEntries = this.applicator.applyEvents(allEvents);
+    this.lastAppliedEventId = lastEvent.id;
+  }
+
+  /**
+   * Create a snapshot of the current projection state.
+   *
+   * The snapshot captures the result of getEntries('all') — all active
+   * (non-deleted) entries — together with the ID of the last event that was
+   * applied.  The SnapshotManager (Step 6) is responsible for persisting the
+   * snapshot via snapshotStore.save().
+   *
+   * @returns A ProjectionSnapshot, or null if there are no events yet.
+   */
+  async createSnapshot(): Promise<ProjectionSnapshot | null> {
+    const allEvents = await this.eventStore.getAll();
+    if (allEvents.length === 0) return null;
+
+    const lastEvent = allEvents[allEvents.length - 1]!;
+
+    // Prime the cache with the events we already fetched so that the
+    // getEntries('all') call below hits the cache instead of issuing a
+    // second IndexedDB scan.
+    if (this.cachedEntries === null) {
+      this.cachedEntries = this.applicator.applyEvents(allEvents);
+      this.lastAppliedEventId = lastEvent.id;
+    }
+
+    // getEntries('all') will hit the cache we just warmed
+    const entries = await this.getEntries('all');
+
+    return {
+      version: SNAPSHOT_SCHEMA_VERSION,
+      lastEventId: lastEvent.id,
+      state: entries,
+      savedAt: new Date().toISOString(),
+    };
   }
 
   /**
