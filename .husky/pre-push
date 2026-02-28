@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+echo "[pre-push] Running build check to catch TypeScript errors before CI..."
+pnpm build

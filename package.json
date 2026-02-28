@@ -4,7 +4,12 @@
   "private": true,
   "type": "module",
   "description": "Get your shit together quicker with Squickr!",
-  "keywords": ["task-tracker", "event-sourcing", "pwa", "offline-first"],
+  "keywords": [
+    "task-tracker",
+    "event-sourcing",
+    "pwa",
+    "offline-first"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "scripts": {
@@ -13,9 +18,11 @@
     "test": "pnpm -r test",
     "test:watch": "pnpm -r test --watch",
     "lint": "pnpm -r lint",
-    "type-check": "pnpm -r type-check"
+    "type-check": "pnpm -r type-check",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "typescript": "^5.3.3"
   },
   "engines": {

@@ -30,7 +30,6 @@ export class EntryListProjection {
   private subscribers = new Set<() => void>();
   private readonly applicator = new EntryEventApplicator();
   private cachedEntries: Entry[] | null = null;
-  private lastAppliedEventId: string | null = null;
   private readonly snapshotStore?: ISnapshotStore;
   private absorbedEventIds: Set<string> | null = null;
 
@@ -60,9 +59,6 @@ export class EntryListProjection {
     }
     const events = await this.eventStore.getAll();
     this.cachedEntries = this.applicator.applyEvents(events);
-    if (events.length > 0) {
-      this.lastAppliedEventId = events[events.length - 1]!.id;
-    }
     this.absorbedEventIds = null; // full replay — absorbed IDs no longer relevant
     return this.cachedEntries;
   }
@@ -115,12 +111,10 @@ export class EntryListProjection {
     }
 
     const deltaEvents = allEvents.slice(snapshotEventIndex + 1);
-    const lastEvent = allEvents[allEvents.length - 1]!;
 
     if (deltaEvents.length === 0) {
       // Snapshot is fully up-to-date — seed the cache directly, zero replay cost
       this.cachedEntries = [...snapshot.state];
-      this.lastAppliedEventId = snapshot.lastEventId;
       // Use all event IDs (not just lastEventId) so that any call path — including
       // individual append() calls — is absorbed correctly. The set is drained lazily
       // as events arrive, so GC cost is identical to a single-ID set.
@@ -128,7 +122,6 @@ export class EntryListProjection {
     } else {
       // Apply only the delta events on top of the snapshot state
       this.cachedEntries = this.applicator.applyEventsOnto([...snapshot.state], deltaEvents);
-      this.lastAppliedEventId = lastEvent.id;
       // absorbedEventIds includes ALL events (snapshot + delta), not just snapshot events.
       // Rationale: SyncManager may re-deliver delta events on its next syncNow() pass if
       // the batch download window overlaps with what hydrate() already applied (e.g. a
@@ -160,7 +153,6 @@ export class EntryListProjection {
     // second IndexedDB scan.
     if (this.cachedEntries === null) {
       this.cachedEntries = this.applicator.applyEvents(allEvents);
-      this.lastAppliedEventId = lastEvent.id;
     }
 
     // getEntries('all') will hit the cache we just warmed
