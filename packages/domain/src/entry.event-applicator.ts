@@ -61,6 +61,52 @@ export class EntryEventApplicator {
     const notes: Map<string, Note> = new Map();
     const eventEntries: Map<string, EventEntry> = new Map();
 
+    this.applyEventsToMaps(tasks, notes, eventEntries, events);
+
+    return this.mapsToSortedEntries(tasks, notes, eventEntries);
+  }
+
+  /**
+   * Apply delta events on top of a seed entry list and return the resulting
+   * entry list sorted by order.
+   *
+   * Used by `EntryListProjection.hydrate()` to apply only the events that
+   * occurred after the snapshot was taken, avoiding a full replay.
+   *
+   * @param seed - The snapshot state (Entry[]) to start from
+   * @param deltaEvents - Events to apply on top of the seed
+   */
+  applyEventsOnto(seed: Entry[], deltaEvents: readonly DomainEvent[]): Entry[] {
+    const tasks: Map<string, Task> = new Map();
+    const notes: Map<string, Note> = new Map();
+    const eventEntries: Map<string, EventEntry> = new Map();
+
+    // Populate maps from the seed (snapshot state)
+    for (const entry of seed) {
+      if (entry.type === 'task') {
+        tasks.set(entry.id, entry as Task);
+      } else if (entry.type === 'note') {
+        notes.set(entry.id, entry as Note);
+      } else if (entry.type === 'event') {
+        eventEntries.set(entry.id, entry as EventEntry);
+      }
+    }
+
+    this.applyEventsToMaps(tasks, notes, eventEntries, deltaEvents);
+
+    return this.mapsToSortedEntries(tasks, notes, eventEntries);
+  }
+
+  /**
+   * Apply events to the in-memory maps (tasks, notes, eventEntries).
+   * Shared by applyEvents() and applyEventsOnto().
+   */
+  private applyEventsToMaps(
+    tasks: Map<string, Task>,
+    notes: Map<string, Note>,
+    eventEntries: Map<string, EventEntry>,
+    events: readonly DomainEvent[]
+  ): void {
     for (const event of events) {
       // Handle polymorphic EntryMovedToCollection FIRST (cross-cutting concern)
       // This event can apply to any entry type, so we check all three maps
@@ -95,7 +141,16 @@ export class EntryEventApplicator {
         this.applyEventEvent(eventEntries, event);
       }
     }
+  }
 
+  /**
+   * Combine the three entry maps into a single sorted Entry[] array.
+   */
+  private mapsToSortedEntries(
+    tasks: Map<string, Task>,
+    notes: Map<string, Note>,
+    eventEntries: Map<string, EventEntry>
+  ): Entry[] {
     // Combine all entries with type discriminators
     // NOTE: Order matters! We combine all types together, then sort by order field
     const allEntries: Entry[] = [
