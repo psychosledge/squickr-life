@@ -11,6 +11,7 @@ import { isoToLocalDateKey } from './date-utils';
 import { EntryEventApplicator } from './entry.event-applicator';
 import type { ISnapshotStore, ProjectionSnapshot } from './snapshot-store';
 import { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
+import type { DomainEvent } from './domain-event';
 
 /**
  * EntryListProjection - Unified Read Model for Tasks, Notes, and Events
@@ -30,12 +31,19 @@ export class EntryListProjection {
   private cachedEntries: Entry[] | null = null;
   private lastAppliedEventId: string | null = null;
   private readonly snapshotStore?: ISnapshotStore;
+  private absorbedEventIds: Set<string> | null = null;
 
   constructor(private readonly eventStore: IEventStore, snapshotStore?: ISnapshotStore) {
     this.snapshotStore = snapshotStore;
     // Subscribe to event store changes to enable reactive projections
-    this.eventStore.subscribe(() => {
-      // Invalidate cache whenever a new event is appended
+    this.eventStore.subscribe((event: DomainEvent) => {
+      // If this event was already baked into the hydrated snapshot, absorb silently.
+      if (this.absorbedEventIds?.has(event.id)) {
+        this.absorbedEventIds.delete(event.id); // drain to allow GC
+        return;
+      }
+      // First genuinely new event clears absorption mode.
+      this.absorbedEventIds = null;
       this.cachedEntries = null;
       this.notifySubscribers();
     });
@@ -54,6 +62,7 @@ export class EntryListProjection {
     if (events.length > 0) {
       this.lastAppliedEventId = events[events.length - 1]!.id;
     }
+    this.absorbedEventIds = null; // full replay — absorbed IDs no longer relevant
     return this.cachedEntries;
   }
 
@@ -103,10 +112,12 @@ export class EntryListProjection {
       // Snapshot is fully up-to-date — seed the cache directly, zero replay cost
       this.cachedEntries = [...snapshot.state];
       this.lastAppliedEventId = snapshot.lastEventId;
+      this.absorbedEventIds = new Set(allEvents.map(e => e.id));
     } else {
       // Apply only the delta events on top of the snapshot state
       this.cachedEntries = this.applicator.applyEventsOnto([...snapshot.state], deltaEvents);
       this.lastAppliedEventId = lastEvent.id;
+      this.absorbedEventIds = new Set(allEvents.map(e => e.id));
     }
   }
 

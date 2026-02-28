@@ -111,8 +111,8 @@ export class SyncManager {
       const eventsToDownload = remoteEvents.filter(e => !localIds.has(e.id));
       
       logger.info('[SyncManager]', `Downloading ${eventsToDownload.length} new events...`);
-      for (const event of eventsToDownload) {
-        await this.localStore.append(event);
+      if (eventsToDownload.length > 0) {
+        await this.localStore.appendBatch(eventsToDownload);
       }
       
       this.lastSyncTime = Date.now();

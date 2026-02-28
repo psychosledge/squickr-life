@@ -21,6 +21,7 @@ describe('SyncManager', () => {
     // Mock local store
     localStore = {
       append: vi.fn().mockResolvedValue(undefined),
+      appendBatch: vi.fn().mockResolvedValue(undefined),
       getAll: vi.fn().mockResolvedValue([]),
       getById: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
@@ -29,6 +30,7 @@ describe('SyncManager', () => {
     // Mock remote store
     remoteStore = {
       append: vi.fn().mockResolvedValue(undefined),
+      appendBatch: vi.fn().mockResolvedValue(undefined),
       getAll: vi.fn().mockResolvedValue([]),
       getById: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
@@ -202,7 +204,7 @@ describe('SyncManager', () => {
       syncManager = new SyncManager(localStore, remoteStore);
       await syncManager.syncNow();
 
-      expect(localStore.append).toHaveBeenCalledWith(remoteEvents[0]);
+      expect(localStore.appendBatch).toHaveBeenCalledWith(remoteEvents);
     });
 
     it('should skip events that already exist in remote', async () => {
@@ -249,7 +251,7 @@ describe('SyncManager', () => {
       await syncManager.syncNow();
 
       expect(remoteStore.append).toHaveBeenCalledWith(localOnly);
-      expect(localStore.append).toHaveBeenCalledWith(remoteOnly);
+      expect(localStore.appendBatch).toHaveBeenCalledWith([remoteOnly]);
     });
 
     it('should notify sync state change callback', async () => {
@@ -303,6 +305,38 @@ describe('SyncManager', () => {
       expect(syncManager.initialSyncComplete).toBe(false);
       await syncManager.syncNow();
       expect(syncManager.initialSyncComplete).toBe(true);
+    });
+
+    it('should use appendBatch (not append) for downloaded events', async () => {
+      const remoteEvents: DomainEvent[] = [
+        {
+          id: 'event-remote-1',
+          type: 'task-created',
+          aggregateId: 'task-1',
+          timestamp: '2026-01-30T10:00:00Z',
+          version: 1,
+        },
+        {
+          id: 'event-remote-2',
+          type: 'task-completed',
+          aggregateId: 'task-2',
+          timestamp: '2026-01-30T11:00:00Z',
+          version: 1,
+        },
+      ];
+
+      vi.mocked(localStore.getAll).mockResolvedValue([]);
+      vi.mocked(remoteStore.getAll).mockResolvedValue(remoteEvents);
+
+      syncManager = new SyncManager(localStore, remoteStore);
+      await syncManager.syncNow();
+
+      // appendBatch must be called with all downloaded events in one call
+      expect(localStore.appendBatch).toHaveBeenCalledTimes(1);
+      expect(localStore.appendBatch).toHaveBeenCalledWith(remoteEvents);
+
+      // append must NOT be called for the downloaded events
+      expect(localStore.append).not.toHaveBeenCalled();
     });
 
     it('should set initialSyncComplete even after a timeout', async () => {

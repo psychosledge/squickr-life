@@ -346,11 +346,14 @@ function AppContent() {
     const startSync = async () => {
       // ── Cold-start: attempt to restore projection from remote snapshot ──
       // Uses a 5-second timeout to fail fast back to normal behaviour on slow networks.
+      logger.info('[App] Cold-start: attempting remote snapshot restore…');
       try {
         const remoteSnapshot = await Promise.race([
           remoteSnapshotStore.load('entry-list-projection'),
           new Promise<null>(resolve => setTimeout(() => resolve(null), 5_000)),
         ]);
+
+        logger.info('[App] Cold-start: remote snapshot result =', remoteSnapshot ? `found (savedAt=${remoteSnapshot.savedAt}, lastEventId=${remoteSnapshot.lastEventId})` : 'null (not found or timed out)');
 
         if (!cancelled && remoteSnapshot) {
           const localSnapshot = await snapshotStore.load('entry-list-projection');
@@ -358,11 +361,18 @@ function AppContent() {
             !localSnapshot ||
             new Date(remoteSnapshot.savedAt) > new Date(localSnapshot.savedAt);
 
+          logger.info('[App] Cold-start: localSnapshot =', localSnapshot ? `found (savedAt=${localSnapshot.savedAt})` : 'null', '| remoteIsNewer =', remoteIsNewer);
+
           if (remoteIsNewer) {
             await snapshotStore.save('entry-list-projection', remoteSnapshot);
             await entryProjection.hydrate();
             restoredFromRemoteRef.current = true;
+            logger.info('[App] Cold-start: restored from remote snapshot — overlay will be skipped');
+          } else {
+            logger.info('[App] Cold-start: local snapshot is newer or equal — skipping remote restore');
           }
+        } else if (cancelled) {
+          logger.info('[App] Cold-start: cancelled before snapshot check');
         }
       } catch (err) {
         logger.warn('[App] Remote snapshot restore failed, falling back to normal sync:', err);

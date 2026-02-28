@@ -2158,5 +2158,118 @@ describe('EntryListProjection', () => {
       expect(snap!.savedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
   });
+
+  // ============================================================================
+  // ADR-018: Snapshot-Aware Background Sync Absorption
+  // ============================================================================
+  describe('snapshot-aware event absorption (ADR-018)', () => {
+    it('after hydrate(), appending a pre-snapshot event does NOT call the subscribe callback', async () => {
+      // Arrange: populate events and build snapshot
+      await taskHandler.handle({ title: 'Task 1' });
+      const allEvents = await eventStore.getAll();
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Fresh projection hydrated from snapshot
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+      await freshProjection.hydrate();
+
+      const subscriberSpy = vi.fn();
+      freshProjection.subscribe(subscriberSpy);
+
+      // Act: "re-append" an event that was already in the snapshot (simulates SyncManager download)
+      await eventStore.append(allEvents[0]!);
+
+      // Assert: subscriber was NOT called (event was silently absorbed)
+      expect(subscriberSpy).not.toHaveBeenCalled();
+    });
+
+    it('after hydrate(), appending a genuinely new event DOES call the subscribe callback', async () => {
+      // Arrange: populate events and build snapshot
+      await taskHandler.handle({ title: 'Task 1' });
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Fresh projection hydrated from snapshot
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+      await freshProjection.hydrate();
+
+      const subscriberSpy = vi.fn();
+      freshProjection.subscribe(subscriberSpy);
+
+      // Act: append a brand-new event NOT in the snapshot
+      const newEvent = {
+        id: 'genuinely-new-event-id',
+        type: 'task-created',
+        aggregateId: 'brand-new-task',
+        timestamp: new Date().toISOString(),
+        version: 1,
+      };
+      await eventStore.append(newEvent);
+
+      // Assert: subscriber WAS called exactly once
+      expect(subscriberSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('after hydrate(), appending a pre-snapshot event leaves cachedEntries valid (no getAll())', async () => {
+      // Arrange: populate events and build snapshot
+      await taskHandler.handle({ title: 'Task 1' });
+      const allEvents = await eventStore.getAll();
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Fresh projection hydrated from snapshot
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+      await freshProjection.hydrate();
+
+      // Prime the cache via getEntries()
+      await freshProjection.getEntries('all');
+
+      // Spy AFTER the initial cache prime
+      const getAllSpy = vi.spyOn(eventStore, 'getAll');
+
+      // Act: "re-append" a pre-snapshot event
+      await eventStore.append(allEvents[0]!);
+
+      // Now call getEntries() — it must be served from cache (no getAll() call)
+      await freshProjection.getEntries('all');
+
+      expect(getAllSpy).not.toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
+
+    it('before hydrate(), appending an event invalidates cache and notifies subscriber (pre-hydrate behaviour unchanged)', async () => {
+      // Arrange: projection with NO hydration
+      const snapshotStore = new InMemorySnapshotStore();
+      const bareProjection = new EntryListProjection(eventStore, snapshotStore);
+
+      const subscriberSpy = vi.fn();
+      bareProjection.subscribe(subscriberSpy);
+
+      // Act: append an event before hydrate() is ever called
+      const event = {
+        id: 'pre-hydrate-event-id',
+        type: 'task-created',
+        aggregateId: 'task-pre-hydrate',
+        timestamp: new Date().toISOString(),
+        version: 1,
+      };
+      await eventStore.append(event);
+
+      // Assert: subscriber WAS called (normal pre-hydrate behaviour)
+      expect(subscriberSpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });
+
 
