@@ -1,1 +1,2 @@
-pnpm test
+# Pre-commit hook intentionally empty — commit early and often.
+# Build + test checks run on pre-push instead.
