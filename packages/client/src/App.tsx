@@ -287,6 +287,10 @@ function AppContent() {
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
   
+  // Blocks isAppReady until the remote snapshot check (startSync cold-start path) resolves.
+  // Starts as true (conservative: assume a remote check will happen until proven otherwise).
+  const [isRemoteRestoring, setIsRemoteRestoring] = useState(true);
+  
   // Sync overlay state — tracks whether the initial Firestore sync is in progress
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -321,6 +325,15 @@ function AppContent() {
       snapshotManagerRef.current?.stop();
     };
   }, []);
+
+  // If isLoading completes and there's no user, no remote check will happen —
+  // clear the isRemoteRestoring gate immediately so isAppReady can become true.
+  useEffect(() => {
+    if (isLoading) return;
+    if (!user) {
+      setIsRemoteRestoring(false);
+    }
+  }, [user, isLoading]);
 
   // Start/stop background sync when user signs in/out
   useEffect(() => {
@@ -376,6 +389,8 @@ function AppContent() {
         }
       } catch (err) {
         logger.warn('[App] Remote snapshot restore failed, falling back to normal sync:', err);
+      } finally {
+        if (!cancelled) setIsRemoteRestoring(false);
       }
 
       if (cancelled) return;
@@ -448,7 +463,8 @@ function AppContent() {
     }
   };
 
-  // The app is "ready" once IndexedDB has loaded AND the initial Firestore sync
+  // The app is "ready" once IndexedDB has loaded AND the remote snapshot check has
+  // completed (or was skipped because there's no user) AND the initial Firestore sync
   // has completed (or never started because there's no user yet) AND there is no
   // unacknowledged sync error. Background syncs after the first do not block
   // (initialSyncComplete stays true). When a timeout occurs, syncError is set and
@@ -456,6 +472,7 @@ function AppContent() {
   const syncManager = syncManagerRef.current;
   const isAppReady =
     !isLoading &&
+    !isRemoteRestoring &&
     (!isSyncing || (syncManager?.initialSyncComplete ?? true)) &&
     syncError === null;
 

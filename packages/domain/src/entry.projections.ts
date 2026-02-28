@@ -12,6 +12,7 @@ import { EntryEventApplicator } from './entry.event-applicator';
 import type { ISnapshotStore, ProjectionSnapshot } from './snapshot-store';
 import { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
 import type { DomainEvent } from './domain-event';
+import { logger } from './logger';
 
 /**
  * EntryListProjection - Unified Read Model for Tasks, Notes, and Events
@@ -93,7 +94,15 @@ export class EntryListProjection {
     const allEvents = await this.eventStore.getAll();
 
     if (allEvents.length === 0) {
-      // No events at all (shouldn't normally happen if a snapshot exists, but be safe)
+      // No events at all. One legitimate scenario: first cold-start on a new device where
+      // the remote snapshot was restored (ADR-018) but SyncManager hasn't downloaded the
+      // event log yet. The snapshot is ignored here; a full replay will happen lazily on
+      // the next getEntries() call once events arrive.
+      logger.warn(
+        '[EntryListProjection.hydrate] Snapshot exists but local event log is empty.',
+        'Possible causes: cold-start before event download completes, or IndexedDB was cleared.',
+        'Falling back to full replay on next getEntries() call.',
+      );
       return;
     }
 
@@ -112,11 +121,20 @@ export class EntryListProjection {
       // Snapshot is fully up-to-date — seed the cache directly, zero replay cost
       this.cachedEntries = [...snapshot.state];
       this.lastAppliedEventId = snapshot.lastEventId;
+      // Use all event IDs (not just lastEventId) so that any call path — including
+      // individual append() calls — is absorbed correctly. The set is drained lazily
+      // as events arrive, so GC cost is identical to a single-ID set.
       this.absorbedEventIds = new Set(allEvents.map(e => e.id));
     } else {
       // Apply only the delta events on top of the snapshot state
       this.cachedEntries = this.applicator.applyEventsOnto([...snapshot.state], deltaEvents);
       this.lastAppliedEventId = lastEvent.id;
+      // absorbedEventIds includes ALL events (snapshot + delta), not just snapshot events.
+      // Rationale: SyncManager may re-deliver delta events on its next syncNow() pass if
+      // the batch download window overlaps with what hydrate() already applied (e.g. a
+      // retry or a remote fetch that starts from lastKnownEventId rather than current
+      // localIds). Including delta IDs ensures those re-deliveries are silently absorbed
+      // rather than causing a spurious cache invalidation and UI re-render.
       this.absorbedEventIds = new Set(allEvents.map(e => e.id));
     }
   }

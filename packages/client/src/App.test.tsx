@@ -1,8 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 import type { IndexedDBEventStore } from '@squickr/infrastructure';
 import { onAuthStateChanged } from 'firebase/auth';
+import { CollectionListProjection } from '@squickr/domain';
+import { TUTORIAL_SEEN_KEY } from './context/TutorialContext';
 
 // Mock IndexedDBEventStore since we're in jsdom environment
 vi.mock('@squickr/infrastructure', async () => {
@@ -175,8 +177,12 @@ describe('App', () => {
       expect(screen.getByText('Squickr Life')).toBeInTheDocument();
     });
 
-    // Sync overlay should NOT be visible (we restored from remote, skipping it)
-    expect(screen.queryByTestId('sync-overlay')).not.toBeInTheDocument();
+    // Sync overlay should NOT be visible once isRemoteRestoring resolves.
+    // With the isRemoteRestoring gate, the overlay clears asynchronously after
+    // the remote snapshot check completes — use waitFor to let that settle.
+    await waitFor(() => {
+      expect(screen.queryByTestId('sync-overlay')).not.toBeInTheDocument();
+    });
   });
 
   it('should call saveSnapshot on SnapshotManager after initial sync completes (normal path)', async () => {
@@ -234,6 +240,113 @@ describe('App', () => {
           : []
       );
       expect(postInitCalls).toHaveLength(1);
+    });
+  });
+
+  // ── Remote-restore / isRemoteRestoring tests (Change 1) ────────────────────
+
+  describe('isRemoteRestoring gate', () => {
+    let sessionSetItemSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      // Clear storage so tutorial-guard checks start clean
+      sessionStorage.clear();
+      localStorage.clear();
+
+      // Spy on sessionStorage.setItem so we can detect startTutorial() calls.
+      // TutorialContext.startTutorial() always calls:
+      //   sessionStorage.setItem(TUTORIAL_SEEN_KEY, 'true')
+      sessionSetItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    });
+
+    afterEach(() => {
+      sessionSetItemSpy.mockRestore();
+    });
+
+    it('tutorial does NOT fire while remote snapshot check is in flight', async () => {
+      // Arrange: remoteSnapshotStore.load never resolves — simulates a slow/hung network
+      const { FirestoreSnapshotStore } = await import('@squickr/infrastructure');
+      vi.spyOn(FirestoreSnapshotStore.prototype, 'load').mockImplementation(
+        () => new Promise(() => {}), // never resolves
+      );
+
+      render(<App />);
+
+      // Wait long enough that isLoading has settled (IndexedDB init completes)
+      await waitFor(() => {
+        // The app renders the authenticated layout (not the auth loading screen)
+        // but isAppReady is false because isRemoteRestoring=true
+        expect(screen.getByTestId('sync-overlay')).toBeInTheDocument();
+      });
+
+      // startTutorial() must NOT have been called — the gate should hold
+      const tutorialStartCalls = sessionSetItemSpy.mock.calls.filter(
+        ([key]) => key === TUTORIAL_SEEN_KEY,
+      );
+      expect(tutorialStartCalls).toHaveLength(0);
+    });
+
+    it('isAppReady becomes true and tutorial fires for new user when remote resolves to null', async () => {
+      // Arrange: remoteSnapshotStore.load resolves null (no remote snapshot)
+      const { FirestoreSnapshotStore } = await import('@squickr/infrastructure');
+      vi.spyOn(FirestoreSnapshotStore.prototype, 'load').mockResolvedValue(null);
+
+      render(<App />);
+
+      // Wait for the app to become ready — overlay must be gone
+      await waitFor(() => {
+        expect(screen.queryByTestId('sync-overlay')).not.toBeInTheDocument();
+      });
+
+      // Tutorial must have fired (new user, zero collections)
+      await waitFor(() => {
+        const tutorialStartCalls = sessionSetItemSpy.mock.calls.filter(
+          ([key]) => key === TUTORIAL_SEEN_KEY,
+        );
+        expect(tutorialStartCalls.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('tutorial does NOT fire for returning user when remote snapshot is applied', async () => {
+      // Arrange: remote snapshot store returns a snapshot (returning user)
+      const { FirestoreSnapshotStore } = await import('@squickr/infrastructure');
+      const remoteSnapshot = {
+        version: 1,
+        lastEventId: 'evt-remote-1',
+        state: [],
+        savedAt: new Date(Date.now() + 60_000).toISOString(), // future = newer than local
+      };
+      vi.spyOn(FirestoreSnapshotStore.prototype, 'load').mockResolvedValue(
+        remoteSnapshot as any,
+      );
+
+      // Arrange: collections exist (returning user has data)
+      const getCollectionsSpy = vi
+        .spyOn(CollectionListProjection.prototype, 'getCollections')
+        .mockResolvedValue([
+          {
+            id: 'col-1',
+            name: 'Work',
+            type: 'custom',
+            order: 'a',
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+
+      render(<App />);
+
+      // Wait for the app to become ready — overlay must be gone
+      await waitFor(() => {
+        expect(screen.queryByTestId('sync-overlay')).not.toBeInTheDocument();
+      });
+
+      // Tutorial must NOT have fired — returning user with existing collections
+      const tutorialStartCalls = sessionSetItemSpy.mock.calls.filter(
+        ([key]) => key === TUTORIAL_SEEN_KEY,
+      );
+      expect(tutorialStartCalls).toHaveLength(0);
+
+      getCollectionsSpy.mockRestore();
     });
   });
 
