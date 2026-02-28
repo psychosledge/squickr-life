@@ -27,6 +27,17 @@
 - ADR-016 written and accepted
 - 725 domain / 38 infrastructure / 1117 client tests passing
 
+**Remote Snapshot Store for Cold-Start Acceleration (ADR-017):**  
+✅ Complete — February 28, 2026
+- `FirestoreSnapshotStore` persists projection snapshots to Firestore (`users/{uid}/snapshots/{key}`)
+- `removeUndefinedDeep` extracted to shared `firestore-utils.ts`
+- `EntryEventApplicator.applyEventsOnto()` for efficient delta replay
+- `EntryListProjection.hydrate()` fixed to apply delta events onto snapshot state (ADR-016 Phase 2)
+- `SnapshotManager` updated with dual-store support (local + remote fire-and-forget)
+- Cold-start sequence in `App.tsx`: remote snapshot restore → skip overlay if successful
+- Firestore security rule for `users/{userId}/snapshots/{snapshotKey}`
+- 735 domain / 51 infrastructure / 1121 client tests passing
+
 **Previously completed deferred items:**
 - ✅ Timezone utility consolidation (`DateHeader.tsx`, `formatters.ts`) — done in v2ba59d8
 

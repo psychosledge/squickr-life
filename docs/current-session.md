@@ -1,20 +1,21 @@
 # Current Session Plan
 **Date:** February 28, 2026  
 **Status:** ✅ Complete  
-**Version:** Post-v1.2.0 — Projection Snapshots (Learning Exercise)
+**Version:** Post-v1.2.0 — Remote Snapshot Store for Cold-Start Acceleration (ADR-017)
 
 ---
 
 ## Session Goal
 
-Implement projection snapshots with delta replay — a learning exercise in a core
-event sourcing pattern. The app currently does full event replay on every `getEntries()`
-call. This session introduces: `ISnapshotStore` interface, `IndexedDBSnapshotStore`,
-in-memory cache in `EntryListProjection`, delta replay on startup, and `SnapshotManager`
-(count trigger + tab-close trigger).
+Eliminate the 60+ second cold-start delay on new devices and incognito sessions.
+The root cause is that `SyncManager` downloads all ~900 events from Firestore before
+the UI unblocks. The fix: persist the projection snapshot to Firestore so a new device
+can restore its read model from a single document fetch instead of downloading every event.
 
-Full design in ADR-016. Not a performance emergency — implementing while the codebase
-is small enough to learn from comfortably.
+Also completes ADR-016 Phase 2: fix `EntryListProjection.hydrate()` to apply delta events
+on top of `snapshot.state` (currently it ignores snapshot state and does a full replay).
+
+Full design in ADR-017. See `docs/architecture-decisions.md`.
 
 ## If Interrupted
 
@@ -26,248 +27,226 @@ suite and commit. Never commit a step with failing tests.
 ## Architecture & Design
 
 **Designed by:** Architecture Alex (February 28, 2026)  
-**ADR:** ADR-016 (see `docs/architecture-decisions.md`)  
+**ADR:** ADR-017 (see `docs/architecture-decisions.md`)  
 **Key files:**
-- New interface: `packages/domain/src/snapshot-store.ts`
-- New stores: `packages/infrastructure/src/indexeddb-snapshot-store.ts`, `in-memory-snapshot-store.ts`
-- Modified projection: `packages/domain/src/entry.projections.ts`
-- New coordinator: `packages/client/src/snapshot-manager.ts`
+- New store: `packages/infrastructure/src/firestore-snapshot-store.ts`
+- New utility: `packages/infrastructure/src/firestore-utils.ts`
+- Modified projection: `packages/domain/src/entry.projections.ts` (fix `hydrate()`)
+- Modified applicator: `packages/domain/src/entry.event-applicator.ts` (add `applyEventsOnto()`)
+- Modified coordinator: `packages/client/src/snapshot-manager.ts` (dual-store)
+- Modified app init: `packages/client/src/App.tsx` (cold-start sequence)
 
 ---
 
 ## Implementation Steps (ordered — TDD throughout)
 
-### Step 1 — `ISnapshotStore` Interface + Types (domain layer)
-**Estimated time:** 30 minutes  
-**Package:** `packages/domain/`  
-**Status:** ⬜ Pending
-
-1. Create `packages/domain/src/snapshot-store.ts`:
-   - `ProjectionSnapshot` interface: `{ version, lastEventId, state: Entry[], savedAt }`
-   - `ISnapshotStore` interface: `save(key, snapshot)`, `load(key)`, `clear(key)`
-   - `SNAPSHOT_SCHEMA_VERSION = 1` constant
-   - Full JSDoc on all fields
-
-2. Export from `packages/domain/src/index.ts`:
-   ```typescript
-   export type { ISnapshotStore, ProjectionSnapshot } from './snapshot-store';
-   export { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
-   ```
-
-3. Write interface contract tests in `packages/domain/src/snapshot-store.test.ts`:
-   - Test `SNAPSHOT_SCHEMA_VERSION` is a number
-   - Test `ProjectionSnapshot` shape (TypeScript type tests using `satisfies`)
-   - These tests are intentionally minimal — the interface itself has no logic
-
-**Commit:** `feat(domain): add ISnapshotStore interface, ProjectionSnapshot type, SNAPSHOT_SCHEMA_VERSION`
-
----
-
-### Step 2 — `InMemorySnapshotStore` (infrastructure layer)
-**Estimated time:** 45 minutes  
-**Package:** `packages/infrastructure/`  
-**Status:** ⬜ Pending
-
-1. Create `packages/infrastructure/src/in-memory-snapshot-store.ts`:
-   - Implements `ISnapshotStore` using a `Map<string, ProjectionSnapshot>`
-   - `save`: `this.store.set(key, snapshot)`
-   - `load`: `return this.store.get(key) ?? null`
-   - `clear`: `this.store.delete(key)`
-
-2. Write tests in `packages/infrastructure/src/__tests__/in-memory-snapshot-store.test.ts`:
-   - `load()` returns `null` when no snapshot exists
-   - `save()` then `load()` returns the saved snapshot
-   - `save()` twice with same key overwrites (not appends)
-   - `clear()` makes subsequent `load()` return `null`
-   - `clear()` on non-existent key is a no-op (doesn't throw)
-   - Multiple keys are independent (saving 'key-a' doesn't affect 'key-b')
-
-3. Export from `packages/infrastructure/src/index.ts`:
-   ```typescript
-   export { InMemorySnapshotStore } from './in-memory-snapshot-store';
-   ```
-
-**Commit:** `feat(infrastructure): add InMemorySnapshotStore implementing ISnapshotStore`
-
----
-
-### Step 3 — `IndexedDBSnapshotStore` (infrastructure layer)
-**Estimated time:** 1.5 hours  
-**Package:** `packages/infrastructure/`  
-**Status:** ⬜ Pending
-
-1. Create `packages/infrastructure/src/indexeddb-snapshot-store.ts`:
-   - Same initialize/open pattern as `IndexedDBEventStore`
-   - Database name: `squickr-snapshots` (separate DB from events)
-   - Object store: `snapshots`, keyPath: `'key'`
-   - `save()`: `store.put({ key, ...snapshot })` (upsert)
-   - `load()`: `store.get(key)`, destructure to remove `key` field before returning
-   - `clear()`: `store.delete(key)`
-   - `ensureInitialized()` guard on all methods
-
-2. Write tests in `packages/infrastructure/src/__tests__/indexeddb-snapshot-store.test.ts`:
-   - Use `fake-indexeddb` (already used by `indexeddb-event-store.test.ts`)
-   - Mirror the `InMemorySnapshotStore` test cases (same contract, different implementation)
-   - Add: throws if not initialized
-   - Add: `initialize()` creates the `snapshots` object store
-
-3. Export from `packages/infrastructure/src/index.ts`:
-   ```typescript
-   export { IndexedDBSnapshotStore } from './indexeddb-snapshot-store';
-   ```
-
-**Commit:** `feat(infrastructure): add IndexedDBSnapshotStore with IndexedDB persistence`
-
----
-
-### Step 4 — In-Memory Cache in `EntryListProjection`
-**Estimated time:** 1 hour  
-**Package:** `packages/domain/`  
-**Status:** ⬜ Pending
-
-**Goal:** Add the cache *without* snapshot awareness yet. Get the performance win of
-"serve from cache, invalidate on event" before introducing snapshot complexity.
-
-1. Modify `packages/domain/src/entry.projections.ts`:
-   - Add `private cachedEntries: Entry[] | null = null`
-   - Add `private lastAppliedEventId: string | null = null`
-   - Modify event store subscription callback: `this.cachedEntries = null; this.notifySubscribers();`
-   - Add private `resolveCache(): Promise<Entry[]>`:
-     - If `cachedEntries !== null`, return it
-     - Else: `eventStore.getAll()` → `applicator.applyEvents()` → store in `cachedEntries`
-   - Modify `getEntries()` to call `resolveCache()` instead of `eventStore.getAll()` directly
-
-2. Add tests in `packages/domain/src/entry.projections.test.ts`:
-   - Cache hit: `getEntries()` called twice → `eventStore.getAll()` called only once
-   - Cache invalidation: after `eventStore.append()`, next `getEntries()` calls `getAll()` again
-   - Cache works correctly with subscriptions (subscribers still fire)
-
-   > **Testing tip:** Use `InMemoryEventStore`. To count `getAll()` calls, wrap it with
-   > `vi.spyOn()`.
-
-3. Verify all existing projection tests still pass without modification.
-
-**Commit:** `feat(domain): add in-memory cache to EntryListProjection — cache invalidated on event append`
-
----
-
-### Step 5 — `EntryListProjection.hydrate()` and `createSnapshot()`
-**Estimated time:** 1.5 hours  
-**Package:** `packages/domain/`  
-**Status:** ⬜ Pending
-
-1. Modify `EntryListProjection` constructor to accept optional `snapshotStore?: ISnapshotStore`
-
-2. Implement `hydrate(): Promise<void>`:
-   - If no `snapshotStore`, return early
-   - `load('entry-list-projection')` from snapshot store
-   - If null or `snapshot.version !== SNAPSHOT_SCHEMA_VERSION`: return (full replay on first `getEntries()`)
-   - Else: `eventStore.getAll()` → find events after `snapshot.lastEventId` → apply all events → store in `cachedEntries`
-   - (Phase 1: re-applies full event list for correctness — see ADR-016)
-
-3. Implement `createSnapshot(): Promise<ProjectionSnapshot | null>`:
-   - `eventStore.getAll()` to get `lastEvent`
-   - If no events, return `null`
-   - `getEntries('all')` to get current entry state (uses cache)
-   - Return `ProjectionSnapshot { version: SNAPSHOT_SCHEMA_VERSION, lastEventId: lastEvent.id, state: entries, savedAt: ISO }`
-
-4. Write tests (use `InMemorySnapshotStore` + `InMemoryEventStore`):
-
-   **`hydrate()` tests:**
-   - No snapshot store → `hydrate()` is a no-op (no throws)
-   - No snapshot saved → after hydrate, first `getEntries()` does full replay
-   - Snapshot with correct version → `cachedEntries` populated, `getAll()` called only once on hydrate
-   - Snapshot with stale version (≠ `SNAPSHOT_SCHEMA_VERSION`) → fallback to full replay
-   - Snapshot `lastEventId` present in event log → delta events applied
-   - Snapshot `lastEventId` NOT in event log → fallback to full replay
-   - After hydrate, `getEntries()` returns same result as full replay (correctness check)
-
-   **`createSnapshot()` tests:**
-   - No events → returns `null`
-   - With events → returns snapshot with correct `lastEventId`, `version`, `state`
-   - `state` matches current `getEntries('all')` result
-   - `savedAt` is a valid ISO 8601 string
-
-**Commit:** `feat(domain): add EntryListProjection.hydrate() and createSnapshot() with snapshot store support`
-
----
-
-### Step 6 — `SnapshotManager` (client layer)
-**Estimated time:** 1.5 hours  
-**Package:** `packages/client/`  
-**Status:** ⬜ Pending
-
-1. Create `packages/client/src/snapshot-manager.ts`:
-   - Constructor: `(projection, snapshotStore, eventStore, eventsBeforeSnapshot = 50)`
-   - `start()`: subscribe to eventStore (count trigger) + add DOM listeners (lifecycle triggers)
-   - `stop()`: unsubscribe + remove DOM listeners
-   - `saveSnapshot(trigger)`: `projection.createSnapshot()` → `snapshotStore.save()` with try/catch
-   - Count trigger: increment counter; reset to 0 after saving
-   - Lifecycle: `visibilitychange === 'hidden'` → save; `beforeunload` → save
-
-2. Write tests in `packages/client/src/__tests__/snapshot-manager.test.ts`:
-   - Use `InMemorySnapshotStore`, mock `EntryListProjection` with `createSnapshot()` spy
-   - Count trigger: 49 events → no save; 50th event → save called
-   - Count trigger: resets after save (51st event alone doesn't trigger)
-   - Lifecycle trigger: fire `visibilitychange` with `hidden` → save called
-   - Lifecycle trigger: `visible` state → no save
-   - Lifecycle trigger: `beforeunload` → save called
-   - `stop()` removes all listeners (firing events after stop does nothing)
-   - `saveSnapshot()` swallows errors gracefully (no throw propagation)
-   - `createSnapshot()` returning `null` → `save()` not called
-
-   > **Testing DOM events:** Vitest JSDOM — use `document.dispatchEvent(new Event('visibilitychange'))`
-   > and mock `document.visibilityState`.
-
-**Commit:** `feat(client): add SnapshotManager with count-based and lifecycle snapshot triggers`
-
----
-
-### Step 7 — Wire Into `App.tsx`
-**Estimated time:** 45 minutes  
-**Package:** `packages/client/`  
-**Status:** ⬜ Pending
-
-1. In `App.tsx` (wherever `EntryListProjection` is instantiated):
-   - Import `IndexedDBSnapshotStore` from `@squickr/infrastructure`
-   - Import `SnapshotManager` from `./snapshot-manager`
-   - Instantiate `snapshotStore = new IndexedDBSnapshotStore('squickr-snapshots')`
-   - Initialize: `await snapshotStore.initialize()`
-   - Pass to projection: `new EntryListProjection(eventStore, snapshotStore)`
-   - Call `await projection.hydrate()` before first render
-   - Instantiate `snapshotManager = new SnapshotManager(projection, snapshotStore, eventStore)`
-   - `snapshotManager.start()` inside `useEffect`
-   - Return `() => snapshotManager.stop()` from `useEffect` cleanup
-
-2. Smoke test in `App.test.tsx`:
-   - App renders without throwing when `IndexedDBSnapshotStore` is wired
-   - Verify `hydrate()` is called during init sequence
-
-3. Manual verification:
-   - Add 50+ entries → DevTools → Application → IndexedDB → `squickr-snapshots` → `snapshots` object store should have a record
-   - Close and reopen tab — entries render immediately
-   - Add a temporary `console.log` in `hydrate()` to confirm delta count on reload
-
-**Commit:** `feat(client): wire IndexedDBSnapshotStore and SnapshotManager into app init`
-
----
-
-### Step 8 — Export Cleanup + Documentation
+### Step 1 — `firestore-utils.ts` + refactor `FirestoreEventStore`
 **Estimated time:** 20 minutes  
-**Status:** ⬜ Pending
+**Package:** `packages/infrastructure/`  
+**Status:** ✅ Done — commit `2876099`
 
-1. Verify `packages/domain/src/index.ts` exports `ISnapshotStore`, `ProjectionSnapshot`, `SNAPSHOT_SCHEMA_VERSION`
+1. Create `packages/infrastructure/src/firestore-utils.ts`:
+   - Extract `removeUndefinedDeep(obj: unknown): unknown` from `firestore-event-store.ts`
+   - Export it
 
-2. Verify `packages/infrastructure/src/index.ts` exports `IndexedDBSnapshotStore`, `InMemorySnapshotStore`
+2. Update `packages/infrastructure/src/firestore-event-store.ts`:
+   - Import `removeUndefinedDeep` from `./firestore-utils`
+   - Remove the local `removeUndefined` function
 
-3. Add versioning warning to `entry.event-applicator.ts` file header:
-   > ⚠️ SNAPSHOT VERSIONING: If you change the shape of `Entry[]` returned by `applyEvents()`
-   > (add/rename/remove fields), increment `SNAPSHOT_SCHEMA_VERSION` in
-   > `packages/domain/src/snapshot-store.ts` to invalidate stale snapshots.
+3. No new tests needed (the existing `FirestoreEventStore` tests cover the behaviour).
+   All existing infrastructure tests must continue passing.
 
-4. Update `docs/roadmap.md` — mark projection snapshots as complete
+**Commit:** `refactor(infrastructure): extract removeUndefinedDeep into firestore-utils`
 
-**Commit:** `docs: add snapshot schema versioning warning to EntryEventApplicator`
+---
+
+### Step 2 — `EntryEventApplicator.applyEventsOnto()`
+**Estimated time:** 45 minutes  
+**Package:** `packages/domain/`  
+**Status:** ✅ Done — commit `579f4a7`
+
+1. Modify `packages/domain/src/entry.event-applicator.ts`:
+   - Extract the core map-mutation logic from `applyEvents()` into a private method
+     `applyEventsToMap(map: Map<string, Entry>, events: DomainEvent[]): void`
+   - Rewrite `applyEvents(events)` to create an empty map, call `applyEventsToMap`, return values
+   - Add new public method:
+     ```typescript
+     applyEventsOnto(seed: Entry[], deltaEvents: DomainEvent[]): Entry[]
+     ```
+     Implementation: build map from seed, call `applyEventsToMap(map, deltaEvents)`, return values
+
+2. Write tests in `packages/domain/src/entry.event-applicator.test.ts` (or alongside
+   existing applicator tests):
+   - `applyEventsOnto([])` with no delta events returns the seed unchanged
+   - `applyEventsOnto(seed)` with delta events applies them correctly
+   - `applyEventsOnto` and `applyEvents` produce the same result for the same full event log
+     (i.e., `applyEventsOnto([], allEvents) === applyEvents(allEvents)`)
+
+3. All existing applicator and projection tests must continue passing.
+
+**Commit:** `feat(domain): add EntryEventApplicator.applyEventsOnto() for delta application`
+
+---
+
+### Step 3 — Fix `EntryListProjection.hydrate()` (ADR-016 Phase 2)
+**Estimated time:** 45 minutes  
+**Package:** `packages/domain/`  
+**Status:** ✅ Done — commit `dc53263`
+
+**Goal:** `hydrate()` should use `snapshot.state` as the seed and apply only delta events,
+instead of ignoring the snapshot and doing a full replay.
+
+1. Modify `packages/domain/src/entry.projections.ts` — rewrite `hydrate()`:
+   ```
+   load snapshot → if null/stale version → return (full replay on first getEntries())
+   getAll() → find snapshotEventIndex
+   if snapshotEventIndex < 0 → return (full replay fallback)
+   deltaEvents = allEvents.slice(snapshotEventIndex + 1)
+   if deltaEvents.length === 0:
+     cachedEntries = [...snapshot.state]   ← zero replay cost
+     lastAppliedEventId = snapshot.lastEventId
+   else:
+     cachedEntries = applicator.applyEventsOnto([...snapshot.state], deltaEvents)
+     lastAppliedEventId = allEvents[last].id
+   ```
+
+2. Update tests in `packages/domain/src/entry.projections.test.ts`:
+   - Add: snapshot is fully current → `getAll()` called once (in hydrate), `applyEventsOnto`
+     not called (or called with empty delta)
+   - Add: delta events applied on top of snapshot state → correct result, fewer events replayed
+   - Update: existing "Snapshot with correct version → `getAll()` called only once on hydrate"
+     test should now also verify `cachedEntries` equals snapshot state (not full replay result)
+   - All existing hydrate tests must still pass (they test the same correctness guarantee)
+
+> **Note:** Do NOT modify existing tests — add new ones or clarify assertions only.
+
+**Commit:** `feat(domain): fix hydrate() to apply delta events onto snapshot state (ADR-016 Phase 2)`
+
+---
+
+### Step 4 — `FirestoreSnapshotStore`
+**Estimated time:** 1.5 hours  
+**Package:** `packages/infrastructure/`  
+**Status:** ✅ Done — commit `9cfd916`
+
+1. Create `packages/infrastructure/src/firestore-snapshot-store.ts`:
+   - Implements `ISnapshotStore`
+   - Constructor: `(firestore: Firestore, userId: string)`
+   - Firestore path: `users/{userId}/snapshots/{key}`
+   - `save(key, snapshot)`: `setDoc(docRef, removeUndefinedDeep(snapshot))`
+   - `load(key)`: `getDoc(docRef)` → if not exists return null → validate
+     `data.version === SNAPSHOT_SCHEMA_VERSION` else return null → return snapshot
+   - `clear(key)`: `deleteDoc(docRef)`
+   - Import `removeUndefinedDeep` from `./firestore-utils`
+   - Import `SNAPSHOT_SCHEMA_VERSION` from `@squickr/domain`
+
+2. Write tests in `packages/infrastructure/src/__tests__/firestore-snapshot-store.test.ts`:
+   - Mirror the `InMemorySnapshotStore` contract tests (load null, save/load, overwrite, clear,
+     clear non-existent key, multiple keys independent)
+   - Add: `load()` returns null when snapshot version doesn't match `SNAPSHOT_SCHEMA_VERSION`
+   - Mock Firestore SDK (use `vi.mock('firebase/firestore')`) — same pattern as
+     `firestore-event-store.test.ts`
+
+3. Export from `packages/infrastructure/src/index.ts`:
+   ```typescript
+   export { FirestoreSnapshotStore } from './firestore-snapshot-store';
+   ```
+
+**Commit:** `feat(infrastructure): add FirestoreSnapshotStore for cloud snapshot persistence`
+
+---
+
+### Step 5 — `SnapshotManager` dual-store support
+**Estimated time:** 30 minutes  
+**Package:** `packages/client/`  
+**Status:** ✅ Done — commit `82a32c5`
+
+1. Modify `packages/client/src/snapshot-manager.ts`:
+   - Change constructor signature:
+     ```typescript
+     constructor(
+       private readonly projection: EntryListProjection,
+       private readonly localStore: ISnapshotStore,
+       private readonly remoteStore: ISnapshotStore | null,
+       private readonly eventStore: IEventStore,
+       private readonly eventsBeforeSnapshot: number = 50
+     )
+     ```
+   - Update `saveSnapshot()`:
+     - `await this.localStore.save(key, snapshot)` (reliable path)
+     - `this.remoteStore?.save(key, snapshot).catch(err => console.warn(...))` (fire-and-forget)
+
+2. Update tests in `packages/client/src/snapshot-manager.test.ts`:
+   - Update constructor calls to pass `null` as `remoteStore` (backward-compatible — add new tests
+     for the remote store path)
+   - Add: remote store `save()` is called fire-and-forget after local save
+   - Add: remote store failure does not throw / does not affect local save
+   - Add: `remoteStore = null` → only local store called
+
+**Commit:** `feat(client): add dual-store support to SnapshotManager (local + remote fire-and-forget)`
+
+---
+
+### Step 6 — Wire cold-start sequence in `App.tsx`
+**Estimated time:** 1 hour  
+**Package:** `packages/client/`  
+**Status:** ✅ Done — commit `577ed42`
+
+1. Modify `packages/client/src/App.tsx`:
+   - Import `FirestoreSnapshotStore` from `@squickr/infrastructure`
+   - In the `user` useEffect (where `SyncManager` is set up):
+     - Instantiate `remoteSnapshotStore = new FirestoreSnapshotStore(firestore, user.uid)`
+     - Reconstruct `SnapshotManager` with both stores:
+       ```typescript
+       new SnapshotManager(entryProjection, snapshotStore, remoteSnapshotStore, eventStore)
+       ```
+     - Before starting `SyncManager`, attempt remote snapshot restore:
+       ```typescript
+       const remoteSnapshot = await Promise.race([
+         remoteSnapshotStore.load('entry-list-projection'),
+         timeout(5_000),  // fail fast
+       ]);
+       if (remoteSnapshot) {
+         const localSnapshot = await snapshotStore.load('entry-list-projection');
+         const remoteIsNewer = !localSnapshot ||
+           new Date(remoteSnapshot.savedAt) > new Date(localSnapshot.savedAt);
+         if (remoteIsNewer) {
+           await snapshotStore.save('entry-list-projection', remoteSnapshot);
+           await entryProjection.hydrate();
+           restoredFromRemote = true;
+         }
+       }
+       ```
+     - If `restoredFromRemote`: skip sync overlay, run `SyncManager` in background without
+       blocking the UI (`onSyncStateChange` does not call `setIsSyncing`)
+     - If not restored: existing behaviour (overlay shown until sync completes)
+
+2. Update `packages/client/src/App.test.tsx`:
+   - Add mock for `FirestoreSnapshotStore`
+   - Add smoke test: `restoredFromRemote` path renders without overlay
+   - Existing tests must pass
+
+**Commit:** `feat(client): cold-start acceleration via remote snapshot restore before event sync`
+
+---
+
+### Step 7 — `firestore.rules` update + export cleanup
+**Estimated time:** 10 minutes  
+**Status:** ✅ Done
+
+1. Add `snapshots` subcollection rule to `firestore.rules`:
+   ```
+   match /users/{userId}/snapshots/{snapshotKey} {
+     allow read, write: if request.auth != null && request.auth.uid == userId;
+   }
+   ```
+
+2. Verify `packages/infrastructure/src/index.ts` exports `FirestoreSnapshotStore`
+   (should already be done in Step 4)
+
+3. Update `docs/roadmap.md` and `docs/current-session.md`
+
+**Commit:** `docs: add Firestore snapshots security rule and mark ADR-017 session complete`
 
 ---
 
@@ -275,13 +254,12 @@ suite and commit. Never commit a step with failing tests.
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Snapshot storage | Separate IndexedDB DB (`squickr-snapshots`) | Independent from event log; can clear without affecting events |
-| Snapshot state format | `Entry[]` (full projection output) | Directly usable; avoids re-serializing internal Maps |
-| Schema versioning | `SNAPSHOT_SCHEMA_VERSION` constant | Version mismatch → graceful fallback to full replay |
-| Delta application | Full `applyEvents(allEvents)` in Phase 1 | Correct; CPU cost negligible at current scale |
-| Trigger strategy | Count (50 events) + visibilitychange + beforeunload | Reliable across platforms; bounds worst-case delta |
-| SnapshotManager location | `packages/client/` | Uses browser APIs; domain is pure TS |
-| ISnapshotStore location | `packages/domain/` | Follows IEventStore pattern; pure interface |
+| Remote snapshot storage | Firestore `users/{userId}/snapshots/{key}` | One document = one network round-trip; mirrors ISnapshotStore key contract |
+| Remote save strategy | Fire-and-forget (no await) | Local save is the reliability path; remote is an optimisation |
+| Remote fetch timeout | 5 seconds | Fail fast back to existing behaviour on slow/unavailable network |
+| Staleness guard | `savedAt` timestamp comparison | Prevent overwriting a newer local snapshot with an older remote one |
+| `hydrate()` fix | `applyEventsOnto(snapshot.state, deltaEvents)` | Complete ADR-016 Phase 2 in the same change |
+| `removeUndefinedDeep` | Extracted to `firestore-utils.ts` | Shared by both `FirestoreEventStore` and `FirestoreSnapshotStore` |
 
 ---
 
@@ -289,24 +267,16 @@ suite and commit. Never commit a step with failing tests.
 
 | Package | Before | Expected After | New Tests |
 |---|---|---|---|
-| domain | ~700 | ~740 | ~40 (projection hydrate, createSnapshot, cache) |
-| infrastructure | ~120 | ~160 | ~40 (InMemorySnapshotStore, IndexedDBSnapshotStore) |
-| client | ~1,103 | ~1,125 | ~22 (SnapshotManager, App wiring) |
-| **Total** | **~1,800** | **~1,925** | **~125** |
+| domain | 725 | ~740 | ~15 (applyEventsOnto, hydrate delta fix) |
+| infrastructure | 38 | ~55 | ~17 (FirestoreSnapshotStore) |
+| client | 1117 | ~1130 | ~13 (SnapshotManager dual-store, App wiring) |
+| **Total** | **1880** | **~1925** | **~45** |
 
 ---
 
-## Workflow for This Session
+## Previous Session (Post-v1.2.0 — February 28, 2026)
 
-Per `docs/opencode-workflow.md`:
-
-1. **Plan** — Alex plans all items upfront ✅ (done)
-2. **User approves plan** (pending)
-3. **Execute one step at a time:** Sam implements → Casey reviews → commit
-4. Steps are independently committable — each step passes its own tests
-
----
-
-## Previous Session (v1.2.0 — February 27, 2026)
-
-Three items: collection stats bug fix, recoverable deleted collections, recoverable deleted entries with visual distinction. See `CHANGELOG.md` and `docs/roadmap.md` for details.
+Projection snapshots with delta replay (ADR-016): `ISnapshotStore`, `IndexedDBSnapshotStore`,
+`InMemorySnapshotStore`, in-memory cache + `hydrate()` + `createSnapshot()` in
+`EntryListProjection`, `SnapshotManager`, wired into `App.tsx`.
+1880 tests passing across all packages.
