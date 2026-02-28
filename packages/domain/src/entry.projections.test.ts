@@ -2248,6 +2248,74 @@ describe('EntryListProjection', () => {
       vi.restoreAllMocks();
     });
 
+    it('appendBatch with all pre-snapshot events does NOT call subscriber and leaves cache valid', async () => {
+      // Arrange: populate events and build snapshot
+      await taskHandler.handle({ title: 'Task A' });
+      await taskHandler.handle({ title: 'Task B' });
+      const allEvents = await eventStore.getAll();
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Fresh projection hydrated from snapshot
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+      await freshProjection.hydrate();
+
+      // Prime the cache
+      await freshProjection.getEntries('all');
+
+      const subscriberSpy = vi.fn();
+      freshProjection.subscribe(subscriberSpy);
+
+      const getAllSpy = vi.spyOn(eventStore, 'getAll');
+
+      // Act: appendBatch with events already in the snapshot (SyncManager re-delivers all downloaded events)
+      // appendBatch notifies subscriber once with the last event — which is pre-snapshot → absorbed silently
+      await eventStore.appendBatch(allEvents);
+
+      // Assert: subscriber was NOT called and cache was NOT invalidated
+      expect(subscriberSpy).not.toHaveBeenCalled();
+
+      await freshProjection.getEntries('all');
+      expect(getAllSpy).not.toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
+
+    it('appendBatch with mixed pre-snapshot and new events calls subscriber exactly once for the new event', async () => {
+      // Arrange: populate events and build snapshot
+      await taskHandler.handle({ title: 'Task A' });
+      const allEvents = await eventStore.getAll();
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Fresh projection hydrated from snapshot
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+      await freshProjection.hydrate();
+
+      const subscriberSpy = vi.fn();
+      freshProjection.subscribe(subscriberSpy);
+
+      // Act: appendBatch where the last event is genuinely new
+      // appendBatch calls notifySubscribers(events[last]) — the new event is not in absorbedEventIds
+      const newEvent = {
+        id: 'brand-new-event-id',
+        type: 'task-created',
+        aggregateId: 'brand-new-task',
+        timestamp: new Date().toISOString(),
+        version: 1,
+      };
+      await eventStore.appendBatch([...allEvents, newEvent]);
+
+      // Assert: subscriber was called exactly once (for the new event, not 945 times)
+      expect(subscriberSpy).toHaveBeenCalledTimes(1);
+    });
+
     it('before hydrate(), appending an event invalidates cache and notifies subscriber (pre-hydrate behaviour unchanged)', async () => {
       // Arrange: projection with NO hydration
       const snapshotStore = new InMemorySnapshotStore();
