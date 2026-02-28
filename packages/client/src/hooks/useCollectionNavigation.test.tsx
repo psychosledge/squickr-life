@@ -409,15 +409,21 @@ describe('useCollectionNavigation', () => {
       const touchStart = new TouchEvent('touchstart', {
         touches: [{ clientX: 200, clientY: 100 } as Touch],
       });
-      window.dispatchEvent(touchStart);
+      await act(async () => {
+        window.dispatchEvent(touchStart);
+      });
 
       const touchEnd = new TouchEvent('touchend', {
         changedTouches: [{ clientX: 80, clientY: 110 } as Touch], // 120px left, 10px down
       });
-      window.dispatchEvent(touchEnd);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
-      expect(mockNavigate).toHaveBeenCalledWith('/collection/c3'); // Navigates to next
+      await act(async () => {
+        window.dispatchEvent(touchEnd);
+      });
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/collection/c3'); // Navigates to next
+      }, { timeout: 2000 });
     });
 
     it('should not navigate when horizontal movement is below threshold', async () => {

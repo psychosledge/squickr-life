@@ -285,8 +285,10 @@ describe('EntryActionsMenu', () => {
 
     expect(screen.getByRole('menu')).toBeInTheDocument();
 
-    // Wait for event listeners to be registered (setTimeout in useEffect)
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // Flush the setTimeout(0) that registers the outside-click listener
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    });
 
     const outside = screen.getByTestId('outside');
     fireEvent.mouseDown(outside);

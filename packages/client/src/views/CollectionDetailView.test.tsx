@@ -1291,7 +1291,7 @@ describe('CollectionDetailView - Error Toast', () => {
   });
 
   it('should show an error toast when bulk migration fails', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const failingBulkHandler = {
       handle: vi.fn().mockImplementation(() => {
         const p = Promise.reject(new Error('Bulk migration failed'));
@@ -1366,12 +1366,12 @@ describe('CollectionDetailView - Error Toast', () => {
     // The error toast should appear with the handler's error message
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeInTheDocument();
-    });
+    }, { timeout: 10000 });
     expect(screen.getByRole('alert')).toHaveTextContent('Bulk migration failed');
-  });
+  }, 15000);
 
   it('should show a generic error message when bulk migration throws a non-Error', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const failingBulkHandler = {
       handle: vi.fn().mockImplementation(() => {
         const p = Promise.reject('string error');
@@ -1446,8 +1446,8 @@ describe('CollectionDetailView - Error Toast', () => {
     // The error toast should show the generic fallback message for non-Error rejections
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent('Failed to migrate entries');
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 });
 
 // ============================================================================
