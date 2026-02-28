@@ -29,7 +29,7 @@ import {
   DEFAULT_USER_PREFERENCES,
   UserPreferences,
 } from '@squickr/domain';
-import { IndexedDBEventStore, FirestoreEventStore } from '@squickr/infrastructure';
+import { IndexedDBEventStore, FirestoreEventStore, IndexedDBSnapshotStore } from '@squickr/infrastructure';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DebugProvider } from './context/DebugContext';
@@ -40,6 +40,7 @@ import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
 import { SignInView } from './views/SignInView';
 import { SyncManager } from './firebase/SyncManager';
+import { SnapshotManager } from './snapshot-manager';
 import { firestore } from './firebase/config';
 import { ROUTES } from './routes';
 import { logger } from './utils/logger';
@@ -230,7 +231,8 @@ function AppContent() {
   
   // Initialize event sourcing infrastructure with IndexedDB persistence
   const [eventStore] = useState(() => new IndexedDBEventStore());
-  const [entryProjection] = useState(() => new EntryListProjection(eventStore));
+  const [snapshotStore] = useState(() => new IndexedDBSnapshotStore());
+  const [entryProjection] = useState(() => new EntryListProjection(eventStore, snapshotStore));
   const [taskProjection] = useState(() => new TaskListProjection(eventStore));
   const [collectionProjection] = useState(() => new CollectionListProjection(eventStore));
   
@@ -295,6 +297,9 @@ function AppContent() {
   // Background sync manager
   const syncManagerRef = useRef<SyncManager | null>(null);
 
+  // Snapshot manager
+  const snapshotManagerRef = useRef<SnapshotManager | null>(null);
+
   // Initialize IndexedDB and load tasks on mount
   useEffect(() => {
     // Prevent double initialization in React StrictMode (dev mode)
@@ -302,8 +307,16 @@ function AppContent() {
       return;
     }
     isInitialized.current = true;
-    
-    initializeApp();
+
+    initializeApp().then(() => {
+      const sm = new SnapshotManager(entryProjection, snapshotStore, eventStore);
+      sm.start();
+      snapshotManagerRef.current = sm;
+    });
+
+    return () => {
+      snapshotManagerRef.current?.stop();
+    };
   }, []);
 
   // Start/stop background sync when user signs in/out
@@ -343,6 +356,10 @@ function AppContent() {
     try {
       // Initialize IndexedDB connection
       await eventStore.initialize();
+      
+      // Initialize snapshot store and hydrate projection from snapshot
+      await snapshotStore.initialize();
+      await entryProjection.hydrate();
       
       // Subscribe to user preferences changes
       const userPrefsProjection = new UserPreferencesProjection(eventStore);

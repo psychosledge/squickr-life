@@ -25,11 +25,37 @@ vi.mock('@squickr/infrastructure', async () => {
       return () => {}; // Return unsubscribe function
     }
   }
+
+  class MockIndexedDBSnapshotStore {
+    async initialize() {
+      return Promise.resolve();
+    }
+    async save() {
+      return Promise.resolve();
+    }
+    async load() {
+      return Promise.resolve(null);
+    }
+    async clear() {
+      return Promise.resolve();
+    }
+  }
   
   return {
     ...actual,
     IndexedDBEventStore: MockIndexedDBEventStore,
+    IndexedDBSnapshotStore: MockIndexedDBSnapshotStore,
   };
+});
+
+// Mock SnapshotManager to avoid document/window event listener side-effects in jsdom
+vi.mock('./snapshot-manager', () => {
+  const MockSnapshotManager = vi.fn().mockImplementation(() => ({
+    start: vi.fn(),
+    stop: vi.fn(),
+    saveSnapshot: vi.fn(),
+  }));
+  return { SnapshotManager: MockSnapshotManager };
 });
 
 describe('App', () => {
@@ -77,5 +103,29 @@ describe('App', () => {
     });
   });
 
+  it('should render without throwing when IndexedDBSnapshotStore is wired', async () => {
+    // If wiring is broken, render() itself throws. This test ensures the
+    // snapshot store integration does not break the app bootstrap.
+    expect(() => render(<App />)).not.toThrow();
+
+    // App should still reach the authenticated view
+    await waitFor(() => {
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    });
+  });
+
+  it('should call hydrate() on entryProjection during initialization', async () => {
+    // Spy on EntryListProjection.prototype.hydrate before rendering
+    const { EntryListProjection } = await import('@squickr/domain');
+    const hydrateSpy = vi.spyOn(EntryListProjection.prototype, 'hydrate').mockResolvedValue();
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(hydrateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    hydrateSpy.mockRestore();
+  });
 
 });
