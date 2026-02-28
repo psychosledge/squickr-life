@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
@@ -1771,6 +1771,71 @@ describe('EntryListProjection', () => {
       // Assert: no new event appended
       const countAfter = (await eventStore.getAll()).length;
       expect(countAfter).toBe(countBefore);
+    });
+  });
+
+  // ============================================================================
+  // Step 4: In-memory read cache
+  // ============================================================================
+  describe('in-memory cache', () => {
+    it('should call eventStore.getAll() only once when getEntries() is called twice', async () => {
+      // Arrange
+      await taskHandler.handle({ title: 'Task 1' });
+      const spy = vi.spyOn(eventStore, 'getAll');
+
+      // Act
+      await projection.getEntries();
+      await projection.getEntries();
+
+      // Assert: cache hit on second call — getAll only called once
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call eventStore.getAll() again after an append invalidates the cache', async () => {
+      // Arrange
+      await taskHandler.handle({ title: 'Task 1' });
+      const spy = vi.spyOn(eventStore, 'getAll');
+
+      // Act: first read populates cache
+      await projection.getEntries();
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      // Append a new event — should invalidate cache
+      await taskHandler.handle({ title: 'Task 2' });
+
+      // Next read should re-fetch from store
+      await projection.getEntries();
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should still fire subscriber callbacks when an event is appended', async () => {
+      // Arrange
+      const callbackSpy = vi.fn();
+      projection.subscribe(callbackSpy);
+
+      // Act
+      await taskHandler.handle({ title: 'Task 1' });
+
+      // Assert: reactive behaviour is unchanged
+      expect(callbackSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should call eventStore.getAll() only once for multiple reads between appends', async () => {
+      // Arrange
+      await taskHandler.handle({ title: 'Task 1' });
+      const spy = vi.spyOn(eventStore, 'getAll');
+
+      // Act: three reads with no appends in between
+      await projection.getEntries();
+      await projection.getEntries();
+      await projection.getEntries();
+
+      // Assert: single fetch for all three reads
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
     });
   });
 });

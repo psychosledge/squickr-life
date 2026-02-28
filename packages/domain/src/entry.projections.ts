@@ -25,12 +25,34 @@ import { EntryEventApplicator } from './entry.event-applicator';
 export class EntryListProjection {
   private subscribers = new Set<() => void>();
   private readonly applicator = new EntryEventApplicator();
+  private cachedEntries: Entry[] | null = null;
+  // Reserved for Step 5 snapshot integration: tracks the last event ID replayed into the cache.
+  // Used by hydrate() and createSnapshot() in the next step to enable delta replay on startup.
+  private lastAppliedEventId: string | null = null;
 
   constructor(private readonly eventStore: IEventStore) {
     // Subscribe to event store changes to enable reactive projections
     this.eventStore.subscribe(() => {
+      // Invalidate cache whenever a new event is appended
+      this.cachedEntries = null;
       this.notifySubscribers();
     });
+  }
+
+  /**
+   * Resolve the full (unfiltered, unsanitized) entry list from cache or rebuild.
+   * All public methods that need the base entry list should go through here.
+   */
+  private async resolveCache(): Promise<Entry[]> {
+    if (this.cachedEntries !== null) {
+      return this.cachedEntries;
+    }
+    const events = await this.eventStore.getAll();
+    this.cachedEntries = this.applicator.applyEvents(events);
+    if (events.length > 0) {
+      this.lastAppliedEventId = events[events.length - 1]!.id;
+    }
+    return this.cachedEntries;
   }
 
   /**
@@ -57,8 +79,7 @@ export class EntryListProjection {
    * @returns Array of entries sorted by order
    */
   async getEntries(filter: EntryFilter = 'all'): Promise<Entry[]> {
-    const events = await this.eventStore.getAll();
-    const entries = this.applicator.applyEvents(events);
+    const entries = await this.resolveCache();
 
     // Sanitize migration pointers (clear invalid pointers where target is deleted)
     const sanitizedEntries = entries.map(entry =>
@@ -83,8 +104,7 @@ export class EntryListProjection {
     // IMPORTANT: We must get ALL events and apply them, not just events with this aggregateId
     // This is because migrated entries are created by TaskMigrated/NoteMigrated/EventMigrated events
     // which have the ORIGINAL task ID as aggregateId, not the new task ID
-    const events = await this.eventStore.getAll();
-    const entries = this.applicator.applyEvents(events);
+    const entries = await this.resolveCache();
 
     // Sanitize migration pointers before returning
     const sanitizedEntries = entries.map(entry =>
@@ -564,9 +584,8 @@ export class EntryListProjection {
   async getParentTitlesForSubTasks(subTaskIds: string[]): Promise<Map<string, string>> {
     const parentTitles = new Map<string, string>();
     
-    // Get all events and build entries map (reuse projection logic)
-    const events = await this.eventStore.getAll();
-    const entries = this.applicator.applyEvents(events);
+    // Get all entries and build entries map (reuse projection logic via cache)
+    const entries = await this.resolveCache();
     
     // Build a lookup map for fast access
     const entriesMap = new Map<string, Entry>();
@@ -646,8 +665,7 @@ export class EntryListProjection {
    * @returns Array of all entries including soft-deleted
    */
   async getAllEntriesIncludingDeleted(): Promise<Entry[]> {
-    const events = await this.eventStore.getAll();
-    return this.applicator.applyEvents(events);
+    return this.resolveCache();
   }
 
   /**
@@ -660,9 +678,8 @@ export class EntryListProjection {
    * @returns Array of soft-deleted entries in this collection
    */
   async getDeletedEntries(collectionId: string): Promise<Entry[]> {
-    const events = await this.eventStore.getAll();
-    // Bypass the active-only filter in getEntries() by calling applyEvents directly
-    const allEntries = this.applicator.applyEvents(events);
+    // Bypass the active-only filter in getEntries() by going through resolveCache directly
+    const allEntries = await this.resolveCache();
 
     return allEntries.filter(entry =>
       entry.deletedAt !== undefined &&
