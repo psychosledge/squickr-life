@@ -41,6 +41,11 @@ import { DEBOUNCE } from '../utils/constants';
 import { getDateKeyForTemporal, getMonthKeyForTemporal } from '../utils/temporalUtils';
 import { getCollectionDisplayName } from '../utils/formatters';
 
+/** Extended entry type with ghost rendering metadata from the projection */
+type EntryWithGhost = Entry & { renderAsGhost?: boolean };
+/** Narrowed task entry type for accessing task-specific fields */
+type TaskEntry = Extract<Entry, { type: 'task' }>;
+
 export function CollectionDetailView({ 
   collectionId: propCollectionId,
   date: temporalDate
@@ -273,7 +278,7 @@ export function CollectionDetailView({
   // Selection mode handlers
   const handleSelectAll = () => {
     const allNonGhost = entries
-      .filter(e => !(e as any).renderAsGhost && !e.deletedAt)
+      .filter(e => !(e as EntryWithGhost).renderAsGhost && !e.deletedAt)
       .map(e => e.id);
     selection.selectAll(allNonGhost);
   };
@@ -286,7 +291,7 @@ export function CollectionDetailView({
         e.type === 'task' &&
         e.status === 'open' &&
         !e.migratedTo &&
-        !(e as any).renderAsGhost &&
+        !(e as EntryWithGhost).renderAsGhost &&
         !e.deletedAt
       )
       .map(e => e.id);
@@ -411,12 +416,12 @@ export function CollectionDetailView({
   // keep completed sub-tasks with their parent rather than moving them to the
   // completed section (where the parent isn't rendered and they'd show twice).
   const parentIdsInCollection = new Set(
-    entries.filter(e => e.type === 'task' && !(e as any).parentEntryId).map(e => e.id)
+    entries.filter(e => e.type === 'task' && !(e as TaskEntry).parentEntryId).map(e => e.id)
   );
   const isSubTaskWithParentPresent = (e: Entry): boolean =>
     e.type === 'task' &&
-    !!(e as any).parentEntryId &&
-    parentIdsInCollection.has((e as any).parentEntryId as string);
+    !!(e as TaskEntry).parentEntryId &&
+    parentIdsInCollection.has((e as TaskEntry).parentEntryId!);
 
   // Item 3: Always separate deleted entries into their own bucket (independent of completedTaskBehavior)
   const deletedEntries = entries.filter(e => e.deletedAt);

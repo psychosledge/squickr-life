@@ -342,7 +342,7 @@ export function HierarchicalCollectionList({
           <>
             {dateHierarchyNodes.map(node => {
               const hasCollection = 'collection' in node;
-              const collectionId = hasCollection ? (node as any).collection?.id : undefined;
+              const collectionId = hasCollection ? (node as unknown as Extract<HierarchyNode, { collection: Collection }>).collection.id : undefined;
               const url = collectionId ? (collectionUrlMap.get(collectionId) ?? undefined) : undefined;
               return (
                 <CollectionTreeNode

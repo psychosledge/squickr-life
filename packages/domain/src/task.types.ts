@@ -1,4 +1,66 @@
 import type { DomainEvent } from './domain-event';
+import type { BaseEntry, EntryMovedToCollection } from './base-entry.types';
+
+// Re-export shared types so existing `import ... from './task.types'` imports keep working
+export type {
+  CollectionHistoryEntry,
+  BaseEntry,
+  EntryType,
+  EntryFilter,
+  Entry,
+  DailyLog,
+  EntryMovedToCollection,
+  MoveEntryToCollectionCommand,
+  SquickrDomainEvent,
+} from './base-entry.types';
+
+// Re-export Note types so existing `import ... from './task.types'` imports keep working
+export type {
+  Note,
+  NoteCreated,
+  CreateNoteCommand,
+  NoteContentChanged,
+  UpdateNoteContentCommand,
+  NoteDeleted,
+  DeleteNoteCommand,
+  NoteRestored,
+  RestoreNoteCommand,
+  ReorderNoteCommand,
+  NoteReordered,
+  NoteMigrated,
+  MigrateNoteCommand,
+  NoteAddedToCollection,
+  NoteRemovedFromCollection,
+  AddNoteToCollectionCommand,
+  RemoveNoteFromCollectionCommand,
+  MoveNoteToCollectionCommand,
+  NoteEvent,
+} from './note.types';
+
+// Re-export Event types so existing `import ... from './task.types'` imports keep working
+export type {
+  Event,
+  EventCreated,
+  CreateEventCommand,
+  EventContentChanged,
+  UpdateEventContentCommand,
+  EventDateChanged,
+  UpdateEventDateCommand,
+  EventDeleted,
+  DeleteEventCommand,
+  EventRestored,
+  RestoreEventCommand,
+  ReorderEventCommand,
+  EventReordered,
+  EventMigrated,
+  MigrateEventCommand,
+  EventAddedToCollection,
+  EventRemovedFromCollection,
+  AddEventToCollectionCommand,
+  RemoveEventFromCollectionCommand,
+  MoveEventToCollectionCommand,
+  EventEvent,
+} from './event.types';
 
 // ============================================================================
 // Task Domain Types (EM-001: Create Task)
@@ -16,60 +78,29 @@ export type TaskStatus = 'open' | 'completed';
 export type TaskFilter = 'all' | 'open' | 'completed';
 
 /**
- * Collection history entry - tracks when a task was added/removed from a collection
- * Used for ghost rendering (show removed tasks as crossed out)
- */
-export interface CollectionHistoryEntry {
-  readonly collectionId: string;
-  readonly addedAt: string;
-  readonly removedAt?: string; // undefined = still in this collection
-}
-
-/**
- * BaseEntry interface - shared fields for all entry types (Task, Note, Event)
- * Provides multi-collection support and audit trail fields.
- */
-export interface BaseEntry {
-  readonly id: string;
-  readonly createdAt: string;
-  readonly order?: string;
-  readonly collectionId?: string;
-  /** Array of collection IDs this entry belongs to (multi-collection support) */
-  readonly collections: string[];
-  readonly collectionHistory?: CollectionHistoryEntry[];
-  readonly userId?: string;
-  readonly migratedTo?: string;
-  readonly migratedFrom?: string;
-  readonly migratedToCollectionId?: string;
-  readonly migratedFromCollectionId?: string;
-  /** ISO timestamp set when entry is soft-deleted; undefined means the entry is active */
-  readonly deletedAt?: string;
-}
-
-/**
  * Task entity - represents the current state of a task
  * This is derived from events, not stored directly
  */
 export interface Task extends BaseEntry {
   /** Task title (1-500 characters) */
   readonly title: string;
-  
+
   /** Current status of the task */
   readonly status: TaskStatus;
-  
+
   /** When the task was completed (ISO 8601), if applicable */
   readonly completedAt?: string;
-  
+
   /** Optional: ID of task this was moved from (for movement tracking, not migration)
    * When a task is MOVED (not migrated) between collections, this is set to self-reference.
    * This distinguishes movement (same task ID) from migration (new task created). */
   readonly movedFrom?: string;
-  
+
   /** Optional: Collection ID where this task was moved from (for "Go back" after movement)
    * Set when task is moved between collections using MoveTaskToCollectionHandler.
    * Distinct from migratedFromCollectionId which is for TaskMigrated events. */
   readonly movedFromCollectionId?: string;
-  
+
   /** Optional: Parent entry ID (if this is a sub-task)
    * NOTE: Use parentEntryId (not parentTaskId) to enable future sub-notes/events */
   readonly parentEntryId?: string;
@@ -78,7 +109,7 @@ export interface Task extends BaseEntry {
 /**
  * TaskCreated Event (EM-001)
  * Emitted when a new task is created
- * 
+ *
  * Invariants:
  * - aggregateId must equal payload.id
  * - title must be 1-500 characters (after trim)
@@ -104,7 +135,7 @@ export interface TaskCreated extends DomainEvent {
 /**
  * CreateTask Command
  * Represents the user's intent to create a new task
- * 
+ *
  * Validation rules:
  * - title: Required, will be trimmed, 1-500 characters
  */
@@ -117,7 +148,7 @@ export interface CreateTaskCommand {
 /**
  * CreateSubTask Command (Phase 1: Sub-Tasks)
  * Represents the user's intent to create a sub-task under a parent task
- * 
+ *
  * Validation rules:
  * - title: Required, will be trimmed, 1-500 characters
  * - parentEntryId: Required, must reference an existing task
@@ -132,7 +163,7 @@ export interface CreateSubTaskCommand {
 /**
  * TaskCompleted Event
  * Emitted when a task is marked as completed
- * 
+ *
  * Invariants:
  * - aggregateId must match an existing task
  * - Task must be in 'open' status
@@ -157,7 +188,7 @@ export interface CompleteTaskCommand {
 /**
  * CompleteParentTask Command (Phase 4: Completion Cascade)
  * Represents the user's intent to complete a parent task
- * 
+ *
  * Behavior:
  * - If all children complete: Complete parent (TaskCompleted event)
  * - If some children incomplete and confirmed=false: Throw error with warning message
@@ -171,7 +202,7 @@ export interface CompleteParentTaskCommand {
 /**
  * TaskReopened Event
  * Emitted when a completed task is reopened
- * 
+ *
  * Invariants:
  * - aggregateId must match an existing task
  * - Task must be in 'completed' status
@@ -196,7 +227,7 @@ export interface ReopenTaskCommand {
 /**
  * TaskDeleted Event
  * Emitted when a task is deleted
- * 
+ *
  * Invariants:
  * - aggregateId must match an existing task
  * - Task can be in any status (open or completed)
@@ -244,12 +275,12 @@ export interface RestoreTaskCommand {
 /**
  * DeleteParentTask Command (Phase 5: Deletion Cascade)
  * Represents the user's intent to delete a parent task and all its sub-tasks
- * 
+ *
  * Validation rules:
  * - taskId: Required, must reference an existing task
  * - confirmed: If false and task has children, throw error with warning message
  * - confirmed: If true, delete all children + parent (cascade delete)
- * 
+ *
  * Behavior:
  * - If task has no children: Delete normally (confirmed flag ignored)
  * - If task has children and confirmed=false: Throw error
@@ -263,7 +294,7 @@ export interface DeleteParentTaskCommand {
 /**
  * TaskReordered Event
  * Emitted when a task's position in the list is changed
- * 
+ *
  * Invariants:
  * - aggregateId must match an existing task
  * - Task can be in any status (open or completed)
@@ -282,7 +313,7 @@ export interface TaskReordered extends DomainEvent {
 /**
  * ReorderTask Command
  * Represents the user's intent to reorder a task
- * 
+ *
  * @param taskId - The task to reorder
  * @param previousTaskId - The task that should come before this one (null if moving to start)
  * @param nextTaskId - The task that should come after this one (null if moving to end)
@@ -296,7 +327,7 @@ export interface ReorderTaskCommand {
 /**
  * TaskTitleChanged Event
  * Emitted when a task's title is updated
- * 
+ *
  * Invariants:
  * - aggregateId must match an existing task
  * - Task can be in any status (open or completed)
@@ -315,7 +346,7 @@ export interface TaskTitleChanged extends DomainEvent {
 /**
  * UpdateTaskTitle Command
  * Represents the user's intent to update a task's title
- * 
+ *
  * Validation rules:
  * - title: Required, will be trimmed, 1-500 characters
  */
@@ -325,42 +356,14 @@ export interface UpdateTaskTitleCommand {
 }
 
 /**
- * EntryMovedToCollection Event
- * Emitted when an entry (task/note/event) is moved to a different collection
- * 
- * Invariants:
- * - aggregateId must match an existing entry
- * - Entry can be of any type (task, note, or event)
- * - collectionId can be null to move to uncategorized
- */
-export interface EntryMovedToCollection extends DomainEvent {
-  readonly type: 'EntryMovedToCollection';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly entryId: string;
-    readonly collectionId: string | null; // null = move to uncategorized
-    readonly movedAt: string;
-  };
-}
-
-/**
- * MoveEntryToCollection Command
- * Represents the user's intent to move an entry to a different collection
- */
-export interface MoveEntryToCollectionCommand {
-  readonly entryId: string;
-  readonly collectionId: string | null;
-}
-
-/**
  * TaskMigrated Event
  * Emitted when a task is migrated to a different collection
- * 
+ *
  * This is a bullet journal migration pattern:
  * - Original task is preserved with migratedTo pointer
  * - New task is created in target collection with migratedFrom pointer
  * - Audit trail is maintained
- * 
+ *
  * Invariants:
  * - aggregateId must match an existing task
  * - Task must not already be migrated (migratedTo must be undefined)
@@ -380,7 +383,7 @@ export interface TaskMigrated extends DomainEvent {
 /**
  * MigrateTask Command
  * Represents the user's intent to migrate a task to a different collection
- * 
+ *
  * This creates a new task in the target collection and marks both tasks
  * with migration pointers for audit trail.
  */
@@ -396,9 +399,9 @@ export interface MigrateTaskCommand {
 /**
  * TaskAddedToCollection Event
  * Emitted when a task is added to an additional collection
- * 
+ *
  * This enables multi-collection membership where one task can appear in multiple collections.
- * 
+ *
  * Invariants:
  * - aggregateId must match an existing task
  * - Task must not already be in this collection (idempotent check)
@@ -417,9 +420,9 @@ export interface TaskAddedToCollection extends DomainEvent {
 /**
  * TaskRemovedFromCollection Event
  * Emitted when a task is removed from a collection
- * 
+ *
  * This creates a "ghost" entry - the task appears crossed out in the original collection.
- * 
+ *
  * Invariants:
  * - aggregateId must match an existing task
  * - Task must be in this collection (idempotent check)
@@ -456,17 +459,17 @@ export interface RemoveTaskFromCollectionCommand {
  * MoveTaskToCollection Command
  * Represents the user's intent to move a task to a different collection
  * This removes the task from the current collection only and adds it to the target
- * 
+ *
  * Multi-collection behavior:
  * - If task is in [A, B, C] and you move from B → D
  * - Result: Task is in [A, C, D]
  * - Only the currentCollectionId is removed, other collections are preserved
- * 
+ *
  * Validation rules:
  * - taskId: Must reference an existing task
  * - currentCollectionId: Required, task must be in this collection
  * - targetCollectionId: Required, must differ from currentCollectionId
- * 
+ *
  * Idempotent: Moving from A → A is a no-op (no events generated)
  */
 export interface MoveTaskToCollectionCommand {
@@ -483,558 +486,3 @@ export interface MoveTaskToCollectionCommand {
  * This enables type-safe event handling with discriminated unions
  */
 export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskRestored | TaskReordered | TaskTitleChanged | EntryMovedToCollection | TaskMigrated | TaskAddedToCollection | TaskRemovedFromCollection;
-
-// ============================================================================
-// Note Domain Types (Bullet Journal Notes)
-// ============================================================================
-
-/**
- * Note entity - represents a note entry in the bullet journal
- * Notes are informational entries without completion status
- */
-export interface Note extends BaseEntry {
-  /** Note content (1-5000 characters) */
-  readonly content: string;
-}
-
-/**
- * NoteCreated Event
- * Emitted when a new note is created
- * 
- * Invariants:
- * - aggregateId must equal payload.id
- * - content must be 1-5000 characters (after trim)
- * - createdAt must not be in the future
- */
-export interface NoteCreated extends DomainEvent {
-  readonly type: 'NoteCreated';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly id: string;
-    readonly content: string;
-    readonly createdAt: string;
-    readonly order?: string;
-    readonly collectionId?: string; // Optional - collection this note belongs to
-    readonly userId?: string;
-  };
-}
-
-/**
- * CreateNote Command
- * Represents the user's intent to create a new note
- * 
- * Validation rules:
- * - content: Required, will be trimmed, 1-5000 characters
- */
-export interface CreateNoteCommand {
-  readonly content: string;
-  readonly collectionId?: string;
-  readonly userId?: string;
-}
-
-/**
- * NoteContentChanged Event
- * Emitted when a note's content is updated
- */
-export interface NoteContentChanged extends DomainEvent {
-  readonly type: 'NoteContentChanged';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly noteId: string;
-    readonly newContent: string;
-    readonly changedAt: string;
-  };
-}
-
-/**
- * UpdateNoteContent Command
- * Represents the user's intent to update a note's content
- */
-export interface UpdateNoteContentCommand {
-  readonly noteId: string;
-  readonly content: string;
-}
-
-/**
- * NoteDeleted Event
- * Emitted when a note is deleted
- */
-export interface NoteDeleted extends DomainEvent {
-  readonly type: 'NoteDeleted';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly noteId: string;
-    readonly deletedAt: string;
-  };
-}
-
-/**
- * DeleteNote Command
- * Represents the user's intent to delete a note
- */
-export interface DeleteNoteCommand {
-  readonly noteId: string;
-  /** If provided and the note is in multiple collections, only remove from this collection */
-  readonly currentCollectionId?: string;
-}
-
-/**
- * NoteRestored Event
- * Emitted when a soft-deleted note is restored
- */
-export interface NoteRestored extends DomainEvent {
-  readonly type: 'NoteRestored';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly id: string;
-    readonly restoredAt: string;
-  };
-}
-
-/**
- * RestoreNote Command
- * Represents the user's intent to restore a soft-deleted note
- */
-export interface RestoreNoteCommand {
-  readonly noteId: string;
-}
-
-/**
- * ReorderNote Command
- * Represents the user's intent to reorder a note
- */
-export interface ReorderNoteCommand {
-  readonly noteId: string;
-  readonly previousNoteId: string | null;
-  readonly nextNoteId: string | null;
-}
-
-/**
- * NoteReordered Event
- * Emitted when a note's position is changed
- */
-export interface NoteReordered extends DomainEvent {
-  readonly type: 'NoteReordered';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly noteId: string;
-    readonly order: string;
-    readonly reorderedAt: string;
-  };
-}
-
-/**
- * NoteMigrated Event
- * Emitted when a note is migrated to a different collection
- * 
- * This is a bullet journal migration pattern:
- * - Original note is preserved with migratedTo pointer
- * - New note is created in target collection with migratedFrom pointer
- * - Audit trail is maintained
- * 
- * Invariants:
- * - aggregateId must match an existing note
- * - Note must not already be migrated (migratedTo must be undefined)
- * - migratedToId must be the ID of the newly created note
- */
-export interface NoteMigrated extends DomainEvent {
-  readonly type: 'NoteMigrated';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly originalNoteId: string;
-    readonly targetCollectionId: string | null;
-    readonly migratedToId: string;
-    readonly migratedAt: string;
-  };
-}
-
-/**
- * MigrateNote Command
- * Represents the user's intent to migrate a note to a different collection
- */
-export interface MigrateNoteCommand {
-  readonly noteId: string;
-  readonly targetCollectionId: string | null;
-}
-
-/**
- * Union type of all note-related events
- */
-export type NoteEvent = NoteCreated | NoteContentChanged | NoteDeleted | NoteRestored | NoteReordered | EntryMovedToCollection | NoteMigrated | NoteAddedToCollection | NoteRemovedFromCollection;
-
-// ============================================================================
-// Note Multi-Collection Events
-// ============================================================================
-
-/**
- * NoteAddedToCollection Event
- * Emitted when a note is added to an additional collection
- * 
- * Invariants:
- * - aggregateId must match an existing note
- * - Note must not already be in this collection (idempotent check)
- */
-export interface NoteAddedToCollection extends DomainEvent {
-  readonly type: 'NoteAddedToCollection';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly noteId: string;
-    readonly collectionId: string;
-    readonly addedAt: string;
-  };
-}
-
-/**
- * NoteRemovedFromCollection Event
- * Emitted when a note is removed from a collection
- * 
- * Invariants:
- * - aggregateId must match an existing note
- * - Note must be in this collection (idempotent check)
- */
-export interface NoteRemovedFromCollection extends DomainEvent {
-  readonly type: 'NoteRemovedFromCollection';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly noteId: string;
-    readonly collectionId: string;
-    readonly removedAt: string;
-  };
-}
-
-/**
- * AddNoteToCollection Command
- */
-export interface AddNoteToCollectionCommand {
-  readonly noteId: string;
-  readonly collectionId: string;
-}
-
-/**
- * RemoveNoteFromCollection Command
- */
-export interface RemoveNoteFromCollectionCommand {
-  readonly noteId: string;
-  readonly collectionId: string;
-}
-
-/**
- * MoveNoteToCollection Command
- */
-export interface MoveNoteToCollectionCommand {
-  readonly noteId: string;
-  readonly currentCollectionId: string;
-  readonly targetCollectionId: string;
-}
-
-// ============================================================================
-// Event Domain Types (Bullet Journal Events)
-// ============================================================================
-
-/**
- * Event entity - represents an event entry in the bullet journal
- * Events are things that happen/happened on specific dates
- */
-export interface Event extends BaseEntry {
-  /** Event content/description (1-5000 characters) */
-  readonly content: string;
-  
-  /** Optional: When the event actually occurs/occurred (ISO 8601 date) */
-  readonly eventDate?: string;
-}
-
-/**
- * EventCreated Event
- * Emitted when a new event entry is created
- * 
- * Invariants:
- * - aggregateId must equal payload.id
- * - content must be 1-5000 characters (after trim)
- * - createdAt must not be in the future
- */
-export interface EventCreated extends DomainEvent {
-  readonly type: 'EventCreated';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly id: string;
-    readonly content: string;
-    readonly createdAt: string;
-    readonly eventDate?: string;
-    readonly order?: string;
-    readonly collectionId?: string; // Optional - collection this event belongs to
-    readonly userId?: string;
-  };
-}
-
-/**
- * CreateEvent Command
- * Represents the user's intent to create a new event entry
- * 
- * Validation rules:
- * - content: Required, will be trimmed, 1-5000 characters
- * - eventDate: Optional, must be valid ISO date if provided
- */
-export interface CreateEventCommand {
-  readonly content: string;
-  readonly eventDate?: string;
-  readonly collectionId?: string;
-  readonly userId?: string;
-}
-
-/**
- * EventContentChanged Event
- * Emitted when an event's content is updated
- */
-export interface EventContentChanged extends DomainEvent {
-  readonly type: 'EventContentChanged';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly eventId: string;
-    readonly newContent: string;
-    readonly changedAt: string;
-  };
-}
-
-/**
- * UpdateEventContent Command
- * Represents the user's intent to update an event's content
- */
-export interface UpdateEventContentCommand {
-  readonly eventId: string;
-  readonly content: string;
-}
-
-/**
- * EventDateChanged Event
- * Emitted when an event's date is updated
- */
-export interface EventDateChanged extends DomainEvent {
-  readonly type: 'EventDateChanged';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly eventId: string;
-    readonly newEventDate: string | null;
-    readonly changedAt: string;
-  };
-}
-
-/**
- * UpdateEventDate Command
- * Represents the user's intent to update an event's date
- */
-export interface UpdateEventDateCommand {
-  readonly eventId: string;
-  readonly eventDate: string | null;
-}
-
-/**
- * EventDeleted Event
- * Emitted when an event is deleted
- */
-export interface EventDeleted extends DomainEvent {
-  readonly type: 'EventDeleted';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly eventId: string;
-    readonly deletedAt: string;
-  };
-}
-
-/**
- * DeleteEvent Command
- * Represents the user's intent to delete an event
- */
-export interface DeleteEventCommand {
-  readonly eventId: string;
-  /** If provided and the event is in multiple collections, only remove from this collection */
-  readonly currentCollectionId?: string;
-}
-
-/**
- * EventRestored Event
- * Emitted when a soft-deleted event entry is restored
- */
-export interface EventRestored extends DomainEvent {
-  readonly type: 'EventRestored';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly id: string;
-    readonly restoredAt: string;
-  };
-}
-
-/**
- * RestoreEvent Command
- * Represents the user's intent to restore a soft-deleted event entry
- */
-export interface RestoreEventCommand {
-  readonly eventId: string;
-}
-
-/**
- * ReorderEvent Command
- * Represents the user's intent to reorder an event
- */
-export interface ReorderEventCommand {
-  readonly eventId: string;
-  readonly previousEventId: string | null;
-  readonly nextEventId: string | null;
-}
-
-/**
- * EventReordered Event
- * Emitted when an event's position is changed
- */
-export interface EventReordered extends DomainEvent {
-  readonly type: 'EventReordered';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly eventId: string;
-    readonly order: string;
-    readonly reorderedAt: string;
-  };
-}
-
-/**
- * EventMigrated Event
- * Emitted when an event is migrated to a different collection
- * 
- * This is a bullet journal migration pattern:
- * - Original event is preserved with migratedTo pointer
- * - New event is created in target collection with migratedFrom pointer
- * - Audit trail is maintained
- * 
- * Invariants:
- * - aggregateId must match an existing event
- * - Event must not already be migrated (migratedTo must be undefined)
- * - migratedToId must be the ID of the newly created event
- */
-export interface EventMigrated extends DomainEvent {
-  readonly type: 'EventMigrated';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly originalEventId: string;
-    readonly targetCollectionId: string | null;
-    readonly migratedToId: string;
-    readonly migratedAt: string;
-  };
-}
-
-/**
- * MigrateEvent Command
- * Represents the user's intent to migrate an event to a different collection
- */
-export interface MigrateEventCommand {
-  readonly eventId: string;
-  readonly targetCollectionId: string | null;
-}
-
-/**
- * Union type of all event-related events
- */
-export type EventEvent = EventCreated | EventContentChanged | EventDateChanged | EventDeleted | EventRestored | EventReordered | EntryMovedToCollection | EventMigrated | EventAddedToCollection | EventRemovedFromCollection;
-
-// ============================================================================
-// Event Multi-Collection Events
-// ============================================================================
-
-/**
- * EventAddedToCollection Event
- * Emitted when an event entry is added to an additional collection
- * 
- * Invariants:
- * - aggregateId must match an existing event entry
- * - Event must not already be in this collection (idempotent check)
- */
-export interface EventAddedToCollection extends DomainEvent {
-  readonly type: 'EventAddedToCollection';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly eventId: string;
-    readonly collectionId: string;
-    readonly addedAt: string;
-  };
-}
-
-/**
- * EventRemovedFromCollection Event
- * Emitted when an event entry is removed from a collection
- * 
- * Invariants:
- * - aggregateId must match an existing event entry
- * - Event must be in this collection (idempotent check)
- */
-export interface EventRemovedFromCollection extends DomainEvent {
-  readonly type: 'EventRemovedFromCollection';
-  readonly aggregateId: string;
-  readonly payload: {
-    readonly eventId: string;
-    readonly collectionId: string;
-    readonly removedAt: string;
-  };
-}
-
-/**
- * AddEventToCollection Command
- */
-export interface AddEventToCollectionCommand {
-  readonly eventId: string;
-  readonly collectionId: string;
-}
-
-/**
- * RemoveEventFromCollection Command
- */
-export interface RemoveEventFromCollectionCommand {
-  readonly eventId: string;
-  readonly collectionId: string;
-}
-
-/**
- * MoveEventToCollection Command
- */
-export interface MoveEventToCollectionCommand {
-  readonly eventId: string;
-  readonly currentCollectionId: string;
-  readonly targetCollectionId: string;
-}
-
-// ============================================================================
-// Unified Entry Types (for UI)
-// ============================================================================
-
-/**
- * Entry type discriminator
- */
-export type EntryType = 'task' | 'note' | 'event';
-
-/**
- * Unified entry - discriminated union of Task, Note, and Event
- * Used by projections to create a unified view for the UI
- */
-export type Entry = 
-  | (Task & { readonly type: 'task' })
-  | (Note & { readonly type: 'note' })
-  | (Event & { readonly type: 'event' });
-
-/**
- * Entry filter options
- */
-export type EntryFilter = 'all' | 'tasks' | 'notes' | 'events' | 'open-tasks' | 'completed-tasks';
-
-/**
- * DailyLog - Groups entries by their creation date
- * Used for the bullet journal daily logs view
- */
-export interface DailyLog {
-  /** Date in YYYY-MM-DD format */
-  readonly date: string;
-  
-  /** Entries created on this date, sorted by order field */
-  readonly entries: Entry[];
-}
-
-/**
- * Union of all domain events in the system
- */
-export type SquickrDomainEvent = TaskEvent | NoteEvent | EventEvent | import('./collection.types').CollectionEvent;

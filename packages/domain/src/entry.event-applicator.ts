@@ -193,9 +193,10 @@ export class EntryEventApplicator {
 
     // Target doesn't exist at all in the event log — clear migration pointers
     // Create new object without migratedTo and migratedToCollectionId properties
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { migratedTo, migratedToCollectionId, ...entryWithoutMigration } = entry as any;
-    return entryWithoutMigration as T;
+    const copy = { ...entry } as Record<string, unknown>;
+    delete copy['migratedTo'];
+    delete copy['migratedToCollectionId'];
+    return copy as unknown as T;
   }
 
   /**
