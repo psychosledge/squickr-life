@@ -11,6 +11,7 @@ export type {
   DailyLog,
   EntryMovedToCollection,
   MoveEntryToCollectionCommand,
+  ReorderEntryCommand,
   SquickrDomainEvent,
 } from './base-entry.types';
 

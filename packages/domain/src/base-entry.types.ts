@@ -73,6 +73,18 @@ export interface MoveEntryToCollectionCommand {
   readonly collectionId: string | null;
 }
 
+/**
+ * ReorderEntry Command
+ * Unified reorder command that works for any entry type (task, note, event).
+ * The handler resolves the actual entry type internally and delegates to the
+ * appropriate type-specific reorder handler.
+ */
+export interface ReorderEntryCommand {
+  readonly entryId: string;
+  readonly previousEntryId: string | null;
+  readonly nextEntryId: string | null;
+}
+
 // ============================================================================
 // Unified Entry Types (for UI)
 // Defined here to avoid circular imports: task/note/event.types import BaseEntry,

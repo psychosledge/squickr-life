@@ -203,9 +203,16 @@ export { getLocalDateKey, isoToLocalDateKey } from './date-utils';
 export { validateCollectionName } from './collection-validation';
 export { validateCollectionDate } from './collection-date-validation';
 
+// Unified Reorder Handler (P1-C: dispatches to type-specific reorder handlers)
+export { ReorderEntryHandler } from './reorder-entry.handler';
+export type { ReorderEntryCommand } from './base-entry.types';
+
 // Projections (Read Models)
 export { TaskListProjection } from './task.projections';
 export { EntryListProjection } from './entry.projections';
+export { CollectionViewProjection } from './collection-view.projection';
+export { SubTaskProjection } from './sub-task.projection';
+export { DailyLogProjection } from './daily-log.projection';
 export { EntryEventApplicator } from './entry.event-applicator';
 export { CollectionListProjection } from './collection.projections';
 export { UserPreferencesProjection } from './user-preferences.projections';

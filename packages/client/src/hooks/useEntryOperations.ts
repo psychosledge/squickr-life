@@ -296,29 +296,8 @@ export function useEntryOperations(
     previousEntryId: string | null,
     nextEntryId: string | null
   ) => {
-    const entry = entries.find(e => e.id === entryId);
-    if (!entry) return;
-
-    if (entry.type === 'task') {
-      await handlers.reorderTaskHandler.handle({
-        taskId: entryId,
-        previousTaskId: previousEntryId,
-        nextTaskId: nextEntryId,
-      });
-    } else if (entry.type === 'note') {
-      await handlers.reorderNoteHandler.handle({
-        noteId: entryId,
-        previousNoteId: previousEntryId,
-        nextNoteId: nextEntryId,
-      });
-    } else if (entry.type === 'event') {
-      await handlers.reorderEventHandler.handle({
-        eventId: entryId,
-        previousEventId: previousEntryId,
-        nextEventId: nextEntryId,
-      });
-    }
-  }, [entries, handlers.reorderTaskHandler, handlers.reorderNoteHandler, handlers.reorderEventHandler]);
+    await handlers.reorderEntryHandler.handle({ entryId, previousEntryId, nextEntryId });
+  }, [handlers.reorderEntryHandler]);
 
   // Entry migration operations
   const handleMigrate = useCallback(async (entryId: string, targetCollectionId: string | null) => {

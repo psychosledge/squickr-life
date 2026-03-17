@@ -32,6 +32,7 @@ import {
   ReorderTaskHandler,
   ReorderNoteHandler,
   ReorderEventHandler,
+  ReorderEntryHandler,
   RenameCollectionHandler,
   DeleteCollectionHandler,
   UpdateCollectionSettingsHandler,
@@ -67,6 +68,7 @@ export interface CollectionHandlers {
   reorderTaskHandler: ReorderTaskHandler;
   reorderNoteHandler: ReorderNoteHandler;
   reorderEventHandler: ReorderEventHandler;
+  reorderEntryHandler: ReorderEntryHandler; // P1-C: unified reorder
   
   // Collection management handlers
   renameCollectionHandler: RenameCollectionHandler;
@@ -190,6 +192,11 @@ export function useCollectionHandlers({
     [eventStore, entryProjection]
   );
   
+  const reorderEntryHandler = useMemo(
+    () => new ReorderEntryHandler(eventStore, entryProjection),
+    [eventStore, entryProjection]
+  );
+  
   // Collection management handlers
   const renameCollectionHandler = useMemo(
     () => new RenameCollectionHandler(eventStore, collectionProjection),
@@ -235,6 +242,7 @@ export function useCollectionHandlers({
     reorderTaskHandler,
     reorderNoteHandler,
     reorderEventHandler,
+    reorderEntryHandler,
     renameCollectionHandler,
     deleteCollectionHandler,
     updateSettingsHandler,
