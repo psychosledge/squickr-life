@@ -64,8 +64,6 @@ describe('useCollectionNavigation', () => {
             taskProjection: {} as any,
             createCollectionHandler: {} as any,
             migrateTaskHandler: {} as any,
-            migrateNoteHandler: {} as any,
-            migrateEventHandler: {} as any,
           }}
         >
           {children}

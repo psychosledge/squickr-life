@@ -19,8 +19,6 @@ import type {
   ReorderCollectionHandler,
   RestoreCollectionHandler,
   MigrateTaskHandler,
-  MigrateNoteHandler,
-  MigrateEventHandler,
   AddTaskToCollectionHandler,
   RemoveTaskFromCollectionHandler,
   MoveTaskToCollectionHandler,
@@ -46,8 +44,6 @@ interface AppContextValue {
   reorderCollectionHandler?: ReorderCollectionHandler;
   restoreCollectionHandler: RestoreCollectionHandler;
   migrateTaskHandler: MigrateTaskHandler;
-  migrateNoteHandler: MigrateNoteHandler;
-  migrateEventHandler: MigrateEventHandler;
   addTaskToCollectionHandler: AddTaskToCollectionHandler;
   removeTaskFromCollectionHandler: RemoveTaskFromCollectionHandler;
   moveTaskToCollectionHandler: MoveTaskToCollectionHandler;

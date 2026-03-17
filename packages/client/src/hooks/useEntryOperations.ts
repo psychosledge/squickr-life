@@ -20,12 +20,14 @@ import type {
   Collection, 
   CollectionSettings, 
   MigrateTaskHandler, 
-  MigrateNoteHandler, 
-  MigrateEventHandler, 
   CreateCollectionHandler, 
   EntryListProjection,
   AddTaskToCollectionHandler,
   MoveTaskToCollectionHandler,
+  AddNoteToCollectionHandler,
+  MoveNoteToCollectionHandler,
+  AddEventToCollectionHandler,
+  MoveEventToCollectionHandler,
   BulkMigrateEntriesHandler,
   RestoreTaskHandler,
   RestoreNoteHandler,
@@ -39,12 +41,14 @@ export interface UseEntryOperationsParams {
   entries: Entry[];
   collection: Collection | null;
   migrateTaskHandler: MigrateTaskHandler;
-  migrateNoteHandler: MigrateNoteHandler;
-  migrateEventHandler: MigrateEventHandler;
   createCollectionHandler: CreateCollectionHandler;
   entryProjection: EntryListProjection; // Phase 4: Need projection for sub-task queries
   addTaskToCollectionHandler: AddTaskToCollectionHandler; // Phase 3: Multi-collection add
   moveTaskToCollectionHandler: MoveTaskToCollectionHandler; // Phase 3: Multi-collection move
+  addNoteToCollectionHandler: AddNoteToCollectionHandler; // Phase 2: Multi-collection note add
+  moveNoteToCollectionHandler: MoveNoteToCollectionHandler; // Phase 2: Multi-collection note move
+  addEventToCollectionHandler: AddEventToCollectionHandler; // Phase 2: Multi-collection event add
+  moveEventToCollectionHandler: MoveEventToCollectionHandler; // Phase 2: Multi-collection event move
   bulkMigrateEntriesHandler: BulkMigrateEntriesHandler; // Phase 4: Batch migration
   restoreTaskHandler: RestoreTaskHandler; // Item 3: Recoverable deleted entries
   restoreNoteHandler: RestoreNoteHandler; // Item 3: Recoverable deleted entries
@@ -117,12 +121,14 @@ export function useEntryOperations(
     entries,
     collection,
     migrateTaskHandler,
-    migrateNoteHandler,
-    migrateEventHandler,
     createCollectionHandler,
     entryProjection, // Phase 4: Need for sub-task queries
     addTaskToCollectionHandler, // Phase 3: Multi-collection add
     moveTaskToCollectionHandler, // Phase 3: Multi-collection move
+    addNoteToCollectionHandler, // Phase 2: Multi-collection note add
+    moveNoteToCollectionHandler, // Phase 2: Multi-collection note move
+    addEventToCollectionHandler, // Phase 2: Multi-collection event add
+    moveEventToCollectionHandler, // Phase 2: Multi-collection event move
     bulkMigrateEntriesHandler, // Phase 4: Batch migration
     restoreTaskHandler, // Item 3: Recoverable deleted entries
     restoreNoteHandler, // Item 3: Recoverable deleted entries
@@ -319,39 +325,40 @@ export function useEntryOperations(
     const entry = entries.find(e => e.id === entryId);
     if (!entry) return;
 
+    const effectiveTargetId = targetCollectionId || UNCATEGORIZED_COLLECTION_ID;
+
     switch (entry.type) {
       case 'task':
         await migrateTaskHandler.handle({ taskId: entryId, targetCollectionId });
         break;
       case 'note':
-        await migrateNoteHandler.handle({ noteId: entryId, targetCollectionId });
+        if (collectionId) {
+          // In a specific collection — move (remove from current, add to target)
+          await moveNoteToCollectionHandler.handle({
+            noteId: entryId,
+            currentCollectionId: collectionId,
+            targetCollectionId: effectiveTargetId,
+          });
+        } else {
+          // Not in a specific collection — just add to target
+          await addNoteToCollectionHandler.handle({ noteId: entryId, collectionId: effectiveTargetId });
+        }
         break;
       case 'event':
-        await migrateEventHandler.handle({ eventId: entryId, targetCollectionId });
+        if (collectionId) {
+          // In a specific collection — move (remove from current, add to target)
+          await moveEventToCollectionHandler.handle({
+            eventId: entryId,
+            currentCollectionId: collectionId,
+            targetCollectionId: effectiveTargetId,
+          });
+        } else {
+          // Not in a specific collection — just add to target
+          await addEventToCollectionHandler.handle({ eventId: entryId, collectionId: effectiveTargetId });
+        }
         break;
     }
-  }, [entries, migrateTaskHandler, migrateNoteHandler, migrateEventHandler]);
-
-  const handleBulkMigrate = useCallback(async (entryIds: string[], targetCollectionId: string | null) => {
-    // Migrate all entries sequentially
-    // Note: This could be optimized with batch operations in the future
-    for (const entryId of entryIds) {
-      const entry = entries.find(e => e.id === entryId);
-      if (!entry) continue;
-
-      switch (entry.type) {
-        case 'task':
-          await migrateTaskHandler.handle({ taskId: entryId, targetCollectionId });
-          break;
-        case 'note':
-          await migrateNoteHandler.handle({ noteId: entryId, targetCollectionId });
-          break;
-        case 'event':
-          await migrateEventHandler.handle({ eventId: entryId, targetCollectionId });
-          break;
-      }
-    }
-  }, [entries, migrateTaskHandler, migrateNoteHandler, migrateEventHandler]);
+  }, [entries, migrateTaskHandler, collectionId, moveNoteToCollectionHandler, addNoteToCollectionHandler, moveEventToCollectionHandler, addEventToCollectionHandler]);
 
   // Phase 3: Multi-collection migration with mode (move vs add)
   const handleMigrateWithMode = useCallback(async (entryId: string, targetCollectionId: string | null, mode: 'move' | 'add' = 'move') => {
@@ -359,31 +366,45 @@ export function useEntryOperations(
     const effectiveTargetId = targetCollectionId || UNCATEGORIZED_COLLECTION_ID;
     
     const entry = entries.find(e => e.id === entryId);
-    if (!entry || entry.type !== 'task') {
-      // Currently only tasks support multi-collection
-      // For notes/events, fall back to old migration (which is effectively a move)
-      console.warn(
-        `[Migration] Entry ${entryId} is type ${entry?.type ?? 'undefined'}, falling back to legacy migrate. ` +
-        `Multi-collection migration only supports tasks.`
-      );
-      return handleMigrate(entryId, targetCollectionId);
-    }
+    if (!entry) return;
 
-    if (mode === 'move') {
-      // Validate we're in a specific collection (not uncategorized)
-      if (!collectionId) {
-        throw new Error('Cannot move tasks from uncategorized view - must be in a specific collection');
+    if (entry.type === 'task') {
+      if (mode === 'move') {
+        // Validate we're in a specific collection (not uncategorized)
+        if (!collectionId) {
+          throw new Error('Cannot move tasks from uncategorized view - must be in a specific collection');
+        }
+        
+        await moveTaskToCollectionHandler.handle({ 
+          taskId: entryId, 
+          currentCollectionId: collectionId, // Safe to use after validation
+          targetCollectionId: effectiveTargetId 
+        });
+      } else {
+        await addTaskToCollectionHandler.handle({ taskId: entryId, collectionId: effectiveTargetId });
       }
-      
-      await moveTaskToCollectionHandler.handle({ 
-        taskId: entryId, 
-        currentCollectionId: collectionId, // Safe to use after validation
-        targetCollectionId: effectiveTargetId 
-      });
-    } else {
-      await addTaskToCollectionHandler.handle({ taskId: entryId, collectionId: effectiveTargetId });
+    } else if (entry.type === 'note') {
+      if (mode === 'move' && collectionId) {
+        await moveNoteToCollectionHandler.handle({
+          noteId: entryId,
+          currentCollectionId: collectionId,
+          targetCollectionId: effectiveTargetId,
+        });
+      } else {
+        await addNoteToCollectionHandler.handle({ noteId: entryId, collectionId: effectiveTargetId });
+      }
+    } else if (entry.type === 'event') {
+      if (mode === 'move' && collectionId) {
+        await moveEventToCollectionHandler.handle({
+          eventId: entryId,
+          currentCollectionId: collectionId,
+          targetCollectionId: effectiveTargetId,
+        });
+      } else {
+        await addEventToCollectionHandler.handle({ eventId: entryId, collectionId: effectiveTargetId });
+      }
     }
-  }, [entries, addTaskToCollectionHandler, moveTaskToCollectionHandler, handleMigrate, collectionId]);
+  }, [entries, addTaskToCollectionHandler, moveTaskToCollectionHandler, collectionId, moveNoteToCollectionHandler, addNoteToCollectionHandler, moveEventToCollectionHandler, addEventToCollectionHandler]);
 
   const handleBulkMigrateWithMode = useCallback(async (entryIds: string[], targetCollectionId: string | null, mode: 'move' | 'add' = 'move') => {
     // Use bulk handler for atomic batch migration
@@ -396,6 +417,11 @@ export function useEntryOperations(
       mode,
     });
   }, [bulkMigrateEntriesHandler, collectionId]);
+
+  const handleBulkMigrate = useCallback(async (entryIds: string[], targetCollectionId: string | null) => {
+    // Delegate to handleBulkMigrateWithMode with 'move' mode
+    await handleBulkMigrateWithMode(entryIds, targetCollectionId, 'move');
+  }, [handleBulkMigrateWithMode]);
 
   const handleNavigateToMigrated = useCallback((targetCollectionId: string | null) => {
     if (targetCollectionId) {

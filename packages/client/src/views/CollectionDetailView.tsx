@@ -62,11 +62,13 @@ export function CollectionDetailView({
     entryProjection, 
     taskProjection, 
     migrateTaskHandler, 
-    migrateNoteHandler, 
-    migrateEventHandler, 
     createCollectionHandler,
     addTaskToCollectionHandler,
     moveTaskToCollectionHandler,
+    addNoteToCollectionHandler,
+    moveNoteToCollectionHandler,
+    addEventToCollectionHandler,
+    moveEventToCollectionHandler,
     bulkMigrateEntriesHandler, // Phase 4: Batch migration
     restoreTaskHandler,  // Item 3: Recoverable deleted entries
     restoreNoteHandler,  // Item 3: Recoverable deleted entries
@@ -129,12 +131,14 @@ export function CollectionDetailView({
       entries,
       collection,
       migrateTaskHandler,
-      migrateNoteHandler,
-      migrateEventHandler,
       createCollectionHandler,
       entryProjection, // Phase 4: Pass entryProjection for sub-task queries
       addTaskToCollectionHandler, // Phase 3: Multi-collection add
       moveTaskToCollectionHandler, // Phase 3: Multi-collection move
+      addNoteToCollectionHandler, // Phase 2: Multi-collection note add
+      moveNoteToCollectionHandler, // Phase 2: Multi-collection note move
+      addEventToCollectionHandler, // Phase 2: Multi-collection event add
+      moveEventToCollectionHandler, // Phase 2: Multi-collection event move
       bulkMigrateEntriesHandler, // Phase 4: Batch migration
       restoreTaskHandler,  // Item 3: Recoverable deleted entries
       restoreNoteHandler,  // Item 3: Recoverable deleted entries

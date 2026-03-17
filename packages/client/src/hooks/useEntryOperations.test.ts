@@ -18,24 +18,29 @@ describe('useEntryOperations', () => {
   let mockEntries: Entry[];
   let mockCollection: Collection;
   let mockMigrateTaskHandler: any;
-  let mockMigrateNoteHandler: any;
-  let mockMigrateEventHandler: any;
   let mockCreateCollectionHandler: any;
   let mockConfig: any;
+  let mockAddNoteToCollectionHandler: any;
+  let mockMoveNoteToCollectionHandler: any;
+  let mockAddEventToCollectionHandler: any;
+  let mockMoveEventToCollectionHandler: any;
 
   beforeEach(() => {
     // Create mock handlers
     mockHandlers = {
       createTaskHandler: { handle: vi.fn() } as any,
+      createSubTaskHandler: { handle: vi.fn() } as any,
       createNoteHandler: { handle: vi.fn() } as any,
       createEventHandler: { handle: vi.fn() } as any,
       completeTaskHandler: { handle: vi.fn() } as any,
+      completeParentTaskHandler: { handle: vi.fn() } as any,
       reopenTaskHandler: { handle: vi.fn() } as any,
       updateTaskTitleHandler: { handle: vi.fn() } as any,
       updateNoteContentHandler: { handle: vi.fn() } as any,
       updateEventContentHandler: { handle: vi.fn() } as any,
       updateEventDateHandler: { handle: vi.fn() } as any,
       deleteTaskHandler: { handle: vi.fn() } as any,
+      deleteParentTaskHandler: { handle: vi.fn() } as any,
       deleteNoteHandler: { handle: vi.fn() } as any,
       deleteEventHandler: { handle: vi.fn() } as any,
       reorderTaskHandler: { handle: vi.fn() } as any,
@@ -64,6 +69,7 @@ describe('useEntryOperations', () => {
         status: 'active',
         order: 'a0',
         createdAt: new Date().toISOString(),
+        collections: [],
       },
       {
         id: 'note-1',
@@ -71,13 +77,16 @@ describe('useEntryOperations', () => {
         content: 'Test Note',
         order: 'a1',
         createdAt: new Date().toISOString(),
+        collections: [],
       },
     ] as Entry[];
 
     mockMigrateTaskHandler = { handle: vi.fn() };
-    mockMigrateNoteHandler = { handle: vi.fn() };
-    mockMigrateEventHandler = { handle: vi.fn() };
     mockCreateCollectionHandler = { handle: vi.fn() };
+    mockAddNoteToCollectionHandler = { handle: vi.fn() };
+    mockMoveNoteToCollectionHandler = { handle: vi.fn() };
+    mockAddEventToCollectionHandler = { handle: vi.fn() };
+    mockMoveEventToCollectionHandler = { handle: vi.fn() };
 
     mockConfig = {
       collectionId: 'collection-1',
@@ -88,20 +97,35 @@ describe('useEntryOperations', () => {
     };
   });
 
+  function buildParams(overrides = {}) {
+    return {
+      handlers: mockHandlers,
+      entries: mockEntries,
+      collection: mockCollection,
+      migrateTaskHandler: mockMigrateTaskHandler,
+      createCollectionHandler: mockCreateCollectionHandler,
+      entryProjection: {
+        isParentTask: vi.fn().mockResolvedValue(false),
+        getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+        getSubTasks: vi.fn().mockResolvedValue([]),
+      } as any,
+      addTaskToCollectionHandler: { handle: vi.fn() } as any,
+      moveTaskToCollectionHandler: { handle: vi.fn() } as any,
+      addNoteToCollectionHandler: mockAddNoteToCollectionHandler,
+      moveNoteToCollectionHandler: mockMoveNoteToCollectionHandler,
+      addEventToCollectionHandler: mockAddEventToCollectionHandler,
+      moveEventToCollectionHandler: mockMoveEventToCollectionHandler,
+      bulkMigrateEntriesHandler: { handle: vi.fn() } as any,
+      restoreTaskHandler: { handle: vi.fn() } as any,
+      restoreNoteHandler: { handle: vi.fn() } as any,
+      restoreEventHandler: { handle: vi.fn() } as any,
+      ...overrides,
+    };
+  }
+
   it('should return all operation functions', () => {
     const { result } = renderHook(() =>
-      useEntryOperations(
-        {
-          handlers: mockHandlers,
-          entries: mockEntries,
-          collection: mockCollection,
-          migrateTaskHandler: mockMigrateTaskHandler,
-          migrateNoteHandler: mockMigrateNoteHandler,
-          migrateEventHandler: mockMigrateEventHandler,
-          createCollectionHandler: mockCreateCollectionHandler,
-        },
-        mockConfig
-      )
+      useEntryOperations(buildParams(), mockConfig)
     );
 
     expect(result.current).toHaveProperty('handleCreateTask');
@@ -129,18 +153,7 @@ describe('useEntryOperations', () => {
 
   it('should call createTaskHandler when handleCreateTask is invoked', async () => {
     const { result } = renderHook(() =>
-      useEntryOperations(
-        {
-          handlers: mockHandlers,
-          entries: mockEntries,
-          collection: mockCollection,
-          migrateTaskHandler: mockMigrateTaskHandler,
-          migrateNoteHandler: mockMigrateNoteHandler,
-          migrateEventHandler: mockMigrateEventHandler,
-          createCollectionHandler: mockCreateCollectionHandler,
-        },
-        mockConfig
-      )
+      useEntryOperations(buildParams(), mockConfig)
     );
 
     await result.current.handleCreateTask('New Task');
@@ -153,18 +166,7 @@ describe('useEntryOperations', () => {
 
   it('should call renameCollectionHandler when handleRenameSubmit is invoked', async () => {
     const { result } = renderHook(() =>
-      useEntryOperations(
-        {
-          handlers: mockHandlers,
-          entries: mockEntries,
-          collection: mockCollection,
-          migrateTaskHandler: mockMigrateTaskHandler,
-          migrateNoteHandler: mockMigrateNoteHandler,
-          migrateEventHandler: mockMigrateEventHandler,
-          createCollectionHandler: mockCreateCollectionHandler,
-        },
-        mockConfig
-      )
+      useEntryOperations(buildParams(), mockConfig)
     );
 
     await result.current.handleRenameSubmit('New Name');
@@ -178,15 +180,7 @@ describe('useEntryOperations', () => {
   it('should toggle favorite correctly when collection is not favorited', async () => {
     const { result } = renderHook(() =>
       useEntryOperations(
-        {
-          handlers: mockHandlers,
-          entries: mockEntries,
-          collection: { ...mockCollection, isFavorite: false },
-          migrateTaskHandler: mockMigrateTaskHandler,
-          migrateNoteHandler: mockMigrateNoteHandler,
-          migrateEventHandler: mockMigrateEventHandler,
-          createCollectionHandler: mockCreateCollectionHandler,
-        },
+        buildParams({ collection: { ...mockCollection, isFavorite: false } }),
         mockConfig
       )
     );
@@ -202,15 +196,7 @@ describe('useEntryOperations', () => {
   it('should toggle favorite correctly when collection is already favorited', async () => {
     const { result } = renderHook(() =>
       useEntryOperations(
-        {
-          handlers: mockHandlers,
-          entries: mockEntries,
-          collection: { ...mockCollection, isFavorite: true },
-          migrateTaskHandler: mockMigrateTaskHandler,
-          migrateNoteHandler: mockMigrateNoteHandler,
-          migrateEventHandler: mockMigrateEventHandler,
-          createCollectionHandler: mockCreateCollectionHandler,
-        },
+        buildParams({ collection: { ...mockCollection, isFavorite: true } }),
         mockConfig
       )
     );
@@ -221,5 +207,35 @@ describe('useEntryOperations', () => {
       collectionId: 'collection-1',
     });
     expect(mockHandlers.favoriteCollectionHandler.handle).not.toHaveBeenCalled();
+  });
+
+  it('should use moveNoteToCollectionHandler for note migration when in a collection', async () => {
+    const { result } = renderHook(() =>
+      useEntryOperations(buildParams(), mockConfig)
+    );
+
+    await result.current.handleMigrate('note-1', 'target-collection');
+
+    expect(mockMoveNoteToCollectionHandler.handle).toHaveBeenCalledWith({
+      noteId: 'note-1',
+      currentCollectionId: 'collection-1',
+      targetCollectionId: 'target-collection',
+    });
+  });
+
+  it('should use addNoteToCollectionHandler for note migration when not in a specific collection', async () => {
+    const { result } = renderHook(() =>
+      useEntryOperations(
+        buildParams({ collection: null }),
+        mockConfig
+      )
+    );
+
+    await result.current.handleMigrate('note-1', 'target-collection');
+
+    expect(mockAddNoteToCollectionHandler.handle).toHaveBeenCalledWith({
+      noteId: 'note-1',
+      collectionId: 'target-collection',
+    });
   });
 });

@@ -7,8 +7,6 @@ import {
   ReorderCollectionHandler,
   RestoreCollectionHandler,
   MigrateTaskHandler,
-  MigrateNoteHandler,
-  MigrateEventHandler,
   AddTaskToCollectionHandler,
   RemoveTaskFromCollectionHandler,
   MoveTaskToCollectionHandler,
@@ -241,10 +239,8 @@ function AppContent() {
   const [reorderCollectionHandler] = useState(() => new ReorderCollectionHandler(eventStore, collectionProjection));
   const [restoreCollectionHandler] = useState(() => new RestoreCollectionHandler(eventStore, collectionProjection));
   
-  // Migration handlers (legacy single-collection)
+  // Migration handlers (legacy single-collection — tasks only)
   const [migrateTaskHandler] = useState(() => new MigrateTaskHandler(eventStore, entryProjection));
-  const [migrateNoteHandler] = useState(() => new MigrateNoteHandler(eventStore, entryProjection));
-  const [migrateEventHandler] = useState(() => new MigrateEventHandler(eventStore, entryProjection));
   
   // Multi-collection handlers (Phase 3)
   const [addTaskToCollectionHandler] = useState(() => new AddTaskToCollectionHandler(eventStore, entryProjection));
@@ -500,8 +496,6 @@ function AppContent() {
     reorderCollectionHandler,
     restoreCollectionHandler,
     migrateTaskHandler,
-    migrateNoteHandler,
-    migrateEventHandler,
     addTaskToCollectionHandler,
     removeTaskFromCollectionHandler,
     moveTaskToCollectionHandler,

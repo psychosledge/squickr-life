@@ -61,8 +61,6 @@ describe('CollectionHeader', () => {
             taskProjection: {} as any,
             createCollectionHandler: {} as any,
             migrateTaskHandler: {} as any,
-            migrateNoteHandler: {} as any,
-            migrateEventHandler: {} as any,
           }}
         >
           <CollectionHeader {...defaultProps} {...props} />
@@ -206,8 +204,6 @@ describe('CollectionHeader - Virtual Collection Behavior', () => {
             taskProjection: {} as any,
             createCollectionHandler: {} as any,
             migrateTaskHandler: {} as any,
-            migrateNoteHandler: {} as any,
-            migrateEventHandler: {} as any,
           }}
         >
           <CollectionHeader {...defaultProps} {...props} />
@@ -290,8 +286,6 @@ describe('CollectionHeader - data-tutorial-id anchor', () => {
             taskProjection: {} as any,
             createCollectionHandler: {} as any,
             migrateTaskHandler: {} as any,
-            migrateNoteHandler: {} as any,
-            migrateEventHandler: {} as any,
           }}
         >
           <CollectionHeader
