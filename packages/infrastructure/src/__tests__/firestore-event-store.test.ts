@@ -431,7 +431,7 @@ describe('FirestoreEventStore', () => {
       expect(mockBatchCommit).toHaveBeenCalledTimes(1);
     });
 
-    it('should notify subscribers once (not N times)', async () => {
+    it('should notify subscribers once per event (matching InMemoryEventStore and IndexedDBEventStore)', async () => {
       const callback = vi.fn();
       eventStore.subscribe(callback);
 
@@ -461,10 +461,14 @@ describe('FirestoreEventStore', () => {
 
       await eventStore.appendBatch(events);
 
-      // CRITICAL: Should notify once, not 3 times
-      expect(callback).toHaveBeenCalledTimes(1);
-      // Should be called with last event
-      expect(callback).toHaveBeenCalledWith(events[2]);
+      // Must notify once per event so the incremental projection cache
+      // (EntryListProjection) can apply each event individually.
+      // This matches InMemoryEventStore and IndexedDBEventStore behaviour.
+      expect(callback).toHaveBeenCalledTimes(3);
+      // Each event passed through in order
+      expect(callback).toHaveBeenNthCalledWith(1, events[0]);
+      expect(callback).toHaveBeenNthCalledWith(2, events[1]);
+      expect(callback).toHaveBeenNthCalledWith(3, events[2]);
     });
 
     it('should handle empty batch without error', async () => {
@@ -497,7 +501,7 @@ describe('FirestoreEventStore', () => {
       expect(mockBatchSet).toHaveBeenCalledTimes(600);
     });
 
-    it('should still notify once even with chunked batches', async () => {
+    it('should notify once per event even with chunked batches', async () => {
       const callback = vi.fn();
       eventStore.subscribe(callback);
 
@@ -515,8 +519,9 @@ describe('FirestoreEventStore', () => {
 
       await eventStore.appendBatch(events);
 
-      // CRITICAL: Should notify once, not 600 times (or even 2 times)
-      expect(callback).toHaveBeenCalledTimes(1);
+      // Must notify once per event (600 total) so the projection
+      // cache can apply each event, matching InMemoryEventStore.
+      expect(callback).toHaveBeenCalledTimes(600);
     });
   });
 });
