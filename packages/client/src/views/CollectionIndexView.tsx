@@ -21,8 +21,8 @@ import { UserProfileMenu } from '../components/UserProfileMenu';
 import { CollectionNavigationControls } from '../components/CollectionNavigationControls';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { logger } from '../utils/logger';
-import { sortCollectionsHierarchically } from '../utils/collectionSorting';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { buildNavigationEntries } from '../utils/navigationEntries';
 import { useSwipeProgress } from '../hooks/useSwipeProgress';
 import { useTutorial } from '../hooks/useTutorial';
 import { TUTORIAL_COMPLETED_KEY, TUTORIAL_SEEN_KEY } from '../context/TutorialContext';
@@ -131,19 +131,26 @@ export function CollectionIndexView() {
     }
   }, [collections, isAppReady, startTutorial]);
 
-  // Calculate next collection (first in sorted order) for navigation
-  const nextCollection = useMemo(() => {
-    // Sort collections hierarchically to match sidebar order
-    const sortedCollections = sortCollectionsHierarchically(collections, userPreferences);
-    return sortedCollections.length > 0 ? sortedCollections[0] : null;
+  // Calculate next navigation entry (first in sorted order) for navigation
+  // Uses buildNavigationEntries so that auto-favourited daily/monthly logs get
+  // their canonical temporal URL (/today, /yesterday, /this-month, etc.) rather
+  // than the raw stable collection URL.
+  const nextEntry = useMemo(() => {
+    const now = new Date();
+    const entries = buildNavigationEntries(collections, userPreferences, now);
+    return entries.length > 0 ? entries[0] : null;
   }, [collections, userPreferences]);
 
-  // Navigate to next collection (first collection in the list)
+  // Convenience alias so the rest of the file (CollectionNavigationControls etc.)
+  // can keep referring to the Collection object directly.
+  const nextCollection = nextEntry?.collection ?? null;
+
+  // Navigate to next collection using the canonical URL from the navigation entry
   const navigateToNext = useCallback(() => {
-    if (nextCollection) {
-      navigate(`/collection/${nextCollection.id}`);
+    if (nextEntry) {
+      navigate(nextEntry.url);
     }
-  }, [nextCollection, navigate]);
+  }, [nextEntry, navigate]);
 
   // Keyboard shortcuts for navigation
   useEffect(() => {
