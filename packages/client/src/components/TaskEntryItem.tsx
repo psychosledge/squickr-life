@@ -6,6 +6,7 @@ import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
 import { EventHistoryDebugTool } from './EventHistoryDebugTool';
 import { ChevronRight, ChevronDown, Link2 } from 'lucide-react';
+import { LinkifiedContent } from './LinkifiedContent';
 
 interface TaskEntryItemProps {
   entry: Entry & { type: 'task' };
@@ -236,7 +237,7 @@ export function TaskEntryItem({
                   title={canEdit ? 'Double-click to edit' : undefined}
                   style={{ whiteSpace: 'pre-wrap' }}
                 >
-                  {entry.content}
+                  <LinkifiedContent text={entry.content} />
                   
                   {/* Issue #5: Link icon after title for migrated sub-tasks */}
                   {isSubTaskMigrated && (

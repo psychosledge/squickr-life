@@ -108,4 +108,43 @@ describe('NoteEntryItem', () => {
     
     expect(screen.getByText(/just now|seconds ago/i)).toBeInTheDocument();
   });
+
+  describe('URL linkification', () => {
+    it('renders a link when content contains a URL', () => {
+      const noteWithUrl: Entry & { type: 'note' } = {
+        ...mockNote,
+        content: 'Check https://example.com for notes',
+      };
+      render(
+        <NoteEntryItem
+          entry={noteWithUrl}
+          onDelete={mockOnDelete}
+        />
+      );
+      const link = screen.getByRole('link', { name: /https:\/\/example\.com/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', 'https://example.com');
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    });
+
+    it('does not render a link in edit mode', () => {
+      const noteWithUrl: Entry & { type: 'note' } = {
+        ...mockNote,
+        content: 'Check https://example.com for notes',
+      };
+      render(
+        <NoteEntryItem
+          entry={noteWithUrl}
+          onUpdateNoteContent={mockOnUpdateNoteContent}
+          onDelete={mockOnDelete}
+        />
+      );
+      // Double-click to enter edit mode
+      const link = screen.getByRole('link', { name: /https:\/\/example\.com/i });
+      fireEvent.doubleClick(link);
+      // In edit mode textarea should appear, no links
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    });
+  });
 });

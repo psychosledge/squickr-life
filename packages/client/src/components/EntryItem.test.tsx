@@ -116,7 +116,7 @@ describe('EntryItem', () => {
       
       // NoteEntryItem should render with edit capability
       const content = screen.getByText('Test note');
-      expect(content).toHaveClass('cursor-pointer');
+      expect(content.parentElement).toHaveClass('cursor-pointer');
     });
 
     it('should forward event-specific props to EventEntryItem', () => {
@@ -138,7 +138,7 @@ describe('EntryItem', () => {
       
       // EventEntryItem should render with edit capability
       const content = screen.getByText('Test event');
-      expect(content).toHaveClass('cursor-pointer');
+      expect(content.parentElement).toHaveClass('cursor-pointer');
     });
   });
 });

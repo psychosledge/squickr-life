@@ -271,7 +271,7 @@ describe('TaskEntryItem - Collapse/Expand', () => {
       expect(titleDiv).toBeInTheDocument();
 
       // Chevron and title should be siblings (in the same parent container)
-      const parent = titleDiv.parentElement;
+      const parent = titleDiv.parentElement?.parentElement;
       expect(parent).toContainElement(chevronButton);
     });
   });

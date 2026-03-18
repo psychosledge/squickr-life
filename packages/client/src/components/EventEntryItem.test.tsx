@@ -144,4 +144,43 @@ describe('EventEntryItem', () => {
     expect(screen.queryByRole('button', { name: /complete/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /reopen/i })).not.toBeInTheDocument();
   });
+
+  describe('URL linkification', () => {
+    it('renders a link when content contains a URL', () => {
+      const eventWithUrl: Entry & { type: 'event' } = {
+        ...mockEvent,
+        content: 'See https://example.com for event info',
+      };
+      render(
+        <EventEntryItem
+          entry={eventWithUrl}
+          onDelete={mockOnDelete}
+        />
+      );
+      const link = screen.getByRole('link', { name: /https:\/\/example\.com/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', 'https://example.com');
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    });
+
+    it('does not render a link in edit mode', () => {
+      const eventWithUrl: Entry & { type: 'event' } = {
+        ...mockEvent,
+        content: 'See https://example.com for event info',
+      };
+      render(
+        <EventEntryItem
+          entry={eventWithUrl}
+          onUpdateEventContent={mockOnUpdateEventContent}
+          onDelete={mockOnDelete}
+        />
+      );
+      // Double-click to enter edit mode
+      const link = screen.getByRole('link', { name: /https:\/\/example\.com/i });
+      fireEvent.doubleClick(link);
+      // In edit mode textarea should appear, no links
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    });
+  });
 });

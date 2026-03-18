@@ -88,7 +88,7 @@ describe('GhostEntry', () => {
       );
 
       const entryText = screen.getByText('Buy milk');
-      expect(entryText).toHaveClass('text-gray-500', 'dark:text-gray-400');
+      expect(entryText.closest('.text-gray-500')).toBeInTheDocument();
     });
 
     it('should render with reduced opacity', () => {
@@ -681,7 +681,7 @@ describe('GhostEntry', () => {
       );
 
       const entryText = screen.getByText(longTitle);
-      expect(entryText).toHaveClass('break-words');
+      expect(entryText.parentElement).toHaveClass('break-words');
     });
 
     it('should navigate via menu when collection is not found', () => {

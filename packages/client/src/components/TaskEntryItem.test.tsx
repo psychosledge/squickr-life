@@ -120,7 +120,8 @@ describe('TaskEntryItem', () => {
     );
     
     const title = screen.getByText('Write tests');
-    expect(title).toHaveClass('line-through');
+    // The line-through class is on the parent container div, not the text span
+    expect(title.closest('[style]') ?? title.parentElement).toHaveClass('line-through');
   });
 
   it('should show completion timestamp for completed tasks', () => {
@@ -417,6 +418,40 @@ describe('TaskEntryItem', () => {
       
       const linkIcon = screen.getByLabelText(/linked to different collection|exists in multiple collections/i);
       expect(linkIcon).toBeInTheDocument();
+    });
+  });
+
+  describe('URL linkification', () => {
+    it('renders a link when content contains a URL', () => {
+      render(
+        <TaskEntryItem
+          entry={{ ...mockOpenTask, content: 'See https://example.com for details' }}
+          onDelete={mockOnDelete}
+        />
+      );
+      const link = screen.getByRole('link', { name: /https:\/\/example\.com/i });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', 'https://example.com');
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    });
+
+    it('does not render a link in edit mode', () => {
+      render(
+        <TaskEntryItem
+          entry={{ ...mockOpenTask, content: 'See https://example.com for details' }}
+          onDelete={mockOnDelete}
+          onUpdateTaskTitle={vi.fn()}
+        />
+      );
+      // Enter edit mode by double-clicking the content
+      const contentDiv = screen.getByText('https://example.com').closest('[style]');
+      if (contentDiv) {
+        fireEvent.doubleClick(contentDiv);
+      }
+      // In edit mode there should be an input, not links
+      expect(screen.getByRole('textbox')).toBeInTheDocument();
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
   });
 });

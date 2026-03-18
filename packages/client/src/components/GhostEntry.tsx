@@ -2,6 +2,7 @@ import type { Entry, Collection } from '@squickr/domain';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
 import { EventHistoryDebugTool } from './EventHistoryDebugTool';
+import { LinkifiedContent } from './LinkifiedContent';
 
 interface GhostEntryProps {
   entry: Entry & { 
@@ -93,7 +94,7 @@ export function GhostEntry({
                 break-words
               "
             >
-              {getEntryText()}
+              <LinkifiedContent text={getEntryText()} />
             </div>
           </div>
         </div>

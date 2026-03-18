@@ -5,6 +5,7 @@ import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
 import { EventHistoryDebugTool } from './EventHistoryDebugTool';
+import { LinkifiedContent } from './LinkifiedContent';
 
 interface EventEntryItemProps {
   entry: Entry & { type: 'event' };
@@ -186,7 +187,7 @@ export function EventEntryItem({
                   title={canEdit && !isDeleted ? 'Double-click to edit' : undefined}
                   style={{ whiteSpace: 'pre-wrap' }}
                 >
-                  {entry.content}
+                  <LinkifiedContent text={entry.content} />
                 </div>
                 {entry.eventDate && (
                   <div className="mt-1 text-sm font-medium text-blue-600 dark:text-blue-400">
