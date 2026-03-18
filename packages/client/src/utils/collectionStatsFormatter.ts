@@ -2,6 +2,24 @@ import type { Entry } from '@squickr/domain';
 import type { HierarchyNode } from '../hooks/useCollectionHierarchy';
 
 /**
+ * Format a set of entries as a type breakdown: "(N tasks, N notes, N events)"
+ * Only open (non-migrated) tasks are counted — consistent with day/custom behaviour.
+ * Returns empty string if no matching entries.
+ */
+function formatTypeBreakdown(entries: Entry[]): string {
+  const tasks  = entries.filter(e => e.type === 'task' && e.status === 'open').length;
+  const notes  = entries.filter(e => e.type === 'note').length;
+  const events = entries.filter(e => e.type === 'event').length;
+
+  const parts: string[] = [];
+  if (tasks  > 0) parts.push(`${tasks} ${tasks  === 1 ? 'task'  : 'tasks'}`);
+  if (notes  > 0) parts.push(`${notes} ${notes  === 1 ? 'note'  : 'notes'}`);
+  if (events > 0) parts.push(`${events} ${events === 1 ? 'event' : 'events'}`);
+
+  return parts.length > 0 ? `(${parts.join(', ')})` : '';
+}
+
+/**
  * Format collection stats for inline display
  */
 export function formatCollectionStats(
@@ -12,8 +30,7 @@ export function formatCollectionStats(
   if (node.type === 'month' && node.monthlyLog) {
     const allEntries = entriesByCollection?.get(node.monthlyLog.id) || [];
     const entries = allEntries.filter(e => !e.migratedTo && !e.deletedAt && !e.parentEntryId);
-    const count = entries.length;
-    return count > 0 ? `${count} ${count === 1 ? 'entry' : 'entries'}` : '';
+    return formatTypeBreakdown(entries);
   }
 
   // Handle container nodes (year/month without monthly log)
@@ -34,8 +51,7 @@ export function formatCollectionStats(
   const entries = allEntries.filter(e => !e.migratedTo && !e.deletedAt && !e.parentEntryId);
 
   if (node.type === 'monthly') {
-    const count = entries.length;
-    return count > 0 ? `(${count} ${count === 1 ? 'entry' : 'entries'})` : '';
+    return formatTypeBreakdown(entries);
   }
 
   // Daily and custom collections: breakdown by type

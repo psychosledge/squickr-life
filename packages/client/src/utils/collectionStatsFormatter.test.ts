@@ -62,7 +62,7 @@ describe('formatCollectionStats', () => {
   });
 
   describe('monthly collections', () => {
-    it('should format total entry count for monthly collections', () => {
+    it('should format type breakdown for monthly collections with mixed entries', () => {
       const node: HierarchyNode = {
         type: 'monthly',
         id: 'feb-2026',
@@ -110,10 +110,10 @@ describe('formatCollectionStats', () => {
       entriesByCollection.set('feb-2026', entries);
 
       const result = formatCollectionStats(node, entriesByCollection);
-      expect(result).toBe('(3 entries)');
+      expect(result).toBe('(1 task, 1 note, 1 event)');
     });
 
-    it('should use singular "entry" for monthly with 1 entry', () => {
+    it('should format type breakdown for monthly with 1 open task', () => {
       const node: HierarchyNode = {
         type: 'monthly',
         id: 'feb-2026',
@@ -146,7 +146,7 @@ describe('formatCollectionStats', () => {
       entriesByCollection.set('feb-2026', entries);
 
       const result = formatCollectionStats(node, entriesByCollection);
-      expect(result).toBe('(1 entry)');
+      expect(result).toBe('(1 task)');
     });
 
     it('should return empty string for monthly with no entries', () => {
@@ -628,8 +628,8 @@ describe('formatCollectionStats', () => {
       entriesByCollection.set('feb-2026', entries);
 
       const result = formatCollectionStats(node, entriesByCollection);
-      // Only the 1 top-level entry should count
-      expect(result).toBe('(1 entry)');
+      // Only the 1 top-level task should count (sub-item excluded)
+      expect(result).toBe('(1 task)');
     });
 
     it('should handle collection not in entriesByCollection map', () => {
@@ -818,10 +818,248 @@ describe('formatCollectionStats', () => {
       entriesByCollection.set('daily-2026-02-09', [sharedTask]);
 
       const monthlyResult = formatCollectionStats(monthlyNode, entriesByCollection);
-      expect(monthlyResult).toBe('(1 entry)'); // monthly uses total-entry count
+      expect(monthlyResult).toBe('(1 task)'); // monthly now uses type-breakdown count
 
       const dailyResult = formatCollectionStats(dailyNode, entriesByCollection);
       expect(dailyResult).toBe('(1 task)');
+    });
+  });
+
+  // ─── Shared fixture helpers ────────────────────────────────────────────────
+
+  function makeMonthlyNode(id: string): HierarchyNode {
+    return {
+      type: 'monthly',
+      id,
+      label: 'February 2026',
+      collection: {
+        id,
+        name: 'February 2026',
+        type: 'monthly',
+        date: '2026-02',
+        createdAt: '2026-02-01T00:00:00Z',
+        order: '2026-02',
+      },
+      children: [],
+      isExpanded: false,
+    };
+  }
+
+  function makeMonthNodeWithLog(monthId: string, logId: string): HierarchyNode {
+    return {
+      type: 'month',
+      id: monthId,
+      label: 'February 2026',
+      date: '2026-02',
+      monthlyLog: {
+        id: logId,
+        name: 'February 2026',
+        type: 'monthly',
+        date: '2026-02',
+        createdAt: '2026-02-01T00:00:00Z',
+        order: '2026-02',
+      },
+      children: [],
+      isExpanded: false,
+    };
+  }
+
+  function makeTask(id: string, collId: string, status: 'open' | 'completed' = 'open'): Entry {
+    return {
+      id,
+      type: 'task' as const,
+      content: `Task ${id}`,
+      status,
+      collectionId: collId,
+      createdAt: '2026-02-01T10:00:00Z',
+      collections: [collId],
+    };
+  }
+
+  function makeNote(id: string, collId: string): Entry {
+    return {
+      id,
+      type: 'note' as const,
+      content: `Note ${id}`,
+      collectionId: collId,
+      createdAt: '2026-02-01T10:00:00Z',
+      collections: [collId],
+    };
+  }
+
+  function makeEvent(id: string, collId: string): Entry {
+    return {
+      id,
+      type: 'event' as const,
+      content: `Event ${id}`,
+      eventDate: '2026-02-01',
+      collectionId: collId,
+      createdAt: '2026-02-01T10:00:00Z',
+      collections: [collId],
+    };
+  }
+
+  // ── monthly leaf node (type: 'monthly') ────────────────────────────────────
+
+  describe('monthly collections - type breakdown (monthly leaf node)', () => {
+    it('should format 3 open tasks, 0 notes, 0 events', () => {
+      const node = makeMonthlyNode('feb-2026');
+      const entries: Entry[] = [
+        makeTask('t1', 'feb-2026'),
+        makeTask('t2', 'feb-2026'),
+        makeTask('t3', 'feb-2026'),
+      ];
+      const map = new Map<string | null, Entry[]>([['feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(3 tasks)');
+    });
+
+    it('should format 0 open tasks, 2 notes, 0 events', () => {
+      const node = makeMonthlyNode('feb-2026');
+      const entries: Entry[] = [
+        makeNote('n1', 'feb-2026'),
+        makeNote('n2', 'feb-2026'),
+      ];
+      const map = new Map<string | null, Entry[]>([['feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(2 notes)');
+    });
+
+    it('should format 0 open tasks, 0 notes, 1 event', () => {
+      const node = makeMonthlyNode('feb-2026');
+      const entries: Entry[] = [makeEvent('e1', 'feb-2026')];
+      const map = new Map<string | null, Entry[]>([['feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(1 event)');
+    });
+
+    it('should format 2 open tasks, 1 note, 1 event', () => {
+      const node = makeMonthlyNode('feb-2026');
+      const entries: Entry[] = [
+        makeTask('t1', 'feb-2026'),
+        makeTask('t2', 'feb-2026'),
+        makeNote('n1', 'feb-2026'),
+        makeEvent('e1', 'feb-2026'),
+      ];
+      const map = new Map<string | null, Entry[]>([['feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(2 tasks, 1 note, 1 event)');
+    });
+
+    it('should return empty string when only completed tasks present', () => {
+      const node = makeMonthlyNode('feb-2026');
+      const entries: Entry[] = [
+        makeTask('t1', 'feb-2026', 'completed'),
+        makeTask('t2', 'feb-2026', 'completed'),
+      ];
+      const map = new Map<string | null, Entry[]>([['feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('');
+    });
+
+    it('should count only the open task when mixed with a completed task', () => {
+      const node = makeMonthlyNode('feb-2026');
+      const entries: Entry[] = [
+        makeTask('t1', 'feb-2026', 'open'),
+        makeTask('t2', 'feb-2026', 'completed'),
+      ];
+      const map = new Map<string | null, Entry[]>([['feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(1 task)');
+    });
+
+    it('should exclude migrated tasks and count remaining open tasks', () => {
+      const node = makeMonthlyNode('feb-2026');
+      const migratedTask: Entry = {
+        ...makeTask('t1', 'feb-2026', 'open'),
+        migratedTo: 'other-collection',
+      };
+      const openTask = makeTask('t2', 'feb-2026', 'open');
+      const entries: Entry[] = [migratedTask, openTask];
+      const map = new Map<string | null, Entry[]>([['feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(1 task)');
+    });
+
+    it('should return empty string when there are zero entries', () => {
+      const node = makeMonthlyNode('feb-2026');
+      const map = new Map<string | null, Entry[]>([['feb-2026', []]]);
+      expect(formatCollectionStats(node, map)).toBe('');
+    });
+  });
+
+  // ── month container node with monthlyLog (type: 'month' + monthlyLog) ──────
+
+  describe('monthly collections - type breakdown (month container with monthlyLog)', () => {
+    it('should format 3 open tasks, 0 notes, 0 events', () => {
+      const node = makeMonthNodeWithLog('month-2026-02', 'log-feb-2026');
+      const entries: Entry[] = [
+        makeTask('t1', 'log-feb-2026'),
+        makeTask('t2', 'log-feb-2026'),
+        makeTask('t3', 'log-feb-2026'),
+      ];
+      const map = new Map<string | null, Entry[]>([['log-feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(3 tasks)');
+    });
+
+    it('should format 0 open tasks, 2 notes, 0 events', () => {
+      const node = makeMonthNodeWithLog('month-2026-02', 'log-feb-2026');
+      const entries: Entry[] = [
+        makeNote('n1', 'log-feb-2026'),
+        makeNote('n2', 'log-feb-2026'),
+      ];
+      const map = new Map<string | null, Entry[]>([['log-feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(2 notes)');
+    });
+
+    it('should format 0 open tasks, 0 notes, 1 event', () => {
+      const node = makeMonthNodeWithLog('month-2026-02', 'log-feb-2026');
+      const entries: Entry[] = [makeEvent('e1', 'log-feb-2026')];
+      const map = new Map<string | null, Entry[]>([['log-feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(1 event)');
+    });
+
+    it('should format 2 open tasks, 1 note, 1 event', () => {
+      const node = makeMonthNodeWithLog('month-2026-02', 'log-feb-2026');
+      const entries: Entry[] = [
+        makeTask('t1', 'log-feb-2026'),
+        makeTask('t2', 'log-feb-2026'),
+        makeNote('n1', 'log-feb-2026'),
+        makeEvent('e1', 'log-feb-2026'),
+      ];
+      const map = new Map<string | null, Entry[]>([['log-feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(2 tasks, 1 note, 1 event)');
+    });
+
+    it('should return empty string when only completed tasks present', () => {
+      const node = makeMonthNodeWithLog('month-2026-02', 'log-feb-2026');
+      const entries: Entry[] = [
+        makeTask('t1', 'log-feb-2026', 'completed'),
+        makeTask('t2', 'log-feb-2026', 'completed'),
+      ];
+      const map = new Map<string | null, Entry[]>([['log-feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('');
+    });
+
+    it('should count only the open task when mixed with a completed task', () => {
+      const node = makeMonthNodeWithLog('month-2026-02', 'log-feb-2026');
+      const entries: Entry[] = [
+        makeTask('t1', 'log-feb-2026', 'open'),
+        makeTask('t2', 'log-feb-2026', 'completed'),
+      ];
+      const map = new Map<string | null, Entry[]>([['log-feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(1 task)');
+    });
+
+    it('should exclude migrated tasks and count remaining open tasks', () => {
+      const node = makeMonthNodeWithLog('month-2026-02', 'log-feb-2026');
+      const migratedTask: Entry = {
+        ...makeTask('t1', 'log-feb-2026', 'open'),
+        migratedTo: 'other-collection',
+      };
+      const openTask = makeTask('t2', 'log-feb-2026', 'open');
+      const entries: Entry[] = [migratedTask, openTask];
+      const map = new Map<string | null, Entry[]>([['log-feb-2026', entries]]);
+      expect(formatCollectionStats(node, map)).toBe('(1 task)');
+    });
+
+    it('should return empty string when there are zero entries', () => {
+      const node = makeMonthNodeWithLog('month-2026-02', 'log-feb-2026');
+      const map = new Map<string | null, Entry[]>([['log-feb-2026', []]]);
+      expect(formatCollectionStats(node, map)).toBe('');
     });
   });
 });
