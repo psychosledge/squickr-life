@@ -101,10 +101,6 @@ export interface Task extends BaseEntry {
    * Set when task is moved between collections using MoveTaskToCollectionHandler.
    * Distinct from migratedFromCollectionId which is for TaskMigrated events. */
   readonly movedFromCollectionId?: string;
-
-  /** Optional: Parent entry ID (if this is a sub-task)
-   * NOTE: Use parentEntryId (not parentTaskId) to enable future sub-notes/events */
-  readonly parentEntryId?: string;
 }
 
 /**

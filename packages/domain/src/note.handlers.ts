@@ -79,6 +79,7 @@ export class CreateNoteHandler {
         order,
         collectionId: command.collectionId,
         userId: command.userId,
+        parentEntryId: command.parentEntryId,
       },
     };
 

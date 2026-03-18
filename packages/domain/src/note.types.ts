@@ -33,6 +33,7 @@ export interface NoteCreated extends DomainEvent {
     readonly order?: string;
     readonly collectionId?: string; // Optional - collection this note belongs to
     readonly userId?: string;
+    readonly parentEntryId?: string; // Optional - for sub-notes
   };
 }
 
@@ -47,6 +48,7 @@ export interface CreateNoteCommand {
   readonly content: string;
   readonly collectionId?: string;
   readonly userId?: string;
+  readonly parentEntryId?: string; // Optional - for sub-notes
 }
 
 /**

@@ -227,4 +227,20 @@ export class SubTaskProjection {
 
     return parentTitles;
   }
+
+  /**
+   * Get all sub-entries of a parent entry (any type: tasks, notes, events)
+   *
+   * Unlike getSubTasks() which only returns tasks, this returns ALL entry types
+   * (tasks, notes, and events) that have the given parentEntryId.
+   *
+   * @param parentEntryId - The parent entry ID
+   * @returns Array of all sub-entries (any type), sorted by order
+   */
+  async getSubEntries(parentEntryId: string): Promise<Entry[]> {
+    const allEntries = await this.entryProjection.getEntries('all');
+    return allEntries.filter(entry =>
+      entry.parentEntryId === parentEntryId && !entry.migratedTo && !entry.deletedAt
+    );
+  }
 }

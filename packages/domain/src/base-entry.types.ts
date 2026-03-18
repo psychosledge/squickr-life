@@ -33,6 +33,8 @@ export interface BaseEntry {
   readonly migratedFromCollectionId?: string;
   /** ISO timestamp set when entry is soft-deleted; undefined means the entry is active */
   readonly deletedAt?: string;
+  /** Optional: ID of parent entry (if this is a sub-entry of another entry) */
+  readonly parentEntryId?: string;
 }
 
 /**

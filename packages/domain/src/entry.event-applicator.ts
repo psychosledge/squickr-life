@@ -588,6 +588,7 @@ export class EntryEventApplicator {
           order: event.payload.order,
           collectionId: event.payload.collectionId,
           userId: event.payload.userId,
+          parentEntryId: event.payload.parentEntryId,
           // Initialize collections array from legacy collectionId
           collections: event.payload.collectionId ? [event.payload.collectionId] : [],
           collectionHistory: event.payload.collectionId
@@ -760,6 +761,7 @@ export class EntryEventApplicator {
           order: event.payload.order,
           collectionId: event.payload.collectionId,
           userId: event.payload.userId,
+          parentEntryId: event.payload.parentEntryId,
           // Initialize collections array from legacy collectionId
           collections: event.payload.collectionId ? [event.payload.collectionId] : [],
           collectionHistory: event.payload.collectionId

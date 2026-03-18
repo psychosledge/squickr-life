@@ -397,6 +397,11 @@ export class EntryListProjection {
     return this.subTask.getParentTitlesForSubTasks(subTaskIds);
   }
 
+  /** @see SubTaskProjection.getSubEntries */
+  async getSubEntries(parentEntryId: string): Promise<Entry[]> {
+    return this.subTask.getSubEntries(parentEntryId);
+  }
+
   /** @see DailyLogProjection.getDailyLogs */
   async getDailyLogs(
     limit: number = 7,

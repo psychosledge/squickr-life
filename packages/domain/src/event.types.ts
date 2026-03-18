@@ -37,6 +37,7 @@ export interface EventCreated extends DomainEvent {
     readonly order?: string;
     readonly collectionId?: string; // Optional - collection this event belongs to
     readonly userId?: string;
+    readonly parentEntryId?: string; // Optional - for sub-events
   };
 }
 
@@ -53,6 +54,7 @@ export interface CreateEventCommand {
   readonly eventDate?: string;
   readonly collectionId?: string;
   readonly userId?: string;
+  readonly parentEntryId?: string; // Optional - for sub-events
 }
 
 /**
