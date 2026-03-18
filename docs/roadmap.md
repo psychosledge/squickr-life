@@ -218,7 +218,7 @@ Work is organized into three rounds by complexity and dependency.
 | 2 | Uncategorized collection appears in swipe nav | Bug | Exclude virtual Uncategorized from `buildNavigationEntries` in `useCollectionNavigation.ts` |
 | 3 | Swipe nav from collection list starts at first calendar entry instead of first auto-fav | Bug | URL mismatch between collection index links and `navigationEntries` — first entry should be first auto-fav at its temporal URL |
 | 5 | Clickable URLs in entry content | Improvement | Detect URLs in entry text; render as `<a>` tags in `TaskEntryItem` / note/event renderers |
-| 7 | "Remove from this collection" menu item for multi-collection entries | Improvement | Show in `EntryActionsMenu` when `entry.collections.length > 1`; uses existing `TaskRemovedFromCollection` event |
+| 7 | "Remove from this collection" menu item for multi-collection entries | Improvement | Show in `EntryActionsMenu` when `entry.collections.length > 1`; uses existing `TaskRemovedFromCollection` event — ⚠️ **UAT REGRESSION**: menu item not appearing in production; needs investigation before Round 2 begins |
 | 8 | Collection stats separated by type | Improvement | Monthly collections currently show `(N entries)`; extend breakdown (tasks/notes/events) to match daily/custom format |
 
 ---
