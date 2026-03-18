@@ -106,10 +106,8 @@ describe('useCollectionNavigation', () => {
 
     await waitFor(() => {
       expect(result.current.previousCollection).toBeNull();
-      expect(result.current.nextCollection).toBeDefined();
+      expect(result.current.nextCollection?.name).toBe('Second');
     });
-
-    expect(result.current.nextCollection?.name).toBe('Second');
   });
 
   it('should have null next when at last collection', async () => {
@@ -125,11 +123,9 @@ describe('useCollectionNavigation', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.previousCollection).toBeDefined();
+      expect(result.current.previousCollection?.name).toBe('First');
       expect(result.current.nextCollection).toBeNull();
     });
-
-    expect(result.current.previousCollection?.name).toBe('First');
   });
 
   it('should navigate to previous collection', async () => {
