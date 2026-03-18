@@ -118,10 +118,13 @@ export class IndexedDBEventStore implements IEventStore {
 
       // Wait for transaction to complete
       transaction.oncomplete = () => {
-        // Notify subscribers ONCE (not N times) - pass last event as sentinel
-        // Projections ignore the event parameter anyway and rebuild from getAll()
-        // Non-null assertion safe because we check length > 0 above
-        this.notifySubscribers(events[events.length - 1]!);
+        // Notify subscribers once per event so that the incremental projection
+        // cache update (Phase 6 / P0-D) can apply each event individually.
+        // All events are already persisted before any notification fires,
+        // so subscribers that call getAll() will see the full committed set.
+        for (const event of events) {
+          this.notifySubscribers(event);
+        }
         resolve();
       };
 
