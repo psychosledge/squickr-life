@@ -198,13 +198,13 @@
 
 ---
 
-**Roadmap Status:** v1.9.0 shipped — CI broken, UAT regression on #7  
-**Current Phase:** Fix CI + #7 regression before Round 2  
-**Date:** March 17, 2026
+**Roadmap Status:** v1.9.0 CI fixed — cleared for Round 2  
+**Current Phase:** Round 2 (items #6 and #11)  
+**Date:** March 18, 2026
 
-> ⚠️ **Next session — start here before anything else:**
-> 1. **GitHub Actions build failing** on `v1.9.0` tag — investigate and fix CI
-> 2. **Bug #7 UAT regression** — "Remove from this collection" menu item not appearing in production despite passing tests — investigate `showRemoveFromCollection` guard conditions
+> ✅ **CI fix complete (March 18, 2026):**
+> 1. `FirestoreEventStore.appendBatch()` now notifies subscribers once per event (matching `InMemoryEventStore` and `IndexedDBEventStore`). Tests updated to assert correct per-event notification order. `v1.9.0` tag recut on commit `9053b11`.
+> 2. **Bug #7 investigation complete** — code path is correct end-to-end. The menu item appears only when a task belongs to 2+ collections (i.e., the user has used "Also show in" / `mode=add` in the migrate dialog). No code bug. UAT procedure note: to see "Remove from this collection", first use the ➤ menu → "Move / Add to collection" → select "Also show in [target]" → confirm. Then open the menu on that same task from the source collection.
 
 ---
 
@@ -222,7 +222,7 @@ Work is organized into three rounds by complexity and dependency.
 | 2 | Uncategorized collection appears in swipe nav | Bug | Exclude virtual Uncategorized from `buildNavigationEntries` in `useCollectionNavigation.ts` |
 | 3 | Swipe nav from collection list starts at first calendar entry instead of first auto-fav | Bug | URL mismatch between collection index links and `navigationEntries` — first entry should be first auto-fav at its temporal URL |
 | 5 | Clickable URLs in entry content | Improvement | Detect URLs in entry text; render as `<a>` tags in `TaskEntryItem` / note/event renderers |
-| 7 | "Remove from this collection" menu item for multi-collection entries | Improvement | Show in `EntryActionsMenu` when `entry.collections.length > 1`; uses existing `TaskRemovedFromCollection` event — ⚠️ **UAT REGRESSION**: menu item not appearing in production; needs investigation before Round 2 begins |
+| 7 | "Remove from this collection" menu item for multi-collection entries | Improvement | Show in `EntryActionsMenu` when `entry.collections.length > 1`; uses existing `TaskRemovedFromCollection` event — ✅ **Shipped in v1.9.0**. UAT note: requires task to be in 2+ collections (use "Also show in" mode in migrate dialog first) |
 | 8 | Collection stats separated by type | Improvement | Monthly collections currently show `(N entries)`; extend breakdown (tasks/notes/events) to match daily/custom format |
 
 ---
