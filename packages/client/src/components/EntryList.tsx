@@ -39,6 +39,8 @@ interface EntryListProps {
   onToggleSelection?: (entryId: string) => void;
   // Sub-task handler
   onAddSubTask?: (entry: Entry) => void;
+  // Bug #7: Remove from collection handler (tasks only)
+  onRemoveFromCollection?: (taskId: string, collectionId: string) => Promise<void>;
   // Phase 2: Optional completion status calculator (for parent tasks)
   getCompletionStatus?: (taskId: string) => Promise<{
     total: number;
@@ -80,6 +82,7 @@ export function EntryList({
   selectedEntryIds = new Set(),
   onToggleSelection,
   onAddSubTask,
+  onRemoveFromCollection,
   getCompletionStatus,
   getSubTasks,
   getSubTasksForMultipleParents,
@@ -371,6 +374,7 @@ export function EntryList({
                     onNavigateToMigrated={onNavigateToMigrated}
                     onCreateCollection={onCreateCollection}
                     onAddSubTask={onAddSubTask}
+                    onRemoveFromCollection={onRemoveFromCollection}
                     isSelectionMode={isSelectionMode}
                     isSelected={selectedEntryIds.has(entry.id)}
                     onToggleSelection={onToggleSelection}

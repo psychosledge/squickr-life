@@ -1002,3 +1002,137 @@ describe('EntryActionsMenu', () => {
     });
   });
 });
+
+// ============================================================================
+// "Remove from this collection" Menu Item Tests (Bug #7)
+// ============================================================================
+
+describe('EntryActionsMenu - Remove from this collection', () => {
+  const mockOnEdit = vi.fn();
+  const mockOnMove = vi.fn();
+  const mockOnDelete = vi.fn();
+  const mockOnRemoveFromCollection = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockTaskEntry: Entry & { type: 'task' } = {
+    type: 'task',
+    id: 'task-1',
+    content: 'Test task',
+    createdAt: '2026-01-24T10:00:00.000Z',
+    status: 'open',
+  };
+
+  it('should NOT show "Remove from this collection" when onRemoveFromCollection is not provided', () => {
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    expect(screen.queryByRole('menuitem', { name: /remove from this collection/i })).not.toBeInTheDocument();
+  });
+
+  it('should NOT show "Remove from this collection" for a ghost entry (even if prop provided)', () => {
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+        onRemoveFromCollection={mockOnRemoveFromCollection}
+        isGhost={true}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    expect(screen.queryByRole('menuitem', { name: /remove from this collection/i })).not.toBeInTheDocument();
+  });
+
+  it('should NOT show "Remove from this collection" for a deleted entry (even if prop provided)', () => {
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+        onRemoveFromCollection={mockOnRemoveFromCollection}
+        isDeleted={true}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    expect(screen.queryByRole('menuitem', { name: /remove from this collection/i })).not.toBeInTheDocument();
+  });
+
+  it('should show "Remove from this collection" when onRemoveFromCollection is provided and entry is a task (not ghost, not deleted)', () => {
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+        onRemoveFromCollection={mockOnRemoveFromCollection}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole('menuitem', { name: /remove from this collection/i })).toBeInTheDocument();
+  });
+
+  it('should call onRemoveFromCollection when the menu item is clicked', () => {
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+        onRemoveFromCollection={mockOnRemoveFromCollection}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    const removeBtn = screen.getByRole('menuitem', { name: /remove from this collection/i });
+    fireEvent.click(removeBtn);
+
+    expect(mockOnRemoveFromCollection).toHaveBeenCalledTimes(1);
+  });
+
+  it('should close the menu after clicking "Remove from this collection"', async () => {
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+        onRemoveFromCollection={mockOnRemoveFromCollection}
+      />
+    );
+
+    const trigger = screen.getByRole('button', { name: /actions/i });
+    fireEvent.click(trigger);
+
+    const removeBtn = screen.getByRole('menuitem', { name: /remove from this collection/i });
+    fireEvent.click(removeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+  });
+});

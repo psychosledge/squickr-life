@@ -24,6 +24,7 @@ describe('useEntryOperations', () => {
   let mockMoveNoteToCollectionHandler: any;
   let mockAddEventToCollectionHandler: any;
   let mockMoveEventToCollectionHandler: any;
+  let mockRemoveTaskFromCollectionHandler: any;
 
   beforeEach(() => {
     // Create mock handlers
@@ -46,6 +47,7 @@ describe('useEntryOperations', () => {
       reorderTaskHandler: { handle: vi.fn() } as any,
       reorderNoteHandler: { handle: vi.fn() } as any,
       reorderEventHandler: { handle: vi.fn() } as any,
+      reorderEntryHandler: { handle: vi.fn() } as any,
       renameCollectionHandler: { handle: vi.fn() } as any,
       deleteCollectionHandler: { handle: vi.fn() } as any,
       updateSettingsHandler: { handle: vi.fn() } as any,
@@ -87,6 +89,7 @@ describe('useEntryOperations', () => {
     mockMoveNoteToCollectionHandler = { handle: vi.fn() };
     mockAddEventToCollectionHandler = { handle: vi.fn() };
     mockMoveEventToCollectionHandler = { handle: vi.fn() };
+    mockRemoveTaskFromCollectionHandler = { handle: vi.fn() };
 
     mockConfig = {
       collectionId: 'collection-1',
@@ -119,6 +122,7 @@ describe('useEntryOperations', () => {
       restoreTaskHandler: { handle: vi.fn() } as any,
       restoreNoteHandler: { handle: vi.fn() } as any,
       restoreEventHandler: { handle: vi.fn() } as any,
+      removeTaskFromCollectionHandler: mockRemoveTaskFromCollectionHandler,
       ...overrides,
     };
   }
@@ -149,6 +153,7 @@ describe('useEntryOperations', () => {
     expect(result.current).toHaveProperty('handleOpenSettings');
     expect(result.current).toHaveProperty('handleSettingsSubmit');
     expect(result.current).toHaveProperty('handleToggleFavorite');
+    expect(result.current).toHaveProperty('handleRemoveFromCollection');
   });
 
   it('should call createTaskHandler when handleCreateTask is invoked', async () => {
@@ -236,6 +241,19 @@ describe('useEntryOperations', () => {
     expect(mockAddNoteToCollectionHandler.handle).toHaveBeenCalledWith({
       noteId: 'note-1',
       collectionId: 'target-collection',
+    });
+  });
+
+  it('should call removeTaskFromCollectionHandler with correct taskId and collectionId when handleRemoveFromCollection is invoked', async () => {
+    const { result } = renderHook(() =>
+      useEntryOperations(buildParams(), mockConfig)
+    );
+
+    await result.current.handleRemoveFromCollection('task-1', 'collection-1');
+
+    expect(mockRemoveTaskFromCollectionHandler.handle).toHaveBeenCalledWith({
+      taskId: 'task-1',
+      collectionId: 'collection-1',
     });
   });
 });

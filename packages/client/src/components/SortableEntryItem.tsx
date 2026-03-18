@@ -33,6 +33,8 @@ interface SortableEntryItemProps {
   onToggleSelection?: (entryId: string) => void;
   // Sub-task handler
   onAddSubTask?: (entry: Entry) => void;
+  // Bug #7: Remove from collection handler (tasks only)
+  onRemoveFromCollection?: (taskId: string, collectionId: string) => Promise<void>;
   // Phase 2: Completion status for parent tasks
   completionStatus?: {
     total: number;
@@ -73,6 +75,7 @@ export function SortableEntryItem({
   isSelected = false,
   onToggleSelection,
   onAddSubTask,
+  onRemoveFromCollection,
   completionStatus,
   parentTitle,
   isCollapsed,
@@ -150,6 +153,7 @@ export function SortableEntryItem({
           onNavigateToMigrated={onNavigateToMigrated}
           onCreateCollection={onCreateCollection}
           onAddSubTask={onAddSubTask}
+          onRemoveFromCollection={onRemoveFromCollection}
           completionStatus={completionStatus}
           parentTitle={parentTitle}
           isCollapsed={isCollapsed}

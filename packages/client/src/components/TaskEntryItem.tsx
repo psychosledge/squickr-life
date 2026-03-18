@@ -21,6 +21,7 @@ interface TaskEntryItemProps {
   onNavigateToMigrated?: (collectionId: string | null) => void;
   onCreateCollection?: (name: string) => Promise<string>;
   onAddSubTask?: (entry: Entry) => void;
+  onRemoveFromCollection?: (taskId: string, collectionId: string) => Promise<void>; // Bug #7
   // Phase 2: Completion status for parent tasks with sub-tasks
   completionStatus?: {
     total: number;
@@ -58,6 +59,7 @@ export function TaskEntryItem({
   onNavigateToMigrated,
   onCreateCollection: _onCreateCollection, // Not used in new dialog
   onAddSubTask,
+  onRemoveFromCollection,
   completionStatus,
   parentTitle,
   isCollapsed = false,
@@ -162,6 +164,16 @@ export function TaskEntryItem({
     ? !(entry.collections || []).includes(currentCollectionId)
     : false;
   const isSubTaskMigrated = isMultiCollection || isNotInCurrentCollection;
+
+  // Bug #7: Show "Remove from this collection" only when task is in multiple collections
+  // and the current collection is one of them (and not a sub-task, ghost, or deleted)
+  const showRemoveFromCollection =
+    !isSubTask &&
+    !isDeleted &&
+    !!currentCollectionId &&
+    (entry.collections || []).length > 1 &&
+    (entry.collections || []).includes(currentCollectionId) &&
+    !!onRemoveFromCollection;
 
   return (
     <div className="relative">
@@ -300,6 +312,11 @@ export function TaskEntryItem({
           onDelete={handleDelete}
           onRestore={onRestore}
           onAddSubTask={onAddSubTask ? handleAddSubTask : undefined}
+          onRemoveFromCollection={
+            showRemoveFromCollection
+              ? () => onRemoveFromCollection!(entry.id, currentCollectionId!)
+              : undefined
+          }
           collections={collections}
           currentCollectionId={currentCollectionId}
           onNavigateToMigrated={onNavigateToMigrated}

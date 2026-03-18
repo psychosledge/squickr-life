@@ -24,6 +24,7 @@ import type {
   EntryListProjection,
   AddTaskToCollectionHandler,
   MoveTaskToCollectionHandler,
+  RemoveTaskFromCollectionHandler,
   AddNoteToCollectionHandler,
   MoveNoteToCollectionHandler,
   AddEventToCollectionHandler,
@@ -53,6 +54,7 @@ export interface UseEntryOperationsParams {
   restoreTaskHandler: RestoreTaskHandler; // Item 3: Recoverable deleted entries
   restoreNoteHandler: RestoreNoteHandler; // Item 3: Recoverable deleted entries
   restoreEventHandler: RestoreEventHandler; // Item 3: Recoverable deleted entries
+  removeTaskFromCollectionHandler: RemoveTaskFromCollectionHandler; // Bug #7: Remove from collection
 }
 
 export interface EntryOperations {
@@ -77,6 +79,9 @@ export interface EntryOperations {
   
   // Entry restore operations (Item 3: Recoverable deleted entries)
   handleRestore: (entryId: string, entryType: 'task' | 'note' | 'event') => Promise<void>;
+  
+  // Remove from collection (Bug #7)
+  handleRemoveFromCollection: (taskId: string, collectionId: string) => Promise<void>;
   
   // Entry reordering operations
   handleReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => Promise<void>;
@@ -133,6 +138,7 @@ export function useEntryOperations(
     restoreTaskHandler, // Item 3: Recoverable deleted entries
     restoreNoteHandler, // Item 3: Recoverable deleted entries
     restoreEventHandler, // Item 3: Recoverable deleted entries
+    removeTaskFromCollectionHandler, // Bug #7: Remove from collection
   }: UseEntryOperationsParams,
   config: UseEntryOperationsConfig
 ): EntryOperations {
@@ -289,6 +295,11 @@ export function useEntryOperations(
       await restoreEventHandler.handle({ eventId: entryId });
     }
   }, [restoreTaskHandler, restoreNoteHandler, restoreEventHandler]);
+
+  // Bug #7: Remove from collection
+  const handleRemoveFromCollection = useCallback(async (taskId: string, collectionId: string) => {
+    await removeTaskFromCollectionHandler.handle({ taskId, collectionId });
+  }, [removeTaskFromCollectionHandler]);
 
   // Entry reordering operations
   const handleReorder = useCallback(async (
@@ -473,6 +484,7 @@ export function useEntryOperations(
     handleUpdateEventDate,
     handleDelete,
     handleRestore,
+    handleRemoveFromCollection,
     handleReorder,
     handleMigrate,
     handleBulkMigrate,

@@ -65,6 +65,7 @@ export function CollectionDetailView({
     createCollectionHandler,
     addTaskToCollectionHandler,
     moveTaskToCollectionHandler,
+    removeTaskFromCollectionHandler,
     addNoteToCollectionHandler,
     moveNoteToCollectionHandler,
     addEventToCollectionHandler,
@@ -143,6 +144,7 @@ export function CollectionDetailView({
       restoreTaskHandler,  // Item 3: Recoverable deleted entries
       restoreNoteHandler,  // Item 3: Recoverable deleted entries
       restoreEventHandler, // Item 3: Recoverable deleted entries
+      removeTaskFromCollectionHandler, // Bug #7: Remove from collection
     },
     {
       collectionId: resolvedCollectionId,
@@ -478,6 +480,7 @@ export function CollectionDetailView({
           onNavigateToMigrated={operations.handleNavigateToMigrated}
           onCreateCollection={operations.handleCreateCollection}
           onAddSubTask={handleOpenSubTaskModal}
+          onRemoveFromCollection={operations.handleRemoveFromCollection}
           isSelectionMode={selection.isSelectionMode}
           selectedEntryIds={selection.selectedEntryIds}
           onToggleSelection={selection.toggleSelection}
@@ -508,8 +511,9 @@ export function CollectionDetailView({
               collections={allCollections}
               currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
               onNavigateToMigrated={operations.handleNavigateToMigrated}
-              onCreateCollection={operations.handleCreateCollection}
+               onCreateCollection={operations.handleCreateCollection}
               onAddSubTask={handleOpenSubTaskModal}
+              onRemoveFromCollection={operations.handleRemoveFromCollection}
               isSelectionMode={selection.isSelectionMode}
               selectedEntryIds={selection.selectedEntryIds}
               onToggleSelection={selection.toggleSelection}
@@ -568,6 +572,7 @@ export function CollectionDetailView({
                 onNavigateToMigrated={operations.handleNavigateToMigrated}
                 onCreateCollection={operations.handleCreateCollection}
                 onAddSubTask={handleOpenSubTaskModal}
+                onRemoveFromCollection={operations.handleRemoveFromCollection}
                 isSelectionMode={selection.isSelectionMode}
                 selectedEntryIds={selection.selectedEntryIds}
                 onToggleSelection={selection.toggleSelection}
@@ -628,6 +633,7 @@ export function CollectionDetailView({
                   onNavigateToMigrated={operations.handleNavigateToMigrated}
                   onCreateCollection={operations.handleCreateCollection}
                   onAddSubTask={handleOpenSubTaskModal}
+                  onRemoveFromCollection={operations.handleRemoveFromCollection}
                   isSelectionMode={selection.isSelectionMode}
                   selectedEntryIds={selection.selectedEntryIds}
                   onToggleSelection={selection.toggleSelection}
