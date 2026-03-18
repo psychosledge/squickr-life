@@ -37,22 +37,22 @@ describe('Migration Chain - UI Indicators', () => {
   it('should preserve migration chain information when parent migrates after child', async () => {
     // Step 1: Create parent with 3 sub-tasks in "Work Projects"
     await createTaskHandler.handle({
-      title: 'Launch Project',
+      content: 'Launch Project',
       collectionId: 'work-projects'
     });
 
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Sub-task A', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Sub-task B', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Sub-task C', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Sub-task A', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Sub-task B', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Sub-task C', parentEntryId: parent.id });
 
     const allTasks = await entryProjection.getTasks();
     const children = allTasks.filter(t => t.parentEntryId === parent.id);
     expect(children).toHaveLength(3);
 
-    const subTaskB = children.find(c => c.title === 'Sub-task B')!;
+    const subTaskB = children.find(c => c.content === 'Sub-task B')!;
 
     // Step 2: Migrate sub-task B to "Today's Log" (first migration)
     const firstMigrationId = await migrateTaskHandler.handle({
@@ -153,16 +153,16 @@ describe('Migration Chain - UI Indicators', () => {
 
     // Create scenario: Child migrated, then parent migrates
     await createTaskHandler.handle({
-      title: 'Parent',
+      content: 'Parent',
       collectionId: 'collection-a'
     });
 
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Child', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Child', parentEntryId: parent.id });
     const allTasksAfterCreate = await entryProjection.getTasks();
-    const child = allTasksAfterCreate.find(t => t.title === 'Child')!;
+    const child = allTasksAfterCreate.find(t => t.content === 'Child')!;
 
     // First migration: Child to collection B
     await migrateTaskHandler.handle({
@@ -180,7 +180,7 @@ describe('Migration Chain - UI Indicators', () => {
     
     // Find the child in collection C (second migration)
     const childInCollectionC = finalTasks.find(t => 
-      t.title === 'Child' && 
+      t.content === 'Child' && 
       t.collectionId === 'collection-c'
     )!;
 

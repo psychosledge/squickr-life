@@ -28,7 +28,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Buy milk',
+          content: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -43,7 +43,7 @@ describe('TaskListProjection', () => {
       expect(tasks).toHaveLength(1);
       expect(tasks[0]).toMatchObject({
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         order: 'a0',
@@ -60,7 +60,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'First task',
+          content: 'First task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -77,7 +77,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Second task',
+          content: 'Second task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         order: 'a0',
@@ -91,8 +91,8 @@ describe('TaskListProjection', () => {
 
       const tasks = await projection.getTasks();
       expect(tasks).toHaveLength(2);
-      expect(tasks[0].title).toBe('First task');
-      expect(tasks[1].title).toBe('Second task');
+      expect(tasks[0].content).toBe('First task');
+      expect(tasks[1].content).toBe('Second task');
     });
 
     it('should include userId if present in event', async () => {
@@ -104,7 +104,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Test task',
+          content: 'Test task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -136,7 +136,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Buy milk',
+          content: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -149,7 +149,7 @@ describe('TaskListProjection', () => {
       const task = await projection.getTaskById('task-1');
       expect(task).toMatchObject({
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         order: 'a0',
@@ -168,7 +168,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Task 1',
+          content: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -183,7 +183,7 @@ describe('TaskListProjection', () => {
 
       const tasks = await projection.getTasks();
       expect(tasks).toHaveLength(1);
-      expect(tasks[0].title).toBe('Task 1');
+      expect(tasks[0].content).toBe('Task 1');
     });
 
     it('should clear and rebuild projection state', async () => {
@@ -195,7 +195,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Task 1',
+          content: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -215,7 +215,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Task 2',
+          content: 'Task 2',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         order: 'a0',
@@ -241,7 +241,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Buy milk',
+          content: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -279,7 +279,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Buy milk',
+          content: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -317,7 +317,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Buy milk',
+          content: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -368,7 +368,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Buy milk',
+          content: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -417,7 +417,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Buy milk',
+          content: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -484,7 +484,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Buy milk',
+          content: 'Buy milk',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -520,7 +520,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Open task',
+          content: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -556,7 +556,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Completed task',
+          content: 'Completed task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -605,7 +605,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Task 1',
+          content: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -621,7 +621,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Task 2',
+          content: 'Task 2',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         order: 'a0',
@@ -648,7 +648,7 @@ describe('TaskListProjection', () => {
       const tasks = await projection.getTasks();
       expect(tasks).toHaveLength(1);
       expect(tasks[0].id).toBe('task-2');
-      expect(tasks[0].title).toBe('Task 2');
+      expect(tasks[0].content).toBe('Task 2');
     });
   });
 
@@ -662,7 +662,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Open task',
+          content: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -678,7 +678,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Completed task',
+          content: 'Completed task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         order: 'a0',
@@ -715,7 +715,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Open task',
+          content: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -731,7 +731,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Completed task',
+          content: 'Completed task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         order: 'a0',
@@ -770,7 +770,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Open task',
+          content: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -786,7 +786,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Completed task',
+          content: 'Completed task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         order: 'a0',
@@ -825,7 +825,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Open task',
+          content: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         order: 'a0',
@@ -841,7 +841,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Completed task',
+          content: 'Completed task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         order: 'a0',
@@ -880,7 +880,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Task 1',
+          content: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
           order: 'a0',
@@ -917,7 +917,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Task 1',
+          content: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
           order: 'a0',
@@ -932,7 +932,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Task 2',
+          content: 'Task 2',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
           order: 'a1',
@@ -947,7 +947,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-3',
         payload: {
           id: 'task-3',
-          title: 'Task 3',
+          content: 'Task 3',
           createdAt: '2026-01-24T10:02:00.000Z',
           status: 'open',
           order: 'a2',
@@ -989,7 +989,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Task 1',
+          content: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
           order: 'a0',
@@ -1004,7 +1004,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Task 2',
+          content: 'Task 2',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
           order: 'a1',
@@ -1043,7 +1043,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Task 1',
+          content: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
           order: 'a0',
@@ -1058,7 +1058,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Task 2',
+          content: 'Task 2',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
           order: 'a1',
@@ -1097,7 +1097,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Task 1',
+          content: 'Task 1',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
           order: 'a0',
@@ -1112,7 +1112,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Task 2',
+          content: 'Task 2',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
           order: 'a1',
@@ -1127,7 +1127,7 @@ describe('TaskListProjection', () => {
         aggregateId: 'task-3',
         payload: {
           id: 'task-3',
-          title: 'Task 3',
+          content: 'Task 3',
           createdAt: '2026-01-24T10:02:00.000Z',
           status: 'open',
           order: 'a2',
@@ -1170,7 +1170,7 @@ describe('TaskListProjection', () => {
         timestamp: '2024-01-01T12:00:00.000Z',
         payload: {
           id: 'task-1',
-          title: 'Original Title',
+          content: 'Original Title',
           createdAt: '2024-01-01T12:00:00.000Z',
           status: 'open',
           order: 'a0',
@@ -1184,7 +1184,7 @@ describe('TaskListProjection', () => {
         timestamp: '2024-01-01T12:05:00.000Z',
         payload: {
           taskId: 'task-1',
-          newTitle: 'Updated Title',
+          newContent: 'Updated Title',
           changedAt: '2024-01-01T12:05:00.000Z',
         },
       };
@@ -1194,7 +1194,7 @@ describe('TaskListProjection', () => {
 
       const tasks = await projection.getTasks();
       expect(tasks).toHaveLength(1);
-      expect(tasks[0].title).toBe('Updated Title');
+      expect(tasks[0].content).toBe('Updated Title');
       expect(tasks[0].id).toBe('task-1');
     });
 
@@ -1206,7 +1206,7 @@ describe('TaskListProjection', () => {
         timestamp: '2024-01-01T12:00:00.000Z',
         payload: {
           id: 'task-1',
-          title: 'Original Title',
+          content: 'Original Title',
           createdAt: '2024-01-01T12:00:00.000Z',
           status: 'open',
           order: 'a0',
@@ -1220,7 +1220,7 @@ describe('TaskListProjection', () => {
         timestamp: '2024-01-01T12:05:00.000Z',
         payload: {
           taskId: 'task-1',
-          newTitle: 'First Update',
+          newContent: 'First Update',
           changedAt: '2024-01-01T12:05:00.000Z',
         },
       };
@@ -1232,7 +1232,7 @@ describe('TaskListProjection', () => {
         timestamp: '2024-01-01T12:10:00.000Z',
         payload: {
           taskId: 'task-1',
-          newTitle: 'Second Update',
+          newContent: 'Second Update',
           changedAt: '2024-01-01T12:10:00.000Z',
         },
       };
@@ -1243,7 +1243,7 @@ describe('TaskListProjection', () => {
 
       const tasks = await projection.getTasks();
       expect(tasks).toHaveLength(1);
-      expect(tasks[0].title).toBe('Second Update');
+      expect(tasks[0].content).toBe('Second Update');
     });
 
     it('should handle title change on completed task', async () => {
@@ -1254,7 +1254,7 @@ describe('TaskListProjection', () => {
         timestamp: '2024-01-01T12:00:00.000Z',
         payload: {
           id: 'task-1',
-          title: 'Original Title',
+          content: 'Original Title',
           createdAt: '2024-01-01T12:00:00.000Z',
           status: 'open',
           order: 'a0',
@@ -1279,7 +1279,7 @@ describe('TaskListProjection', () => {
         timestamp: '2024-01-01T12:10:00.000Z',
         payload: {
           taskId: 'task-1',
-          newTitle: 'Updated Title',
+          newContent: 'Updated Title',
           changedAt: '2024-01-01T12:10:00.000Z',
         },
       };
@@ -1290,7 +1290,7 @@ describe('TaskListProjection', () => {
 
       const tasks = await projection.getTasks();
       expect(tasks).toHaveLength(1);
-      expect(tasks[0].title).toBe('Updated Title');
+      expect(tasks[0].content).toBe('Updated Title');
       expect(tasks[0].status).toBe('completed');
     });
 
@@ -1302,7 +1302,7 @@ describe('TaskListProjection', () => {
         timestamp: '2024-01-01T12:00:00.000Z',
         payload: {
           id: 'task-1',
-          title: 'Original Title',
+          content: 'Original Title',
           createdAt: '2024-01-01T12:00:00.000Z',
           status: 'open',
           order: 'a0',
@@ -1316,7 +1316,7 @@ describe('TaskListProjection', () => {
         timestamp: '2024-01-01T12:05:00.000Z',
         payload: {
           taskId: 'task-1',
-          newTitle: 'Updated Title',
+          newContent: 'Updated Title',
           changedAt: '2024-01-01T12:05:00.000Z',
         },
       };
@@ -1327,7 +1327,7 @@ describe('TaskListProjection', () => {
       const tasks = await projection.getTasks();
       expect(tasks[0]).toMatchObject({
         id: 'task-1',
-        title: 'Updated Title',
+        content: 'Updated Title',
         createdAt: '2024-01-01T12:00:00.000Z',
         status: 'open',
         order: 'a0',
@@ -1343,7 +1343,7 @@ describe('TaskListProjection', () => {
         timestamp: '2024-01-01T12:00:00.000Z',
         payload: {
           taskId: 'non-existent-task',
-          newTitle: 'New Title',
+          newContent: 'New Title',
           changedAt: '2024-01-01T12:00:00.000Z',
         },
       };

@@ -18,7 +18,7 @@ describe('TaskCreated Event', () => {
       aggregateId: taskId,
       payload: {
         id: taskId,
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:30:00.000Z',
         status: 'open',
       },
@@ -27,7 +27,7 @@ describe('TaskCreated Event', () => {
     expect(event.type).toBe('TaskCreated');
     expect(event.aggregateId).toBe(taskId);
     expect(event.payload.id).toBe(taskId);
-    expect(event.payload.title).toBe('Buy milk');
+    expect(event.payload.content).toBe('Buy milk');
     expect(event.payload.status).toBe('open');
     expect(event.payload.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/); // ISO 8601
   });
@@ -41,7 +41,7 @@ describe('TaskCreated Event', () => {
       aggregateId: 'task-123',
       payload: {
         id: 'task-123',
-        title: 'Test task',
+        content: 'Test task',
         createdAt: new Date().toISOString(),
         status: 'open',
         userId: 'user-456',
@@ -60,7 +60,7 @@ describe('TaskCreated Event', () => {
       aggregateId: 'task-123',
       payload: {
         id: 'task-123',
-        title: 'Test',
+        content: 'Test',
         createdAt: new Date().toISOString(),
         status: 'open',
       },
@@ -72,17 +72,17 @@ describe('TaskCreated Event', () => {
 });
 
 describe('CreateTaskCommand', () => {
-  it('should have title property', () => {
+  it('should have content property', () => {
     const command: CreateTaskCommand = {
-      title: 'Buy milk',
+      content: 'Buy milk',
     };
 
-    expect(command.title).toBe('Buy milk');
+    expect(command.content).toBe('Buy milk');
   });
 
   it('should support optional userId', () => {
     const command: CreateTaskCommand = {
-      title: 'Test task',
+      content: 'Test task',
       userId: 'user-123',
     };
 
@@ -94,23 +94,25 @@ describe('Task Entity', () => {
   it('should represent a task entity', () => {
     const task: Task = {
       id: 'task-123',
-      title: 'Buy milk',
+      content: 'Buy milk',
       createdAt: '2026-01-24T10:30:00.000Z',
       status: 'open',
+      collections: [],
     };
 
     expect(task.id).toBe('task-123');
-    expect(task.title).toBe('Buy milk');
+    expect(task.content).toBe('Buy milk');
     expect(task.status).toBe('open');
   });
 
   it('should support optional userId', () => {
     const task: Task = {
       id: 'task-123',
-      title: 'Test',
+      content: 'Test',
       createdAt: new Date().toISOString(),
       status: 'open',
       userId: 'user-456',
+      collections: [],
     };
 
     expect(task.userId).toBe('user-456');

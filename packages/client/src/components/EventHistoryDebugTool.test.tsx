@@ -23,7 +23,7 @@ describe('EventHistoryDebugTool', () => {
   const mockEntry: Entry = {
     id: 'task-123',
     type: 'task',
-    title: 'Test Task',
+    content: 'Test Task',
     status: 'open',
     createdAt: '2026-02-14T10:00:00Z',
     collectionId: 'col-1',
@@ -38,7 +38,7 @@ describe('EventHistoryDebugTool', () => {
       version: 1,
       payload: {
         id: 'task-123',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open' as const,
         createdAt: '2026-02-14T10:00:00Z',
       },
@@ -51,7 +51,7 @@ describe('EventHistoryDebugTool', () => {
       version: 1,
       payload: {
         taskId: 'task-123',
-        title: 'Updated Task',
+        content: 'Updated Task',
       },
       timestamp: '2026-02-14T10:05:00Z',
     },
@@ -203,7 +203,7 @@ describe('EventHistoryDebugTool', () => {
       const orphanEntry: Entry = {
         id: 'orphan-999',
         type: 'task',
-        title: 'Orphan Task',
+        content: 'Orphan Task',
         status: 'open',
         createdAt: '2026-02-14T10:00:00Z',
         collectionId: 'col-1',
@@ -296,7 +296,7 @@ describe('EventHistoryDebugTool', () => {
       const singleEventEntry: Entry = {
         id: 'single-123',
         type: 'task',
-        title: 'Single Event Task',
+        content: 'Single Event Task',
         status: 'open',
         createdAt: '2026-02-14T10:00:00Z',
         collectionId: 'col-1',
@@ -311,7 +311,7 @@ describe('EventHistoryDebugTool', () => {
           version: 1,
           payload: {
             id: 'single-123',
-            title: 'Single Event Task',
+            content: 'Single Event Task',
             status: 'open' as const,
             createdAt: '2026-02-14T10:00:00Z',
           },
@@ -360,7 +360,7 @@ describe('EventHistoryDebugTool', () => {
       const orphanEntry: Entry = {
         id: 'orphan-999',
         type: 'task',
-        title: 'Orphan Task',
+        content: 'Orphan Task',
         status: 'open',
         createdAt: '2026-02-14T10:00:00Z',
         collectionId: 'col-1',
@@ -446,7 +446,7 @@ describe('EventHistoryDebugTool', () => {
           version: 1,
           payload: {
             id: 'task-123',
-            title: 'Test',
+            content: 'Test',
             status: 'open' as const,
             createdAt: '2026-02-14T10:00:00Z',
           },

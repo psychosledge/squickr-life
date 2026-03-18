@@ -176,7 +176,7 @@ describe('Bug #4: Multi-Collection Sub-Task Navigation', () => {
       const currentCollectionId = 'monthly-log';
       const subTask = {
         id: 'subtask-1',
-        title: 'Find eye doctor',
+        content: 'Find eye doctor',
         collections: ['monthly-log', 'todays-log'], // In BOTH!
         collectionId: 'monthly-log', // Legacy field
         parentEntryId: 'parent-1',
@@ -210,7 +210,7 @@ describe('Bug #4: Multi-Collection Sub-Task Navigation', () => {
       const currentCollectionId = 'todays-log';
       const subTask = {
         id: 'subtask-1',
-        title: 'Find eye doctor',
+        content: 'Find eye doctor',
         collections: ['monthly-log', 'todays-log'],
         collectionId: 'monthly-log',
         parentEntryId: 'parent-1',

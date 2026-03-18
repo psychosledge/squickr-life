@@ -42,7 +42,7 @@ export const mockCollections: Collection[] = [
 export const mockTask: Entry = {
   type: 'task',
   id: 'task-1',
-  title: 'Buy milk',
+  content: 'Buy milk',
   createdAt: '2026-01-24T10:00:00.000Z',
   status: 'open',
   collections: [],
@@ -54,7 +54,7 @@ export const mockTask: Entry = {
 export const mockSubTask: Entry = {
   type: 'task',
   id: 'task-2',
-  title: 'Buy organic milk',
+  content: 'Buy organic milk',
   createdAt: '2026-01-24T10:00:00.000Z',
   status: 'open',
   collections: [],
@@ -91,7 +91,7 @@ export const mockBulkEntries: Entry[] = [
   {
     type: 'task',
     id: 'task-1',
-    title: 'Buy milk',
+    content: 'Buy milk',
     createdAt: '2026-01-24T10:00:00.000Z',
     status: 'open',
     collections: [],
@@ -99,7 +99,7 @@ export const mockBulkEntries: Entry[] = [
   {
     type: 'task',
     id: 'task-2',
-    title: 'Buy eggs',
+    content: 'Buy eggs',
     createdAt: '2026-01-24T10:01:00.000Z',
     status: 'open',
     collections: [],
@@ -107,7 +107,7 @@ export const mockBulkEntries: Entry[] = [
   {
     type: 'task',
     id: 'task-3',
-    title: 'Buy bread',
+    content: 'Buy bread',
     createdAt: '2026-01-24T10:02:00.000Z',
     status: 'open',
     collections: [],

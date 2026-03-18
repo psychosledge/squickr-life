@@ -44,7 +44,7 @@ export function GhostEntry({
   // Get entry title/content based on type
   const getEntryText = () => {
     if (entry.type === 'task') {
-      return entry.title;
+      return entry.content;
     }
     if (entry.type === 'note') {
       return entry.content;

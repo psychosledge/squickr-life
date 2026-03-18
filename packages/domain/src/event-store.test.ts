@@ -21,7 +21,7 @@ describe('EventStore', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Buy milk',
+          content: 'Buy milk',
           createdAt: new Date().toISOString(),
           status: 'open',
         },
@@ -43,7 +43,7 @@ describe('EventStore', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'First task',
+          content: 'First task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         },
@@ -57,7 +57,7 @@ describe('EventStore', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Second task',
+          content: 'Second task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         },
@@ -83,7 +83,7 @@ describe('EventStore', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Task 1',
+          content: 'Task 1',
           createdAt: new Date().toISOString(),
           status: 'open',
         },
@@ -97,7 +97,7 @@ describe('EventStore', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Task 2',
+          content: 'Task 2',
           createdAt: new Date().toISOString(),
           status: 'open',
         },
@@ -158,7 +158,7 @@ describe('EventStore', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'First',
+          content: 'First',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         },
@@ -172,7 +172,7 @@ describe('EventStore', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Second',
+          content: 'Second',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         },
@@ -198,7 +198,7 @@ describe('EventStore', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'First',
+          content: 'First',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         },
@@ -212,7 +212,7 @@ describe('EventStore', () => {
         aggregateId: 'task-2',
         payload: {
           id: 'task-2',
-          title: 'Second',
+          content: 'Second',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         },
@@ -226,7 +226,7 @@ describe('EventStore', () => {
         aggregateId: 'task-3',
         payload: {
           id: 'task-3',
-          title: 'Third',
+          content: 'Third',
           createdAt: '2026-01-24T10:02:00.000Z',
           status: 'open',
         },

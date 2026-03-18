@@ -22,7 +22,7 @@ describe('CreateTaskHandler', () => {
   describe('handle', () => {
     it('should create a TaskCreated event for valid command', async () => {
       const command: CreateTaskCommand = {
-        title: 'Buy milk',
+        content: 'Buy milk',
       };
 
       const taskId = await handler.handle(command);
@@ -32,7 +32,7 @@ describe('CreateTaskHandler', () => {
 
       const event = events[0] as TaskCreated;
       expect(event.type).toBe('TaskCreated');
-      expect(event.payload.title).toBe('Buy milk');
+      expect(event.payload.content).toBe('Buy milk');
       expect(event.payload.status).toBe('open');
       expect(event.payload.id).toBe(taskId);
       expect(event.aggregateId).toBe(taskId);
@@ -40,7 +40,7 @@ describe('CreateTaskHandler', () => {
 
     it('should generate unique UUID for task ID', async () => {
       const command: CreateTaskCommand = {
-        title: 'Test task',
+        content: 'Test task',
       };
 
       const taskId1 = await handler.handle(command);
@@ -52,19 +52,19 @@ describe('CreateTaskHandler', () => {
 
     it('should trim whitespace from title', async () => {
       const command: CreateTaskCommand = {
-        title: '  Buy milk  ',
+        content: '  Buy milk  ',
       };
 
       await handler.handle(command);
 
       const events = await eventStore.getAll();
       const event = events[0] as TaskCreated;
-      expect(event.payload.title).toBe('Buy milk');
+      expect(event.payload.content).toBe('Buy milk');
     });
 
     it('should include userId if provided', async () => {
       const command: CreateTaskCommand = {
-        title: 'Test task',
+        content: 'Test task',
         userId: 'user-123',
       };
 
@@ -79,7 +79,7 @@ describe('CreateTaskHandler', () => {
       const beforeTime = new Date().toISOString();
       
       const command: CreateTaskCommand = {
-        title: 'Test task',
+        content: 'Test task',
       };
 
       await handler.handle(command);
@@ -95,7 +95,7 @@ describe('CreateTaskHandler', () => {
 
     it('should set event metadata correctly', async () => {
       const command: CreateTaskCommand = {
-        title: 'Test task',
+        content: 'Test task',
       };
 
       await handler.handle(command);
@@ -110,7 +110,7 @@ describe('CreateTaskHandler', () => {
 
     it('should throw error if title is empty after trim', async () => {
       const command: CreateTaskCommand = {
-        title: '   ',
+        content: '   ',
       };
 
       await expect(handler.handle(command)).rejects.toThrow('Title cannot be empty');
@@ -118,7 +118,7 @@ describe('CreateTaskHandler', () => {
 
     it('should throw error if title is too long', async () => {
       const command: CreateTaskCommand = {
-        title: 'a'.repeat(501),
+        content: 'a'.repeat(501),
       };
 
       await expect(handler.handle(command)).rejects.toThrow('Title must be between 1 and 500 characters');
@@ -126,7 +126,7 @@ describe('CreateTaskHandler', () => {
 
     it('should throw error if title is missing', async () => {
       const command: CreateTaskCommand = {
-        title: '',
+        content: '',
       };
 
       await expect(handler.handle(command)).rejects.toThrow('Title cannot be empty');
@@ -134,7 +134,7 @@ describe('CreateTaskHandler', () => {
 
     it('should accept title exactly 500 characters', async () => {
       const command: CreateTaskCommand = {
-        title: 'a'.repeat(500),
+        content: 'a'.repeat(500),
       };
 
       await handler.handle(command);
@@ -142,12 +142,12 @@ describe('CreateTaskHandler', () => {
       const events = await eventStore.getAll();
       expect(events).toHaveLength(1);
       const event = events[0] as TaskCreated;
-      expect(event.payload.title).toHaveLength(500);
+      expect(event.payload.content).toHaveLength(500);
     });
 
     it('should include collectionId if provided', async () => {
       const command: CreateTaskCommand = {
-        title: 'Task in collection',
+        content: 'Task in collection',
         collectionId: 'collection-123',
       };
 
@@ -160,7 +160,7 @@ describe('CreateTaskHandler', () => {
 
     it('should create task without collectionId (uncategorized)', async () => {
       const command: CreateTaskCommand = {
-        title: 'Uncategorized task',
+        content: 'Uncategorized task',
       };
 
       await handler.handle(command);
@@ -190,7 +190,7 @@ describe('CompleteTaskHandler', () => {
   describe('handle', () => {
     it('should create a TaskCompleted event for valid command', async () => {
       // Create a task first
-      const taskId = await createHandler.handle({ title: 'Buy milk' });
+      const taskId = await createHandler.handle({ content: 'Buy milk' });
 
       // Complete the task
       const command: CompleteTaskCommand = { taskId };
@@ -207,7 +207,7 @@ describe('CompleteTaskHandler', () => {
     });
 
     it('should set completedAt timestamp', async () => {
-      const taskId = await createHandler.handle({ title: 'Test task' });
+      const taskId = await createHandler.handle({ content: 'Test task' });
       
       const beforeTime = new Date().toISOString();
       await completeHandler.handle({ taskId });
@@ -221,7 +221,7 @@ describe('CompleteTaskHandler', () => {
     });
 
     it('should set event metadata correctly', async () => {
-      const taskId = await createHandler.handle({ title: 'Test task' });
+      const taskId = await createHandler.handle({ content: 'Test task' });
       await completeHandler.handle({ taskId });
 
       const events = await eventStore.getAll();
@@ -239,7 +239,7 @@ describe('CompleteTaskHandler', () => {
     });
 
     it('should throw error if task is already completed', async () => {
-      const taskId = await createHandler.handle({ title: 'Test task' });
+      const taskId = await createHandler.handle({ content: 'Test task' });
       await completeHandler.handle({ taskId });
 
       await expect(completeHandler.handle({ taskId })).rejects.toThrow('Task ' + taskId + ' is not open');
@@ -267,7 +267,7 @@ describe('ReopenTaskHandler', () => {
   describe('handle', () => {
     it('should create a TaskReopened event for valid command', async () => {
       // Create and complete a task
-      const taskId = await createHandler.handle({ title: 'Buy milk' });
+      const taskId = await createHandler.handle({ content: 'Buy milk' });
       await completeHandler.handle({ taskId });
 
       // Reopen the task
@@ -285,7 +285,7 @@ describe('ReopenTaskHandler', () => {
     });
 
     it('should set reopenedAt timestamp', async () => {
-      const taskId = await createHandler.handle({ title: 'Test task' });
+      const taskId = await createHandler.handle({ content: 'Test task' });
       await completeHandler.handle({ taskId });
       
       const beforeTime = new Date().toISOString();
@@ -300,7 +300,7 @@ describe('ReopenTaskHandler', () => {
     });
 
     it('should set event metadata correctly', async () => {
-      const taskId = await createHandler.handle({ title: 'Test task' });
+      const taskId = await createHandler.handle({ content: 'Test task' });
       await completeHandler.handle({ taskId });
       await reopenHandler.handle({ taskId });
 
@@ -319,13 +319,13 @@ describe('ReopenTaskHandler', () => {
     });
 
     it('should throw error if task is not completed', async () => {
-      const taskId = await createHandler.handle({ title: 'Test task' });
+      const taskId = await createHandler.handle({ content: 'Test task' });
 
       await expect(reopenHandler.handle({ taskId })).rejects.toThrow('Task ' + taskId + ' is not completed');
     });
 
     it('should allow reopening and completing multiple times', async () => {
-      const taskId = await createHandler.handle({ title: 'Test task' });
+      const taskId = await createHandler.handle({ content: 'Test task' });
       
       // Complete -> Reopen -> Complete -> Reopen
       await completeHandler.handle({ taskId });
@@ -357,7 +357,7 @@ describe('DeleteTaskHandler', () => {
   describe('handle', () => {
     it('should create a TaskDeleted event for valid command', async () => {
       // Create a task first
-      const taskId = await createHandler.handle({ title: 'Buy milk' });
+      const taskId = await createHandler.handle({ content: 'Buy milk' });
 
       // Delete the task
       const command: DeleteTaskCommand = { taskId };
@@ -374,7 +374,7 @@ describe('DeleteTaskHandler', () => {
     });
 
     it('should set deletedAt timestamp', async () => {
-      const taskId = await createHandler.handle({ title: 'Test task' });
+      const taskId = await createHandler.handle({ content: 'Test task' });
       
       const beforeTime = new Date().toISOString();
       await deleteHandler.handle({ taskId });
@@ -388,7 +388,7 @@ describe('DeleteTaskHandler', () => {
     });
 
     it('should set event metadata correctly', async () => {
-      const taskId = await createHandler.handle({ title: 'Test task' });
+      const taskId = await createHandler.handle({ content: 'Test task' });
       await deleteHandler.handle({ taskId });
 
       const events = await eventStore.getAll();
@@ -406,7 +406,7 @@ describe('DeleteTaskHandler', () => {
     });
 
     it('should allow deleting open tasks', async () => {
-      const taskId = await createHandler.handle({ title: 'Open task' });
+      const taskId = await createHandler.handle({ content: 'Open task' });
 
       await deleteHandler.handle({ taskId });
 
@@ -416,7 +416,7 @@ describe('DeleteTaskHandler', () => {
     });
 
     it('should allow deleting completed tasks', async () => {
-      const taskId = await createHandler.handle({ title: 'Completed task' });
+      const taskId = await createHandler.handle({ content: 'Completed task' });
       const completeHandler = new CompleteTaskHandler(eventStore, entryProjection);
       await completeHandler.handle({ taskId });
 
@@ -428,7 +428,7 @@ describe('DeleteTaskHandler', () => {
     });
 
     it('should not allow deleting already deleted tasks', async () => {
-      const taskId = await createHandler.handle({ title: 'Test task' });
+      const taskId = await createHandler.handle({ content: 'Test task' });
       await deleteHandler.handle({ taskId });
 
       // Try to delete again
@@ -455,9 +455,9 @@ describe('ReorderTaskHandler', () => {
   describe('handle', () => {
     it('should create a TaskReordered event for valid command', async () => {
       // Create three tasks
-      const taskId1 = await createHandler.handle({ title: 'Task 1' });
-      const taskId2 = await createHandler.handle({ title: 'Task 2' });
-      const taskId3 = await createHandler.handle({ title: 'Task 3' });
+      const taskId1 = await createHandler.handle({ content: 'Task 1' });
+      const taskId2 = await createHandler.handle({ content: 'Task 2' });
+      const taskId3 = await createHandler.handle({ content: 'Task 3' });
 
       // Reorder task2 between task1 and task3
       const command: ReorderTaskCommand = {
@@ -480,9 +480,9 @@ describe('ReorderTaskHandler', () => {
     });
 
     it('should generate order between two tasks', async () => {
-      const taskId1 = await createHandler.handle({ title: 'Task 1' });
-      const taskId2 = await createHandler.handle({ title: 'Task 2' });
-      const taskId3 = await createHandler.handle({ title: 'Task 3' });
+      const taskId1 = await createHandler.handle({ content: 'Task 1' });
+      const taskId2 = await createHandler.handle({ content: 'Task 2' });
+      const taskId3 = await createHandler.handle({ content: 'Task 3' });
 
       // Reorder task3 to be between task1 and task2
       await reorderHandler.handle({
@@ -501,9 +501,9 @@ describe('ReorderTaskHandler', () => {
     });
 
     it('should move task to start when previousTaskId is null', async () => {
-      const taskId1 = await createHandler.handle({ title: 'Task 1' });
-      const taskId2 = await createHandler.handle({ title: 'Task 2' });
-      const taskId3 = await createHandler.handle({ title: 'Task 3' });
+      const taskId1 = await createHandler.handle({ content: 'Task 1' });
+      const taskId2 = await createHandler.handle({ content: 'Task 2' });
+      const taskId3 = await createHandler.handle({ content: 'Task 3' });
 
       // Move task3 to the start
       await reorderHandler.handle({
@@ -520,9 +520,9 @@ describe('ReorderTaskHandler', () => {
     });
 
     it('should move task to end when nextTaskId is null', async () => {
-      const taskId1 = await createHandler.handle({ title: 'Task 1' });
-      const taskId2 = await createHandler.handle({ title: 'Task 2' });
-      const taskId3 = await createHandler.handle({ title: 'Task 3' });
+      const taskId1 = await createHandler.handle({ content: 'Task 1' });
+      const taskId2 = await createHandler.handle({ content: 'Task 2' });
+      const taskId3 = await createHandler.handle({ content: 'Task 3' });
 
       // Move task1 to the end
       await reorderHandler.handle({
@@ -539,8 +539,8 @@ describe('ReorderTaskHandler', () => {
     });
 
     it('should set event metadata correctly', async () => {
-      const taskId1 = await createHandler.handle({ title: 'Task 1' });
-      const taskId2 = await createHandler.handle({ title: 'Task 2' });
+      const taskId1 = await createHandler.handle({ content: 'Task 1' });
+      const taskId2 = await createHandler.handle({ content: 'Task 2' });
 
       await reorderHandler.handle({
         taskId: taskId2,
@@ -567,7 +567,7 @@ describe('ReorderTaskHandler', () => {
     });
 
     it('should throw error if previousTaskId does not exist', async () => {
-      const taskId = await createHandler.handle({ title: 'Task 1' });
+      const taskId = await createHandler.handle({ content: 'Task 1' });
 
       const command: ReorderTaskCommand = {
         taskId,
@@ -579,7 +579,7 @@ describe('ReorderTaskHandler', () => {
     });
 
     it('should throw error if nextTaskId does not exist', async () => {
-      const taskId = await createHandler.handle({ title: 'Task 1' });
+      const taskId = await createHandler.handle({ content: 'Task 1' });
 
       const command: ReorderTaskCommand = {
         taskId,
@@ -597,7 +597,7 @@ describe('ReorderTaskHandler', () => {
       
       // Create a note and a task
       const noteId = await noteHandler.handle({ content: 'My note' });
-      const taskId = await createHandler.handle({ title: 'My task' });
+      const taskId = await createHandler.handle({ content: 'My task' });
       
       // Get current orders
       const noteBefore = await entryProjection.getEntryById(noteId);
@@ -625,7 +625,7 @@ describe('ReorderTaskHandler', () => {
       // Create note, event, task in that order
       const noteId = await noteHandler.handle({ content: 'Note first' });
       const eventId = await eventHandler.handle({ content: 'Event second' });
-      const taskId = await createHandler.handle({ title: 'Task third' });
+      const taskId = await createHandler.handle({ content: 'Task third' });
       
       // Reorder task to be between note and event
       await reorderHandler.handle({
@@ -650,7 +650,7 @@ describe('ReorderTaskHandler', () => {
       
       // Create note first, then task
       const noteId = await noteHandler.handle({ content: 'Note' });
-      const taskId = await createHandler.handle({ title: 'Task' });
+      const taskId = await createHandler.handle({ content: 'Task' });
       
       // Move task before note
       await reorderHandler.handle({
@@ -686,13 +686,13 @@ describe('UpdateTaskTitleHandler', () => {
     it('should create a TaskTitleChanged event for valid command', async () => {
       // Create a task first
       const taskId = await createHandler.handle({
-        title: 'Original Title',
+        content: 'Original Title',
       });
 
       // Update the title
       const command: UpdateTaskTitleCommand = {
         taskId,
-        title: 'New Title',
+        content: 'New Title',
       };
 
       await updateTitleHandler.handle(command);
@@ -703,35 +703,35 @@ describe('UpdateTaskTitleHandler', () => {
       const event = events[1] as TaskTitleChanged;
       expect(event.type).toBe('TaskTitleChanged');
       expect(event.payload.taskId).toBe(taskId);
-      expect(event.payload.newTitle).toBe('New Title');
+      expect(event.payload.newContent).toBe('New Title');
       expect(event.aggregateId).toBe(taskId);
     });
 
     it('should trim whitespace from new title', async () => {
       const taskId = await createHandler.handle({
-        title: 'Original Title',
+        content: 'Original Title',
       });
 
       const command: UpdateTaskTitleCommand = {
         taskId,
-        title: '  New Title  ',
+        content: '  New Title  ',
       };
 
       await updateTitleHandler.handle(command);
 
       const events = await eventStore.getAll();
       const event = events[1] as TaskTitleChanged;
-      expect(event.payload.newTitle).toBe('New Title');
+      expect(event.payload.newContent).toBe('New Title');
     });
 
     it('should reject empty title after trimming', async () => {
       const taskId = await createHandler.handle({
-        title: 'Original Title',
+        content: 'Original Title',
       });
 
       const command: UpdateTaskTitleCommand = {
         taskId,
-        title: '   ',
+        content: '   ',
       };
 
       await expect(updateTitleHandler.handle(command)).rejects.toThrow('Title cannot be empty');
@@ -739,12 +739,12 @@ describe('UpdateTaskTitleHandler', () => {
 
     it('should reject title longer than 500 characters', async () => {
       const taskId = await createHandler.handle({
-        title: 'Original Title',
+        content: 'Original Title',
       });
 
       const command: UpdateTaskTitleCommand = {
         taskId,
-        title: 'a'.repeat(501),
+        content: 'a'.repeat(501),
       };
 
       await expect(updateTitleHandler.handle(command)).rejects.toThrow('Title must be between 1 and 500 characters');
@@ -752,26 +752,26 @@ describe('UpdateTaskTitleHandler', () => {
 
     it('should accept title with exactly 500 characters', async () => {
       const taskId = await createHandler.handle({
-        title: 'Original Title',
+        content: 'Original Title',
       });
 
       const longTitle = 'a'.repeat(500);
       const command: UpdateTaskTitleCommand = {
         taskId,
-        title: longTitle,
+        content: longTitle,
       };
 
       await updateTitleHandler.handle(command);
 
       const events = await eventStore.getAll();
       const event = events[1] as TaskTitleChanged;
-      expect(event.payload.newTitle).toBe(longTitle);
+      expect(event.payload.newContent).toBe(longTitle);
     });
 
     it('should reject updating non-existent task', async () => {
       const command: UpdateTaskTitleCommand = {
         taskId: 'non-existent-task',
-        title: 'New Title',
+        content: 'New Title',
       };
 
       await expect(updateTitleHandler.handle(command)).rejects.toThrow('Task non-existent-task not found');
@@ -779,12 +779,12 @@ describe('UpdateTaskTitleHandler', () => {
 
     it('should set event metadata correctly', async () => {
       const taskId = await createHandler.handle({
-        title: 'Original Title',
+        content: 'Original Title',
       });
 
       const command: UpdateTaskTitleCommand = {
         taskId,
-        title: 'New Title',
+        content: 'New Title',
       };
 
       await updateTitleHandler.handle(command);
@@ -801,7 +801,7 @@ describe('UpdateTaskTitleHandler', () => {
     it('should allow updating completed task title', async () => {
       // Create and complete a task
       const taskId = await createHandler.handle({
-        title: 'Original Title',
+        content: 'Original Title',
       });
 
       const completeHandler = new CompleteTaskHandler(eventStore, entryProjection);
@@ -810,7 +810,7 @@ describe('UpdateTaskTitleHandler', () => {
       // Update title of completed task
       const command: UpdateTaskTitleCommand = {
         taskId,
-        title: 'Updated Title',
+        content: 'Updated Title',
       };
 
       await updateTitleHandler.handle(command);
@@ -820,7 +820,7 @@ describe('UpdateTaskTitleHandler', () => {
 
       const event = events[2] as TaskTitleChanged;
       expect(event.type).toBe('TaskTitleChanged');
-      expect(event.payload.newTitle).toBe('Updated Title');
+      expect(event.payload.newContent).toBe('Updated Title');
     });
   });
 });

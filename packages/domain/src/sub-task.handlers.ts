@@ -41,14 +41,14 @@ export class CreateSubTaskHandler {
    * @throws Error if validation fails
    */
   async handle(command: CreateSubTaskCommand): Promise<string> {
-    // Validate title (same rules as CreateTask)
-    const title = command.title.trim();
+    // Validate content (same rules as CreateTask)
+    const content = command.content.trim();
 
-    if (title.length === 0) {
+    if (content.length === 0) {
       throw new Error('Title cannot be empty');
     }
 
-    if (title.length > 500) {
+    if (content.length > 500) {
       throw new Error('Title must be between 1 and 500 characters');
     }
 
@@ -82,7 +82,7 @@ export class CreateSubTaskHandler {
       aggregateId: taskId,
       payload: {
         id: taskId,
-        title,
+        content,
         createdAt: metadata.timestamp,
         status: 'open',
         order,

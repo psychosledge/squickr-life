@@ -18,13 +18,13 @@ describe('TaskList', () => {
     const tasks: Task[] = [
       {
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
       },
       {
         id: 'task-2',
-        title: 'Walk the dog',
+        content: 'Walk the dog',
         createdAt: '2026-01-24T10:01:00.000Z',
         status: 'open',
       },
@@ -40,13 +40,13 @@ describe('TaskList', () => {
     const tasks: Task[] = [
       {
         id: 'task-1',
-        title: 'Task 1',
+        content: 'Task 1',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
       },
       {
         id: 'task-2',
-        title: 'Task 2',
+        content: 'Task 2',
         createdAt: '2026-01-24T10:01:00.000Z',
         status: 'open',
       },
@@ -61,7 +61,7 @@ describe('TaskList', () => {
     const tasks: Task[] = [
       {
         id: 'task-1',
-        title: 'Single task',
+        content: 'Single task',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
       },
@@ -77,7 +77,7 @@ describe('TaskList', () => {
     const tasks: Task[] = [
       {
         id: 'task-1',
-        title: 'Task 1',
+        content: 'Task 1',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
       },

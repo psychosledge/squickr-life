@@ -322,7 +322,7 @@ export class EntryEventApplicator {
       case 'TaskCreated': {
         const task: Task = {
           id: event.payload.id,
-          title: event.payload.title,
+          content: event.payload.content ?? event.payload.title ?? '',  // backward compat
           createdAt: event.payload.createdAt,
           status: event.payload.status,
           order: event.payload.order,
@@ -398,7 +398,7 @@ export class EntryEventApplicator {
         if (task) {
           tasks.set(task.id, {
             ...task,
-            title: event.payload.newTitle,
+            content: event.payload.newContent ?? event.payload.newTitle ?? task.content,
           });
         }
         break;
@@ -443,7 +443,7 @@ export class EntryEventApplicator {
 
           const newTask: Task = {
             id: event.payload.migratedToId,
-            title: originalTask.title,
+            content: originalTask.content,
             createdAt: event.payload.migratedAt, // New creation time
             status: originalTask.status, // Preserve status
             completedAt: originalTask.completedAt, // Preserve completion if completed

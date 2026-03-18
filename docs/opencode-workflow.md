@@ -169,7 +169,7 @@ We have **3 specialized agents**:
 
 This is our **primary workflow** for all development. For multi-item sessions, we plan everything upfront, then execute one item at a time.
 
-### Phase 1: Planning (Alex)
+### Phase 1: Planning (Alex → User → Alex → ...)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -180,15 +180,28 @@ This is our **primary workflow** for all development. For multi-item sessions, w
 │    - Implementation approach                            │
 │    - Any event model / ADR changes                      │
 │    - Tutorial/UX changes if applicable                  │
-│    - Clarifying questions for user if needed            │
+│    - Clarifying questions for anything unclear          │
+│      (Alex asks rather than assumes)                    │
 └─────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────┐
-│  User: Reviews Alex's plan                              │
-│  User: Approves or requests changes                     │
-│  (Repeat until plan is approved)                        │
+│  User: Critiques Alex's plan                            │
+│    - Challenge any approach or assumption               │
+│    - Request alternatives or deeper reasoning           │
+│    - Answer Alex's clarifying questions                 │
+│    - Suggest scope changes                              │
+│                                                         │
+│  IF changes requested:                                  │
+│  OpenCode: `/design [revised scope / feedback]`         │
+│  Alex: *Revises plan, re-asks any new questions*        │
+│  (Repeat until user is satisfied)                       │
+│                                                         │
+│  IF plan looks good:                                    │
+│  User: "Plan approved" (or equivalent)                  │
 └─────────────────────────────────────────────────────────┘
 ```
+
+> **Nothing moves to implementation until the user explicitly approves the plan.** OpenCode must wait for approval — it must not interpret silence or a vague "looks good" as approval.
 
 ### Phase 2: Execute Each Item (one at a time)
 
@@ -262,14 +275,15 @@ When the user says "ship it":
 
 ### Key Points:
 
-1. **Alex plans first** - All items planned and approved before any implementation
-2. **Alex asks clarifying questions** - Any agent may ask the user questions as needed
-3. **OpenCode orchestrates** - Never does implementation itself
-4. **Always use slash commands** - `/design`, `/implement`, `/review`
-5. **One item at a time** - Complete (implement → review → commit) before moving to next
-6. **Casey reviews everything** - No commits without code review
-7. **UAT at end of session** - Unless user explicitly requests earlier
-8. **User approves plan** - Implementation only starts after plan is approved
+1. **Alex plans first** - All items planned before any implementation begins
+2. **Ask, don't assume** - Any agent with uncertainty asks the user rather than guessing
+3. **User critiques the plan** - After Alex's plan, the user may challenge, redirect, or request alternatives before approving
+4. **Explicit approval required** - Implementation only starts after the user says the plan is approved
+5. **OpenCode orchestrates** - Never does implementation itself
+6. **Always use slash commands** - `/design`, `/implement`, `/review`
+7. **One item at a time** - Complete (implement → review → commit) before moving to next
+8. **Casey reviews everything** - No commits without code review
+9. **UAT at end of session** - Unless user explicitly requests earlier
 
 ---
 
@@ -534,19 +548,20 @@ Located in: `.opencode/commands/`
 
 ## The Golden Rule
 
-**Alex plans. Sam implements. Casey reviews. User UATs. OpenCode commits and ships.**
+**Alex plans. User critiques & approves. Sam implements. Casey reviews. User UATs. OpenCode commits and ships.**
 
 Never skip the loop:
-1. **Plan** (Alex — all items, upfront, user-approved)
-2. **Implement** (Sam — one item at a time, TDD)
-3. **Review** (Casey — every item, no exceptions)
-4. **Commit** (OpenCode — after Casey approval + full test suite passes)
-5. **UAT** (User — at end of session, or explicitly earlier)
-6. **Release** (OpenCode — bump version, update docs, push commits, push tag)
+1. **Plan** (Alex — all items, upfront, with clarifying questions over assumptions)
+2. **Critique & Approve** (User — challenge the plan, iterate with Alex until satisfied, then explicitly approve)
+3. **Implement** (Sam — one item at a time, TDD)
+4. **Review** (Casey — every item, no exceptions)
+5. **Commit** (OpenCode — after Casey approval + full test suite passes)
+6. **UAT** (User — at end of session, or explicitly earlier)
+7. **Release** (OpenCode — bump version, update docs, push commits, push tag)
 
 **Every. Single. Time.**
 
-Any agent may ask clarifying questions at any point. Questions should be asked before work begins, not after.
+Any agent may ask clarifying questions at any point. Questions should be asked before work begins, not after. When in doubt, ask — never assume.
 
 ---
 

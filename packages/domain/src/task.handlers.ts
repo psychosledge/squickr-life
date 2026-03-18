@@ -56,14 +56,14 @@ export class CreateTaskHandler {
    * @throws Error if validation fails
    */
   async handle(command: CreateTaskCommand): Promise<string> {
-    // Validate title
-    const title = command.title.trim();
+    // Validate content
+    const content = command.content.trim();
 
-    if (title.length === 0) {
+    if (content.length === 0) {
       throw new Error('Title cannot be empty');
     }
 
-    if (title.length > 500) {
+    if (content.length > 500) {
       throw new Error('Title must be between 1 and 500 characters');
     }
 
@@ -83,7 +83,7 @@ export class CreateTaskHandler {
       aggregateId: taskId,
       payload: {
         id: taskId,
-        title,
+        content,
         createdAt: metadata.timestamp,
         status: 'open',
         order,
@@ -399,14 +399,14 @@ export class UpdateTaskTitleHandler {
       throw new Error(`Task ${command.taskId} not found`);
     }
 
-    // Validate title (same rules as CreateTask)
-    const title = command.title.trim();
+    // Validate content (backward compat: also accept title field)
+    const content = (command.content ?? command.title ?? '').trim();
 
-    if (title.length === 0) {
+    if (content.length === 0) {
       throw new Error('Title cannot be empty');
     }
 
-    if (title.length > 500) {
+    if (content.length > 500) {
       throw new Error('Title must be between 1 and 500 characters');
     }
 
@@ -420,7 +420,7 @@ export class UpdateTaskTitleHandler {
       aggregateId: command.taskId,
       payload: {
         taskId: command.taskId,
-        newTitle: title,
+        newContent: content,
         changedAt: metadata.timestamp,
       },
     };

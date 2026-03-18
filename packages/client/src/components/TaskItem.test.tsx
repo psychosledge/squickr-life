@@ -10,14 +10,14 @@ describe('TaskItem', () => {
 
   const mockOpenTask: Task = {
     id: 'task-1',
-    title: 'Buy milk',
+    content: 'Buy milk',
     createdAt: '2026-01-24T10:00:00.000Z',
     status: 'open',
   };
 
   const mockCompletedTask: Task = {
     id: 'task-2',
-    title: 'Write tests',
+    content: 'Write tests',
     createdAt: '2026-01-24T10:00:00.000Z',
     status: 'completed',
     completedAt: '2026-01-24T10:30:00.000Z',
@@ -38,7 +38,7 @@ describe('TaskItem', () => {
   it('should format timestamp as relative time', () => {
     const task: Task = {
       id: 'task-1',
-      title: 'Test task',
+      content: 'Test task',
       createdAt: new Date().toISOString(), // Just now
       status: 'open',
     };

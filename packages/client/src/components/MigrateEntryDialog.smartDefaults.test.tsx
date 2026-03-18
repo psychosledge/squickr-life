@@ -79,7 +79,7 @@ describe('MigrateEntryDialog - Smart Defaults', () => {
       const mockSubTaskWithParentEntry: Entry = {
         type: 'task',
         id: 'task-2',
-        title: 'Buy organic milk',
+        content: 'Buy organic milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],

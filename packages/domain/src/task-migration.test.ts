@@ -25,8 +25,8 @@ describe('MigrateTaskHandler', () => {
   describe('handle', () => {
     it('should create TaskMigrated event for valid task', async () => {
       // Create a task
-      const taskId = await createTaskHandler.handle({ 
-        title: 'Test task',
+      const taskId = await createTaskHandler.handle({
+        content: 'Test task',
         collectionId: 'collection-A',
       });
 
@@ -51,8 +51,8 @@ describe('MigrateTaskHandler', () => {
 
     it('should create new task in target collection with same title and status', async () => {
       // Create a completed task
-      const taskId = await createTaskHandler.handle({ 
-        title: 'Original task',
+      const taskId = await createTaskHandler.handle({
+        content: 'Original task',
         collectionId: 'collection-A',
       });
 
@@ -67,7 +67,7 @@ describe('MigrateTaskHandler', () => {
       const originalTask = await entryProjection.getTaskById(taskId);
 
       expect(newTask).toBeDefined();
-      expect(newTask!.title).toBe(originalTask!.title);
+      expect(newTask!.content).toBe(originalTask!.content);
       expect(newTask!.status).toBe(originalTask!.status);
       expect(newTask!.collectionId).toBe('collection-B');
       expect(newTask!.migratedFrom).toBe(taskId);
@@ -75,8 +75,8 @@ describe('MigrateTaskHandler', () => {
     });
 
     it('should mark original task with migratedTo pointer', async () => {
-      const taskId = await createTaskHandler.handle({ 
-        title: 'Test task',
+      const taskId = await createTaskHandler.handle({
+        content: 'Test task',
         collectionId: 'collection-A',
       });
 
@@ -90,8 +90,8 @@ describe('MigrateTaskHandler', () => {
     });
 
     it('should update original task collectionId to point to target collection', async () => {
-      const taskId = await createTaskHandler.handle({ 
-        title: 'Test task',
+      const taskId = await createTaskHandler.handle({
+        content: 'Test task',
         collectionId: 'collection-A',
       });
 
@@ -118,8 +118,8 @@ describe('MigrateTaskHandler', () => {
     });
 
     it('should throw error if task is already migrated', async () => {
-      const taskId = await createTaskHandler.handle({ 
-        title: 'Test task',
+      const taskId = await createTaskHandler.handle({
+        content: 'Test task',
         collectionId: 'collection-A',
       });
 
@@ -137,8 +137,8 @@ describe('MigrateTaskHandler', () => {
     });
 
     it('should be idempotent - return existing migration if same target collection', async () => {
-      const taskId = await createTaskHandler.handle({ 
-        title: 'Test task',
+      const taskId = await createTaskHandler.handle({
+        content: 'Test task',
         collectionId: 'collection-A',
       });
 
@@ -162,8 +162,8 @@ describe('MigrateTaskHandler', () => {
     });
 
     it('should set event metadata correctly', async () => {
-      const taskId = await createTaskHandler.handle({ 
-        title: 'Test task',
+      const taskId = await createTaskHandler.handle({
+        content: 'Test task',
         collectionId: 'collection-A',
       });
 
@@ -182,8 +182,8 @@ describe('MigrateTaskHandler', () => {
     });
 
     it('should allow migrating from uncategorized (null collection)', async () => {
-      const taskId = await createTaskHandler.handle({ 
-        title: 'Uncategorized task',
+      const taskId = await createTaskHandler.handle({
+        content: 'Uncategorized task',
         // No collectionId
       });
 
@@ -198,8 +198,8 @@ describe('MigrateTaskHandler', () => {
     });
 
     it('should allow migrating to uncategorized (null collection)', async () => {
-      const taskId = await createTaskHandler.handle({ 
-        title: 'Test task',
+      const taskId = await createTaskHandler.handle({
+        content: 'Test task',
         collectionId: 'collection-A',
       });
 

@@ -17,7 +17,7 @@ function taskCreatedEvent(id: string, title: string, offset = 0): DomainEvent {
     timestamp: ts(offset),
     payload: {
       id,
-      title,
+      content: title,
       createdAt: ts(offset),
       status: 'open',
       order: `a${id}`,
@@ -75,7 +75,7 @@ describe('EntryEventApplicator.applyEventsOnto', () => {
 
     // Same entries
     expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ id: 't1', title: 'Task one', status: 'open' });
+    expect(result[0]).toMatchObject({ id: 't1', content: 'Task one', status: 'open' });
   });
 
   // ---- 3. seed + delta correctly applied ----

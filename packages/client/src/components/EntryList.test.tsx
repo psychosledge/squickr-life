@@ -40,7 +40,7 @@ describe('EntryList', () => {
       {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
       },
@@ -83,14 +83,14 @@ describe('EntryList', () => {
       {
         type: 'task',
         id: 'task-1',
-        title: 'Task 1',
+        content: 'Task 1',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
       },
       {
         type: 'task',
         id: 'task-2',
-        title: 'Task 2',
+        content: 'Task 2',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
       },
@@ -118,7 +118,7 @@ describe('EntryList', () => {
       {
         type: 'task',
         id: 'task-1',
-        title: 'Task 1',
+        content: 'Task 1',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
       },
@@ -146,7 +146,7 @@ describe('EntryList', () => {
       {
         type: 'task',
         id: 'task-1',
-        title: 'Do something',
+        content: 'Do something',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
       },
@@ -190,14 +190,14 @@ describe('EntryList', () => {
         {
           type: 'task',
           id: 'task-1',
-          title: 'First task',
+          content: 'First task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         },
         {
           type: 'task',
           id: 'task-2',
-          title: 'Second task',
+          content: 'Second task',
           createdAt: '2026-01-24T10:01:00.000Z',
           status: 'open',
         },
@@ -310,7 +310,7 @@ describe('EntryList', () => {
         {
           type: 'task',
           id: 'task-1',
-          title: 'A task',
+          content: 'A task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         },
@@ -359,7 +359,7 @@ describe('EntryList', () => {
       {
         type: 'task',
         id: 'task-1',
-        title: 'Task 1',
+        content: 'Task 1',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
       },
@@ -396,14 +396,14 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Parent task',
+          content: 'Parent task',
           status: 'open',
           createdAt: '2026-02-07T10:00:00Z',
         },
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Sub-task 1',
+          content: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-07T10:01:00Z',
           parentEntryId: 'parent-1', // This is a sub-task
@@ -411,7 +411,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-2',
           type: 'task',
-          title: 'Sub-task 2',
+          content: 'Sub-task 2',
           status: 'open',
           createdAt: '2026-02-07T10:02:00Z',
           parentEntryId: 'parent-1', // This is a sub-task
@@ -419,7 +419,7 @@ describe('EntryList', () => {
         {
           id: 'task-2',
           type: 'task',
-          title: 'Another top-level task',
+          content: 'Another top-level task',
           status: 'open',
           createdAt: '2026-02-07T11:00:00Z',
         },
@@ -459,7 +459,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Sub-task 1',
+          content: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-07T10:00:00Z',
           parentEntryId: 'parent-1', // Parent NOT in this list
@@ -467,7 +467,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-2',
           type: 'task',
-          title: 'Sub-task 2',
+          content: 'Sub-task 2',
           status: 'open',
           createdAt: '2026-02-07T11:00:00Z',
           parentEntryId: 'parent-1', // Parent NOT in this list
@@ -501,14 +501,14 @@ describe('EntryList', () => {
         {
           id: 'task-1',
           type: 'task',
-          title: 'Top-level task',
+          content: 'Top-level task',
           status: 'open',
           createdAt: '2026-02-07T10:00:00Z',
         },
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Sub-task',
+          content: 'Sub-task',
           status: 'open',
           createdAt: '2026-02-07T10:01:00Z',
           parentEntryId: 'task-1',
@@ -556,14 +556,14 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Parent task',
+          content: 'Parent task',
           status: 'open',
           createdAt: '2026-02-07T10:00:00Z',
         },
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Sub-task',
+          content: 'Sub-task',
           status: 'open',
           createdAt: '2026-02-07T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -600,14 +600,14 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Plan Vacation',
+          content: 'Plan Vacation',
           status: 'open',
           createdAt: '2026-02-07T10:00:00Z',
         },
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Book flights',
+          content: 'Book flights',
           status: 'open',
           createdAt: '2026-02-07T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -615,7 +615,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-2',
           type: 'task',
-          title: 'Book hotel',
+          content: 'Book hotel',
           status: 'open',
           createdAt: '2026-02-07T10:02:00Z',
           parentEntryId: 'parent-1',
@@ -626,7 +626,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Book flights',
+          content: 'Book flights',
           status: 'open',
           createdAt: '2026-02-07T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -634,7 +634,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-2',
           type: 'task',
-          title: 'Book hotel',
+          content: 'Book hotel',
           status: 'open',
           createdAt: '2026-02-07T10:02:00Z',
           parentEntryId: 'parent-1',
@@ -675,14 +675,14 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Plan Vacation',
+          content: 'Plan Vacation',
           status: 'open',
           createdAt: '2026-02-07T10:00:00Z',
         },
         {
           id: 'parent-2',
           type: 'task',
-          title: 'Plan Party',
+          content: 'Plan Party',
           status: 'open',
           createdAt: '2026-02-07T11:00:00Z',
         },
@@ -694,7 +694,7 @@ describe('EntryList', () => {
             {
               id: 'subtask-1',
               type: 'task',
-              title: 'Book flights',
+              content: 'Book flights',
               status: 'open',
               createdAt: '2026-02-07T10:01:00Z',
               parentEntryId: 'parent-1',
@@ -706,7 +706,7 @@ describe('EntryList', () => {
             {
               id: 'subtask-2',
               type: 'task',
-              title: 'Buy decorations',
+              content: 'Buy decorations',
               status: 'open',
               createdAt: '2026-02-07T11:01:00Z',
               parentEntryId: 'parent-2',
@@ -749,7 +749,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Standalone Task',
+          content: 'Standalone Task',
           status: 'open',
           createdAt: '2026-02-07T10:00:00Z',
         },
@@ -823,7 +823,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Plan Vacation',
+          content: 'Plan Vacation',
           status: 'open',
           createdAt: '2026-02-07T10:00:00Z',
         },
@@ -856,7 +856,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Schedule appointments',
+          content: 'Schedule appointments',
           status: 'open',
           createdAt: '2026-02-10T10:00:00Z',
         },
@@ -866,7 +866,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Find eye doctor',
+          content: 'Find eye doctor',
           status: 'open',
           createdAt: '2026-02-10T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -914,7 +914,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Schedule appointments',
+          content: 'Schedule appointments',
           status: 'open',
           createdAt: '2026-02-10T10:00:00Z',
         },
@@ -924,7 +924,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Find eye doctor',
+          content: 'Find eye doctor',
           status: 'open',
           createdAt: '2026-02-10T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -974,7 +974,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Schedule appointments',
+          content: 'Schedule appointments',
           status: 'open',
           createdAt: '2026-02-10T10:00:00Z',
         },
@@ -984,7 +984,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Find eye doctor',
+          content: 'Find eye doctor',
           status: 'open',
           createdAt: '2026-02-10T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -1045,7 +1045,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Parent Task',
+          content: 'Parent Task',
           status: 'open',
           createdAt: '2026-02-14T10:00:00Z',
         },
@@ -1055,7 +1055,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Buy groceries',
+          content: 'Buy groceries',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -1093,7 +1093,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Parent Task',
+          content: 'Parent Task',
           status: 'open',
           createdAt: '2026-02-14T10:00:00Z',
         },
@@ -1103,7 +1103,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Pack for trip',
+          content: 'Pack for trip',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -1141,7 +1141,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Parent Task',
+          content: 'Parent Task',
           status: 'open',
           createdAt: '2026-02-14T10:00:00Z',
         },
@@ -1151,7 +1151,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Sub-task 1',
+          content: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -1190,7 +1190,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Parent Task',
+          content: 'Parent Task',
           status: 'open',
           createdAt: '2026-02-14T10:00:00Z',
         },
@@ -1200,7 +1200,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Sub-task 1',
+          content: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -1238,7 +1238,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Parent Task',
+          content: 'Parent Task',
           status: 'open',
           createdAt: '2026-02-14T10:00:00Z',
         },
@@ -1248,7 +1248,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Sub-task 1',
+          content: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -1287,7 +1287,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Standalone Task',
+          content: 'Standalone Task',
           status: 'open',
           createdAt: '2026-02-14T10:00:00Z',
         },
@@ -1322,7 +1322,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Parent Task',
+          content: 'Parent Task',
           status: 'open',
           createdAt: '2026-02-14T10:00:00Z',
         },
@@ -1332,7 +1332,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Sub-task 1',
+          content: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -1370,7 +1370,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Parent Task',
+          content: 'Parent Task',
           status: 'open',
           createdAt: '2026-02-14T10:00:00Z',
         },
@@ -1380,7 +1380,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Sub-task 1',
+          content: 'Sub-task 1',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -1421,7 +1421,7 @@ describe('EntryList', () => {
         {
           id: 'parent-1',
           type: 'task',
-          title: 'Plan Vacation',
+          content: 'Plan Vacation',
           status: 'open',
           createdAt: '2026-02-14T10:00:00Z',
         },
@@ -1431,7 +1431,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-1',
           type: 'task',
-          title: 'Book flights',
+          content: 'Book flights',
           status: 'open',
           createdAt: '2026-02-14T10:01:00Z',
           parentEntryId: 'parent-1',
@@ -1439,7 +1439,7 @@ describe('EntryList', () => {
         {
           id: 'subtask-2',
           type: 'task',
-          title: 'Book hotel',
+          content: 'Book hotel',
           status: 'open',
           createdAt: '2026-02-14T10:02:00Z',
           parentEntryId: 'parent-1',

@@ -14,7 +14,7 @@ describe('TaskEntryItem - Collapse/Expand', () => {
   const mockEntry: Entry & { type: 'task' } = {
     id: 'task-1',
     type: 'task',
-    title: 'Parent Task with Sub-tasks',
+    content: 'Parent Task with Sub-tasks',
     createdAt: '2024-01-01T12:00:00Z',
     status: 'open',
   };

@@ -62,7 +62,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should preserve task ID when migrating with mode=move', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Find eye doctor',
+        content: 'Find eye doctor',
         collectionId: 'monthly-2026-01',
       });
 
@@ -110,7 +110,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should NOT have migratedTo pointer (tasks preserve same ID)', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Task to migrate',
+        content: 'Task to migrate',
         collectionId: 'collection-a',
       });
 
@@ -138,7 +138,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should maintain full collection history across multiple migrations', async () => {
       // Arrange: Create task in Collection A (Monthly)
       const taskId = await createTaskHandler.handle({
-        title: 'Find eye doctor',
+        content: 'Find eye doctor',
         collectionId: 'monthly-2026-01',
       });
 
@@ -192,7 +192,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should render as ghost in removed collection with ghostNewLocation', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Task to move',
+        content: 'Task to move',
         collectionId: 'collection-a',
       });
 
@@ -232,7 +232,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should remove from current collection only when moving (not all collections)', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Multi-collection task',
+        content: 'Multi-collection task',
         collectionId: 'collection-a',
       });
 
@@ -280,7 +280,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should have 3 collectionHistory entries after move (A → add B → move A to C)', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Multi-collection task',
+        content: 'Multi-collection task',
         collectionId: 'collection-a',
       });
 
@@ -324,7 +324,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should preserve all collections when adding to new collection', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Task to add',
+        content: 'Task to add',
         collectionId: 'collection-a',
       });
 
@@ -365,7 +365,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should allow adding to multiple collections (multi-collection)', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Multi-collection task',
+        content: 'Multi-collection task',
         collectionId: 'collection-a',
       });
 
@@ -406,7 +406,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should be idempotent when adding to same collection twice', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Task to add',
+        content: 'Task to add',
         collectionId: 'collection-a',
       });
 
@@ -441,7 +441,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should be idempotent when removing from collection not in', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Task to remove',
+        content: 'Task to remove',
         collectionId: 'collection-a',
       });
 
@@ -467,7 +467,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should be idempotent when bulk migrating same entries twice', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Task to bulk migrate',
+        content: 'Task to bulk migrate',
         collectionId: 'collection-a',
       });
 
@@ -512,7 +512,7 @@ describe('Multi-Collection Integration Tests', () => {
       const taskIds: string[] = [];
       for (let i = 1; i <= 5; i++) {
         const taskId = await createTaskHandler.handle({
-          title: `Task ${i}`,
+          content: `Task ${i}`,
           collectionId: 'collection-a',
         });
         taskIds.push(taskId);
@@ -539,7 +539,7 @@ describe('Multi-Collection Integration Tests', () => {
       const taskIds: string[] = [];
       for (let i = 1; i <= 5; i++) {
         const taskId = await createTaskHandler.handle({
-          title: `Task ${i}`,
+          content: `Task ${i}`,
           collectionId: 'collection-a',
         });
         taskIds.push(taskId);
@@ -568,7 +568,7 @@ describe('Multi-Collection Integration Tests', () => {
       const taskIds: string[] = [];
       for (let i = 1; i <= 5; i++) {
         const taskId = await createTaskHandler.handle({
-          title: `Task ${i}`,
+          content: `Task ${i}`,
           collectionId: 'collection-a',
         });
         taskIds.push(taskId);
@@ -597,7 +597,7 @@ describe('Multi-Collection Integration Tests', () => {
       const taskIds: string[] = [];
       for (let i = 1; i <= 5; i++) {
         const taskId = await createTaskHandler.handle({
-          title: `Task ${i}`,
+          content: `Task ${i}`,
           collectionId: 'collection-a',
         });
         taskIds.push(taskId);
@@ -642,7 +642,7 @@ describe('Multi-Collection Integration Tests', () => {
       const taskIds: string[] = [];
       for (let i = 1; i <= 5; i++) {
         const taskId = await createTaskHandler.handle({
-          title: `Task ${i}`,
+          content: `Task ${i}`,
           collectionId: 'collection-a',
         });
         taskIds.push(taskId);
@@ -681,7 +681,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should handle move when task is in multiple collections (remove from current only)', async () => {
       // Arrange: Create task in A, add to B and C
       const taskId = await createTaskHandler.handle({
-        title: 'Multi-collection task',
+        content: 'Multi-collection task',
         collectionId: 'collection-a',
       });
       await addHandler.handle({ taskId, collectionId: 'collection-b' });
@@ -710,7 +710,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should throw error when moving from collection task is not in', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Task in A',
+        content: 'Task in A',
         collectionId: 'collection-a',
       });
 
@@ -727,7 +727,7 @@ describe('Multi-Collection Integration Tests', () => {
     it('should be no-op when moving to same collection (idempotent)', async () => {
       // Arrange: Create task in Collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Task in A',
+        content: 'Task in A',
         collectionId: 'collection-a',
       });
 

@@ -41,10 +41,10 @@ describe('CompleteParentTaskHandler', () => {
   describe('handle - parent with all children complete', () => {
     it('should complete parent when all children are already complete', async () => {
       // Arrange: Create parent with 3 sub-tasks, all completed
-      const parentId = await createTaskHandler.handle({ title: 'Plan vacation' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Book flights' });
-      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Book hotel' });
-      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Research activities' });
+      const parentId = await createTaskHandler.handle({ content: 'Plan vacation' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book flights' });
+      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book hotel' });
+      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Research activities' });
 
       // Complete all children
       await completeTaskHandler.handle({ taskId: child1Id });
@@ -78,8 +78,8 @@ describe('CompleteParentTaskHandler', () => {
 
     it('should complete parent without confirmation when all children complete', async () => {
       // Arrange
-      const parentId = await createTaskHandler.handle({ title: 'Launch app' });
-      const childId = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Deploy' });
+      const parentId = await createTaskHandler.handle({ content: 'Launch app' });
+      const childId = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Deploy' });
 
       // Complete child
       await completeTaskHandler.handle({ taskId: childId });
@@ -97,10 +97,10 @@ describe('CompleteParentTaskHandler', () => {
   describe('handle - parent with incomplete children (no confirmation)', () => {
     it('should throw error when trying to complete parent with incomplete children and not confirmed', async () => {
       // Arrange: Create parent with 3 sub-tasks, only 1 complete
-      const parentId = await createTaskHandler.handle({ title: 'Plan vacation' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Book flights' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Book hotel' }); // incomplete
-      await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Research activities' }); // incomplete
+      const parentId = await createTaskHandler.handle({ content: 'Plan vacation' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book flights' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book hotel' }); // incomplete
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Research activities' }); // incomplete
 
       // Complete only first child
       await completeTaskHandler.handle({ taskId: child1Id });
@@ -118,11 +118,11 @@ describe('CompleteParentTaskHandler', () => {
 
     it('should throw error with correct count when no children are complete', async () => {
       // Arrange: All children incomplete
-      const parentId = await createTaskHandler.handle({ title: 'Big project' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 1' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 2' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 3' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 4' });
+      const parentId = await createTaskHandler.handle({ content: 'Big project' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 3' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 4' });
 
       const command: CompleteParentTaskCommand = {
         taskId: parentId,
@@ -139,10 +139,10 @@ describe('CompleteParentTaskHandler', () => {
   describe('handle - parent with incomplete children (confirmed)', () => {
     it('should cascade complete parent and all incomplete children when confirmed', async () => {
       // Arrange: Create parent with 3 sub-tasks, only 1 complete
-      const parentId = await createTaskHandler.handle({ title: 'Plan vacation' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Book flights' });
-      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Book hotel' });
-      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Research activities' });
+      const parentId = await createTaskHandler.handle({ content: 'Plan vacation' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book flights' });
+      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book hotel' });
+      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Research activities' });
 
       // Complete only first child
       await completeTaskHandler.handle({ taskId: child1Id });
@@ -187,9 +187,9 @@ describe('CompleteParentTaskHandler', () => {
 
     it('should not re-complete already completed children', async () => {
       // Arrange: All children already complete
-      const parentId = await createTaskHandler.handle({ title: 'Project' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 1' });
-      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 2' });
+      const parentId = await createTaskHandler.handle({ content: 'Project' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1' });
+      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2' });
 
       // Complete both children
       await completeTaskHandler.handle({ taskId: child1Id });
@@ -216,12 +216,12 @@ describe('CompleteParentTaskHandler', () => {
 
     it('should handle mixed completion states correctly', async () => {
       // Arrange: 5 children, 2 complete, 3 incomplete
-      const parentId = await createTaskHandler.handle({ title: 'Big project' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 1' });
-      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 2' });
-      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 3' });
-      const child4Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 4' });
-      const child5Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 5' });
+      const parentId = await createTaskHandler.handle({ content: 'Big project' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1' });
+      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2' });
+      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 3' });
+      const child4Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 4' });
+      const child5Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 5' });
 
       // Complete child1 and child3
       await completeTaskHandler.handle({ taskId: child1Id });
@@ -259,7 +259,7 @@ describe('CompleteParentTaskHandler', () => {
   describe('handle - parent without children', () => {
     it('should complete parent task normally when it has no children', async () => {
       // Arrange: Task with no children
-      const taskId = await createTaskHandler.handle({ title: 'Simple task' });
+      const taskId = await createTaskHandler.handle({ content: 'Simple task' });
 
       const command: CompleteParentTaskCommand = {
         taskId,
@@ -282,7 +282,7 @@ describe('CompleteParentTaskHandler', () => {
 
     it('should work with confirmed=true even when no children exist', async () => {
       // Arrange
-      const taskId = await createTaskHandler.handle({ title: 'Another task' });
+      const taskId = await createTaskHandler.handle({ content: 'Another task' });
 
       const command: CompleteParentTaskCommand = {
         taskId,
@@ -308,7 +308,7 @@ describe('CompleteParentTaskHandler', () => {
 
     it('should throw error when task is already completed', async () => {
       // Arrange: Create and complete a task
-      const taskId = await createTaskHandler.handle({ title: 'Task' });
+      const taskId = await createTaskHandler.handle({ content: 'Task' });
       
       await completeTaskHandler.handle({ taskId });
 
@@ -327,9 +327,9 @@ describe('CompleteParentTaskHandler', () => {
   describe('handle - cross-collection sub-tasks', () => {
     it('should complete sub-tasks even if they are in different collections (symlink behavior)', async () => {
       // Arrange: Parent in one collection, sub-tasks migrated to different collections
-      const parentId = await createTaskHandler.handle({ title: 'Project', collectionId: 'work-projects' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 1' });
-      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, title: 'Task 2' });
+      const parentId = await createTaskHandler.handle({ content: 'Project', collectionId: 'work-projects' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1' });
+      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2' });
 
       // Move child2 to different collection (simulates migration)
       // Use the MoveEntryToCollectionHandler

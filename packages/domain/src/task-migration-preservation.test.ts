@@ -38,7 +38,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
     it('should preserve migratedTo pointer when original task is migrated', async () => {
       // Arrange: Create task in Collection A
       await createTaskHandler.handle({
-        title: 'Task in Collection A',
+        content: 'Task in Collection A',
         collectionId: 'collection-a',
       });
 
@@ -61,7 +61,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
     it('should preserve migratedFrom pointer when migrated task is created', async () => {
       // Arrange: Create task in Collection A
       await createTaskHandler.handle({
-        title: 'Task in Collection A',
+        content: 'Task in Collection A',
         collectionId: 'collection-a',
       });
 
@@ -88,7 +88,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
       
       // Arrange: Create task in Collection A
       await createTaskHandler.handle({
-        title: 'Task in Collection A',
+        content: 'Task in Collection A',
         collectionId: 'collection-a',
       });
 
@@ -128,7 +128,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
     it('should preserve migratedFrom when TaskAddedToCollection fires on migrated task', async () => {
       // Arrange: Create and migrate task
       await createTaskHandler.handle({
-        title: 'Task to migrate',
+        content: 'Task to migrate',
         collectionId: 'collection-a',
       });
 
@@ -157,7 +157,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
     it('should set movedFrom when task is moved (not migrated) between collections', async () => {
       // Arrange: Create task in Collection A
       await createTaskHandler.handle({
-        title: 'Task to move',
+        content: 'Task to move',
         collectionId: 'collection-a',
       });
 
@@ -193,7 +193,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
       
       // Test 1: Migration
       await createTaskHandler.handle({
-        title: 'Task to migrate',
+        content: 'Task to migrate',
         collectionId: 'collection-a',
       });
 
@@ -211,12 +211,12 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
 
       // Test 2: Movement
       await createTaskHandler.handle({
-        title: 'Task to move',
+        content: 'Task to move',
         collectionId: 'collection-c',
       });
 
       tasks = await projection.getTasks();
-      const task2Id = tasks.find(t => t.title === 'Task to move')!.id;
+      const task2Id = tasks.find(t => t.content === 'Task to move')!.id;
 
       await moveHandler.handle({
         taskId: task2Id,
@@ -239,7 +239,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
       
       // Arrange: Create parent with 2 children in Collection A
       await createTaskHandler.handle({
-        title: 'Parent task',
+        content: 'Parent task',
         collectionId: 'collection-a',
       });
 
@@ -252,12 +252,12 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
       const createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
       
       await createSubTaskHandler.handle({
-        title: 'Child 1',
+        content: 'Child 1',
         parentEntryId: parentId,
       });
 
       await createSubTaskHandler.handle({
-        title: 'Child 2',
+        content: 'Child 2',
         parentEntryId: parentId,
       });
 

@@ -79,7 +79,7 @@ export function TaskEntryItem({
 
   const handleDoubleClick = () => {
     if (onUpdateTaskTitle) {
-      setEditValue(entry.title);
+      setEditValue(entry.content);
       setEditError('');
       setIsEditing(true);
     }
@@ -94,7 +94,7 @@ export function TaskEntryItem({
     }
 
     try {
-      if (trimmedValue !== entry.title && onUpdateTaskTitle) {
+      if (trimmedValue !== entry.content && onUpdateTaskTitle) {
         await onUpdateTaskTitle(entry.id, trimmedValue);
       }
       
@@ -129,7 +129,7 @@ export function TaskEntryItem({
 
   const handleEdit = () => {
     if (onUpdateTaskTitle) {
-      setEditValue(entry.title);
+      setEditValue(entry.content);
       setEditError('');
       setIsEditing(true);
     }
@@ -236,7 +236,7 @@ export function TaskEntryItem({
                   title={canEdit ? 'Double-click to edit' : undefined}
                   style={{ whiteSpace: 'pre-wrap' }}
                 >
-                  {entry.title}
+                  {entry.content}
                   
                   {/* Issue #5: Link icon after title for migrated sub-tasks */}
                   {isSubTaskMigrated && (

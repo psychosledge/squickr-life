@@ -682,7 +682,7 @@ export function CollectionDetailView({
       {/* Create sub-task modal */}
       <CreateSubTaskModal
         isOpen={isSubTaskModalOpen}
-        parentTaskTitle={subTaskParent?.type === 'task' ? subTaskParent.title : ''}
+        parentTaskTitle={subTaskParent?.type === 'task' ? subTaskParent.content : ''}
         onClose={handleCloseSubTaskModal}
         onSubmit={handleCreateSubTask}
       />

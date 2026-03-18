@@ -43,7 +43,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -69,7 +69,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -95,7 +95,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -122,7 +122,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Complete project documentation',
+        content: 'Complete project documentation',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -194,7 +194,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -225,7 +225,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -253,7 +253,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -283,7 +283,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -313,7 +313,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -343,7 +343,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -373,7 +373,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -403,7 +403,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -438,7 +438,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -471,7 +471,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -523,7 +523,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -553,7 +553,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -580,7 +580,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation?: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -607,7 +607,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: '',
+        content: '',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -662,7 +662,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: longTitle,
+        content: longTitle,
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -688,7 +688,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -728,7 +728,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -755,7 +755,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -786,7 +786,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -818,7 +818,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -844,7 +844,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'open',
         collections: [],
@@ -881,7 +881,7 @@ describe('GhostEntry', () => {
       const mockGhostTask: Entry & { renderAsGhost: true; ghostNewLocation: string } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-01-24T10:00:00.000Z',
         status: 'completed',
         completedAt: '2026-01-24T11:00:00.000Z',

@@ -332,7 +332,7 @@ const mockOrphanedEntries: Entry[] = [
   {
     id: 'task-orphan-1',
     type: 'task',
-    title: 'Orphaned task',
+    content: 'Orphaned task',
     status: 'open',
     createdAt: '2026-01-27T10:00:00Z',
     order: 'a0',

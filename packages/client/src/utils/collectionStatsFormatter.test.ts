@@ -83,7 +83,7 @@ describe('formatCollectionStats', () => {
         {
           id: '1',
           type: 'task' as const,
-          title: 'Task 1',
+          content: 'Task 1',
           status: 'open',
           collectionId: 'feb-2026',
           createdAt: '2026-02-01T10:00:00Z',
@@ -134,7 +134,7 @@ describe('formatCollectionStats', () => {
         {
           id: '1',
           type: 'task' as const,
-          title: 'Task 1',
+          content: 'Task 1',
           status: 'open',
           collectionId: 'feb-2026',
           createdAt: '2026-02-01T10:00:00Z',
@@ -196,7 +196,7 @@ describe('formatCollectionStats', () => {
         {
           id: '1',
           type: 'task' as const,
-          title: 'Task 1',
+          content: 'Task 1',
           status: 'open',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T10:00:00Z',
@@ -205,7 +205,7 @@ describe('formatCollectionStats', () => {
         {
           id: '2',
           type: 'task' as const,
-          title: 'Task 2',
+          content: 'Task 2',
           status: 'open',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T11:00:00Z',
@@ -256,7 +256,7 @@ describe('formatCollectionStats', () => {
         {
           id: '1',
           type: 'task' as const,
-          title: 'Task 1',
+          content: 'Task 1',
           status: 'open',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T10:00:00Z',
@@ -307,7 +307,7 @@ describe('formatCollectionStats', () => {
         {
           id: '1',
           type: 'task' as const,
-          title: 'Task 1',
+          content: 'Task 1',
           status: 'open',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T10:00:00Z',
@@ -316,7 +316,7 @@ describe('formatCollectionStats', () => {
         {
           id: '2',
           type: 'task' as const,
-          title: 'Task 2',
+          content: 'Task 2',
           status: 'open',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T11:00:00Z',
@@ -375,7 +375,7 @@ describe('formatCollectionStats', () => {
         {
           id: '1',
           type: 'task' as const,
-          title: 'Task 1',
+          content: 'Task 1',
           status: 'open',
           collectionId: 'work-projects',
           createdAt: '2026-02-09T10:00:00Z',
@@ -412,7 +412,7 @@ describe('formatCollectionStats', () => {
         { 
           id: '1', 
           type: 'task' as const, 
-          title: 'Task 1', 
+          content: 'Task 1', 
           createdAt: '2026-02-07T00:00:00.000Z', 
           status: 'open', 
           collectionId: '1',
@@ -421,7 +421,7 @@ describe('formatCollectionStats', () => {
         { 
           id: '2', 
           type: 'task' as const, 
-          title: 'Task 2 (migrated)', 
+          content: 'Task 2 (migrated)', 
           createdAt: '2026-02-07T00:00:00.000Z', 
           status: 'open', 
           collectionId: '1',
@@ -461,7 +461,7 @@ describe('formatCollectionStats', () => {
         {
           id: '1',
           type: 'task' as const,
-          title: 'Task 1 (open)',
+          content: 'Task 1 (open)',
           status: 'open',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T10:00:00Z',
@@ -470,7 +470,7 @@ describe('formatCollectionStats', () => {
         {
           id: '2',
           type: 'task' as const,
-          title: 'Task 2 (completed)',
+          content: 'Task 2 (completed)',
           status: 'completed',
           completedAt: '2026-02-09T12:00:00Z',
           collectionId: 'daily-2026-02-09',
@@ -480,7 +480,7 @@ describe('formatCollectionStats', () => {
         {
           id: '3',
           type: 'task' as const,
-          title: 'Task 3 (open)',
+          content: 'Task 3 (open)',
           status: 'open',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T13:00:00Z',
@@ -584,7 +584,7 @@ describe('formatCollectionStats', () => {
       const multiCollectionTask: Entry = {
         id: 'task-mc-1',
         type: 'task' as const,
-        title: 'Multi-collection task',
+        content: 'Multi-collection task',
         status: 'open',
         collectionId: undefined,   // No original collectionId
         collections: ['daily-2026-02-09'],
@@ -638,7 +638,7 @@ describe('formatCollectionStats', () => {
       const taskWithStaleCollectionId: Entry = {
         id: 'task-stale-1',
         type: 'task' as const,
-        title: 'Task with stale collectionId',
+        content: 'Task with stale collectionId',
         status: 'open',
         collectionId: 'old-col',       // Stale — was the original collection
         collections: ['new-col'],       // Source of truth: task is now in new-col
@@ -697,7 +697,7 @@ describe('formatCollectionStats', () => {
       const sharedTask: Entry = {
         id: 'task-shared-1',
         type: 'task' as const,
-        title: 'Task in both collections',
+        content: 'Task in both collections',
         status: 'open',
         collectionId: 'monthly-feb-2026',   // Original collection
         collections: ['monthly-feb-2026', 'daily-2026-02-09'],

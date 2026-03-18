@@ -33,7 +33,7 @@ describe('Multi-Collection Management', () => {
     it('should validate collectionId is not empty', async () => {
       // Arrange: Create a task
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -50,7 +50,7 @@ describe('Multi-Collection Management', () => {
     it('should add task to additional collection', async () => {
       // Create task in monthly-log
       const taskId = await createTaskHandler.handle({
-        title: 'Write blog post',
+        content: 'Write blog post',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -70,7 +70,7 @@ describe('Multi-Collection Management', () => {
     
     it('should be idempotent (adding to same collection twice)', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -85,7 +85,7 @@ describe('Multi-Collection Management', () => {
     
     it('should track collection history with timestamps', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -102,7 +102,7 @@ describe('Multi-Collection Management', () => {
     it('should validate collectionId is not empty', async () => {
       // Arrange: Create a task
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -118,7 +118,7 @@ describe('Multi-Collection Management', () => {
     
     it('should remove task from collection', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -133,7 +133,7 @@ describe('Multi-Collection Management', () => {
     
     it('should be idempotent (removing from same collection twice)', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -148,7 +148,7 @@ describe('Multi-Collection Management', () => {
     it('should allow orphaning (removing from last collection)', async () => {
       // Arrange: Create a task in a single collection
       const taskId = await createTaskHandler.handle({
-        title: 'Orphan Task',
+        content: 'Orphan Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -173,7 +173,7 @@ describe('Multi-Collection Management', () => {
     it('should allow re-adding task to collection it was previously removed from', async () => {
       // Arrange: Create task and add to collection
       const taskId = await createTaskHandler.handle({
-        title: 'Boomerang Task',
+        content: 'Boomerang Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -210,7 +210,7 @@ describe('Multi-Collection Management', () => {
   describe('MoveTaskToCollectionHandler', () => {
     it('should move task from one collection to another', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -230,7 +230,7 @@ describe('Multi-Collection Management', () => {
     it('should remove from current collection only when moving (not all collections)', async () => {
       // Setup: Task in multiple collections
       const taskId = await createTaskHandler.handle({
-        title: 'Multi-collection task',
+        content: 'Multi-collection task',
         collectionId: 'collection-a',
         userId: 'user-1',
       });
@@ -262,7 +262,7 @@ describe('Multi-Collection Management', () => {
     
     it('should move task from multiple collections to one (legacy test - now deprecated)', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -306,7 +306,7 @@ describe('Multi-Collection Management', () => {
     
     it('should throw error if task not in current collection', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task in A',
+        content: 'Task in A',
         collectionId: 'collection-a',
         userId: 'user-1',
       });
@@ -322,7 +322,7 @@ describe('Multi-Collection Management', () => {
     
     it('should be idempotent when moving to same collection', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'collection-a',
         userId: 'user-1',
       });
@@ -343,13 +343,13 @@ describe('Multi-Collection Management', () => {
   describe('getEntriesForCollectionView (Ghost Rendering)', () => {
     it('should return active entries in collection', async () => {
       const task1 = await createTaskHandler.handle({
-        title: 'Task 1',
+        content: 'Task 1',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
       
       const task2 = await createTaskHandler.handle({
-        title: 'Task 2',
+        content: 'Task 2',
         collectionId: 'daily-log',
         userId: 'user-1',
       });
@@ -363,7 +363,7 @@ describe('Multi-Collection Management', () => {
     
     it('should return ghost entries that were removed from collection', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -389,7 +389,7 @@ describe('Multi-Collection Management', () => {
     
     it('should not show ghost if task was never in collection', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
@@ -401,7 +401,7 @@ describe('Multi-Collection Management', () => {
     
     it('should show task in multiple collections (multi-collection presence)', async () => {
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });

@@ -7,7 +7,7 @@ describe('getNavigationCollections', () => {
     const entry: Entry = {
       id: 'task-1',
       type: 'task',
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open',
       createdAt: '2026-02-15T10:00:00Z',
       collections: ['monthly-feb-2026', 'today-feb-15', 'yesterday-feb-14'],
@@ -26,7 +26,7 @@ describe('getNavigationCollections', () => {
     const entry: Entry = {
       id: 'task-1',
       type: 'task',
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open',
       createdAt: '2026-02-15T10:00:00Z',
       collections: ['monthly-feb-2026', 'today-feb-15'],
@@ -49,7 +49,7 @@ describe('getNavigationCollections', () => {
     const entry: Entry = {
       id: 'task-1',
       type: 'task',
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open',
       createdAt: '2026-02-15T10:00:00Z',
       collections: ['monthly-feb-2026'],
@@ -71,7 +71,7 @@ describe('getNavigationCollections', () => {
     const entry: Entry = {
       id: 'task-1',
       type: 'task',
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open',
       createdAt: '2026-02-15T10:00:00Z',
       collections: [],
@@ -91,7 +91,7 @@ describe('getNavigationCollections', () => {
     const entry: Entry = {
       id: 'task-1',
       type: 'task',
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open',
       createdAt: '2026-02-15T10:00:00Z',
       collections: [],
@@ -111,7 +111,7 @@ describe('getNavigationCollections', () => {
     const entry: Entry = {
       id: 'task-1',
       type: 'task',
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open',
       createdAt: '2026-02-15T10:00:00Z',
       collections: ['monthly-feb-2026', 'today-feb-15'],
@@ -140,7 +140,7 @@ describe('getNavigationCollections', () => {
     const entry: Entry = {
       id: 'task-1',
       type: 'task',
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open',
       createdAt: '2026-02-15T10:00:00Z',
       collections: ['monthly-feb-2026', 'today-feb-15', 'yesterday-feb-14'],
@@ -160,7 +160,7 @@ describe('getNavigationCollections', () => {
     const entry: Entry = {
       id: 'task-1',
       type: 'task',
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open',
       createdAt: '2026-02-15T10:00:00Z',
       collections: ['monthly-feb-2026'],
@@ -178,7 +178,7 @@ describe('getNavigationCollections', () => {
     const entry: Entry = {
       id: 'task-1',
       type: 'task',
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open',
       createdAt: '2026-02-15T10:00:00Z',
       collections: ['today-feb-15'],
@@ -194,7 +194,7 @@ describe('getNavigationCollections', () => {
     const entry: Entry = {
       id: 'task-1',
       type: 'task',
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open',
       createdAt: '2026-02-15T10:00:00Z',
       collections: [],
@@ -211,7 +211,7 @@ describe('getNavigationCollections', () => {
     const entry = {
       id: 'task-1',
       type: 'task' as const,
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open' as const,
       createdAt: '2026-02-15T10:00:00Z',
       migratedTo: 'task-2',
@@ -231,7 +231,7 @@ describe('getNavigationCollections', () => {
     const entry = {
       id: 'task-1',
       type: 'task' as const,
-      title: 'Test Task',
+      content: 'Test Task',
       status: 'open' as const,
       createdAt: '2026-02-15T10:00:00Z',
       migratedTo: 'task-2',
@@ -253,7 +253,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T08:00:00Z',
         collections: ['col-c'],
@@ -272,7 +272,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T08:00:00Z',
         collections: ['col-b'],
@@ -294,7 +294,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T08:00:00Z',
         collections: ['col-d'],
@@ -318,7 +318,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T08:00:00Z',
         collections: ['col-d'],
@@ -348,7 +348,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T08:00:00Z',
         collections: ['col-d'],
@@ -378,7 +378,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T08:00:00Z',
         collections: ['col-d'],
@@ -403,7 +403,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T10:00:00Z',
         collections: [],
@@ -425,7 +425,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T11:00:00Z',
         collections: ['col-d'],
@@ -449,7 +449,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T10:00:00Z',
         collections: ['col-a', 'col-b'],
@@ -476,7 +476,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T08:00:00Z',
         collections: ['col-a'],
@@ -544,7 +544,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T08:00:00Z',
         collections: ['col-c'],
@@ -573,7 +573,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T08:00:00Z',
         collections: ['col-c'],
@@ -602,7 +602,7 @@ describe('getNavigationCollections', () => {
       const entry: Entry = {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'open',
         createdAt: '2026-02-15T08:00:00Z',
         collections: ['col-c'],

@@ -31,7 +31,7 @@ describe('Multi-Collection Migration - Bidirectional Navigation', () => {
   it('should set migratedFrom and migratedFromCollectionId when task is moved', async () => {
     // Arrange: Create a task in "work-projects" collection
     await createTaskHandler.handle({
-      title: 'App launch task',
+      content: 'App launch task',
       collectionId: 'work-projects',
     });
 
@@ -62,7 +62,7 @@ describe('Multi-Collection Migration - Bidirectional Navigation', () => {
   it('should show ghost entry in source collection and real entry in target collection', async () => {
     // Arrange: Create a task in "work-projects"
     await createTaskHandler.handle({
-      title: 'Task to migrate',
+      content: 'Task to migrate',
       collectionId: 'work-projects',
     });
 
@@ -100,7 +100,7 @@ describe('Multi-Collection Migration - Bidirectional Navigation', () => {
   it('should handle multiple moves correctly (A → B → C)', async () => {
     // Arrange: Create task in Collection A
     await createTaskHandler.handle({
-      title: 'Multi-move task',
+      content: 'Multi-move task',
       collectionId: 'collection-a',
     });
 
@@ -144,7 +144,7 @@ describe('Multi-Collection Migration - Bidirectional Navigation', () => {
   it('should NOT set migratedFrom when task is added (not moved) to a collection', async () => {
     // Arrange: Create uncategorized task (no collectionId)
     await createTaskHandler.handle({
-      title: 'Uncategorized task',
+      content: 'Uncategorized task',
     });
 
     const tasks = await projection.getTasks();

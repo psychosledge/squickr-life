@@ -19,7 +19,7 @@ interface TaskItemProps {
 export function TaskItem({ task, onComplete, onReopen, onDelete, onUpdateTitle }: TaskItemProps) {
   const isCompleted = task.status === 'completed';
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(task.title);
+  const [editValue, setEditValue] = useState(task.content);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when entering edit mode
@@ -32,21 +32,21 @@ export function TaskItem({ task, onComplete, onReopen, onDelete, onUpdateTitle }
 
   const handleDoubleClick = () => {
     if (onUpdateTitle) {
-      setEditValue(task.title);
+      setEditValue(task.content);
       setIsEditing(true);
     }
   };
 
   const handleSave = () => {
     const trimmedValue = editValue.trim();
-    if (trimmedValue && trimmedValue !== task.title && onUpdateTitle) {
+    if (trimmedValue && trimmedValue !== task.content && onUpdateTitle) {
       onUpdateTitle(task.id, trimmedValue);
     }
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setEditValue(task.title);
+    setEditValue(task.content);
     setIsEditing(false);
   };
 
@@ -86,7 +86,7 @@ export function TaskItem({ task, onComplete, onReopen, onDelete, onUpdateTitle }
               onDoubleClick={handleDoubleClick}
               title={onUpdateTitle ? 'Double-click to edit' : undefined}
             >
-              {task.title}
+              {task.content}
             </h3>
           )}
           <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">

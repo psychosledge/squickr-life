@@ -130,7 +130,7 @@ export class TaskListProjection {
   private applyTaskCreated(tasks: Map<string, Task>, event: TaskCreated): void {
     const task: Task = {
       id: event.payload.id,
-      title: event.payload.title,
+      content: event.payload.content ?? event.payload.title ?? '',  // backward compat
       createdAt: event.payload.createdAt,
       status: event.payload.status,
       order: event.payload.order, // May be undefined for legacy events
@@ -226,10 +226,10 @@ export class TaskListProjection {
       return;
     }
 
-    // Update the task's title
+    // Update the task's content
     tasks.set(task.id, {
       ...task,
-      title: event.payload.newTitle,
+      content: event.payload.newContent ?? event.payload.newTitle ?? task.content,
     });
   }
 

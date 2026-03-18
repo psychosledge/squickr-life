@@ -31,7 +31,7 @@ describe('MoveEntryToCollectionHandler', () => {
   describe('handle', () => {
     it('should create EntryMovedToCollection event for valid task', async () => {
       // Create a task
-      const taskId = await createTaskHandler.handle({ title: 'Test task' });
+      const taskId = await createTaskHandler.handle({ content: 'Test task' });
 
       // Move task to collection
       const command: MoveEntryToCollectionCommand = {
@@ -95,8 +95,8 @@ describe('MoveEntryToCollectionHandler', () => {
 
     it('should allow moving entry to null (uncategorized)', async () => {
       // Create a task with collectionId
-      const taskId = await createTaskHandler.handle({ 
-        title: 'Task in collection',
+      const taskId = await createTaskHandler.handle({
+        content: 'Task in collection',
         collectionId: 'collection-123',
       });
 
@@ -123,7 +123,7 @@ describe('MoveEntryToCollectionHandler', () => {
     });
 
     it('should set event metadata correctly', async () => {
-      const taskId = await createTaskHandler.handle({ title: 'Test task' });
+      const taskId = await createTaskHandler.handle({ content: 'Test task' });
 
       await handler.handle({
         entryId: taskId,
@@ -142,7 +142,7 @@ describe('MoveEntryToCollectionHandler', () => {
     it('should be idempotent - no event if already in target collection', async () => {
       // Create task with collectionId
       const taskId = await createTaskHandler.handle({
-        title: 'Task in collection',
+        content: 'Task in collection',
         collectionId: 'collection-123',
       });
 
@@ -163,7 +163,7 @@ describe('MoveEntryToCollectionHandler', () => {
     it('should be idempotent - no event if already uncategorized and moving to null', async () => {
       // Create task without collectionId
       const taskId = await createTaskHandler.handle({
-        title: 'Uncategorized task',
+        content: 'Uncategorized task',
       });
 
       // Try to move to uncategorized (null)
@@ -183,7 +183,7 @@ describe('MoveEntryToCollectionHandler', () => {
     it('should allow moving entry between collections', async () => {
       // Create task in collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Task',
+        content: 'Task',
         collectionId: 'collection-A',
       });
 
@@ -215,17 +215,17 @@ describe('MoveEntryToCollectionHandler', () => {
 
       // Create parent task in collection-A
       const parentId = await createTaskHandler.handle({
-        title: 'Parent task',
+        content: 'Parent task',
         collectionId: 'collection-A',
       });
 
       // Create 2 sub-tasks (will inherit parent's collection)
       await createSubTaskHandler.handle({
-        title: 'Child 1',
+        content: 'Child 1',
         parentEntryId: parentId,
       });
       await createSubTaskHandler.handle({
-        title: 'Child 2',
+        content: 'Child 2',
         parentEntryId: parentId,
       });
 
@@ -262,17 +262,17 @@ describe('MoveEntryToCollectionHandler', () => {
 
       // Create parent in collection-A
       const parentId = await createTaskHandler.handle({
-        title: 'Parent task',
+        content: 'Parent task',
         collectionId: 'collection-A',
       });
 
       // Create 2 children
       await createSubTaskHandler.handle({
-        title: 'Child 1',
+        content: 'Child 1',
         parentEntryId: parentId,
       });
       await createSubTaskHandler.handle({
-        title: 'Child 2',
+        content: 'Child 2',
         parentEntryId: parentId,
       });
 
@@ -315,7 +315,7 @@ describe('MoveEntryToCollectionHandler', () => {
     it('should handle parent with no children (standard migration)', async () => {
       // Create parent task with no children
       const parentId = await createTaskHandler.handle({
-        title: 'Parent with no children',
+        content: 'Parent with no children',
         collectionId: 'collection-A',
       });
 

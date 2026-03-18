@@ -36,7 +36,7 @@ describe('MoveEntryToCollectionHandler - Phase 3 Parent Cascade (Bug Reproductio
   it('should cascade ALL children when parent moves (including previously migrated)', async () => {
     // Step 1: Create parent task in "Work Projects" with 3 sub-tasks
     await createTaskHandler.handle({
-      title: 'App launch',
+      content: 'App launch',
       collectionId: 'work-projects'
     });
 
@@ -46,15 +46,15 @@ describe('MoveEntryToCollectionHandler - Phase 3 Parent Cascade (Bug Reproductio
 
     // Create 3 sub-tasks (all inherit parent's collection)
     await createSubTaskHandler.handle({
-      title: 'Set up analytics',
+      content: 'Set up analytics',
       parentEntryId: parent.id
     });
     await createSubTaskHandler.handle({
-      title: 'Write blog post',
+      content: 'Write blog post',
       parentEntryId: parent.id
     });
     await createSubTaskHandler.handle({
-      title: 'Deploy to production',
+      content: 'Deploy to production',
       parentEntryId: parent.id
     });
 
@@ -64,9 +64,9 @@ describe('MoveEntryToCollectionHandler - Phase 3 Parent Cascade (Bug Reproductio
     expect(children).toHaveLength(3);
     expect(children.every(c => c.collectionId === 'work-projects')).toBe(true);
 
-    const analyticsChild = children.find(c => c.title === 'Set up analytics')!;
-    const blogChild = children.find(c => c.title === 'Write blog post')!;
-    const deployChild = children.find(c => c.title === 'Deploy to production')!;
+    const analyticsChild = children.find(c => c.content === 'Set up analytics')!;
+    const blogChild = children.find(c => c.content === 'Write blog post')!;
+    const deployChild = children.find(c => c.content === 'Deploy to production')!;
 
     // Step 2: Move 1 sub-task to "Today's Log"
     await moveEntryHandler.handle({

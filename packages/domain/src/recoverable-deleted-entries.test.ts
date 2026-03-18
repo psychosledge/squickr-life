@@ -78,7 +78,7 @@ describe('Soft Delete - Task', () => {
   it('should set deletedAt on task after TaskDeleted (not hard-remove from projection)', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'My task', collectionId: 'col-1' });
+    const taskId = await createTaskHandler.handle({ content: 'My task', collectionId: 'col-1' });
     await deleteTaskHandler.handle({ taskId });
 
     // Task should still be retrievable (not hard-deleted from map)
@@ -92,7 +92,7 @@ describe('Soft Delete - Task', () => {
   it('should NOT return deleted tasks in getEntries (active entries)', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'My task', collectionId: 'col-1' });
+    const taskId = await createTaskHandler.handle({ content: 'My task', collectionId: 'col-1' });
     await deleteTaskHandler.handle({ taskId });
 
     const entries = await entryProjection.getEntries();
@@ -102,7 +102,7 @@ describe('Soft Delete - Task', () => {
   it('should NOT return deleted tasks in getEntriesByCollection', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'My task', collectionId: 'col-1' });
+    const taskId = await createTaskHandler.handle({ content: 'My task', collectionId: 'col-1' });
     await deleteTaskHandler.handle({ taskId });
 
     const entries = await entryProjection.getEntriesByCollection('col-1');
@@ -172,7 +172,7 @@ describe('RestoreTaskHandler', () => {
   it('should emit TaskRestored event', async () => {
     const { createTaskHandler, deleteTaskHandler, restoreTaskHandler, eventStore } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'My task', collectionId: 'col-1' });
+    const taskId = await createTaskHandler.handle({ content: 'My task', collectionId: 'col-1' });
     await deleteTaskHandler.handle({ taskId });
     await restoreTaskHandler.handle({ taskId });
 
@@ -188,7 +188,7 @@ describe('RestoreTaskHandler', () => {
   it('should clear deletedAt after restore', async () => {
     const { createTaskHandler, deleteTaskHandler, restoreTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'My task', collectionId: 'col-1' });
+    const taskId = await createTaskHandler.handle({ content: 'My task', collectionId: 'col-1' });
     await deleteTaskHandler.handle({ taskId });
     await restoreTaskHandler.handle({ taskId });
 
@@ -200,7 +200,7 @@ describe('RestoreTaskHandler', () => {
   it('should return restored task in getEntries again', async () => {
     const { createTaskHandler, deleteTaskHandler, restoreTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'My task', collectionId: 'col-1' });
+    const taskId = await createTaskHandler.handle({ content: 'My task', collectionId: 'col-1' });
     await deleteTaskHandler.handle({ taskId });
     await restoreTaskHandler.handle({ taskId });
 
@@ -211,7 +211,7 @@ describe('RestoreTaskHandler', () => {
   it('should throw error when restoring a non-deleted task', async () => {
     const { createTaskHandler, restoreTaskHandler } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'My task' });
+    const taskId = await createTaskHandler.handle({ content: 'My task' });
     await expect(restoreTaskHandler.handle({ taskId })).rejects.toThrow();
   });
 
@@ -305,7 +305,7 @@ describe('Multi-Collection Delete', () => {
   it('should emit TaskRemovedFromCollection when deleting from one collection while in multiple', async () => {
     const { createTaskHandler, addToCollectionHandler, deleteTaskHandler, eventStore, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Multi-col task', collectionId: 'col-A' });
+    const taskId = await createTaskHandler.handle({ content: 'Multi-col task', collectionId: 'col-A' });
     await addToCollectionHandler.handle({ taskId, collectionId: 'col-B' });
 
     // Delete from col-A, but task is still in col-B
@@ -327,7 +327,7 @@ describe('Multi-Collection Delete', () => {
   it('should emit TaskDeleted (soft) when deleting from last collection', async () => {
     const { createTaskHandler, addToCollectionHandler, deleteTaskHandler, eventStore, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Multi-col task', collectionId: 'col-A' });
+    const taskId = await createTaskHandler.handle({ content: 'Multi-col task', collectionId: 'col-A' });
     await addToCollectionHandler.handle({ taskId, collectionId: 'col-B' });
 
     // Delete from col-A (now only in col-B)
@@ -342,7 +342,7 @@ describe('Multi-Collection Delete', () => {
   it('should emit TaskDeleted (soft) when no currentCollectionId provided', async () => {
     const { createTaskHandler, addToCollectionHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Task in 2 cols', collectionId: 'col-A' });
+    const taskId = await createTaskHandler.handle({ content: 'Task in 2 cols', collectionId: 'col-A' });
     await addToCollectionHandler.handle({ taskId, collectionId: 'col-B' });
 
     // Delete without specifying collection → full soft delete
@@ -355,7 +355,7 @@ describe('Multi-Collection Delete', () => {
   it('should emit TaskDeleted (soft) when task is in only one collection', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Single-col task', collectionId: 'col-A' });
+    const taskId = await createTaskHandler.handle({ content: 'Single-col task', collectionId: 'col-A' });
     await deleteTaskHandler.handle({ taskId, currentCollectionId: 'col-A' });
 
     const task = await entryProjection.getTaskById(taskId);
@@ -371,9 +371,9 @@ describe('Sub-Task Cascade Delete', () => {
   it('should soft-delete children when parent is deleted via DeleteParentTaskHandler', async () => {
     const { createTaskHandler, createSubTaskHandler, deleteParentTaskHandler, entryProjection } = makeSetup();
 
-    const parentId = await createTaskHandler.handle({ title: 'Parent task', collectionId: 'col-1' });
-    const child1Id = await createSubTaskHandler.handle({ title: 'Child 1', parentEntryId: parentId });
-    const child2Id = await createSubTaskHandler.handle({ title: 'Child 2', parentEntryId: parentId });
+    const parentId = await createTaskHandler.handle({ content: 'Parent task', collectionId: 'col-1' });
+    const child1Id = await createSubTaskHandler.handle({ content: 'Child 1', parentEntryId: parentId });
+    const child2Id = await createSubTaskHandler.handle({ content: 'Child 2', parentEntryId: parentId });
 
     await deleteParentTaskHandler.handle({ taskId: parentId, confirmed: true });
 
@@ -391,9 +391,9 @@ describe('Sub-Task Cascade Delete', () => {
   it('should not return soft-deleted children in getSubTasks', async () => {
     const { createTaskHandler, createSubTaskHandler, deleteParentTaskHandler, entryProjection } = makeSetup();
 
-    const parentId = await createTaskHandler.handle({ title: 'Parent task', collectionId: 'col-1' });
-    await createSubTaskHandler.handle({ title: 'Child 1', parentEntryId: parentId });
-    await createSubTaskHandler.handle({ title: 'Child 2', parentEntryId: parentId });
+    const parentId = await createTaskHandler.handle({ content: 'Parent task', collectionId: 'col-1' });
+    await createSubTaskHandler.handle({ content: 'Child 1', parentEntryId: parentId });
+    await createSubTaskHandler.handle({ content: 'Child 2', parentEntryId: parentId });
 
     await deleteParentTaskHandler.handle({ taskId: parentId, confirmed: true });
 
@@ -410,9 +410,9 @@ describe('Sub-Task Cascade Restore', () => {
   it('should restore sub-tasks deleted within 1 second of parent when parent is restored', async () => {
     const { createTaskHandler, createSubTaskHandler, deleteParentTaskHandler, restoreTaskHandler, entryProjection } = makeSetup();
 
-    const parentId = await createTaskHandler.handle({ title: 'Parent task', collectionId: 'col-1' });
-    const child1Id = await createSubTaskHandler.handle({ title: 'Child 1', parentEntryId: parentId });
-    const child2Id = await createSubTaskHandler.handle({ title: 'Child 2', parentEntryId: parentId });
+    const parentId = await createTaskHandler.handle({ content: 'Parent task', collectionId: 'col-1' });
+    const child1Id = await createSubTaskHandler.handle({ content: 'Child 1', parentEntryId: parentId });
+    const child2Id = await createSubTaskHandler.handle({ content: 'Child 2', parentEntryId: parentId });
 
     // Delete parent + children (all deleted at near-same time)
     await deleteParentTaskHandler.handle({ taskId: parentId, confirmed: true });
@@ -430,8 +430,8 @@ describe('Sub-Task Cascade Restore', () => {
   it('should restore parent in getSubTasks after restore', async () => {
     const { createTaskHandler, createSubTaskHandler, deleteParentTaskHandler, restoreTaskHandler, entryProjection } = makeSetup();
 
-    const parentId = await createTaskHandler.handle({ title: 'Parent task', collectionId: 'col-1' });
-    const child1Id = await createSubTaskHandler.handle({ title: 'Child 1', parentEntryId: parentId });
+    const parentId = await createTaskHandler.handle({ content: 'Parent task', collectionId: 'col-1' });
+    const child1Id = await createSubTaskHandler.handle({ content: 'Child 1', parentEntryId: parentId });
 
     await deleteParentTaskHandler.handle({ taskId: parentId, confirmed: true });
     await restoreTaskHandler.handle({ taskId: parentId });
@@ -443,9 +443,9 @@ describe('Sub-Task Cascade Restore', () => {
   it('should NOT restore sub-tasks that were already deleted before parent', async () => {
     const { createTaskHandler, createSubTaskHandler, deleteTaskHandler, deleteParentTaskHandler, restoreTaskHandler, entryProjection } = makeSetup();
 
-    const parentId = await createTaskHandler.handle({ title: 'Parent task', collectionId: 'col-1' });
-    const child1Id = await createSubTaskHandler.handle({ title: 'Child 1', parentEntryId: parentId });
-    const child2Id = await createSubTaskHandler.handle({ title: 'Child 2', parentEntryId: parentId });
+    const parentId = await createTaskHandler.handle({ content: 'Parent task', collectionId: 'col-1' });
+    const child1Id = await createSubTaskHandler.handle({ content: 'Child 1', parentEntryId: parentId });
+    const child2Id = await createSubTaskHandler.handle({ content: 'Child 2', parentEntryId: parentId });
 
     // Delete child1 independently — must be sufficiently before parent deletion
     // so that child1's deletedAt is > 1000ms before parent's deletedAt.
@@ -481,8 +481,8 @@ describe('Stats - Deleted entries excluded', () => {
   it('getEntryCountsByCollection should not count deleted entries', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-A' });
-    const taskId2 = await createTaskHandler.handle({ title: 'Task 2', collectionId: 'col-A' });
+    await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-A' });
+    const taskId2 = await createTaskHandler.handle({ content: 'Task 2', collectionId: 'col-A' });
 
     let counts = await entryProjection.getEntryCountsByCollection();
     expect(counts.get('col-A')).toBe(2);
@@ -496,8 +496,8 @@ describe('Stats - Deleted entries excluded', () => {
   it('getActiveTaskCountsByCollection should not count deleted tasks', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-A' });
-    const taskId2 = await createTaskHandler.handle({ title: 'Task 2', collectionId: 'col-A' });
+    await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-A' });
+    const taskId2 = await createTaskHandler.handle({ content: 'Task 2', collectionId: 'col-A' });
 
     await deleteTaskHandler.handle({ taskId: taskId2 });
 
@@ -508,8 +508,8 @@ describe('Stats - Deleted entries excluded', () => {
   it('getEntryStatsByCollection should not count deleted entries', async () => {
     const { createTaskHandler, createNoteHandler, deleteTaskHandler, deleteNoteHandler, entryProjection } = makeSetup();
 
-    await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-A' });
-    const taskId2 = await createTaskHandler.handle({ title: 'Task 2', collectionId: 'col-A' });
+    await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-A' });
+    const taskId2 = await createTaskHandler.handle({ content: 'Task 2', collectionId: 'col-A' });
     const noteId = await createNoteHandler.handle({ content: 'Note 1', collectionId: 'col-A' });
 
     // Before deletes
@@ -535,7 +535,7 @@ describe('EntryListProjection.getDeletedEntries', () => {
   it('should return deleted entries for a collection', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Task to delete', collectionId: 'col-A' });
+    const taskId = await createTaskHandler.handle({ content: 'Task to delete', collectionId: 'col-A' });
     await deleteTaskHandler.handle({ taskId });
 
     const deleted = await entryProjection.getDeletedEntries('col-A');
@@ -546,7 +546,7 @@ describe('EntryListProjection.getDeletedEntries', () => {
   it('should return empty array when no deleted entries for collection', async () => {
     const { createTaskHandler, entryProjection } = makeSetup();
 
-    await createTaskHandler.handle({ title: 'Active task', collectionId: 'col-A' });
+    await createTaskHandler.handle({ content: 'Active task', collectionId: 'col-A' });
 
     const deleted = await entryProjection.getDeletedEntries('col-A');
     expect(deleted).toHaveLength(0);
@@ -555,8 +555,8 @@ describe('EntryListProjection.getDeletedEntries', () => {
   it('should not return active entries in getDeletedEntries', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    const taskId1 = await createTaskHandler.handle({ title: 'Active task', collectionId: 'col-A' });
-    const taskId2 = await createTaskHandler.handle({ title: 'Deleted task', collectionId: 'col-A' });
+    const taskId1 = await createTaskHandler.handle({ content: 'Active task', collectionId: 'col-A' });
+    const taskId2 = await createTaskHandler.handle({ content: 'Deleted task', collectionId: 'col-A' });
     await deleteTaskHandler.handle({ taskId: taskId2 });
 
     const deleted = await entryProjection.getDeletedEntries('col-A');
@@ -583,7 +583,7 @@ describe('EntryListProjection.getDeletedEntries', () => {
   it('should not return deleted entries from a different collection', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Task in B', collectionId: 'col-B' });
+    const taskId = await createTaskHandler.handle({ content: 'Task in B', collectionId: 'col-B' });
     await deleteTaskHandler.handle({ taskId });
 
     const deleted = await entryProjection.getDeletedEntries('col-A');
@@ -593,7 +593,7 @@ describe('EntryListProjection.getDeletedEntries', () => {
   it('should not return restored entries in getDeletedEntries', async () => {
     const { createTaskHandler, deleteTaskHandler, restoreTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Task to restore', collectionId: 'col-A' });
+    const taskId = await createTaskHandler.handle({ content: 'Task to restore', collectionId: 'col-A' });
     await deleteTaskHandler.handle({ taskId });
     await restoreTaskHandler.handle({ taskId });
 
@@ -610,8 +610,8 @@ describe('getEntriesForCollectionView - excludes deleted from active', () => {
   it('should not include deleted entries in active entries section', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    const activeId = await createTaskHandler.handle({ title: 'Active', collectionId: 'col-A' });
-    const deletedId = await createTaskHandler.handle({ title: 'Deleted', collectionId: 'col-A' });
+    const activeId = await createTaskHandler.handle({ content: 'Active', collectionId: 'col-A' });
+    const deletedId = await createTaskHandler.handle({ content: 'Deleted', collectionId: 'col-A' });
     await deleteTaskHandler.handle({ taskId: deletedId });
 
     const collectionView = await entryProjection.getEntriesForCollectionView('col-A');
@@ -629,7 +629,7 @@ describe('Backward Compatibility - Delete still works end-to-end', () => {
   it('should not return deleted task when querying by ID after double-delete attempt', async () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Task' });
+    const taskId = await createTaskHandler.handle({ content: 'Task' });
     await deleteTaskHandler.handle({ taskId });
 
     // Second delete should fail (task not found as active)
@@ -639,7 +639,7 @@ describe('Backward Compatibility - Delete still works end-to-end', () => {
   it('getDailyLogs should not show deleted entries', async () => {
     const { createTaskHandler, deleteTaskHandler, createNoteHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'To be deleted' });
+    const taskId = await createTaskHandler.handle({ content: 'To be deleted' });
     await createNoteHandler.handle({ content: 'Stays' });
     await deleteTaskHandler.handle({ taskId });
 
@@ -658,7 +658,7 @@ describe('RestoreTaskHandler - error cases', () => {
   it('T2: should throw if task is not soft-deleted (active task)', async () => {
     const { createTaskHandler, restoreTaskHandler } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Active task', collectionId: 'col-1' });
+    const taskId = await createTaskHandler.handle({ content: 'Active task', collectionId: 'col-1' });
 
     // Attempt to restore an active (non-deleted) task — should throw
     await expect(restoreTaskHandler.handle({ taskId })).rejects.toThrow(
@@ -669,7 +669,7 @@ describe('RestoreTaskHandler - error cases', () => {
   it('T3: should throw on double restore (restore twice)', async () => {
     const { createTaskHandler, deleteTaskHandler, restoreTaskHandler } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Task', collectionId: 'col-1' });
+    const taskId = await createTaskHandler.handle({ content: 'Task', collectionId: 'col-1' });
     await deleteTaskHandler.handle({ taskId });
     await restoreTaskHandler.handle({ taskId }); // first restore succeeds
 
@@ -694,7 +694,7 @@ describe('getDeletedEntries - edge cases', () => {
     const { createTaskHandler, deleteTaskHandler, entryProjection } = makeSetup();
 
     // Delete task from col-B
-    const taskId = await createTaskHandler.handle({ title: 'Task in B', collectionId: 'col-B' });
+    const taskId = await createTaskHandler.handle({ content: 'Task in B', collectionId: 'col-B' });
     await deleteTaskHandler.handle({ taskId });
 
     // col-A should have no deleted entries
@@ -744,7 +744,7 @@ describe('DeleteTaskHandler - I3 membership guard', () => {
     const { createTaskHandler, addToCollectionHandler, deleteTaskHandler, eventStore, entryProjection } = makeSetup();
 
     // Task is in col-A and col-B
-    const taskId = await createTaskHandler.handle({ title: 'Multi-col task', collectionId: 'col-A' });
+    const taskId = await createTaskHandler.handle({ content: 'Multi-col task', collectionId: 'col-A' });
     await addToCollectionHandler.handle({ taskId, collectionId: 'col-B' });
 
     // Attempt to delete with a bogus/non-member collectionId
@@ -772,7 +772,7 @@ describe('getEntriesForCollectionView - restored entries reappear', () => {
   it('T9: restored task reappears in getEntriesForCollectionView as active entry', async () => {
     const { createTaskHandler, deleteTaskHandler, restoreTaskHandler, entryProjection } = makeSetup();
 
-    const taskId = await createTaskHandler.handle({ title: 'Restorable task', collectionId: 'col-A' });
+    const taskId = await createTaskHandler.handle({ content: 'Restorable task', collectionId: 'col-A' });
     await deleteTaskHandler.handle({ taskId });
 
     // After delete: should NOT appear as active entry

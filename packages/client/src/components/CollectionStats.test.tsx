@@ -9,7 +9,7 @@ describe('CollectionStats', () => {
       { 
         type: 'task', 
         id: '1', 
-        title: 'Test task',
+        content: 'Test task',
         status: 'open',
         createdAt: '2026-02-03T12:00:00Z'
       },
@@ -58,7 +58,7 @@ describe('CollectionStats', () => {
       { 
         type: 'task', 
         id: '3', 
-        title: 'Completed task',
+        content: 'Completed task',
         status: 'completed',
         createdAt: '2026-02-03T12:00:00Z',
         completedAt: '2026-02-03T13:00:00Z'
@@ -66,7 +66,7 @@ describe('CollectionStats', () => {
       { 
         type: 'task', 
         id: '4', 
-        title: 'Open task',
+        content: 'Open task',
         status: 'open',
         createdAt: '2026-02-03T12:00:00Z'
       }
@@ -86,7 +86,7 @@ describe('CollectionStats', () => {
       { 
         type: 'task', 
         id: '1', 
-        title: 'Task 1',
+        content: 'Task 1',
         status: 'open',
         createdAt: '2026-02-03T12:00:00Z'
       }
@@ -102,14 +102,14 @@ describe('CollectionStats', () => {
       { 
         type: 'task', 
         id: '1', 
-        title: 'Task 1',
+        content: 'Task 1',
         status: 'open',
         createdAt: '2026-02-03T12:00:00Z'
       },
       { 
         type: 'task', 
         id: '2', 
-        title: 'Task 2',
+        content: 'Task 2',
         status: 'completed',
         createdAt: '2026-02-03T12:00:00Z',
         completedAt: '2026-02-03T13:00:00Z'
@@ -128,21 +128,21 @@ describe('CollectionStats', () => {
       { 
         type: 'task', 
         id: '1', 
-        title: 'Open task',
+        content: 'Open task',
         status: 'open',
         createdAt: '2026-02-03T12:00:00Z'
       },
       { 
         type: 'task', 
         id: '2', 
-        title: 'Open task 2',
+        content: 'Open task 2',
         status: 'open',
         createdAt: '2026-02-03T12:00:00Z'
       },
       { 
         type: 'task', 
         id: '3', 
-        title: 'Completed task',
+        content: 'Completed task',
         status: 'completed',
         createdAt: '2026-02-03T12:00:00Z',
         completedAt: '2026-02-03T13:00:00Z'
@@ -180,7 +180,7 @@ describe('CollectionStats', () => {
       { 
         type: 'task', 
         id: '1', 
-        title: 'Test task',
+        content: 'Test task',
         status: 'open',
         createdAt: '2026-02-03T12:00:00Z'
       }
@@ -197,7 +197,7 @@ describe('CollectionStats', () => {
       { 
         type: 'task', 
         id: '1', 
-        title: 'Test task',
+        content: 'Test task',
         status: 'open',
         createdAt: '2026-02-03T12:00:00Z'
       }
@@ -219,14 +219,14 @@ describe('CollectionStats', () => {
         { 
           type: 'task', 
           id: '1', 
-          title: 'Normal task',
+          content: 'Normal task',
           status: 'open',
           createdAt: '2026-02-03T12:00:00Z'
         },
         { 
           type: 'task', 
           id: '2', 
-          title: 'Migrated task',
+          content: 'Migrated task',
           status: 'open',
           createdAt: '2026-02-03T12:00:00Z',
           migratedTo: 'new-task-id'
@@ -245,7 +245,7 @@ describe('CollectionStats', () => {
         { 
           type: 'task', 
           id: '1', 
-          title: 'Normal completed task',
+          content: 'Normal completed task',
           status: 'completed',
           createdAt: '2026-02-03T12:00:00Z',
           completedAt: '2026-02-03T13:00:00Z'
@@ -253,7 +253,7 @@ describe('CollectionStats', () => {
         { 
           type: 'task', 
           id: '2', 
-          title: 'Migrated completed task',
+          content: 'Migrated completed task',
           status: 'completed',
           createdAt: '2026-02-03T12:00:00Z',
           completedAt: '2026-02-03T13:00:00Z',
@@ -321,7 +321,7 @@ describe('CollectionStats', () => {
         { 
           type: 'task', 
           id: '1', 
-          title: 'Migrated task',
+          content: 'Migrated task',
           status: 'open',
           createdAt: '2026-02-03T12:00:00Z',
           migratedTo: 'new-task-id'
@@ -345,7 +345,7 @@ describe('CollectionStats', () => {
   describe('Accessibility', () => {
     it('provides accessible labels for screen readers', () => {
       const entries: Entry[] = [
-        { type: 'task', id: '1', title: 'Task', status: 'open', createdAt: '2026-02-03T12:00:00Z' },
+        { type: 'task', id: '1', content: 'Task', status: 'open', createdAt: '2026-02-03T12:00:00Z' },
         { type: 'note', id: '2', content: 'Note', createdAt: '2026-02-03T12:00:00Z' },
       ];
       
@@ -357,7 +357,7 @@ describe('CollectionStats', () => {
 
     it('uses singular form for count of 1', () => {
       const entries: Entry[] = [
-        { type: 'task', id: '1', title: 'Task', status: 'open', createdAt: '2026-02-03T12:00:00Z' },
+        { type: 'task', id: '1', content: 'Task', status: 'open', createdAt: '2026-02-03T12:00:00Z' },
       ];
       
       const { container } = render(<CollectionStats entries={entries} />);
@@ -378,8 +378,8 @@ describe('CollectionStats', () => {
 
     it('uses correct singular/plural forms for all entry types', () => {
       const singleEntries: Entry[] = [
-        { type: 'task', id: '1', title: 'Task', status: 'open', createdAt: '2026-02-03T12:00:00Z' },
-        { type: 'task', id: '2', title: 'Completed', status: 'completed', createdAt: '2026-02-03T12:00:00Z', completedAt: '2026-02-03T13:00:00Z' },
+        { type: 'task', id: '1', content: 'Task', status: 'open', createdAt: '2026-02-03T12:00:00Z' },
+        { type: 'task', id: '2', content: 'Completed', status: 'completed', createdAt: '2026-02-03T12:00:00Z', completedAt: '2026-02-03T13:00:00Z' },
         { type: 'note', id: '3', content: 'Note', createdAt: '2026-02-03T12:00:00Z' },
         { type: 'event', id: '4', content: 'Event', createdAt: '2026-02-03T12:00:00Z' },
       ];
@@ -392,10 +392,10 @@ describe('CollectionStats', () => {
       expect(singleContainer.querySelector('[aria-label="1 event"]')).toBeInTheDocument();
       
       const multipleEntries: Entry[] = [
-        { type: 'task', id: '1', title: 'Task 1', status: 'open', createdAt: '2026-02-03T12:00:00Z' },
-        { type: 'task', id: '2', title: 'Task 2', status: 'open', createdAt: '2026-02-03T12:00:00Z' },
-        { type: 'task', id: '3', title: 'Completed 1', status: 'completed', createdAt: '2026-02-03T12:00:00Z', completedAt: '2026-02-03T13:00:00Z' },
-        { type: 'task', id: '4', title: 'Completed 2', status: 'completed', createdAt: '2026-02-03T12:00:00Z', completedAt: '2026-02-03T13:00:00Z' },
+        { type: 'task', id: '1', content: 'Task 1', status: 'open', createdAt: '2026-02-03T12:00:00Z' },
+        { type: 'task', id: '2', content: 'Task 2', status: 'open', createdAt: '2026-02-03T12:00:00Z' },
+        { type: 'task', id: '3', content: 'Completed 1', status: 'completed', createdAt: '2026-02-03T12:00:00Z', completedAt: '2026-02-03T13:00:00Z' },
+        { type: 'task', id: '4', content: 'Completed 2', status: 'completed', createdAt: '2026-02-03T12:00:00Z', completedAt: '2026-02-03T13:00:00Z' },
         { type: 'note', id: '5', content: 'Note 1', createdAt: '2026-02-03T12:00:00Z' },
         { type: 'note', id: '6', content: 'Note 2', createdAt: '2026-02-03T12:00:00Z' },
         { type: 'event', id: '7', content: 'Event 1', createdAt: '2026-02-03T12:00:00Z' },

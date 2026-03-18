@@ -83,8 +83,8 @@ export type TaskFilter = 'all' | 'open' | 'completed';
  * This is derived from events, not stored directly
  */
 export interface Task extends BaseEntry {
-  /** Task title (1-500 characters) */
-  readonly title: string;
+  /** Task content / description (1-500 characters) */
+  readonly content: string;
 
   /** Current status of the task */
   readonly status: TaskStatus;
@@ -123,7 +123,8 @@ export interface TaskCreated extends DomainEvent {
   readonly aggregateId: string;
   readonly payload: {
     readonly id: string;
-    readonly title: string;
+    readonly content: string;
+    readonly title?: string; // backward-compat: old events stored title, not content
     readonly createdAt: string;
     readonly status: 'open';
     readonly order?: string; // Optional for backward compatibility
@@ -138,10 +139,10 @@ export interface TaskCreated extends DomainEvent {
  * Represents the user's intent to create a new task
  *
  * Validation rules:
- * - title: Required, will be trimmed, 1-500 characters
+ * - content: Required, will be trimmed, 1-500 characters
  */
 export interface CreateTaskCommand {
-  readonly title: string;
+  readonly content: string;
   readonly collectionId?: string;
   readonly userId?: string;
 }
@@ -151,12 +152,12 @@ export interface CreateTaskCommand {
  * Represents the user's intent to create a sub-task under a parent task
  *
  * Validation rules:
- * - title: Required, will be trimmed, 1-500 characters
+ * - content: Required, will be trimmed, 1-500 characters
  * - parentEntryId: Required, must reference an existing task
  * - Parent task must not be a sub-task itself (max 2 levels)
  */
 export interface CreateSubTaskCommand {
-  readonly title: string;
+  readonly content: string;
   readonly parentEntryId: string; // Required - which entry to add sub-task under
   readonly userId?: string;
 }
@@ -332,14 +333,15 @@ export interface ReorderTaskCommand {
  * Invariants:
  * - aggregateId must match an existing task
  * - Task can be in any status (open or completed)
- * - newTitle must be 1-500 characters (after trim)
+ * - newContent must be 1-500 characters (after trim)
  */
 export interface TaskTitleChanged extends DomainEvent {
   readonly type: 'TaskTitleChanged';
   readonly aggregateId: string;
   readonly payload: {
     readonly taskId: string;
-    readonly newTitle: string;
+    readonly newContent: string;
+    readonly newTitle?: string; // backward-compat: old events stored newTitle
     readonly changedAt: string;
   };
 }
@@ -349,11 +351,12 @@ export interface TaskTitleChanged extends DomainEvent {
  * Represents the user's intent to update a task's title
  *
  * Validation rules:
- * - title: Required, will be trimmed, 1-500 characters
+ * - content: Required, will be trimmed, 1-500 characters
  */
 export interface UpdateTaskTitleCommand {
   readonly taskId: string;
-  readonly title: string;
+  readonly content: string;
+  readonly title?: string; // backward-compat: some callers may still send title
 }
 
 /**

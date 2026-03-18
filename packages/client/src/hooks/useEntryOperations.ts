@@ -143,12 +143,12 @@ export function useEntryOperations(
   const handleCreateTask = useCallback(async (title: string) => {
     // If in uncategorized view, don't set collectionId (keep entries truly uncategorized)
     const actualCollectionId = collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId;
-    await handlers.createTaskHandler.handle({ title, collectionId: actualCollectionId });
+    await handlers.createTaskHandler.handle({ content: title, collectionId: actualCollectionId });
   }, [handlers.createTaskHandler, collectionId]);
 
   // Phase 1: Sub-Tasks - Create sub-task under parent
   const handleCreateSubTask = useCallback(async (parentEntryId: string, title: string) => {
-    await handlers.createSubTaskHandler.handle({ parentEntryId, title });
+    await handlers.createSubTaskHandler.handle({ parentEntryId, content: title });
   }, [handlers.createSubTaskHandler]);
 
   const handleCreateNote = useCallback(async (content: string) => {
@@ -214,7 +214,7 @@ export function useEntryOperations(
 
   // Entry update operations
   const handleUpdateTaskTitle = useCallback(async (taskId: string, title: string) => {
-    await handlers.updateTaskTitleHandler.handle({ taskId, title });
+    await handlers.updateTaskTitleHandler.handle({ taskId, content: title });
   }, [handlers.updateTaskTitleHandler]);
 
   const handleUpdateNoteContent = useCallback(async (noteId: string, content: string) => {

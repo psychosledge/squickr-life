@@ -19,7 +19,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
     // Simulated sub-task in BOTH Monthly log AND Today's log
     const subTask = {
       id: 'subtask-1',
-      title: 'Find eye doctor',
+      content: 'Find eye doctor',
       collections: ['monthly-log', 'todays-log'],
       collectionId: 'monthly-log', // Legacy field (first collection)
       parentEntryId: 'parent-1',
@@ -50,7 +50,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
     
     const subTask = {
       id: 'subtask-1',
-      title: 'Find eye doctor',
+      content: 'Find eye doctor',
       collections: ['monthly-log', 'todays-log'],
       collectionId: 'monthly-log',
       parentEntryId: 'parent-1',
@@ -77,7 +77,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
     
     const subTask = {
       id: 'subtask-1',
-      title: 'Find eye doctor',
+      content: 'Find eye doctor',
       collections: ['monthly-log', 'todays-log'],
       collectionId: 'monthly-log',
       parentEntryId: 'parent-1',
@@ -102,7 +102,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
   it('should NOT show navigation when sub-task is only in one collection', () => {
     const subTask = {
       id: 'subtask-1',
-      title: 'Find eye doctor',
+      content: 'Find eye doctor',
       collections: ['monthly-log'], // Only in ONE collection
       collectionId: 'monthly-log',
       parentEntryId: 'parent-1',
@@ -121,7 +121,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
     
     const subTask = {
       id: 'subtask-1',
-      title: 'Find eye doctor',
+      content: 'Find eye doctor',
       collections: ['monthly-log', 'todays-log', 'work-projects'], // 3 collections
       collectionId: 'monthly-log',
       parentEntryId: 'parent-1',
@@ -149,7 +149,7 @@ describe('Bug #4 Fix: Multi-Collection Sub-Task Navigation Logic', () => {
     const currentCollectionId = 'monthly-log';
     const subTask = {
       id: 'subtask-1',
-      title: 'Find eye doctor',
+      content: 'Find eye doctor',
       collections: ['monthly-log', 'todays-log'], // In BOTH
       collectionId: 'monthly-log',
       parentEntryId: 'parent-1',

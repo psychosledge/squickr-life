@@ -32,8 +32,8 @@ describe('BulkMigrateEntriesHandler', () => {
   describe('Mixed entry type migration', () => {
     it('should migrate mixed entry types (tasks, notes, events) in single batch', async () => {
       // Arrange: Create 2 tasks, 2 notes, 1 event
-      const task1Id = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
-      const task2Id = await createTaskHandler.handle({ title: 'Task 2', collectionId: 'col-a' });
+      const task1Id = await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-a' });
+      const task2Id = await createTaskHandler.handle({ content: 'Task 2', collectionId: 'col-a' });
       const note1Id = await createNoteHandler.handle({ content: 'Note 1', collectionId: 'col-a' });
       const note2Id = await createNoteHandler.handle({ content: 'Note 2', collectionId: 'col-a' });
       const event1Id = await createEventHandler.handle({ content: 'Event 1', eventDate: '2026-01-15', collectionId: 'col-a' });
@@ -97,9 +97,9 @@ describe('BulkMigrateEntriesHandler', () => {
   describe('Ghost entry handling', () => {
     it('should skip ghost entries (already migrated)', async () => {
       // Arrange: Create 2 active tasks + 1 ghost task (already migrated)
-      const activeTask1Id = await createTaskHandler.handle({ title: 'Active Task 1', collectionId: 'col-a' });
-      const activeTask2Id = await createTaskHandler.handle({ title: 'Active Task 2', collectionId: 'col-a' });
-      const ghostTaskId = await createTaskHandler.handle({ title: 'Ghost Task', collectionId: 'col-a' });
+      const activeTask1Id = await createTaskHandler.handle({ content: 'Active Task 1', collectionId: 'col-a' });
+      const activeTask2Id = await createTaskHandler.handle({ content: 'Active Task 2', collectionId: 'col-a' });
+      const ghostTaskId = await createTaskHandler.handle({ content: 'Ghost Task', collectionId: 'col-a' });
 
       // Manually append TaskMigrated event to make ghostTask a ghost
       const ghostMigratedToId = crypto.randomUUID();
@@ -147,9 +147,9 @@ describe('BulkMigrateEntriesHandler', () => {
   describe('Move mode behavior', () => {
     it('should use move mode - remove from old collection (tasks only)', async () => {
       // Arrange: 3 tasks in collection A
-      const task1Id = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
-      const task2Id = await createTaskHandler.handle({ title: 'Task 2', collectionId: 'col-a' });
-      const task3Id = await createTaskHandler.handle({ title: 'Task 3', collectionId: 'col-a' });
+      const task1Id = await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-a' });
+      const task2Id = await createTaskHandler.handle({ content: 'Task 2', collectionId: 'col-a' });
+      const task3Id = await createTaskHandler.handle({ content: 'Task 3', collectionId: 'col-a' });
 
       const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
 
@@ -188,8 +188,8 @@ describe('BulkMigrateEntriesHandler', () => {
 
     it('should not emit removal events for tasks without collectionId', async () => {
       // Arrange: 2 tasks in uncategorized (no collectionId)
-      const task1Id = await createTaskHandler.handle({ title: 'Task 1' }); // No collectionId
-      const task2Id = await createTaskHandler.handle({ title: 'Task 2' }); // No collectionId
+      const task1Id = await createTaskHandler.handle({ content: 'Task 1' }); // No collectionId
+      const task2Id = await createTaskHandler.handle({ content: 'Task 2' }); // No collectionId
 
       const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
 
@@ -220,9 +220,9 @@ describe('BulkMigrateEntriesHandler', () => {
   describe('Add mode behavior', () => {
     it('should use add mode - preserve in old collection (tasks only)', async () => {
       // Arrange: 3 tasks in collection A
-      const task1Id = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
-      const task2Id = await createTaskHandler.handle({ title: 'Task 2', collectionId: 'col-a' });
-      const task3Id = await createTaskHandler.handle({ title: 'Task 3', collectionId: 'col-a' });
+      const task1Id = await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-a' });
+      const task2Id = await createTaskHandler.handle({ content: 'Task 2', collectionId: 'col-a' });
+      const task3Id = await createTaskHandler.handle({ content: 'Task 3', collectionId: 'col-a' });
 
       const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
 
@@ -286,7 +286,7 @@ describe('BulkMigrateEntriesHandler', () => {
   describe('Edge cases', () => {
     it('should throw error when mode=move but sourceCollectionId is missing', async () => {
       // Arrange: Create a task
-      const taskId = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
+      const taskId = await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-a' });
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [taskId],
@@ -303,8 +303,8 @@ describe('BulkMigrateEntriesHandler', () => {
 
     it('should call appendBatch once (not N times)', async () => {
       // Arrange: 3 entries
-      const task1Id = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
-      const task2Id = await createTaskHandler.handle({ title: 'Task 2', collectionId: 'col-a' });
+      const task1Id = await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-a' });
+      const task2Id = await createTaskHandler.handle({ content: 'Task 2', collectionId: 'col-a' });
       const noteId = await createNoteHandler.handle({ content: 'Note 1', collectionId: 'col-a' });
 
       const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
@@ -343,7 +343,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
     it('should handle null targetCollectionId (move to uncategorized)', async () => {
       // Arrange: 1 task in collection A
-      const taskId = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
+      const taskId = await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-a' });
 
       const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
 
@@ -369,7 +369,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
     it('should skip non-existent entries', async () => {
       // Arrange: 1 valid task + 1 non-existent ID
-      const taskId = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
+      const taskId = await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-a' });
       const fakeId = 'non-existent-id';
 
       const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
@@ -394,8 +394,8 @@ describe('BulkMigrateEntriesHandler', () => {
   describe('Migration event structure', () => {
     it('should preserve task IDs (no new IDs created for tasks)', async () => {
       // Arrange: 2 tasks
-      const task1Id = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
-      const task2Id = await createTaskHandler.handle({ title: 'Task 2', collectionId: 'col-a' });
+      const task1Id = await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-a' });
+      const task2Id = await createTaskHandler.handle({ content: 'Task 2', collectionId: 'col-a' });
 
       const command: BulkMigrateEntriesCommand = {
         entryIds: [task1Id, task2Id],
@@ -419,7 +419,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
     it('should use original task ID for TaskAddedToCollection event', async () => {
       // Arrange: 1 task
-      const taskId = await createTaskHandler.handle({ title: 'Task 1', collectionId: 'col-a' });
+      const taskId = await createTaskHandler.handle({ content: 'Task 1', collectionId: 'col-a' });
 
       const appendBatchSpy = vi.spyOn(eventStore, 'appendBatch');
 
@@ -449,7 +449,7 @@ describe('BulkMigrateEntriesHandler', () => {
       
       // Create task in collection A
       const taskId = await createTaskHandler.handle({
-        title: 'Task to migrate',
+        content: 'Task to migrate',
         collectionId: 'collection-a',
         userId: 'user-1',
       });
@@ -506,14 +506,14 @@ describe('BulkMigrateEntriesHandler', () => {
       // Scenario: Parent in monthly log, sub-task migrated to 2/15, then bulk migrate to 2/16
       // 1. Create parent task in monthly log
       const parentId = await createTaskHandler.handle({
-        title: 'Parent Task',
+        content: 'Parent Task',
         collectionId: 'monthly-log',
       });
       
       // 2. Create sub-task under parent
       const subTaskId = await createSubTaskHandler.handle({
         parentEntryId: parentId,
-        title: 'Sub-task',
+        content: 'Sub-task',
       });
       
       // 3. Migrate sub-task to 2/15 (using AddTaskToCollection)
@@ -575,14 +575,14 @@ describe('BulkMigrateEntriesHandler', () => {
       const taskProjection2 = new TaskListProjection(eventStore);
       void taskProjection2; // used below indirectly
       const parentId = await createTaskHandler.handle({
-        title: 'Monthly Parent Task',
+        content: 'Monthly Parent Task',
         collectionId: 'monthly-log',
       });
       
       // Step 2: Create sub-task under parent (inherits monthly-log as display collection)
       const subTaskId = await createSubTaskHandler.handle({
         parentEntryId: parentId,
-        title: 'Migrated Sub-task',
+        content: 'Migrated Sub-task',
       });
       
       // Verify initial state: sub-task has monthly-log as collectionId
@@ -616,11 +616,11 @@ describe('BulkMigrateEntriesHandler', () => {
       
       // Step 5: Create additional tasks directly in 2/15 daily log
       const normalTask1Id = await createTaskHandler.handle({
-        title: 'Normal Task 1 in 2/15',
+        content: 'Normal Task 1 in 2/15',
         collectionId: 'daily-2024-02-15',
       });
       const normalTask2Id = await createTaskHandler.handle({
-        title: 'Normal Task 2 in 2/15',
+        content: 'Normal Task 2 in 2/15',
         collectionId: 'daily-2024-02-15',
       });
       

@@ -36,24 +36,24 @@ describe('MigrateTaskHandler - Phase 3 Parent Cascade (Symlink Pattern)', () => 
   it('should cascade migrate unmigrated children when parent is migrated (symlink pattern)', async () => {
     // Step 1: Create parent with 3 sub-tasks in "Work Projects"
     await createTaskHandler.handle({
-      title: 'App launch',
+      content: 'App launch',
       collectionId: 'work-projects'
     });
 
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Set up analytics', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Write blog post', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ title: 'Deploy to production', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Set up analytics', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Write blog post', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Deploy to production', parentEntryId: parent.id });
 
     const allTasks = await entryProjection.getTasks();
     const children = allTasks.filter(t => t.parentEntryId === parent.id);
     expect(children).toHaveLength(3);
 
-    const analyticsChild = children.find(c => c.title === 'Set up analytics')!;
-    const blogChild = children.find(c => c.title === 'Write blog post')!;
-    const deployChild = children.find(c => c.title === 'Deploy to production')!;
+    const analyticsChild = children.find(c => c.content === 'Set up analytics')!;
+    const blogChild = children.find(c => c.content === 'Write blog post')!;
+    const deployChild = children.find(c => c.content === 'Deploy to production')!;
 
     // Step 2: Migrate 1 child to "Today's Log" (creates symlink)
     const blogMigratedId = await migrateTaskHandler.handle({

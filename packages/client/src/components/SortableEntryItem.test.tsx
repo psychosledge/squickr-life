@@ -31,7 +31,7 @@ describe('SortableEntryItem', () => {
   const mockTask: Entry = {
     type: 'task',
     id: 'task-1',
-    title: 'Test task',
+    content: 'Test task',
     createdAt: '2026-01-24T10:00:00.000Z',
     status: 'open',
   };

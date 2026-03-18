@@ -24,7 +24,7 @@ describe('task-validation', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Test task',
+          content: 'Test task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         },
@@ -36,7 +36,7 @@ describe('task-validation', () => {
       
       expect(task).toBeDefined();
       expect(task.id).toBe('task-1');
-      expect(task.title).toBe('Test task');
+      expect(task.content).toBe('Test task');
     });
 
     it('should throw error when task does not exist', async () => {
@@ -56,7 +56,7 @@ describe('task-validation', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Open task',
+          content: 'Open task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         },
@@ -80,7 +80,7 @@ describe('task-validation', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Completed task',
+          content: 'Completed task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         },
@@ -121,7 +121,7 @@ describe('task-validation', () => {
         aggregateId: 'task-1',
         payload: {
           id: 'task-1',
-          title: 'Completed task',
+          content: 'Completed task',
           createdAt: '2026-01-24T10:00:00.000Z',
           status: 'open',
         },

@@ -56,7 +56,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should return task entry when TaskCreated event exists', async () => {
-      const taskId = await taskHandler.handle({ title: 'Test task' });
+      const taskId = await taskHandler.handle({ content: 'Test task' });
 
       const entries = await projection.getEntries();
       
@@ -64,7 +64,7 @@ describe('EntryListProjection', () => {
       expect(entries[0]).toMatchObject({
         type: 'task',
         id: taskId,
-        title: 'Test task',
+        content: 'Test task',
         status: 'open',
       });
     });
@@ -96,7 +96,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should return all three entry types in a unified list', async () => {
-      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      const taskId = await taskHandler.handle({ content: 'Task 1' });
       const noteId = await noteHandler.handle({ content: 'Note 1' });
       const eventId = await eventHandler.handle({ content: 'Event 1' });
 
@@ -115,8 +115,8 @@ describe('EntryListProjection', () => {
 
     it('should sort entries by fractional index order', async () => {
       // Create multiple of same type to verify ordering within type
-      const taskId1 = await taskHandler.handle({ title: 'Task 1' });
-      const taskId2 = await taskHandler.handle({ title: 'Task 2' });
+      const taskId1 = await taskHandler.handle({ content: 'Task 1' });
+      const taskId2 = await taskHandler.handle({ content: 'Task 2' });
       const noteId1 = await noteHandler.handle({ content: 'Note 1' });
       const noteId2 = await noteHandler.handle({ content: 'Note 2' });
 
@@ -137,7 +137,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should handle completed task status', async () => {
-      const taskId = await taskHandler.handle({ title: 'Task to complete' });
+      const taskId = await taskHandler.handle({ content: 'Task to complete' });
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId });
 
@@ -209,8 +209,8 @@ describe('EntryListProjection', () => {
   describe('filtering', () => {
     beforeEach(async () => {
       // Create a mix of entries
-      await taskHandler.handle({ title: 'Task 1' });
-      await taskHandler.handle({ title: 'Task 2' });
+      await taskHandler.handle({ content: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 2' });
       await noteHandler.handle({ content: 'Note 1' });
       await eventHandler.handle({ content: 'Event 1' });
     });
@@ -237,7 +237,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should filter to show only open tasks', async () => {
-      const taskId = await taskHandler.handle({ title: 'Task 3' });
+      const taskId = await taskHandler.handle({ content: 'Task 3' });
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId });
 
@@ -248,7 +248,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should filter to show only completed tasks', async () => {
-      const taskId = await taskHandler.handle({ title: 'Task to complete' });
+      const taskId = await taskHandler.handle({ content: 'Task to complete' });
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId });
 
@@ -267,14 +267,14 @@ describe('EntryListProjection', () => {
 
   describe('getEntryById', () => {
     it('should return task entry by ID', async () => {
-      const taskId = await taskHandler.handle({ title: 'Find me' });
+      const taskId = await taskHandler.handle({ content: 'Find me' });
 
       const entry = await projection.getEntryById(taskId);
       
       expect(entry).toMatchObject({
         type: 'task',
         id: taskId,
-        title: 'Find me',
+        content: 'Find me',
       });
     });
 
@@ -312,15 +312,15 @@ describe('EntryListProjection', () => {
   describe('backward compatibility methods', () => {
     describe('getTasks', () => {
       it('should return only tasks without type discriminator', async () => {
-        await taskHandler.handle({ title: 'Task 1' });
-        await taskHandler.handle({ title: 'Task 2' });
+        await taskHandler.handle({ content: 'Task 1' });
+        await taskHandler.handle({ content: 'Task 2' });
         await noteHandler.handle({ content: 'Note 1' });
 
         const tasks = await projection.getTasks();
         
         expect(tasks).toHaveLength(2);
         expect(tasks[0]).toMatchObject({
-          title: 'Task 1',
+          content: 'Task 1',
           status: 'open',
         });
         expect(tasks[0]).not.toHaveProperty('type');
@@ -337,13 +337,13 @@ describe('EntryListProjection', () => {
 
     describe('getTaskById', () => {
       it('should return task by ID without type discriminator', async () => {
-        const taskId = await taskHandler.handle({ title: 'Task 1' });
+        const taskId = await taskHandler.handle({ content: 'Task 1' });
 
         const task = await projection.getTaskById(taskId);
         
         expect(task).toMatchObject({
           id: taskId,
-          title: 'Task 1',
+          content: 'Task 1',
         });
         expect(task).not.toHaveProperty('type');
       });
@@ -367,7 +367,7 @@ describe('EntryListProjection', () => {
       it('should return only notes without type discriminator', async () => {
         await noteHandler.handle({ content: 'Note 1' });
         await noteHandler.handle({ content: 'Note 2' });
-        await taskHandler.handle({ title: 'Task 1' });
+        await taskHandler.handle({ content: 'Task 1' });
 
         const notes = await projection.getNotes();
         
@@ -379,7 +379,7 @@ describe('EntryListProjection', () => {
       });
 
       it('should return empty array when no notes exist', async () => {
-        await taskHandler.handle({ title: 'Task 1' });
+        await taskHandler.handle({ content: 'Task 1' });
 
         const notes = await projection.getNotes();
         
@@ -401,7 +401,7 @@ describe('EntryListProjection', () => {
       });
 
       it('should return undefined for task ID', async () => {
-        const taskId = await taskHandler.handle({ title: 'Task 1' });
+        const taskId = await taskHandler.handle({ content: 'Task 1' });
 
         const note = await projection.getNoteById(taskId);
         
@@ -413,7 +413,7 @@ describe('EntryListProjection', () => {
       it('should return only events without type discriminator', async () => {
         await eventHandler.handle({ content: 'Event 1' });
         await eventHandler.handle({ content: 'Event 2' });
-        await taskHandler.handle({ title: 'Task 1' });
+        await taskHandler.handle({ content: 'Task 1' });
 
         const events = await projection.getEvents();
         
@@ -425,7 +425,7 @@ describe('EntryListProjection', () => {
       });
 
       it('should return empty array when no events exist', async () => {
-        await taskHandler.handle({ title: 'Task 1' });
+        await taskHandler.handle({ content: 'Task 1' });
 
         const events = await projection.getEvents();
         
@@ -447,7 +447,7 @@ describe('EntryListProjection', () => {
       });
 
       it('should return undefined for task ID', async () => {
-        const taskId = await taskHandler.handle({ title: 'Task 1' });
+        const taskId = await taskHandler.handle({ content: 'Task 1' });
 
         const event = await projection.getEventById(taskId);
         
@@ -459,10 +459,10 @@ describe('EntryListProjection', () => {
   describe('complex scenarios', () => {
     it('should handle mixed operations across all entry types', async () => {
       // Create entries
-      const task1 = await taskHandler.handle({ title: 'Task 1' });
+      const task1 = await taskHandler.handle({ content: 'Task 1' });
       const note1 = await noteHandler.handle({ content: 'Note 1' });
       const event1 = await eventHandler.handle({ content: 'Event 1' });
-      const task2 = await taskHandler.handle({ title: 'Task 2' });
+      const task2 = await taskHandler.handle({ content: 'Task 2' });
 
       // Modify entries
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
@@ -499,10 +499,10 @@ describe('EntryListProjection', () => {
     });
 
     it('should maintain correct order after deletions', async () => {
-      const id1 = await taskHandler.handle({ title: 'Task 1' });
+      const id1 = await taskHandler.handle({ content: 'Task 1' });
       const id2 = await noteHandler.handle({ content: 'Note 1' });
       const id3 = await eventHandler.handle({ content: 'Event 1' });
-      const id4 = await taskHandler.handle({ title: 'Task 2' });
+      const id4 = await taskHandler.handle({ content: 'Task 2' });
 
       // Delete the middle note
       const deleteNoteHandler = new DeleteNoteHandler(eventStore, projection);
@@ -517,9 +517,9 @@ describe('EntryListProjection', () => {
     });
 
     it('should correctly filter after multiple updates', async () => {
-      const task1 = await taskHandler.handle({ title: 'Task 1' });
-      const task2 = await taskHandler.handle({ title: 'Task 2' });
-      const task3 = await taskHandler.handle({ title: 'Task 3' });
+      const task1 = await taskHandler.handle({ content: 'Task 1' });
+      const task2 = await taskHandler.handle({ content: 'Task 2' });
+      const task3 = await taskHandler.handle({ content: 'Task 3' });
       await noteHandler.handle({ content: 'Note 1' });
 
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
@@ -540,7 +540,7 @@ describe('EntryListProjection', () => {
 
   describe('cross-type reordering', () => {
     it('should allow a note to be reordered before a task', async () => {
-      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      const taskId = await taskHandler.handle({ content: 'Task 1' });
       const noteId = await noteHandler.handle({ content: 'Note 1' });
       
       // Initial order should be: Task 1, Note 1
@@ -571,7 +571,7 @@ describe('EntryListProjection', () => {
     it('should allow a task to be reordered between two notes', async () => {
       const note1Id = await noteHandler.handle({ content: 'Note 1' });
       const note2Id = await noteHandler.handle({ content: 'Note 2' });
-      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      const taskId = await taskHandler.handle({ content: 'Task 1' });
       
       // Initial order: Note 1, Note 2, Task 1
       let entries = await projection.getEntries();
@@ -603,7 +603,7 @@ describe('EntryListProjection', () => {
 
     it('should allow an event to be reordered after a task', async () => {
       const eventId = await eventHandler.handle({ content: 'Event 1' });
-      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      const taskId = await taskHandler.handle({ content: 'Task 1' });
       
       // Initial order: Event 1, Task 1
       let entries = await projection.getEntries();
@@ -629,10 +629,10 @@ describe('EntryListProjection', () => {
     });
 
     it('should maintain mixed type order with multiple reorderings', async () => {
-      const task1Id = await taskHandler.handle({ title: 'Task 1' });
+      const task1Id = await taskHandler.handle({ content: 'Task 1' });
       const note1Id = await noteHandler.handle({ content: 'Note 1' });
       const event1Id = await eventHandler.handle({ content: 'Event 1' });
-      const task2Id = await taskHandler.handle({ title: 'Task 2' });
+      const task2Id = await taskHandler.handle({ content: 'Task 2' });
       
       // Initial order: Task 1, Note 1, Event 1, Task 2
       let entries = await projection.getEntries();
@@ -670,7 +670,7 @@ describe('EntryListProjection', () => {
 
     it('should preserve cross-type order when filtering', async () => {
       const note1Id = await noteHandler.handle({ content: 'Note 1' });
-      const task1Id = await taskHandler.handle({ title: 'Task 1' });
+      const task1Id = await taskHandler.handle({ content: 'Task 1' });
       const note2Id = await noteHandler.handle({ content: 'Note 2' });
       
       // Move task1 to the beginning
@@ -705,7 +705,7 @@ describe('EntryListProjection', () => {
 
     it('should group entries created at the same time on the same day', async () => {
       // Create multiple entries (they'll all have same creation time in tests)
-      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      const taskId = await taskHandler.handle({ content: 'Task 1' });
       const noteId = await noteHandler.handle({ content: 'Note 1' });
       const eventId = await eventHandler.handle({ content: 'Event 1' });
 
@@ -721,9 +721,9 @@ describe('EntryListProjection', () => {
 
     it('should maintain entry order within each day', async () => {
       // Create multiple entries 
-      const taskId1 = await taskHandler.handle({ title: 'First task' });
+      const taskId1 = await taskHandler.handle({ content: 'First task' });
       const noteId = await noteHandler.handle({ content: 'Middle note' });
-      const taskId2 = await taskHandler.handle({ title: 'Last task' });
+      const taskId2 = await taskHandler.handle({ content: 'Last task' });
 
       const logs = await projection.getDailyLogs();
       
@@ -737,7 +737,7 @@ describe('EntryListProjection', () => {
 
     it('should respect limit parameter', async () => {
       // Create some entries
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
       await noteHandler.handle({ content: 'Note 1' });
 
       // Request with limit
@@ -771,7 +771,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should respect filter parameter', async () => {
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
       await noteHandler.handle({ content: 'Note 1' });
       await eventHandler.handle({ content: 'Event 1' });
 
@@ -791,7 +791,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should handle deleted entries correctly', async () => {
-      const taskId = await taskHandler.handle({ title: 'To be deleted' });
+      const taskId = await taskHandler.handle({ content: 'To be deleted' });
       await noteHandler.handle({ content: 'Stays' });
 
       // Delete the task
@@ -806,7 +806,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should handle completed tasks correctly', async () => {
-      const taskId = await taskHandler.handle({ title: 'Task to complete' });
+      const taskId = await taskHandler.handle({ content: 'Task to complete' });
 
       // Complete the task
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
@@ -825,7 +825,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should return daily logs with valid date format (YYYY-MM-DD)', async () => {
-      await taskHandler.handle({ title: 'Test task' });
+      await taskHandler.handle({ content: 'Test task' });
 
       const logs = await projection.getDailyLogs();
       
@@ -835,7 +835,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should include all entry types in same daily log', async () => {
-      await taskHandler.handle({ title: 'Task' });
+      await taskHandler.handle({ content: 'Task' });
       await noteHandler.handle({ content: 'Note' });
       await eventHandler.handle({ content: 'Event' });
 
@@ -854,8 +854,8 @@ describe('EntryListProjection', () => {
   describe('getEntriesByCollection', () => {
     it('should return entries in specified collection', async () => {
       // Create entries in different collections
-      await taskHandler.handle({ title: 'Task in A', collectionId: 'collection-A' });
-      await taskHandler.handle({ title: 'Task in B', collectionId: 'collection-B' });
+      await taskHandler.handle({ content: 'Task in A', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task in B', collectionId: 'collection-B' });
       await noteHandler.handle({ content: 'Note in A', collectionId: 'collection-A' });
 
       const entriesInA = await projection.getEntriesByCollection('collection-A');
@@ -865,7 +865,7 @@ describe('EntryListProjection', () => {
       expect(entriesInA[1].type).toBe('note');
       
       if (entriesInA[0].type === 'task') {
-        expect(entriesInA[0].title).toBe('Task in A');
+        expect(entriesInA[0].content).toBe('Task in A');
       }
       if (entriesInA[1].type === 'note') {
         expect(entriesInA[1].content).toBe('Note in A');
@@ -874,11 +874,11 @@ describe('EntryListProjection', () => {
 
     it('should return uncategorized entries when collectionId is null', async () => {
       // Create entries without collectionId
-      await taskHandler.handle({ title: 'Uncategorized task' });
+      await taskHandler.handle({ content: 'Uncategorized task' });
       await noteHandler.handle({ content: 'Uncategorized note' });
       
       // Create entry with collection
-      await taskHandler.handle({ title: 'Task in collection', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task in collection', collectionId: 'collection-A' });
 
       const uncategorized = await projection.getEntriesByCollection(null);
       
@@ -887,7 +887,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should return empty array when no entries in collection', async () => {
-      await taskHandler.handle({ title: 'Task in A', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task in A', collectionId: 'collection-A' });
 
       const entriesInB = await projection.getEntriesByCollection('collection-B');
       
@@ -895,7 +895,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should handle mixed entry types in same collection', async () => {
-      await taskHandler.handle({ title: 'Task', collectionId: 'collection-X' });
+      await taskHandler.handle({ content: 'Task', collectionId: 'collection-X' });
       await noteHandler.handle({ content: 'Note', collectionId: 'collection-X' });
       await eventHandler.handle({ content: 'Event', collectionId: 'collection-X' });
 
@@ -912,7 +912,7 @@ describe('EntryListProjection', () => {
     it('should return entries sorted by order field', async () => {
       // Create entries in reverse order but same collection
       const noteId = await noteHandler.handle({ content: 'First', collectionId: 'col-1' });
-      const taskId = await taskHandler.handle({ title: 'Second', collectionId: 'col-1' });
+      const taskId = await taskHandler.handle({ content: 'Second', collectionId: 'col-1' });
       const eventId = await eventHandler.handle({ content: 'Third', collectionId: 'col-1' });
 
       const entries = await projection.getEntriesByCollection('col-1');
@@ -929,7 +929,7 @@ describe('EntryListProjection', () => {
       const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
       
       // Create task without collection
-      const taskId = await taskHandler.handle({ title: 'Task to move' });
+      const taskId = await taskHandler.handle({ content: 'Task to move' });
 
       // Initially in uncategorized
       let uncategorized = await projection.getEntriesByCollection(null);
@@ -953,7 +953,7 @@ describe('EntryListProjection', () => {
       const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
       
       // Create task in collection-A
-      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-A' });
 
       // Move to collection-B
       await moveHandler.handle({ entryId: taskId, collectionId: 'collection-B' });
@@ -972,7 +972,7 @@ describe('EntryListProjection', () => {
       const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
       
       // Create task in collection-A
-      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-A' });
 
       // Move to uncategorized
       await moveHandler.handle({ entryId: taskId, collectionId: null });
@@ -1041,10 +1041,10 @@ describe('EntryListProjection', () => {
   describe('getEntryCountsByCollection', () => {
     it('should return counts for all collections in a single query', async () => {
       // Create entries in different collections
-      await taskHandler.handle({ title: 'Task in A', collectionId: 'collection-A' });
-      await taskHandler.handle({ title: 'Task 2 in A', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task in A', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task 2 in A', collectionId: 'collection-A' });
       await noteHandler.handle({ content: 'Note in A', collectionId: 'collection-A' });
-      await taskHandler.handle({ title: 'Task in B', collectionId: 'collection-B' });
+      await taskHandler.handle({ content: 'Task in B', collectionId: 'collection-B' });
       await eventHandler.handle({ content: 'Event in C', collectionId: 'collection-C' });
 
       const counts = await projection.getEntryCountsByCollection();
@@ -1056,11 +1056,11 @@ describe('EntryListProjection', () => {
 
     it('should count uncategorized entries with null key', async () => {
       // Create uncategorized entries
-      await taskHandler.handle({ title: 'Uncategorized task' });
+      await taskHandler.handle({ content: 'Uncategorized task' });
       await noteHandler.handle({ content: 'Uncategorized note' });
       
       // Create categorized entry
-      await taskHandler.handle({ title: 'Task in A', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task in A', collectionId: 'collection-A' });
 
       const counts = await projection.getEntryCountsByCollection();
       
@@ -1075,7 +1075,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should handle mixed entry types in same collection', async () => {
-      await taskHandler.handle({ title: 'Task', collectionId: 'mixed' });
+      await taskHandler.handle({ content: 'Task', collectionId: 'mixed' });
       await noteHandler.handle({ content: 'Note', collectionId: 'mixed' });
       await eventHandler.handle({ content: 'Event', collectionId: 'mixed' });
 
@@ -1089,7 +1089,7 @@ describe('EntryListProjection', () => {
       const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
       
       // Create entries
-      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-A' });
       await noteHandler.handle({ content: 'Note', collectionId: 'collection-A' });
 
       // Initial counts
@@ -1111,7 +1111,7 @@ describe('EntryListProjection', () => {
       const moveHandler = new MoveEntryToCollectionHandler(eventStore, projection);
       
       // Create task in collection
-      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-A' });
 
       // Move to uncategorized
       await moveHandler.handle({ entryId: taskId, collectionId: null });
@@ -1126,8 +1126,8 @@ describe('EntryListProjection', () => {
       const deleteHandler = new DeleteTaskHandler(eventStore, projection);
       
       // Create tasks
-      const taskId1 = await taskHandler.handle({ title: 'Task 1', collectionId: 'collection-A' });
-      await taskHandler.handle({ title: 'Task 2', collectionId: 'collection-A' });
+      const taskId1 = await taskHandler.handle({ content: 'Task 1', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task 2', collectionId: 'collection-A' });
 
       // Initial count
       let counts = await projection.getEntryCountsByCollection();
@@ -1151,10 +1151,10 @@ describe('EntryListProjection', () => {
 
     it('should count only open tasks, not completed tasks', async () => {
       // Create open task
-      const openTaskId = await taskHandler.handle({ title: 'Open task', collectionId: 'collection-A' });
+      const openTaskId = await taskHandler.handle({ content: 'Open task', collectionId: 'collection-A' });
       
       // Create and complete another task
-      const completedTaskId = await taskHandler.handle({ title: 'Completed task', collectionId: 'collection-A' });
+      const completedTaskId = await taskHandler.handle({ content: 'Completed task', collectionId: 'collection-A' });
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId: completedTaskId });
 
@@ -1166,8 +1166,8 @@ describe('EntryListProjection', () => {
 
     it('should count only tasks, not notes or events', async () => {
       // Create mixed entry types in same collection
-      await taskHandler.handle({ title: 'Task 1', collectionId: 'collection-B' });
-      await taskHandler.handle({ title: 'Task 2', collectionId: 'collection-B' });
+      await taskHandler.handle({ content: 'Task 1', collectionId: 'collection-B' });
+      await taskHandler.handle({ content: 'Task 2', collectionId: 'collection-B' });
       await noteHandler.handle({ content: 'Note 1', collectionId: 'collection-B' });
       await eventHandler.handle({ content: 'Event 1', collectionId: 'collection-B' });
 
@@ -1179,10 +1179,10 @@ describe('EntryListProjection', () => {
 
     it('should group active tasks by collection ID', async () => {
       // Create tasks in different collections
-      await taskHandler.handle({ title: 'Task A1', collectionId: 'collection-A' });
-      await taskHandler.handle({ title: 'Task A2', collectionId: 'collection-A' });
-      await taskHandler.handle({ title: 'Task A3', collectionId: 'collection-A' });
-      await taskHandler.handle({ title: 'Task B1', collectionId: 'collection-B' });
+      await taskHandler.handle({ content: 'Task A1', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task A2', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task A3', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task B1', collectionId: 'collection-B' });
 
       const counts = await projection.getActiveTaskCountsByCollection();
       
@@ -1195,10 +1195,10 @@ describe('EntryListProjection', () => {
       const migrateHandler = new MigrateTaskHandler(eventStore, projection);
       
       // Create task in collection-A
-      const originalTaskId = await taskHandler.handle({ title: 'Task to migrate', collectionId: 'collection-A' });
+      const originalTaskId = await taskHandler.handle({ content: 'Task to migrate', collectionId: 'collection-A' });
       
       // Create another task in collection-A that won't be migrated
-      await taskHandler.handle({ title: 'Task to stay', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task to stay', collectionId: 'collection-A' });
       
       // Migrate first task to collection-B
       await migrateHandler.handle({ 
@@ -1216,11 +1216,11 @@ describe('EntryListProjection', () => {
 
     it('should count uncategorized tasks with null key', async () => {
       // Create uncategorized tasks
-      await taskHandler.handle({ title: 'Uncategorized task 1' });
-      await taskHandler.handle({ title: 'Uncategorized task 2' });
+      await taskHandler.handle({ content: 'Uncategorized task 1' });
+      await taskHandler.handle({ content: 'Uncategorized task 2' });
       
       // Create task in a collection
-      await taskHandler.handle({ title: 'Task in collection', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task in collection', collectionId: 'collection-A' });
 
       const counts = await projection.getActiveTaskCountsByCollection();
       
@@ -1230,7 +1230,7 @@ describe('EntryListProjection', () => {
 
     it('should not include collections with zero active tasks', async () => {
       // Create completed task in collection-A
-      const taskId = await taskHandler.handle({ title: 'Task to complete', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task to complete', collectionId: 'collection-A' });
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId });
       
@@ -1244,7 +1244,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should update counts when task is completed', async () => {
-      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-X' });
+      const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-X' });
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
 
       // Before completion
@@ -1264,7 +1264,7 @@ describe('EntryListProjection', () => {
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
       const reopenHandler = new ReopenTaskHandler(eventStore, projection);
       
-      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-Y' });
+      const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-Y' });
       
       // Complete the task
       await completeHandler.handle({ taskId });
@@ -1283,7 +1283,7 @@ describe('EntryListProjection', () => {
       const { DeleteTaskHandler } = await import('./task.handlers');
       const deleteHandler = new DeleteTaskHandler(eventStore, projection);
       
-      const taskId = await taskHandler.handle({ title: 'Task to delete', collectionId: 'collection-Z' });
+      const taskId = await taskHandler.handle({ content: 'Task to delete', collectionId: 'collection-Z' });
       
       // Before deletion
       let counts = await projection.getActiveTaskCountsByCollection();
@@ -1306,8 +1306,8 @@ describe('EntryListProjection', () => {
 
     it('should count all entry types separately', async () => {
       // Create mixed entry types
-      await taskHandler.handle({ title: 'Open task', collectionId: 'collection-A' });
-      const completedTaskId = await taskHandler.handle({ title: 'Completed task', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Open task', collectionId: 'collection-A' });
+      const completedTaskId = await taskHandler.handle({ content: 'Completed task', collectionId: 'collection-A' });
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId: completedTaskId });
       await noteHandler.handle({ content: 'Note 1', collectionId: 'collection-A' });
@@ -1324,10 +1324,10 @@ describe('EntryListProjection', () => {
 
     it('should group stats by collection ID', async () => {
       // Create entries in different collections
-      await taskHandler.handle({ title: 'Task A', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Task A', collectionId: 'collection-A' });
       await noteHandler.handle({ content: 'Note A', collectionId: 'collection-A' });
       
-      await taskHandler.handle({ title: 'Task B', collectionId: 'collection-B' });
+      await taskHandler.handle({ content: 'Task B', collectionId: 'collection-B' });
       await eventHandler.handle({ content: 'Event B', collectionId: 'collection-B' });
 
       const stats = await projection.getEntryStatsByCollection();
@@ -1344,7 +1344,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should handle uncategorized entries with null key', async () => {
-      await taskHandler.handle({ title: 'Uncategorized task' }); // No collectionId
+      await taskHandler.handle({ content: 'Uncategorized task' }); // No collectionId
       await noteHandler.handle({ content: 'Uncategorized note' });
 
       const stats = await projection.getEntryStatsByCollection();
@@ -1356,7 +1356,7 @@ describe('EntryListProjection', () => {
 
     it('should exclude migrated entries from stats', async () => {
       // Create task
-      const taskId = await taskHandler.handle({ title: 'Task to migrate', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task to migrate', collectionId: 'collection-A' });
       
       // Migrate it
       const migrateHandler = new MigrateTaskHandler(eventStore, projection);
@@ -1372,7 +1372,7 @@ describe('EntryListProjection', () => {
     });
 
     it('should update stats when entries are modified', async () => {
-      const taskId = await taskHandler.handle({ title: 'Task 1', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task 1', collectionId: 'collection-A' });
       
       let stats = await projection.getEntryStatsByCollection();
       expect(stats.get('collection-A')!.openTasks).toBe(1);
@@ -1391,7 +1391,7 @@ describe('EntryListProjection', () => {
   describe('migration pointer sanitization', () => {
     it('should preserve valid migration pointers when target exists', async () => {
       // Create task in collection-A
-      const taskId = await taskHandler.handle({ title: 'Original task', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Original task', collectionId: 'collection-A' });
       
       // Migrate task to collection-B
       const migrateHandler = new MigrateTaskHandler(eventStore, projection);
@@ -1411,7 +1411,7 @@ describe('EntryListProjection', () => {
 
     it('should PRESERVE migration pointer when migrated target is soft-deleted (can be restored)', async () => {
       // Create task in collection-A
-      const taskId = await taskHandler.handle({ title: 'Original task', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Original task', collectionId: 'collection-A' });
       
       // Migrate task to collection-B
       const migrateHandler = new MigrateTaskHandler(eventStore, projection);
@@ -1471,7 +1471,7 @@ describe('EntryListProjection', () => {
 
     it('should preserve migration pointers in getEntriesByCollection when target is soft-deleted', async () => {
       // Create and migrate a task
-      const taskId = await taskHandler.handle({ title: 'Task to migrate', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task to migrate', collectionId: 'collection-A' });
       const migrateHandler = new MigrateTaskHandler(eventStore, projection);
       const newTaskId = await migrateHandler.handle({ taskId, targetCollectionId: 'collection-B' });
       
@@ -1494,7 +1494,7 @@ describe('EntryListProjection', () => {
     it('should preserve migration pointers for all entry types when targets are soft-deleted', async () => {
       // Test that we check all three maps (tasks, notes, events) when validating pointers
       // Create task, note, and event
-      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-A' });
       const noteId = await noteHandler.handle({ content: 'Note', collectionId: 'collection-A' });
       const eventId = await eventHandler.handle({ content: 'Event', collectionId: 'collection-A' });
       
@@ -1549,7 +1549,7 @@ describe('EntryListProjection', () => {
     describe('getActiveTaskCountsByCollection — moved task', () => {
       it('should count 0 for collection A and 1 for collection B after task is moved A → B', async () => {
         // Arrange: create task in collection A
-        const taskId = await taskHandler.handle({ title: 'Task to move', collectionId: 'collection-A' });
+        const taskId = await taskHandler.handle({ content: 'Task to move', collectionId: 'collection-A' });
 
         // Act: move task from A to B via Remove + Add (multi-collection pattern)
         await removeHandler.handle({ taskId, collectionId: 'collection-A' });
@@ -1563,7 +1563,7 @@ describe('EntryListProjection', () => {
 
       it('should not double-count a task that was moved from A to B', async () => {
         // Arrange
-        const taskId = await taskHandler.handle({ title: 'Moved task', collectionId: 'collection-A' });
+        const taskId = await taskHandler.handle({ content: 'Moved task', collectionId: 'collection-A' });
 
         // Act
         await removeHandler.handle({ taskId, collectionId: 'collection-A' });
@@ -1580,7 +1580,7 @@ describe('EntryListProjection', () => {
     describe('getActiveTaskCountsByCollection — multi-collection task', () => {
       it('should count task in BOTH collections when it belongs to A and B simultaneously', async () => {
         // Arrange: create task in A, then add to B (multi-collection — still in A too)
-        const taskId = await taskHandler.handle({ title: 'Multi-collection task', collectionId: 'collection-A' });
+        const taskId = await taskHandler.handle({ content: 'Multi-collection task', collectionId: 'collection-A' });
         await addHandler.handle({ taskId, collectionId: 'collection-B' });
 
         // Assert: task counted in both A and B
@@ -1595,7 +1595,7 @@ describe('EntryListProjection', () => {
     describe('getEntryCountsByCollection — moved task', () => {
       it('should count 0 for A and 1 for B after task is moved A → B', async () => {
         // Arrange
-        const taskId = await taskHandler.handle({ title: 'Task to move', collectionId: 'collection-A' });
+        const taskId = await taskHandler.handle({ content: 'Task to move', collectionId: 'collection-A' });
 
         // Act: move
         await removeHandler.handle({ taskId, collectionId: 'collection-A' });
@@ -1609,7 +1609,7 @@ describe('EntryListProjection', () => {
 
       it('should count task in both A and B when it belongs to both simultaneously', async () => {
         // Arrange: task in A, also added to B
-        const taskId = await taskHandler.handle({ title: 'Multi task', collectionId: 'collection-A' });
+        const taskId = await taskHandler.handle({ content: 'Multi task', collectionId: 'collection-A' });
         await addHandler.handle({ taskId, collectionId: 'collection-B' });
 
         // Assert: counted in both
@@ -1624,7 +1624,7 @@ describe('EntryListProjection', () => {
     describe('getEntryStatsByCollection — moved task', () => {
       it('should show 0 open tasks for A and 1 open task for B after task is moved A → B', async () => {
         // Arrange
-        const taskId = await taskHandler.handle({ title: 'Task to move', collectionId: 'collection-A' });
+        const taskId = await taskHandler.handle({ content: 'Task to move', collectionId: 'collection-A' });
 
         // Act: move
         await removeHandler.handle({ taskId, collectionId: 'collection-A' });
@@ -1638,7 +1638,7 @@ describe('EntryListProjection', () => {
 
       it('should show open task counted in both A and B when task belongs to both', async () => {
         // Arrange: task in A, also added to B (still in A)
-        const taskId = await taskHandler.handle({ title: 'Multi task', collectionId: 'collection-A' });
+        const taskId = await taskHandler.handle({ content: 'Multi task', collectionId: 'collection-A' });
         await addHandler.handle({ taskId, collectionId: 'collection-B' });
 
         // Assert: openTasks counted in both collections
@@ -1649,7 +1649,7 @@ describe('EntryListProjection', () => {
 
       it('should handle completed task moved A → B: completedTasks in B, not A', async () => {
         // Arrange: create + complete task in A, then move to B
-        const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+        const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-A' });
         const completeHandler = new CompleteTaskHandler(eventStore, projection);
         await completeHandler.handle({ taskId });
 
@@ -1682,7 +1682,7 @@ describe('EntryListProjection', () => {
 
     it('should return task in B (not A) after moved A → B via Remove+Add', async () => {
       // Arrange: create task in collection A
-      const taskId = await taskHandler.handle({ title: 'Task to move', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task to move', collectionId: 'collection-A' });
 
       // Act: move via ADR-015 Remove+Add path (collectionId stays stale as 'collection-A')
       await removeHandler.handle({ taskId, collectionId: 'collection-A' });
@@ -1698,7 +1698,7 @@ describe('EntryListProjection', () => {
 
     it('should return 0 entries in A and 1 entry in B after move', async () => {
       // Arrange
-      const taskId = await taskHandler.handle({ title: 'Solo task', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Solo task', collectionId: 'collection-A' });
 
       // Act
       await removeHandler.handle({ taskId, collectionId: 'collection-A' });
@@ -1715,7 +1715,7 @@ describe('EntryListProjection', () => {
 
     it('should return uncategorized entry as uncategorized after being removed from all collections', async () => {
       // Arrange: create task in collection A
-      const taskId = await taskHandler.handle({ title: 'Task to unassign', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task to unassign', collectionId: 'collection-A' });
 
       // Act: remove from A without adding to another (task ends up with collections=[])
       await removeHandler.handle({ taskId, collectionId: 'collection-A' });
@@ -1746,7 +1746,7 @@ describe('EntryListProjection', () => {
 
     it('should be a no-op when calling Move to B after task already moved A → B via Remove+Add', async () => {
       // Arrange: create task in A, then move to B via ADR-015 Remove+Add
-      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-A' });
       await removeHandler.handle({ taskId, collectionId: 'collection-A' });
       await addHandler.handle({ taskId, collectionId: 'collection-B' });
 
@@ -1765,7 +1765,7 @@ describe('EntryListProjection', () => {
 
     it('should still move task from B to C (not treat as no-op) when collections differs from target', async () => {
       // Arrange: create task in A, move to B via Remove+Add
-      const taskId = await taskHandler.handle({ title: 'Task', collectionId: 'collection-A' });
+      const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-A' });
       await removeHandler.handle({ taskId, collectionId: 'collection-A' });
       await addHandler.handle({ taskId, collectionId: 'collection-B' });
 
@@ -1783,7 +1783,7 @@ describe('EntryListProjection', () => {
 
     it('should be a no-op when task has no collections and we move to uncategorized (null)', async () => {
       // Arrange: create task with no collection (collections = [], collectionId = undefined)
-      const taskId = await taskHandler.handle({ title: 'Uncategorized task' });
+      const taskId = await taskHandler.handle({ content: 'Uncategorized task' });
 
       const countBefore = (await eventStore.getAll()).length;
 
@@ -1803,7 +1803,7 @@ describe('EntryListProjection', () => {
   describe('in-memory cache', () => {
     it('should call eventStore.getAll() only once when getEntries() is called twice', async () => {
       // Arrange
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
       const spy = vi.spyOn(eventStore, 'getAll');
 
       // Act
@@ -1816,7 +1816,7 @@ describe('EntryListProjection', () => {
 
     it('should call eventStore.getAll() again after an append invalidates the cache', async () => {
       // Arrange
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
       const spy = vi.spyOn(eventStore, 'getAll');
 
       // Act: first read populates cache
@@ -1824,7 +1824,7 @@ describe('EntryListProjection', () => {
       expect(spy).toHaveBeenCalledTimes(1);
 
       // Append a new event — should invalidate cache
-      await taskHandler.handle({ title: 'Task 2' });
+      await taskHandler.handle({ content: 'Task 2' });
 
       // Next read should re-fetch from store
       await projection.getEntries();
@@ -1837,7 +1837,7 @@ describe('EntryListProjection', () => {
       projection.subscribe(callbackSpy);
 
       // Act
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
 
       // Assert: reactive behaviour is unchanged
       expect(callbackSpy).toHaveBeenCalledTimes(1);
@@ -1845,7 +1845,7 @@ describe('EntryListProjection', () => {
 
     it('should call eventStore.getAll() only once for multiple reads between appends', async () => {
       // Arrange
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
       const spy = vi.spyOn(eventStore, 'getAll');
 
       // Act: three reads with no appends in between
@@ -1869,7 +1869,7 @@ describe('EntryListProjection', () => {
     it('resolves without error when no snapshot store is configured', async () => {
       // Arrange: projection without a snapshot store
       const plainProjection = new EntryListProjection(eventStore);
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
 
       // Act & Assert: hydrate should be a no-op and not throw
       await expect(plainProjection.hydrate()).resolves.toBeUndefined();
@@ -1883,7 +1883,7 @@ describe('EntryListProjection', () => {
       // Arrange: projection with snapshot store but no saved snapshot
       const snapshotStore = new InMemorySnapshotStore();
       const proj = new EntryListProjection(eventStore, snapshotStore);
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
 
       const spy = vi.spyOn(eventStore, 'getAll');
 
@@ -1901,7 +1901,7 @@ describe('EntryListProjection', () => {
 
     it('populates cache from snapshot so subsequent getEntries() skips getAll()', async () => {
       // Arrange: seed an event and build a snapshot
-      await taskHandler.handle({ title: 'Hydrated Task' });
+      await taskHandler.handle({ content: 'Hydrated Task' });
 
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -1929,7 +1929,7 @@ describe('EntryListProjection', () => {
 
     it('ignores snapshot with stale schema version and falls back to full replay', async () => {
       // Arrange: save a snapshot with the wrong version
-      await taskHandler.handle({ title: 'Task' });
+      await taskHandler.handle({ content: 'Task' });
 
       const snapshotStore = new InMemorySnapshotStore();
       const staleSnapshot: ProjectionSnapshot = {
@@ -1956,7 +1956,7 @@ describe('EntryListProjection', () => {
 
     it('falls back to full replay when snapshot lastEventId is not in event log', async () => {
       // Arrange: snapshot references an event ID that does not exist in the log
-      await taskHandler.handle({ title: 'Task' });
+      await taskHandler.handle({ content: 'Task' });
 
       const snapshotStore = new InMemorySnapshotStore();
       const orphanedSnapshot: ProjectionSnapshot = {
@@ -1979,10 +1979,10 @@ describe('EntryListProjection', () => {
 
     it('correctness check: hydrated projection returns same entries as a fresh full replay', async () => {
       // Arrange: create a variety of entries
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
       await noteHandler.handle({ content: 'Note 1' });
       await eventHandler.handle({ content: 'Event 1' });
-      const completedTaskId = await taskHandler.handle({ title: 'Task to complete' });
+      const completedTaskId = await taskHandler.handle({ content: 'Task to complete' });
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
       await completeHandler.handle({ taskId: completedTaskId });
 
@@ -2009,7 +2009,7 @@ describe('EntryListProjection', () => {
 
     it('Phase 2: fully-current snapshot seeds cache directly (no applyEventsOnto call)', async () => {
       // Arrange: create tasks and build a snapshot that is fully up-to-date
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
       await noteHandler.handle({ content: 'Note 1' });
 
       const snapshotStore = new InMemorySnapshotStore();
@@ -2034,7 +2034,7 @@ describe('EntryListProjection', () => {
 
     it('Phase 2: applies delta events onto snapshot state when new events exist after snapshot', async () => {
       // Arrange: create an initial entry and build a snapshot
-      const taskId = await taskHandler.handle({ title: 'Task 1' });
+      const taskId = await taskHandler.handle({ content: 'Task 1' });
       await noteHandler.handle({ content: 'Note 1' });
 
       const snapshotStore = new InMemorySnapshotStore();
@@ -2070,7 +2070,7 @@ describe('EntryListProjection', () => {
 
     it('Phase 2: delta adds new entries on top of snapshot state', async () => {
       // Arrange: one task in the snapshot
-      await taskHandler.handle({ title: 'Existing Task' });
+      await taskHandler.handle({ content: 'Existing Task' });
 
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2109,8 +2109,8 @@ describe('EntryListProjection', () => {
 
     it('returns a snapshot with lastEventId equal to the last appended event', async () => {
       // Arrange: append a couple of events
-      await taskHandler.handle({ title: 'Task 1' });
-      await taskHandler.handle({ title: 'Task 2' });
+      await taskHandler.handle({ content: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 2' });
 
       // Get the last event's id directly from the store (handler returns aggregateId, not event id)
       const allEvents = await eventStore.getAll();
@@ -2125,7 +2125,7 @@ describe('EntryListProjection', () => {
     });
 
     it('snapshot version equals SNAPSHOT_SCHEMA_VERSION', async () => {
-      await taskHandler.handle({ title: 'Task' });
+      await taskHandler.handle({ content: 'Task' });
 
       const snap = await projection.createSnapshot();
 
@@ -2134,7 +2134,7 @@ describe('EntryListProjection', () => {
 
     it('snapshot state matches the result of getEntries("all")', async () => {
       // Arrange: mix of entry types
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
       await noteHandler.handle({ content: 'Note 1' });
       await eventHandler.handle({ content: 'Event 1' });
 
@@ -2147,7 +2147,7 @@ describe('EntryListProjection', () => {
     });
 
     it('savedAt is a valid ISO 8601 date string', async () => {
-      await taskHandler.handle({ title: 'Task' });
+      await taskHandler.handle({ content: 'Task' });
 
       const snap = await projection.createSnapshot();
 
@@ -2165,7 +2165,7 @@ describe('EntryListProjection', () => {
   describe('snapshot-aware event absorption (ADR-018)', () => {
     it('after hydrate(), appending a pre-snapshot event does NOT call the subscribe callback', async () => {
       // Arrange: populate events and build snapshot
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
       const allEvents = await eventStore.getAll();
 
       const snapshotStore = new InMemorySnapshotStore();
@@ -2189,7 +2189,7 @@ describe('EntryListProjection', () => {
 
     it('after hydrate(), appending a genuinely new event DOES call the subscribe callback', async () => {
       // Arrange: populate events and build snapshot
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
 
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2219,7 +2219,7 @@ describe('EntryListProjection', () => {
 
     it('after hydrate(), appending a pre-snapshot event leaves cachedEntries valid (no getAll())', async () => {
       // Arrange: populate events and build snapshot
-      await taskHandler.handle({ title: 'Task 1' });
+      await taskHandler.handle({ content: 'Task 1' });
       const allEvents = await eventStore.getAll();
 
       const snapshotStore = new InMemorySnapshotStore();
@@ -2250,8 +2250,8 @@ describe('EntryListProjection', () => {
 
     it('appendBatch with all pre-snapshot events does NOT call subscriber and leaves cache valid', async () => {
       // Arrange: populate events and build snapshot
-      await taskHandler.handle({ title: 'Task A' });
-      await taskHandler.handle({ title: 'Task B' });
+      await taskHandler.handle({ content: 'Task A' });
+      await taskHandler.handle({ content: 'Task B' });
       const allEvents = await eventStore.getAll();
 
       const snapshotStore = new InMemorySnapshotStore();
@@ -2286,7 +2286,7 @@ describe('EntryListProjection', () => {
 
     it('appendBatch with mixed pre-snapshot and new events calls subscriber exactly once for the new event', async () => {
       // Arrange: populate events and build snapshot
-      await taskHandler.handle({ title: 'Task A' });
+      await taskHandler.handle({ content: 'Task A' });
       const allEvents = await eventStore.getAll();
 
       const snapshotStore = new InMemorySnapshotStore();

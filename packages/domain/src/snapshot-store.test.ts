@@ -11,8 +11,8 @@ describe('SNAPSHOT_SCHEMA_VERSION', () => {
     expect(typeof SNAPSHOT_SCHEMA_VERSION).toBe('number');
   });
 
-  it('equals 1', () => {
-    expect(SNAPSHOT_SCHEMA_VERSION).toBe(1);
+  it('equals 2', () => {
+    expect(SNAPSHOT_SCHEMA_VERSION).toBe(2);
   });
 });
 
@@ -35,7 +35,7 @@ describe('ProjectionSnapshot interface', () => {
     };
 
     // Assert — structural checks (guards against accidental field renames)
-    expect(snapshot.version).toBe(1);
+    expect(snapshot.version).toBe(2);
     expect(snapshot.lastEventId).toBe('evt-001');
     expect(Array.isArray(snapshot.state)).toBe(true);
     expect(typeof snapshot.savedAt).toBe('string');
@@ -46,7 +46,7 @@ describe('ProjectionSnapshot interface', () => {
     const taskEntry = {
       type: 'task' as const,
       id: 'task-001',
-      title: 'Write snapshot tests',
+      content: 'Write snapshot tests',
       status: 'open' as const,
       createdAt: '2026-01-01T00:00:00.000Z',
       collections: [],

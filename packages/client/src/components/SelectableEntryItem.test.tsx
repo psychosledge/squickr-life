@@ -17,7 +17,7 @@ describe('SelectableEntryItem', () => {
   const mockEntry: Entry = {
     id: 'task-1',
     type: 'task',
-    title: 'Test task',
+    content: 'Test task',
     status: 'open',
     order: 'a0',
     createdAt: '2024-01-01T00:00:00Z',

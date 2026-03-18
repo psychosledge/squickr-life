@@ -65,7 +65,7 @@ describe('useEntryOperations', () => {
       {
         id: 'task-1',
         type: 'task',
-        title: 'Test Task',
+        content: 'Test Task',
         status: 'active',
         order: 'a0',
         createdAt: new Date().toISOString(),
@@ -159,7 +159,7 @@ describe('useEntryOperations', () => {
     await result.current.handleCreateTask('New Task');
 
     expect(mockHandlers.createTaskHandler.handle).toHaveBeenCalledWith({
-      title: 'New Task',
+      content: 'New Task',
       collectionId: 'collection-1',
     });
   });

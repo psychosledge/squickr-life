@@ -190,7 +190,7 @@ describe('MigrateEntryDialog - Error Handling', () => {
     it('should handle empty entry title gracefully', () => {
       const entryWithEmptyTitle = {
         ...mockTask,
-        title: '',
+        content: '',
       };
 
       renderWithAppProvider(
@@ -212,7 +212,7 @@ describe('MigrateEntryDialog - Error Handling', () => {
       const longTitle = 'A'.repeat(500);
       const entryWithLongTitle = {
         ...mockTask,
-        title: longTitle,
+        content: longTitle,
       };
 
       renderWithAppProvider(

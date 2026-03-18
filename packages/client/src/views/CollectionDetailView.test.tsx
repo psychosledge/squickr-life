@@ -44,7 +44,7 @@ const mockEntries: Entry[] = [
   {
     id: 'task-1',
     type: 'task',
-    title: '1984 by George Orwell',
+    content: '1984 by George Orwell',
     status: 'open',
     createdAt: '2026-01-27T10:00:00Z',
     order: 'a0',
@@ -263,7 +263,7 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
     {
       id: 'task-orphan-1',
       type: 'task',
-      title: 'Orphaned task',
+      content: 'Orphaned task',
       status: 'open',
       createdAt: '2026-01-27T10:00:00Z',
       order: 'a0',
@@ -453,7 +453,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
     {
       id: 'task-1',
       type: 'task',
-      title: 'Active task 1',
+      content: 'Active task 1',
       status: 'open',
       createdAt: '2026-01-27T10:00:00Z',
       order: 'a0',
@@ -463,7 +463,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
     {
       id: 'task-2',
       type: 'task',
-      title: 'Completed task 1',
+      content: 'Completed task 1',
       status: 'completed',
       createdAt: '2026-01-27T10:01:00Z',
       completedAt: '2026-01-27T11:00:00Z',
@@ -483,7 +483,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
     {
       id: 'task-3',
       type: 'task',
-      title: 'Completed task 2',
+      content: 'Completed task 2',
       status: 'completed',
       createdAt: '2026-01-27T10:03:00Z',
       completedAt: '2026-01-27T11:01:00Z',
@@ -668,7 +668,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       {
         id: 'task-1',
         type: 'task',
-        title: 'Active task',
+        content: 'Active task',
         status: 'open',
         createdAt: '2026-01-27T10:00:00Z',
         order: 'a0',
@@ -678,7 +678,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       {
         id: 'task-2',
         type: 'task',
-        title: 'Completed task',
+        content: 'Completed task',
         status: 'completed',
         createdAt: '2026-01-27T10:01:00Z',
         completedAt: '2026-01-27T11:00:00Z',
@@ -703,7 +703,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       {
         id: 'task-1',
         type: 'task',
-        title: 'Active task',
+        content: 'Active task',
         status: 'open',
         createdAt: '2026-01-27T10:00:00Z',
         order: 'a0',
@@ -750,7 +750,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       {
         id: 'task-1',
         type: 'task',
-        title: 'Open task 1',
+        content: 'Open task 1',
         status: 'open',
         createdAt: '2026-01-27T10:00:00Z',
         order: 'a0',
@@ -760,7 +760,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       {
         id: 'task-2',
         type: 'task',
-        title: 'Completed task',
+        content: 'Completed task',
         status: 'completed',
         completedAt: '2026-01-27T11:00:00Z',
         createdAt: '2026-01-27T11:00:00Z',
@@ -771,7 +771,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       {
         id: 'task-3',
         type: 'task',
-        title: 'Migrated task',
+        content: 'Migrated task',
         status: 'open',
         migratedTo: 'other-id',
         createdAt: '2026-01-27T12:00:00Z',
@@ -782,7 +782,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       {
         id: 'task-4',
         type: 'task',
-        title: 'Open task 2',
+        content: 'Open task 2',
         status: 'open',
         createdAt: '2026-01-27T13:00:00Z',
         order: 'a3',
@@ -1036,7 +1036,7 @@ describe('CollectionDetailView - Temporal Route Navigation Fix', () => {
   const mockTaskInFeb: Entry = {
     id: 'task-1',
     type: 'task',
-    title: 'Task in February',
+    content: 'Task in February',
     status: 'open',
     createdAt: '2026-02-14T10:00:00Z',
     order: 'a0',
@@ -1292,7 +1292,7 @@ describe('CollectionDetailView - Error Toast', () => {
       {
         id: 'task-1',
         type: 'task' as const,
-        title: 'Task 1',
+        content: 'Task 1',
         status: 'open' as const,
         createdAt: '2026-01-27T10:00:00Z',
         order: 'a0',
@@ -1372,7 +1372,7 @@ describe('CollectionDetailView - Error Toast', () => {
       {
         id: 'task-1',
         type: 'task' as const,
-        title: 'Task 1',
+        content: 'Task 1',
         status: 'open' as const,
         createdAt: '2026-01-27T10:00:00Z',
         order: 'a0',
@@ -1460,7 +1460,7 @@ describe('CollectionDetailView - Completed sub-task stays with parent (Fix 3)', 
   const parentTask: Entry = {
     id: 'parent-1',
     type: 'task',
-    title: 'Parent Task',
+    content: 'Parent Task',
     status: 'open',
     createdAt: '2026-01-27T10:00:00Z',
     order: 'a0',
@@ -1470,7 +1470,7 @@ describe('CollectionDetailView - Completed sub-task stays with parent (Fix 3)', 
   const completedSubTask: Entry = {
     id: 'sub-1',
     type: 'task',
-    title: 'Completed Sub Task',
+    content: 'Completed Sub Task',
     status: 'completed',
     completedAt: '2026-01-27T11:00:00Z',
     createdAt: '2026-01-27T10:01:00Z',
@@ -1585,7 +1585,7 @@ describe('CollectionDetailView - Ghost entries excluded from selection (Fix 4)',
   const ghostParent: Entry & { renderAsGhost: boolean } = {
     id: 'parent-ghost',
     type: 'task',
-    title: 'Ghost Parent (migrated out)',
+    content: 'Ghost Parent (migrated out)',
     status: 'open',
     createdAt: '2026-01-27T10:00:00Z',
     order: 'a0',
@@ -1597,7 +1597,7 @@ describe('CollectionDetailView - Ghost entries excluded from selection (Fix 4)',
   const completedSubTask: Entry = {
     id: 'sub-completed',
     type: 'task',
-    title: 'Completed Sub Task',
+    content: 'Completed Sub Task',
     status: 'completed',
     completedAt: '2026-01-27T11:00:00Z',
     createdAt: '2026-01-27T10:01:00Z',

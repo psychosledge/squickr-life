@@ -9,7 +9,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         createdAt: '2026-01-27T10:00:00.000Z'
       };
@@ -25,7 +25,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'completed',
         completedAt: '2026-01-27T10:00:00.000Z',
         createdAt: '2026-01-27T09:00:00.000Z'
@@ -41,7 +41,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         migratedTo: 'task-2',
         createdAt: '2026-01-27T10:00:00.000Z'
@@ -58,7 +58,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'completed',
         completedAt: '2026-01-27T10:00:00.000Z',
         migratedTo: 'task-2',
@@ -76,7 +76,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'completed',
         completedAt: '2026-01-27T10:00:00.000Z',
         createdAt: '2026-01-27T09:00:00.000Z',
@@ -95,7 +95,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
@@ -114,7 +114,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z'
@@ -132,7 +132,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'completed',
         completedAt: '2026-01-27T10:00:00.000Z',
         parentEntryId: 'parent-1',
@@ -218,7 +218,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         createdAt: '2026-01-27T10:00:00.000Z'
       };
@@ -236,7 +236,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         createdAt: '2026-01-27T10:00:00.000Z'
       };
@@ -271,7 +271,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         createdAt: '2026-01-27T10:00:00.000Z'
       };
@@ -292,7 +292,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         createdAt: '2026-01-27T10:00:00.000Z'
       };
@@ -309,7 +309,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         createdAt: '2026-01-27T10:00:00.000Z'
       };
@@ -328,7 +328,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         migratedTo: 'task-2',
         createdAt: '2026-01-27T10:00:00.000Z'
@@ -349,7 +349,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         createdAt: '2026-01-27T10:00:00.000Z'
       };
@@ -378,7 +378,7 @@ describe('BulletIcon', () => {
       const entry: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Test',
+        content: 'Test',
         status: 'open',
         createdAt: '2026-01-27T10:00:00.000Z'
       };

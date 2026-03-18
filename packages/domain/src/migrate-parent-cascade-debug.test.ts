@@ -29,22 +29,22 @@ describe('Migration Chain - Debug', () => {
   it('should log migration chain state for debugging', async () => {
     // Create parent with sub-task in "Work Projects"
     await createTaskHandler.handle({
-      title: 'Parent',
+      content: 'Parent',
       collectionId: 'work-projects'
     });
 
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ title: 'Sub-task', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Sub-task', parentEntryId: parent.id });
     
     const allTasksAfterCreate = await entryProjection.getTasks();
-    const subTask = allTasksAfterCreate.find(t => t.title === 'Sub-task')!;
+    const subTask = allTasksAfterCreate.find(t => t.content === 'Sub-task')!;
 
     console.log('\n=== INITIAL STATE ===');
     console.log('Parent:', {
       id: parent.id.substring(0, 8),
-      title: parent.title,
+      content: parent.content,
       collectionId: parent.collectionId,
       parentEntryId: parent.parentEntryId,
       migratedFrom: parent.migratedFrom,
@@ -52,7 +52,7 @@ describe('Migration Chain - Debug', () => {
     });
     console.log('Sub-task:', {
       id: subTask.id.substring(0, 8),
-      title: subTask.title,
+      content: subTask.content,
       collectionId: subTask.collectionId,
       parentEntryId: subTask.parentEntryId?.substring(0, 8),
       migratedFrom: subTask.migratedFrom,
@@ -72,7 +72,7 @@ describe('Migration Chain - Debug', () => {
     console.log('\n=== AFTER FIRST MIGRATION (sub-task to Today\'s Log) ===');
     console.log('Sub-task (original in Work Projects):', {
       id: subTaskOriginal.id.substring(0, 8),
-      title: subTaskOriginal.title,
+      content: subTaskOriginal.content,
       collectionId: subTaskOriginal.collectionId,
       parentEntryId: subTaskOriginal.parentEntryId?.substring(0, 8),
       migratedFrom: subTaskOriginal.migratedFrom?.substring(0, 8),
@@ -82,7 +82,7 @@ describe('Migration Chain - Debug', () => {
     });
     console.log('Sub-task (first migration in Today\'s Log):', {
       id: subTaskFirstMigration.id.substring(0, 8),
-      title: subTaskFirstMigration.title,
+      content: subTaskFirstMigration.content,
       collectionId: subTaskFirstMigration.collectionId,
       parentEntryId: subTaskFirstMigration.parentEntryId?.substring(0, 8),
       migratedFrom: subTaskFirstMigration.migratedFrom?.substring(0, 8),
@@ -106,7 +106,7 @@ describe('Migration Chain - Debug', () => {
     console.log('\n=== AFTER PARENT MIGRATION (parent to Monthly Log) ===');
     console.log('Parent (original in Work Projects):', {
       id: parentOriginalFinal.id.substring(0, 8),
-      title: parentOriginalFinal.title,
+      content: parentOriginalFinal.content,
       collectionId: parentOriginalFinal.collectionId,
       parentEntryId: parentOriginalFinal.parentEntryId,
       migratedFrom: parentOriginalFinal.migratedFrom?.substring(0, 8),
@@ -115,7 +115,7 @@ describe('Migration Chain - Debug', () => {
     });
     console.log('Parent (migrated to Monthly Log):', {
       id: parentMigrated.id.substring(0, 8),
-      title: parentMigrated.title,
+      content: parentMigrated.content,
       collectionId: parentMigrated.collectionId,
       parentEntryId: parentMigrated.parentEntryId,
       migratedFrom: parentMigrated.migratedFrom?.substring(0, 8),
@@ -124,7 +124,7 @@ describe('Migration Chain - Debug', () => {
     });
     console.log('Sub-task (original in Work Projects):', {
       id: subTaskOriginalFinal.id.substring(0, 8),
-      title: subTaskOriginalFinal.title,
+      content: subTaskOriginalFinal.content,
       collectionId: subTaskOriginalFinal.collectionId,
       parentEntryId: subTaskOriginalFinal.parentEntryId?.substring(0, 8),
       migratedFrom: subTaskOriginalFinal.migratedFrom?.substring(0, 8),
@@ -133,7 +133,7 @@ describe('Migration Chain - Debug', () => {
     });
     console.log('Sub-task (first migration in Today\'s Log):', {
       id: subTaskFirstMigrationFinal.id.substring(0, 8),
-      title: subTaskFirstMigrationFinal.title,
+      content: subTaskFirstMigrationFinal.content,
       collectionId: subTaskFirstMigrationFinal.collectionId,
       parentEntryId: subTaskFirstMigrationFinal.parentEntryId?.substring(0, 8),
       migratedFrom: subTaskFirstMigrationFinal.migratedFrom?.substring(0, 8),
@@ -148,7 +148,7 @@ describe('Migration Chain - Debug', () => {
       const subTaskSecondMigration = finalTasks.find(t => t.id === secondMigrationId)!;
       console.log('Sub-task (second migration in Monthly Log):', {
         id: subTaskSecondMigration.id.substring(0, 8),
-        title: subTaskSecondMigration.title,
+        content: subTaskSecondMigration.content,
         collectionId: subTaskSecondMigration.collectionId,
         parentEntryId: subTaskSecondMigration.parentEntryId?.substring(0, 8),
         migratedFrom: subTaskSecondMigration.migratedFrom?.substring(0, 8),

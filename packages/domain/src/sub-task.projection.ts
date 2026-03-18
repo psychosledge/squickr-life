@@ -221,8 +221,8 @@ export class SubTaskProjection {
       // Skip if parent doesn't exist, is not a task, or is soft-deleted
       if (!parent || parent.type !== 'task' || parent.deletedAt) continue;
 
-      // Add parent title to map
-      parentTitles.set(subTaskId, parent.title);
+      // Add parent content to map
+      parentTitles.set(subTaskId, parent.content);
     }
 
     return parentTitles;

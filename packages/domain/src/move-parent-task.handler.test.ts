@@ -48,7 +48,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
     it('should migrate parent task as standard migration (no cascade)', async () => {
       // Arrange: Create parent task in collection-1
       await createTaskHandler.handle({ 
-        title: 'Parent task',
+        content: 'Parent task',
         collectionId: 'collection-1'
       });
       
@@ -83,7 +83,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
     it('should cascade migrate all children when parent migrates', async () => {
       // Arrange: Create parent + 3 children in 'work-projects'
       await createTaskHandler.handle({ 
-        title: 'App launch',
+        content: 'App launch',
         collectionId: 'work-projects'
       });
       
@@ -91,15 +91,15 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       const parent = tasks[0]!;
 
       await createSubTaskHandler.handle({ 
-        title: 'Set up analytics',
+        content: 'Set up analytics',
         parentEntryId: parent.id
       });
       await createSubTaskHandler.handle({ 
-        title: 'Deploy to production',
+        content: 'Deploy to production',
         parentEntryId: parent.id
       });
       await createSubTaskHandler.handle({ 
-        title: 'Update documentation',
+        content: 'Update documentation',
         parentEntryId: parent.id
       });
 
@@ -151,7 +151,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
     it('should cascade ALL children when parent migrates (including previously migrated)', async () => {
       // Arrange: Create parent in 'collection-1'
       await createTaskHandler.handle({ 
-        title: 'Parent task',
+        content: 'Parent task',
         collectionId: 'collection-1'
       });
       
@@ -160,11 +160,11 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
 
       // Create 2 children
       await createSubTaskHandler.handle({ 
-        title: 'Child 1',
+        content: 'Child 1',
         parentEntryId: parent.id
       });
       await createSubTaskHandler.handle({ 
-        title: 'Child 2',
+        content: 'Child 2',
         parentEntryId: parent.id
       });
 
@@ -219,7 +219,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
     it('should cascade ALL children when parent migrates (including previously migrated)', async () => {
       // Arrange: Create parent in 'work-projects'
       await createTaskHandler.handle({ 
-        title: 'App launch',
+        content: 'App launch',
         collectionId: 'work-projects'
       });
       
@@ -228,15 +228,15 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
 
       // Create 3 children
       await createSubTaskHandler.handle({ 
-        title: 'Set up analytics',
+        content: 'Set up analytics',
         parentEntryId: parent.id
       });
       await createSubTaskHandler.handle({ 
-        title: 'Write blog post',
+        content: 'Write blog post',
         parentEntryId: parent.id
       });
       await createSubTaskHandler.handle({ 
-        title: 'Deploy to production',
+        content: 'Deploy to production',
         parentEntryId: parent.id
       });
 
@@ -245,7 +245,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       expect(children).toHaveLength(3);
 
       // Migrate 1 child to different collection (Phase 2 individual migration)
-      const blogPostChild = children.find(c => c.title === 'Write blog post')!;
+      const blogPostChild = children.find(c => c.content === 'Write blog post')!;
       await moveEntryHandler.handle({ 
         entryId: blogPostChild.id, 
         collectionId: 'daily-2026-02-11' 
@@ -258,9 +258,9 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       
       expect(preParent.collectionId).toBe('work-projects');
       
-      const analyticsChild = preChildren.find(c => c.title === 'Set up analytics')!;
-      const blogChild = preChildren.find(c => c.title === 'Write blog post')!;
-      const deployChild = preChildren.find(c => c.title === 'Deploy to production')!;
+      const analyticsChild = preChildren.find(c => c.content === 'Set up analytics')!;
+      const blogChild = preChildren.find(c => c.content === 'Write blog post')!;
+      const deployChild = preChildren.find(c => c.content === 'Deploy to production')!;
       
       expect(analyticsChild.collectionId).toBe('work-projects'); // Unmigrated
       expect(blogChild.collectionId).toBe('daily-2026-02-11'); // Migrated
@@ -301,9 +301,9 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       
       expect(finalParent.collectionId).toBe('monthly-2026-02');
       
-      const finalAnalytics = finalChildren.find(c => c.title === 'Set up analytics')!;
-      const finalBlog = finalChildren.find(c => c.title === 'Write blog post')!;
-      const finalDeploy = finalChildren.find(c => c.title === 'Deploy to production')!;
+      const finalAnalytics = finalChildren.find(c => c.content === 'Set up analytics')!;
+      const finalBlog = finalChildren.find(c => c.content === 'Write blog post')!;
+      const finalDeploy = finalChildren.find(c => c.content === 'Deploy to production')!;
       
       expect(finalAnalytics.collectionId).toBe('monthly-2026-02'); // Followed parent ✅
       expect(finalBlog.collectionId).toBe('monthly-2026-02'); // Followed parent (even though previously migrated) ✅
@@ -325,7 +325,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
     it('should be idempotent: no events if parent already in target collection', async () => {
       // Arrange: Create parent in 'collection-1'
       await createTaskHandler.handle({ 
-        title: 'Parent task',
+        content: 'Parent task',
         collectionId: 'collection-1'
       });
       
@@ -349,7 +349,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
     it('should support moving to null collection (uncategorized)', async () => {
       // Arrange: Create parent + child in 'collection-1'
       await createTaskHandler.handle({ 
-        title: 'Parent task',
+        content: 'Parent task',
         collectionId: 'collection-1'
       });
       
@@ -357,7 +357,7 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       const parent = tasks[0]!;
 
       await createSubTaskHandler.handle({ 
-        title: 'Child task',
+        content: 'Child task',
         parentEntryId: parent.id
       });
 

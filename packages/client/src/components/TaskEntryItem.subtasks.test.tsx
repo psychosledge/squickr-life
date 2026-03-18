@@ -30,7 +30,7 @@ describe('TaskEntryItem - Phase 2: Completion Badge', () => {
       const parentTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'parent-1',
-        title: 'App launch',
+        content: 'App launch',
         status: 'open',
         createdAt: '2026-02-07T10:00:00Z',
       };
@@ -59,7 +59,7 @@ describe('TaskEntryItem - Phase 2: Completion Badge', () => {
       const task: Entry & { type: 'task' } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy groceries',
+        content: 'Buy groceries',
         status: 'open',
         createdAt: '2026-02-07T10:00:00Z',
       };
@@ -89,7 +89,7 @@ describe('TaskEntryItem - Phase 2: Completion Badge', () => {
       const parentTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'parent-1',
-        title: 'Research competitors',
+        content: 'Research competitors',
         status: 'open',
         createdAt: '2026-02-07T10:00:00Z',
       };
@@ -118,7 +118,7 @@ describe('TaskEntryItem - Phase 2: Completion Badge', () => {
       const parentTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'parent-1',
-        title: 'Marketing plan',
+        content: 'Marketing plan',
         status: 'open',
         createdAt: '2026-02-07T10:00:00Z',
       };
@@ -147,7 +147,7 @@ describe('TaskEntryItem - Phase 2: Completion Badge', () => {
       const parentTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'parent-1',
-        title: 'Single child parent',
+        content: 'Single child parent',
         status: 'open',
         createdAt: '2026-02-07T10:00:00Z',
       };
@@ -178,7 +178,7 @@ describe('TaskEntryItem - Phase 2: Completion Badge', () => {
       const parentTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'parent-1',
-        title: 'All done',
+        content: 'All done',
         status: 'open',
         createdAt: '2026-02-07T10:00:00Z',
       };
@@ -210,7 +210,7 @@ describe('TaskEntryItem - Phase 2: Completion Badge', () => {
       const parentTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'parent-1',
-        title: 'In progress',
+        content: 'In progress',
         status: 'open',
         createdAt: '2026-02-07T10:00:00Z',
       };
@@ -243,7 +243,7 @@ describe('TaskEntryItem - Phase 2: Completion Badge', () => {
       const task: Entry & { type: 'task' } = {
         type: 'task',
         id: 'task-1',
-        title: 'Task without status',
+        content: 'Task without status',
         status: 'open',
         createdAt: '2026-02-07T10:00:00Z',
       };
@@ -266,7 +266,7 @@ describe('TaskEntryItem - Phase 2: Completion Badge', () => {
       const completedParent: Entry & { type: 'task' } = {
         type: 'task',
         id: 'parent-1',
-        title: 'Completed parent',
+        content: 'Completed parent',
         status: 'completed',
         completedAt: '2026-02-07T12:00:00Z',
         createdAt: '2026-02-07T10:00:00Z',

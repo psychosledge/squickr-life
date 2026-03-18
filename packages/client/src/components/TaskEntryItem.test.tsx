@@ -16,7 +16,7 @@ describe('TaskEntryItem', () => {
   const mockOpenTask: Entry & { type: 'task' } = {
     type: 'task',
     id: 'task-1',
-    title: 'Buy milk',
+    content: 'Buy milk',
     createdAt: '2026-01-24T10:00:00.000Z',
     status: 'open',
   };
@@ -24,7 +24,7 @@ describe('TaskEntryItem', () => {
   const mockCompletedTask: Entry & { type: 'task' } = {
     type: 'task',
     id: 'task-2',
-    title: 'Write tests',
+    content: 'Write tests',
     createdAt: '2026-01-24T10:00:00.000Z',
     status: 'completed',
     completedAt: '2026-01-24T10:30:00.000Z',
@@ -187,7 +187,7 @@ describe('TaskEntryItem', () => {
     const recentTask: Entry & { type: 'task' } = {
       type: 'task',
       id: 'task-1',
-      title: 'Recent task',
+      content: 'Recent task',
       createdAt: new Date().toISOString(),
       status: 'open',
     };
@@ -223,7 +223,7 @@ describe('TaskEntryItem', () => {
       const migratedSubTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy groceries',
+        content: 'Buy groceries',
         status: 'open',
         parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
@@ -252,7 +252,7 @@ describe('TaskEntryItem', () => {
       const regularSubTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'task-1',
-        title: 'Regular sub-task',
+        content: 'Regular sub-task',
         status: 'open',
         parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
@@ -275,7 +275,7 @@ describe('TaskEntryItem', () => {
       const regularTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'task-1',
-        title: 'Regular task',
+        content: 'Regular task',
         status: 'open',
         createdAt: '2026-01-27T10:00:00.000Z',
         collections: [],
@@ -295,7 +295,7 @@ describe('TaskEntryItem', () => {
       const migratedSubTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy groceries',
+        content: 'Buy groceries',
         status: 'open',
         parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
@@ -338,7 +338,7 @@ describe('TaskEntryItem', () => {
       const completedMigratedSubTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy groceries',
+        content: 'Buy groceries',
         status: 'completed',
         completedAt: '2026-01-27T11:00:00.000Z',
         parentEntryId: 'parent-1',
@@ -363,7 +363,7 @@ describe('TaskEntryItem', () => {
       const migratedSubTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy groceries',
+        content: 'Buy groceries',
         status: 'open',
         parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',
@@ -400,7 +400,7 @@ describe('TaskEntryItem', () => {
       const multiCollectionSubTask: Entry & { type: 'task' } = {
         type: 'task',
         id: 'task-1',
-        title: 'Find eye doctor',
+        content: 'Find eye doctor',
         status: 'open',
         parentEntryId: 'parent-1',
         createdAt: '2026-01-27T10:00:00.000Z',

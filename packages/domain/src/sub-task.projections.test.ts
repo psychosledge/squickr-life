@@ -42,7 +42,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return empty array for task with no sub-tasks', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent with no children',
+        content: 'Parent with no children',
       });
 
       // Act
@@ -55,21 +55,21 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return all sub-tasks for a parent', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'App launch',
+        content: 'App launch',
       });
 
       const subTask1Id = await createSubTaskHandler.handle({
-        title: 'Write blog post',
+        content: 'Write blog post',
         parentEntryId: parentId,
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
-        title: 'Deploy to production',
+        content: 'Deploy to production',
         parentEntryId: parentId,
       });
 
       const subTask3Id = await createSubTaskHandler.handle({
-        title: 'Send announcement',
+        content: 'Send announcement',
         parentEntryId: parentId,
       });
 
@@ -86,11 +86,11 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       // Arrange: Create hierarchy that should fail 2-level validation
       // But test that projection would work correctly if structure existed
       const parentId = await createTaskHandler.handle({
-        title: 'Grandparent',
+        content: 'Grandparent',
       });
 
       const childId = await createSubTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
         parentEntryId: parentId,
       });
 
@@ -108,17 +108,17 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       // Arrange: This tests future Phase 2 behavior where sub-tasks can migrate
       // For now, all sub-tasks inherit parent's collection
       const parentId = await createTaskHandler.handle({
-        title: 'App launch',
+        content: 'App launch',
         collectionId: 'work',
       });
 
       await createSubTaskHandler.handle({
-        title: 'Sub-task 1',
+        content: 'Sub-task 1',
         parentEntryId: parentId,
       });
 
       await createSubTaskHandler.handle({
-        title: 'Sub-task 2',
+        content: 'Sub-task 2',
         parentEntryId: parentId,
       });
 
@@ -134,16 +134,16 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should not return deleted sub-tasks', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
       });
 
       const subTask1Id = await createSubTaskHandler.handle({
-        title: 'Sub-task 1',
+        content: 'Sub-task 1',
         parentEntryId: parentId,
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
-        title: 'Sub-task 2',
+        content: 'Sub-task 2',
         parentEntryId: parentId,
       });
 
@@ -174,7 +174,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return false for top-level task', async () => {
       // Arrange
       const taskId = await createTaskHandler.handle({
-        title: 'Top-level task',
+        content: 'Top-level task',
       });
 
       const task = await projection.getTaskById(taskId);
@@ -189,11 +189,11 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return true for sub-task', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
       });
 
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Sub-task',
+        content: 'Sub-task',
         parentEntryId: parentId,
       });
 
@@ -211,7 +211,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return false for task with no children', async () => {
       // Arrange
       const taskId = await createTaskHandler.handle({
-        title: 'Task without children',
+        content: 'Task without children',
       });
 
       // Act
@@ -224,11 +224,11 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return true for task with children', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
       });
 
       await createSubTaskHandler.handle({
-        title: 'Child',
+        content: 'Child',
         parentEntryId: parentId,
       });
 
@@ -242,11 +242,11 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return false after all children are deleted', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
       });
 
       const childId = await createSubTaskHandler.handle({
-        title: 'Child',
+        content: 'Child',
         parentEntryId: parentId,
       });
 
@@ -279,7 +279,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return 0/0 for parent with no children', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
       });
 
       // Act
@@ -296,26 +296,26 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return correct counts for mixed completion status', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'App launch',
+        content: 'App launch',
       });
 
       const subTask1Id = await createSubTaskHandler.handle({
-        title: 'Write blog post',
+        content: 'Write blog post',
         parentEntryId: parentId,
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
-        title: 'Deploy',
+        content: 'Deploy',
         parentEntryId: parentId,
       });
 
       await createSubTaskHandler.handle({
-        title: 'Announce',
+        content: 'Announce',
         parentEntryId: parentId,
       });
 
       await createSubTaskHandler.handle({
-        title: 'Monitor',
+        content: 'Monitor',
         parentEntryId: parentId,
       });
 
@@ -337,21 +337,21 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return allComplete: true when all children complete', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
       });
 
       const subTask1Id = await createSubTaskHandler.handle({
-        title: 'Sub 1',
+        content: 'Sub 1',
         parentEntryId: parentId,
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
-        title: 'Sub 2',
+        content: 'Sub 2',
         parentEntryId: parentId,
       });
 
       const subTask3Id = await createSubTaskHandler.handle({
-        title: 'Sub 3',
+        content: 'Sub 3',
         parentEntryId: parentId,
       });
 
@@ -374,16 +374,16 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return allComplete: false when no children complete', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
       });
 
       await createSubTaskHandler.handle({
-        title: 'Sub 1',
+        content: 'Sub 1',
         parentEntryId: parentId,
       });
 
       await createSubTaskHandler.handle({
-        title: 'Sub 2',
+        content: 'Sub 2',
         parentEntryId: parentId,
       });
 
@@ -401,21 +401,21 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should not count deleted sub-tasks in total', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
       });
 
       const subTask1Id = await createSubTaskHandler.handle({
-        title: 'Sub 1',
+        content: 'Sub 1',
         parentEntryId: parentId,
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
-        title: 'Sub 2',
+        content: 'Sub 2',
         parentEntryId: parentId,
       });
 
       await createSubTaskHandler.handle({
-        title: 'Sub 3',
+        content: 'Sub 3',
         parentEntryId: parentId,
       });
 
@@ -456,7 +456,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return undefined for top-level task', async () => {
       // Arrange
       const taskId = await createTaskHandler.handle({
-        title: 'Top-level task',
+        content: 'Top-level task',
       });
 
       const task = await projection.getTaskById(taskId);
@@ -471,11 +471,11 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return parent task for sub-task', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent task',
+        content: 'Parent task',
       });
 
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Sub-task',
+        content: 'Sub-task',
         parentEntryId: parentId,
       });
 
@@ -487,17 +487,17 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       // Assert
       expect(parent).toBeDefined();
       expect(parent!.id).toBe(parentId);
-      expect(parent!.title).toBe('Parent task');
+      expect(parent!.content).toBe('Parent task');
     });
 
     it('should return undefined if parent is deleted', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
       });
 
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Sub-task',
+        content: 'Sub-task',
         parentEntryId: parentId,
       });
 
@@ -529,7 +529,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return false for top-level task', async () => {
       // Arrange
       const taskId = await createTaskHandler.handle({
-        title: 'Top-level task',
+        content: 'Top-level task',
       });
 
       const task = await projection.getTaskById(taskId);
@@ -544,12 +544,12 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return false for unmigrated sub-task (same collection as parent)', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
         collectionId: 'work',
       });
 
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Sub-task',
+        content: 'Sub-task',
         parentEntryId: parentId,
       });
 
@@ -568,13 +568,13 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return true for migrated sub-task (different collection than parent)', async () => {
       // Arrange: Create parent in "work" collection
       const parentId = await createTaskHandler.handle({
-        title: 'App launch',
+        content: 'App launch',
         collectionId: 'work',
       });
 
       // Create sub-task (inherits "work" collection)
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Write blog post',
+        content: 'Write blog post',
         parentEntryId: parentId,
       });
 
@@ -604,13 +604,13 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return true when parent is uncategorized and sub-task is in a collection', async () => {
       // Arrange: Create parent with no collection
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
         // No collectionId - uncategorized
       });
 
       // Create sub-task (inherits undefined collection)
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Sub-task',
+        content: 'Sub-task',
         parentEntryId: parentId,
       });
 
@@ -639,13 +639,13 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return true when parent is in collection and sub-task is uncategorized', async () => {
       // Arrange: Create parent in "work" collection
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
         collectionId: 'work',
       });
 
       // Create sub-task (inherits "work")
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Sub-task',
+        content: 'Sub-task',
         parentEntryId: parentId,
       });
 
@@ -674,12 +674,12 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return false if parent is deleted (orphaned sub-task)', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
         collectionId: 'work',
       });
 
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Sub-task',
+        content: 'Sub-task',
         parentEntryId: parentId,
       });
 
@@ -717,17 +717,17 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should preserve parentTaskId after migration (cross-collection query)', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'App launch',
+        content: 'App launch',
         collectionId: 'work',
       });
 
       const subTask1Id = await createSubTaskHandler.handle({
-        title: 'Write blog post',
+        content: 'Write blog post',
         parentEntryId: parentId,
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
-        title: 'Deploy to production',
+        content: 'Deploy to production',
         parentEntryId: parentId,
       });
 
@@ -766,11 +766,11 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return empty map for parents with no sub-tasks', async () => {
       // Arrange
       const parent1Id = await createTaskHandler.handle({
-        title: 'Parent 1',
+        content: 'Parent 1',
       });
 
       const parent2Id = await createTaskHandler.handle({
-        title: 'Parent 2',
+        content: 'Parent 2',
       });
 
       // Act
@@ -783,25 +783,25 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should fetch sub-tasks for multiple parents in single query', async () => {
       // Arrange: Create 2 parents with sub-tasks
       const parent1Id = await createTaskHandler.handle({
-        title: 'Parent 1',
+        content: 'Parent 1',
       });
 
       const parent2Id = await createTaskHandler.handle({
-        title: 'Parent 2',
+        content: 'Parent 2',
       });
 
       const sub1_1Id = await createSubTaskHandler.handle({
-        title: 'Sub 1-1',
+        content: 'Sub 1-1',
         parentEntryId: parent1Id,
       });
 
       const sub1_2Id = await createSubTaskHandler.handle({
-        title: 'Sub 1-2',
+        content: 'Sub 1-2',
         parentEntryId: parent1Id,
       });
 
       const sub2_1Id = await createSubTaskHandler.handle({
-        title: 'Sub 2-1',
+        content: 'Sub 2-1',
         parentEntryId: parent2Id,
       });
 
@@ -823,17 +823,17 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should filter out migrated original sub-tasks (only return active versions)', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({
-        title: 'Parent',
+        content: 'Parent',
         collectionId: 'work',
       });
 
       const subTask1Id = await createSubTaskHandler.handle({
-        title: 'Sub-task 1',
+        content: 'Sub-task 1',
         parentEntryId: parentId,
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
-        title: 'Sub-task 2 (will be migrated)',
+        content: 'Sub-task 2 (will be migrated)',
         parentEntryId: parentId,
       });
 
@@ -865,13 +865,13 @@ describe('EntryListProjection - Sub-Task Queries', () => {
 
     it('should only return sub-tasks for requested parents', async () => {
       // Arrange: Create 3 parents
-      const parent1Id = await createTaskHandler.handle({ title: 'Parent 1' });
-      const parent2Id = await createTaskHandler.handle({ title: 'Parent 2' });
-      const parent3Id = await createTaskHandler.handle({ title: 'Parent 3' });
+      const parent1Id = await createTaskHandler.handle({ content: 'Parent 1' });
+      const parent2Id = await createTaskHandler.handle({ content: 'Parent 2' });
+      const parent3Id = await createTaskHandler.handle({ content: 'Parent 3' });
 
-      await createSubTaskHandler.handle({ title: 'Sub 1-1', parentEntryId: parent1Id });
-      await createSubTaskHandler.handle({ title: 'Sub 2-1', parentEntryId: parent2Id });
-      await createSubTaskHandler.handle({ title: 'Sub 3-1', parentEntryId: parent3Id });
+      await createSubTaskHandler.handle({ content: 'Sub 1-1', parentEntryId: parent1Id });
+      await createSubTaskHandler.handle({ content: 'Sub 2-1', parentEntryId: parent2Id });
+      await createSubTaskHandler.handle({ content: 'Sub 3-1', parentEntryId: parent3Id });
 
       // Act: Only request parent1 and parent3
       const result = await projection.getSubTasksForMultipleParents([parent1Id, parent3Id]);
@@ -885,12 +885,12 @@ describe('EntryListProjection - Sub-Task Queries', () => {
 
     it('should match behavior of individual getSubTasks() calls', async () => {
       // Arrange
-      const parent1Id = await createTaskHandler.handle({ title: 'Parent 1' });
-      const parent2Id = await createTaskHandler.handle({ title: 'Parent 2' });
+      const parent1Id = await createTaskHandler.handle({ content: 'Parent 1' });
+      const parent2Id = await createTaskHandler.handle({ content: 'Parent 2' });
 
-      await createSubTaskHandler.handle({ title: 'Sub 1-1', parentEntryId: parent1Id });
-      await createSubTaskHandler.handle({ title: 'Sub 1-2', parentEntryId: parent1Id });
-      await createSubTaskHandler.handle({ title: 'Sub 2-1', parentEntryId: parent2Id });
+      await createSubTaskHandler.handle({ content: 'Sub 1-1', parentEntryId: parent1Id });
+      await createSubTaskHandler.handle({ content: 'Sub 1-2', parentEntryId: parent1Id });
+      await createSubTaskHandler.handle({ content: 'Sub 2-1', parentEntryId: parent2Id });
 
       // Act: Compare batch query vs individual queries
       const batchResult = await projection.getSubTasksForMultipleParents([parent1Id, parent2Id]);
@@ -906,9 +906,9 @@ describe('EntryListProjection - Sub-Task Queries', () => {
   describe('getParentTitlesForSubTasks', () => {
     it('should return parent title for a sub-task with existing parent', async () => {
       // Arrange
-      const parentId = await createTaskHandler.handle({ title: 'Put together Bed Frame' });
+      const parentId = await createTaskHandler.handle({ content: 'Put together Bed Frame' });
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'find hardware',
+        content: 'find hardware',
         parentEntryId: parentId,
       });
 
@@ -933,9 +933,9 @@ describe('EntryListProjection - Sub-Task Queries', () => {
 
     it('should return empty result for task with non-existent parent', async () => {
       // Arrange
-      const parentId = await createTaskHandler.handle({ title: 'Parent Task' });
+      const parentId = await createTaskHandler.handle({ content: 'Parent Task' });
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Sub-task',
+        content: 'Sub-task',
         parentEntryId: parentId,
       });
 
@@ -952,7 +952,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
 
     it('should return empty result for non-sub-task (no parentTaskId)', async () => {
       // Arrange
-      const taskId = await createTaskHandler.handle({ title: 'Regular task' });
+      const taskId = await createTaskHandler.handle({ content: 'Regular task' });
 
       // Act
       const result = await projection.getParentTitlesForSubTasks([taskId]);
@@ -963,19 +963,19 @@ describe('EntryListProjection - Sub-Task Queries', () => {
 
     it('should return parent titles for multiple sub-tasks in batch', async () => {
       // Arrange
-      const parent1Id = await createTaskHandler.handle({ title: 'Project A' });
-      const parent2Id = await createTaskHandler.handle({ title: 'Project B' });
+      const parent1Id = await createTaskHandler.handle({ content: 'Project A' });
+      const parent2Id = await createTaskHandler.handle({ content: 'Project B' });
 
       const subTask1Id = await createSubTaskHandler.handle({
-        title: 'Sub-task 1',
+        content: 'Sub-task 1',
         parentEntryId: parent1Id,
       });
       const subTask2Id = await createSubTaskHandler.handle({
-        title: 'Sub-task 2',
+        content: 'Sub-task 2',
         parentEntryId: parent2Id,
       });
       const subTask3Id = await createSubTaskHandler.handle({
-        title: 'Sub-task 3',
+        content: 'Sub-task 3',
         parentEntryId: parent1Id,
       });
 
@@ -992,13 +992,13 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     it('should return parent title regardless of collection (does NOT filter by collection)', async () => {
       // Arrange: Parent in 'work' collection
       const parentId = await createTaskHandler.handle({ 
-        title: 'Work Project',
+        content: 'Work Project',
         collectionId: 'work',
       });
 
       // Sub-task inherits parent's collection initially
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Sub-task in work',
+        content: 'Sub-task in work',
         parentEntryId: parentId,
       });
 
@@ -1018,12 +1018,12 @@ describe('EntryListProjection - Sub-Task Queries', () => {
 
     it('should handle mixed bag of sub-tasks and non-sub-tasks', async () => {
       // Arrange
-      const parentId = await createTaskHandler.handle({ title: 'Parent Task' });
+      const parentId = await createTaskHandler.handle({ content: 'Parent Task' });
       const subTaskId = await createSubTaskHandler.handle({
-        title: 'Sub-task',
+        content: 'Sub-task',
         parentEntryId: parentId,
       });
-      const regularTaskId = await createTaskHandler.handle({ title: 'Regular Task' });
+      const regularTaskId = await createTaskHandler.handle({ content: 'Regular Task' });
 
       // Act
       const result = await projection.getParentTitlesForSubTasks([subTaskId, regularTaskId]);

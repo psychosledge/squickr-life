@@ -10,7 +10,7 @@ function makeTask(overrides: Partial<Extract<Entry, { type: 'task' }>>): Entry {
   return {
     id: 'task-1',
     type: 'task',
-    title: 'Test task',
+    content: 'Test task',
     status: 'open',
     createdAt: '2026-02-09T10:00:00Z',
     collections: [],

@@ -15,7 +15,7 @@ describe('EntryActionsMenu', () => {
   const mockEntry: Entry & { type: 'task' } = {
     type: 'task',
     id: 'task-1',
-    title: 'Test task',
+    content: 'Test task',
     createdAt: '2026-01-24T10:00:00.000Z',
     status: 'open',
   };
@@ -718,7 +718,7 @@ describe('EntryActionsMenu', () => {
     const mockSubTask: Entry & { type: 'task' } = {
       type: 'task',
       id: 'subtask-1',
-      title: 'Sub-task',
+      content: 'Sub-task',
       createdAt: '2026-01-24T10:00:00.000Z',
       status: 'open',
       parentEntryId: 'parent-1', // This makes it a sub-task

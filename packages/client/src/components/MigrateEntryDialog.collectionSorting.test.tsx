@@ -48,7 +48,7 @@ describe('MigrateEntryDialog - Collection Sorting', () => {
       const mockTask: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-02-07T10:00:00.000Z', // Yesterday
         status: 'open',
         collections: ['yesterday'],
@@ -130,7 +130,7 @@ describe('MigrateEntryDialog - Collection Sorting', () => {
       const mockTask: Entry = {
         type: 'task',
         id: 'task-1',
-        title: 'Buy milk',
+        content: 'Buy milk',
         createdAt: '2026-02-07T10:00:00.000Z', // Yesterday
         status: 'open',
         collections: ['yesterday'],
