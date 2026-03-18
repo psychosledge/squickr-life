@@ -46,7 +46,7 @@ describe('Multi-Collection Integration Tests', () => {
     createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
     addHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
     removeHandler = new RemoveTaskFromCollectionHandler(eventStore, entryProjection);
-    moveHandler = new MoveTaskToCollectionHandler(addHandler, removeHandler, entryProjection);
+    moveHandler = new MoveTaskToCollectionHandler(eventStore, addHandler, entryProjection);
     bulkMigrateHandler = new BulkMigrateEntriesHandler(eventStore, entryProjection);
   });
 

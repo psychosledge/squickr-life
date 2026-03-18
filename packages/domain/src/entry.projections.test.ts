@@ -1551,9 +1551,9 @@ describe('EntryListProjection', () => {
         // Arrange: create task in collection A
         const taskId = await taskHandler.handle({ content: 'Task to move', collectionId: 'collection-A' });
 
-        // Act: move task from A to B via Remove + Add (multi-collection pattern)
-        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+        // Act: move task from A to B via multi-collection pattern (Add first, then Remove)
         await addHandler.handle({ taskId, collectionId: 'collection-B' });
+        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
 
         // Assert: counts reflect current collections[], not stale collectionId
         const counts = await projection.getActiveTaskCountsByCollection();
@@ -1565,9 +1565,9 @@ describe('EntryListProjection', () => {
         // Arrange
         const taskId = await taskHandler.handle({ content: 'Moved task', collectionId: 'collection-A' });
 
-        // Act
-        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+        // Act: Add to B first, then remove from A (required order: must have ≥2 collections at removal time)
         await addHandler.handle({ taskId, collectionId: 'collection-B' });
+        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
 
         // Assert: total across all collections is exactly 1
         const counts = await projection.getActiveTaskCountsByCollection();
@@ -1597,9 +1597,9 @@ describe('EntryListProjection', () => {
         // Arrange
         const taskId = await taskHandler.handle({ content: 'Task to move', collectionId: 'collection-A' });
 
-        // Act: move
-        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+        // Act: move (Add to B first, then remove from A so guard is satisfied)
         await addHandler.handle({ taskId, collectionId: 'collection-B' });
+        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
 
         // Assert
         const counts = await projection.getEntryCountsByCollection();
@@ -1626,9 +1626,9 @@ describe('EntryListProjection', () => {
         // Arrange
         const taskId = await taskHandler.handle({ content: 'Task to move', collectionId: 'collection-A' });
 
-        // Act: move
-        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+        // Act: move (Add to B first, then remove from A so guard is satisfied)
         await addHandler.handle({ taskId, collectionId: 'collection-B' });
+        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
 
         // Assert
         const stats = await projection.getEntryStatsByCollection();
@@ -1653,9 +1653,9 @@ describe('EntryListProjection', () => {
         const completeHandler = new CompleteTaskHandler(eventStore, projection);
         await completeHandler.handle({ taskId });
 
-        // Act: move to B
-        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+        // Act: move to B (Add first, then remove from A so guard is satisfied)
         await addHandler.handle({ taskId, collectionId: 'collection-B' });
+        await removeHandler.handle({ taskId, collectionId: 'collection-A' });
 
         // Assert
         const stats = await projection.getEntryStatsByCollection();
@@ -1684,9 +1684,9 @@ describe('EntryListProjection', () => {
       // Arrange: create task in collection A
       const taskId = await taskHandler.handle({ content: 'Task to move', collectionId: 'collection-A' });
 
-      // Act: move via ADR-015 Remove+Add path (collectionId stays stale as 'collection-A')
-      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+      // Act: move via ADR-015 path — Add to B first, then remove from A (guard requires ≥2 collections at removal)
       await addHandler.handle({ taskId, collectionId: 'collection-B' });
+      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
 
       // Assert: task appears in B but NOT in A
       const inA = await projection.getEntriesByCollection('collection-A');
@@ -1700,9 +1700,9 @@ describe('EntryListProjection', () => {
       // Arrange
       const taskId = await taskHandler.handle({ content: 'Solo task', collectionId: 'collection-A' });
 
-      // Act
-      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+      // Act: Add to B first, then remove from A (guard requires ≥2 collections at removal)
       await addHandler.handle({ taskId, collectionId: 'collection-B' });
+      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
 
       // Assert exact counts
       const inA = await projection.getEntriesByCollection('collection-A');
@@ -1713,19 +1713,17 @@ describe('EntryListProjection', () => {
       expect(inB[0].id).toBe(taskId);
     });
 
-    it('should return uncategorized entry as uncategorized after being removed from all collections', async () => {
-      // Arrange: create task in collection A
+    it('should throw when attempting to remove a task from its only collection (use delete instead)', async () => {
+      // Arrange: create task in collection A (only collection)
       const taskId = await taskHandler.handle({ content: 'Task to unassign', collectionId: 'collection-A' });
 
-      // Act: remove from A without adding to another (task ends up with collections=[])
-      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+      // Act + Assert: removing from the only collection is forbidden — use delete instead
+      await expect(removeHandler.handle({ taskId, collectionId: 'collection-A' }))
+        .rejects.toThrow(`Cannot remove task ${taskId} from its only collection. Delete the task instead.`);
 
-      // Assert: task appears in uncategorized (null), not in A
+      // Task still in A (guard prevented the removal)
       const inA = await projection.getEntriesByCollection('collection-A');
-      const uncategorized = await projection.getEntriesByCollection(null);
-
-      expect(inA.some(e => e.id === taskId)).toBe(false);
-      expect(uncategorized.some(e => e.id === taskId)).toBe(true);
+      expect(inA.some(e => e.id === taskId)).toBe(true);
     });
   });
 
@@ -1745,10 +1743,10 @@ describe('EntryListProjection', () => {
     });
 
     it('should be a no-op when calling Move to B after task already moved A → B via Remove+Add', async () => {
-      // Arrange: create task in A, then move to B via ADR-015 Remove+Add
+      // Arrange: create task in A, then move to B via ADR-015 Add+Remove (guard-safe order)
       const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-A' });
-      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
       await addHandler.handle({ taskId, collectionId: 'collection-B' });
+      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
 
       // Capture event count after the move
       const eventsBefore = await eventStore.getAll();
@@ -1764,10 +1762,10 @@ describe('EntryListProjection', () => {
     });
 
     it('should still move task from B to C (not treat as no-op) when collections differs from target', async () => {
-      // Arrange: create task in A, move to B via Remove+Add
+      // Arrange: create task in A, move to B via Add+Remove (guard-safe order)
       const taskId = await taskHandler.handle({ content: 'Task', collectionId: 'collection-A' });
-      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
       await addHandler.handle({ taskId, collectionId: 'collection-B' });
+      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
 
       // Capture event count
       const countBefore = (await eventStore.getAll()).length;

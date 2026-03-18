@@ -78,6 +78,13 @@ export class RemoveTaskFromCollectionHandler {
       return;
     }
     
+    // Guard: Prevent removing task from its only collection
+    if (task.collections.length <= 1) {
+      throw new Error(
+        `Cannot remove task ${command.taskId} from its only collection. Delete the task instead.`
+      );
+    }
+    
     const metadata = generateEventMetadata();
     
     const event: TaskRemovedFromCollection = {
@@ -108,11 +115,16 @@ export class RemoveTaskFromCollectionHandler {
  * - Task must exist
  * - Task must be in currentCollectionId
  * - currentCollectionId ≠ targetCollectionId (otherwise no-op)
+ * 
+ * Note: This handler emits TaskRemovedFromCollection directly (bypassing the
+ * last-collection guard in RemoveTaskFromCollectionHandler) because a move
+ * is always safe — the task is simultaneously added to a new collection.
+ * Order is preserved as Remove→Add so the projection can track movement.
  */
 export class MoveTaskToCollectionHandler {
   constructor(
+    private readonly eventStore: IEventStore,
     private readonly addHandler: AddTaskToCollectionHandler,
-    private readonly removeHandler: RemoveTaskFromCollectionHandler,
     private readonly entryProjection: EntryListProjection
   ) {}
   
@@ -142,11 +154,22 @@ export class MoveTaskToCollectionHandler {
       );
     }
     
-    // Remove from current collection only (not all collections)
-    await this.removeHandler.handle({
-      taskId: command.taskId,
-      collectionId: command.currentCollectionId,
-    });
+    // Remove from current collection first (emitting directly to preserve Remove→Add order
+    // that the projection uses to detect movement and set migratedFromCollectionId).
+    // We bypass RemoveTaskFromCollectionHandler's last-collection guard here because
+    // a move is always safe — the task is simultaneously added to a new collection.
+    const removeMetadata = generateEventMetadata();
+    const removeEvent: TaskRemovedFromCollection = {
+      ...removeMetadata,
+      type: 'TaskRemovedFromCollection',
+      aggregateId: command.taskId,
+      payload: {
+        taskId: command.taskId,
+        collectionId: command.currentCollectionId,
+        removedAt: removeMetadata.timestamp,
+      },
+    };
+    await this.eventStore.append(removeEvent);
     
     // Add to target collection
     await this.addHandler.handle({

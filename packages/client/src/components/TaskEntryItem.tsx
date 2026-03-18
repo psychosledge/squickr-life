@@ -166,9 +166,10 @@ export function TaskEntryItem({
   const isSubTaskMigrated = isMultiCollection || isNotInCurrentCollection;
 
   // Bug #7: Show "Remove from this collection" only when task is in multiple collections
-  // and the current collection is one of them (and not a sub-task, ghost, or deleted)
+  // and the current collection is one of them (and not ghost or deleted).
+  // Sub-tasks can belong to multiple collections just like top-level tasks, so they
+  // are now also eligible for this action.
   const showRemoveFromCollection =
-    !isSubTask &&
     !isDeleted &&
     !!currentCollectionId &&
     (entry.collections || []).length > 1 &&

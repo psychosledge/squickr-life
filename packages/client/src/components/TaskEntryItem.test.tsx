@@ -454,4 +454,70 @@ describe('TaskEntryItem', () => {
       expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
   });
+
+  describe('Bug #7: Remove from this collection menu item', () => {
+    const mockOnRemoveFromCollection = vi.fn();
+
+    it('should show "Remove from this collection" menu item for sub-task in multiple collections', () => {
+      // Arrange: Sub-task present in two collections; viewing col-a
+      const subTaskInMultipleCollections: Entry & { type: 'task' } = {
+        type: 'task',
+        id: 'subtask-multi',
+        content: 'Sub-task in two collections',
+        createdAt: '2026-01-27T10:00:00.000Z',
+        status: 'open',
+        parentEntryId: 'parent-id',
+        collections: ['col-a', 'col-b'],
+      };
+
+      render(
+        <TaskEntryItem
+          entry={subTaskInMultipleCollections}
+          onDelete={mockOnDelete}
+          currentCollectionId="col-a"
+          onRemoveFromCollection={mockOnRemoveFromCollection}
+        />
+      );
+
+      // Open the actions menu
+      const menuButton = screen.getByRole('button', { name: /entry actions/i });
+      fireEvent.click(menuButton);
+
+      // Assert: "Remove from this collection" is visible
+      expect(
+        screen.getByRole('menuitem', { name: /remove from this collection/i })
+      ).toBeInTheDocument();
+    });
+
+    it('should NOT show "Remove from this collection" menu item for sub-task in only one collection', () => {
+      // Arrange: Sub-task present in exactly one collection
+      const subTaskSingleCollection: Entry & { type: 'task' } = {
+        type: 'task',
+        id: 'subtask-single',
+        content: 'Sub-task in one collection',
+        createdAt: '2026-01-27T10:00:00.000Z',
+        status: 'open',
+        parentEntryId: 'parent-id',
+        collections: ['col-a'],
+      };
+
+      render(
+        <TaskEntryItem
+          entry={subTaskSingleCollection}
+          onDelete={mockOnDelete}
+          currentCollectionId="col-a"
+          onRemoveFromCollection={mockOnRemoveFromCollection}
+        />
+      );
+
+      // Open the actions menu
+      const menuButton = screen.getByRole('button', { name: /entry actions/i });
+      fireEvent.click(menuButton);
+
+      // Assert: "Remove from this collection" is NOT visible (only one collection → would orphan)
+      expect(
+        screen.queryByRole('menuitem', { name: /remove from this collection/i })
+      ).not.toBeInTheDocument();
+    });
+  });
 });

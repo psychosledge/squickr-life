@@ -247,8 +247,7 @@ function AppContent() {
   const [removeTaskFromCollectionHandler] = useState(() => new RemoveTaskFromCollectionHandler(eventStore, entryProjection));
   const [moveTaskToCollectionHandler] = useState(() => {
     const addHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
-    const removeHandler = new RemoveTaskFromCollectionHandler(eventStore, entryProjection);
-    return new MoveTaskToCollectionHandler(addHandler, removeHandler, entryProjection);
+    return new MoveTaskToCollectionHandler(eventStore, addHandler, entryProjection);
   });
   
   // Note multi-collection handlers

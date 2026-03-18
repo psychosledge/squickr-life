@@ -25,7 +25,7 @@ describe('Multi-Collection Migration - Bidirectional Navigation', () => {
     
     const addHandler = new AddTaskToCollectionHandler(eventStore, projection);
     const removeHandler = new RemoveTaskFromCollectionHandler(eventStore, projection);
-    moveHandler = new MoveTaskToCollectionHandler(addHandler, removeHandler, projection);
+    moveHandler = new MoveTaskToCollectionHandler(eventStore, addHandler, projection);
   });
 
   it('should set migratedFrom and migratedFromCollectionId when task is moved', async () => {

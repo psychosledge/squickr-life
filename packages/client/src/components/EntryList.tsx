@@ -402,7 +402,7 @@ export function EntryList({
                         
                         return (
                           <div key={subTask.id}>
-                            <EntryItem
+                             <EntryItem
                               entry={{ ...subTask, type: 'task' as const }}
                               onCompleteTask={onCompleteTask}
                               onReopenTask={onReopenTask}
@@ -418,6 +418,7 @@ export function EntryList({
                               onNavigateToMigrated={onNavigateToMigrated}
                               onCreateCollection={onCreateCollection}
                               onAddSubTask={onAddSubTask}
+                              onRemoveFromCollection={onRemoveFromCollection}
                               parentCollections={parentCollections}
                             />
                           </div>

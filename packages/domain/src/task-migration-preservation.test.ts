@@ -31,7 +31,7 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
     migrateTaskHandler = new MigrateTaskHandler(eventStore, projection);
     addHandler = new AddTaskToCollectionHandler(eventStore, projection);
     const removeHandler = new RemoveTaskFromCollectionHandler(eventStore, projection);
-    moveHandler = new MoveTaskToCollectionHandler(addHandler, removeHandler, projection);
+    moveHandler = new MoveTaskToCollectionHandler(eventStore, addHandler, projection);
   });
 
   describe('TaskMigrated preserves migration pointers', () => {

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import { CreateTaskHandler } from './task.handlers';
+import { CreateSubTaskHandler } from './sub-task.handlers';
 import {
   AddTaskToCollectionHandler,
   RemoveTaskFromCollectionHandler,
@@ -12,6 +13,7 @@ describe('Multi-Collection Management', () => {
   let eventStore: InMemoryEventStore;
   let projection: EntryListProjection;
   let createTaskHandler: CreateTaskHandler;
+  let createSubTaskHandler: CreateSubTaskHandler;
   let addToCollectionHandler: AddTaskToCollectionHandler;
   let removeFromCollectionHandler: RemoveTaskFromCollectionHandler;
   let moveToCollectionHandler: MoveTaskToCollectionHandler;
@@ -20,11 +22,12 @@ describe('Multi-Collection Management', () => {
     eventStore = new InMemoryEventStore();
     projection = new EntryListProjection(eventStore);
     createTaskHandler = new CreateTaskHandler(eventStore, null as any, projection);
+    createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
     addToCollectionHandler = new AddTaskToCollectionHandler(eventStore, projection);
     removeFromCollectionHandler = new RemoveTaskFromCollectionHandler(eventStore, projection);
     moveToCollectionHandler = new MoveTaskToCollectionHandler(
+      eventStore,
       addToCollectionHandler,
-      removeFromCollectionHandler,
       projection
     );
   });
@@ -131,21 +134,26 @@ describe('Multi-Collection Management', () => {
       expect(task?.collectionHistory?.[0].removedAt).toBeDefined();
     });
     
-    it('should be idempotent (removing from same collection twice)', async () => {
+    it('should be idempotent (removing from same collection twice - both calls no-op if task not in collection)', async () => {
       const taskId = await createTaskHandler.handle({
         content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
       
+      // Add to a second collection so removal is allowed
+      await addToCollectionHandler.handle({ taskId, collectionId: 'daily-log' });
+      
+      // First removal succeeds
       await removeFromCollectionHandler.handle({ taskId, collectionId: 'monthly-log' });
+      // Second removal is a no-op (task is no longer in monthly-log)
       await removeFromCollectionHandler.handle({ taskId, collectionId: 'monthly-log' });
       
       const task = await projection.getTaskById(taskId);
-      expect(task?.collections).toEqual([]);
+      expect(task?.collections).toEqual(['daily-log']);
     });
     
-    it('should allow orphaning (removing from last collection)', async () => {
+    it('should throw when removing task from its only collection (last-collection guard)', async () => {
       // Arrange: Create a task in a single collection
       const taskId = await createTaskHandler.handle({
         content: 'Orphan Task',
@@ -153,32 +161,32 @@ describe('Multi-Collection Management', () => {
         userId: 'user-1',
       });
       
-      // Act: Remove from only collection
-      await removeFromCollectionHandler.handle({ 
-        taskId, 
-        collectionId: 'monthly-log' 
-      });
+      // Act & Assert: Should throw instead of orphaning the task
+      await expect(
+        removeFromCollectionHandler.handle({ 
+          taskId, 
+          collectionId: 'monthly-log' 
+        })
+      ).rejects.toThrow('only collection');
       
-      // Assert: Task still exists with empty collections array
+      // Assert: Task still exists with its collection intact
       const task = await projection.getTaskById(taskId);
       expect(task).toBeDefined();
-      expect(task?.collections).toEqual([]);
-      
-      // Assert: Collection history tracked with removedAt
-      expect(task?.collectionHistory).toHaveLength(1);
-      expect(task?.collectionHistory?.[0].collectionId).toBe('monthly-log');
-      expect(task?.collectionHistory?.[0].removedAt).toBeDefined();
+      expect(task?.collections).toEqual(['monthly-log']);
     });
     
     it('should allow re-adding task to collection it was previously removed from', async () => {
-      // Arrange: Create task and add to collection
+      // Arrange: Create task and add to a second collection so removal is allowed
       const taskId = await createTaskHandler.handle({
         content: 'Boomerang Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
       });
       
-      // Act: Remove from collection
+      // Add to a second collection first so we can remove from monthly-log
+      await addToCollectionHandler.handle({ taskId, collectionId: 'daily-log' });
+      
+      // Act: Remove from monthly-log (still has daily-log, so guard allows it)
       await removeFromCollectionHandler.handle({ 
         taskId, 
         collectionId: 'monthly-log' 
@@ -190,20 +198,85 @@ describe('Multi-Collection Management', () => {
         collectionId: 'monthly-log' 
       });
       
-      // Assert: Task is back in collection
+      // Assert: Task is in both collections
       const task = await projection.getTaskById(taskId);
-      expect(task?.collections).toEqual(['monthly-log']);
+      expect(task?.collections).toEqual(expect.arrayContaining(['monthly-log', 'daily-log']));
       
-      // Assert: Collection history has 2 entries
-      expect(task?.collectionHistory).toHaveLength(2);
+      // Assert: Collection history has 3 entries (monthly-log added, daily-log added, monthly-log re-added)
+      expect(task?.collectionHistory).toHaveLength(3);
       
-      // Assert: First entry has removedAt timestamp
-      expect(task?.collectionHistory?.[0].collectionId).toBe('monthly-log');
-      expect(task?.collectionHistory?.[0].removedAt).toBeDefined();
+      // Assert: First monthly-log entry has removedAt timestamp
+      const firstMonthly = task?.collectionHistory?.find(h => h.collectionId === 'monthly-log' && h.removedAt);
+      expect(firstMonthly?.removedAt).toBeDefined();
       
-      // Assert: Second entry is currently active (no removedAt)
-      expect(task?.collectionHistory?.[1].collectionId).toBe('monthly-log');
-      expect(task?.collectionHistory?.[1].removedAt).toBeUndefined();
+      // Assert: Second monthly-log entry is currently active (no removedAt)
+      const activeMonthly = task?.collectionHistory?.filter(h => h.collectionId === 'monthly-log').pop();
+      expect(activeMonthly?.removedAt).toBeUndefined();
+    });
+
+    it('should allow removing sub-task from one of multiple collections (Bug #7)', async () => {
+      // Arrange: Create parent task in monthly-log
+      const parentId = await createTaskHandler.handle({
+        content: 'Parent Task',
+        collectionId: 'monthly-log',
+        userId: 'user-1',
+      });
+
+      // Create sub-task (inherits monthly-log from parent)
+      const subTaskId = await createSubTaskHandler.handle({
+        content: 'Sub Task',
+        parentEntryId: parentId,
+        userId: 'user-1',
+      });
+
+      // Add sub-task to daily-log (now it is in monthly-log AND daily-log)
+      await addToCollectionHandler.handle({ taskId: subTaskId, collectionId: 'daily-log' });
+
+      // Act: Remove sub-task from daily-log (it still has monthly-log, so guard allows it)
+      await removeFromCollectionHandler.handle({
+        taskId: subTaskId,
+        collectionId: 'daily-log',
+      });
+
+      // Assert: Sub-task is now only in monthly-log
+      const subTask = await projection.getTaskById(subTaskId);
+      expect(subTask?.collections).toEqual(['monthly-log']);
+
+      // Assert: A TaskRemovedFromCollection event was emitted
+      const allEvents = await eventStore.getAll();
+      const removedEvent = allEvents.find(
+        e => e.type === 'TaskRemovedFromCollection' && (e as any).payload?.taskId === subTaskId
+      );
+      expect(removedEvent).toBeDefined();
+      expect((removedEvent as any).payload.collectionId).toBe('daily-log');
+    });
+
+    it('should throw when removing sub-task from its only collection (last-collection guard)', async () => {
+      // Arrange: Create parent task in monthly-log
+      const parentId = await createTaskHandler.handle({
+        content: 'Parent Task',
+        collectionId: 'monthly-log',
+        userId: 'user-1',
+      });
+
+      // Create sub-task (inherits monthly-log — it is in exactly one collection)
+      const subTaskId = await createSubTaskHandler.handle({
+        content: 'Sub Task',
+        parentEntryId: parentId,
+        userId: 'user-1',
+      });
+
+      // Act & Assert: Should throw instead of orphaning the sub-task
+      await expect(
+        removeFromCollectionHandler.handle({
+          taskId: subTaskId,
+          collectionId: 'monthly-log',
+        })
+      ).rejects.toThrow('only collection');
+
+      // Assert: Sub-task still belongs to monthly-log
+      const subTask = await projection.getTaskById(subTaskId);
+      expect(subTask?.collections).toEqual(['monthly-log']);
     });
   });
   
