@@ -241,7 +241,7 @@ describe('EventStore', () => {
       expect(allEvents[2]).toEqual(event3);
     });
 
-    it('should notify subscribers once (not N times)', async () => {
+    it('should notify subscribers once per event (N times for a batch of N events)', async () => {
       const event1: DomainEvent = {
         id: 'event-1',
         type: 'TaskCreated',
@@ -266,13 +266,17 @@ describe('EventStore', () => {
         aggregateId: 'task-3',
       };
 
-      let notifyCount = 0;
-      eventStore.subscribe(() => notifyCount++);
+      const receivedEvents: DomainEvent[] = [];
+      eventStore.subscribe((e) => receivedEvents.push(e));
 
       await eventStore.appendBatch([event1, event2, event3]);
 
-      // CRITICAL: Should notify once, not 3 times
-      expect(notifyCount).toBe(1);
+      // Phase 6 (P0-D): notify once per event so incremental projection
+      // updates can apply each event individually without a full replay.
+      expect(receivedEvents).toHaveLength(3);
+      expect(receivedEvents[0]).toBe(event1);
+      expect(receivedEvents[1]).toBe(event2);
+      expect(receivedEvents[2]).toBe(event3);
     });
 
     it('should handle empty batch without error', async () => {

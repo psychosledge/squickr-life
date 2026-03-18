@@ -51,7 +51,15 @@ export class EntryListProjection {
       }
       // First genuinely new event clears absorption mode.
       this.absorbedEventIds = null;
-      this.cachedEntries = null;
+
+      // Incremental update: apply the new event directly on top of the in-memory
+      // cache instead of discarding it and forcing a full event-log replay.
+      // If the cache is null (cold start, not yet populated), leave it null —
+      // a full replay will happen lazily on the next getEntries() call.
+      if (this.cachedEntries !== null) {
+        this.cachedEntries = this.applicator.applyEventsOnto([...this.cachedEntries], [event]);
+      }
+
       this.notifySubscribers();
     });
   }

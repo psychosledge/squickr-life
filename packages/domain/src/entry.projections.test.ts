@@ -1801,34 +1801,35 @@ describe('EntryListProjection', () => {
   // Step 4: In-memory read cache
   // ============================================================================
   describe('in-memory cache', () => {
-    it('should call eventStore.getAll() only once when getEntries() is called twice', async () => {
-      // Arrange
-      await taskHandler.handle({ content: 'Task 1' });
+    it('should call eventStore.getAll() only once total across multiple reads (cache hits after first warm-up)', async () => {
+      // Arrange: spy set before anything so we count the warm-up call inside the handler
       const spy = vi.spyOn(eventStore, 'getAll');
+      await taskHandler.handle({ content: 'Task 1' }); // warms cache internally
 
-      // Act
+      // Act: additional reads should all hit the in-memory cache
       await projection.getEntries();
       await projection.getEntries();
 
-      // Assert: cache hit on second call — getAll only called once
+      // Assert: exactly 1 getAll() — the initial warm-up inside the handler
       expect(spy).toHaveBeenCalledTimes(1);
     });
 
-    it('should call eventStore.getAll() again after an append invalidates the cache', async () => {
-      // Arrange
-      await taskHandler.handle({ content: 'Task 1' });
+    it('should NOT call eventStore.getAll() again after an append (incremental update)', async () => {
+      // Phase 6: new events are applied incrementally — no full replay needed.
+      // Arrange: spy set before anything so we count every getAll() from scratch
       const spy = vi.spyOn(eventStore, 'getAll');
+      await taskHandler.handle({ content: 'Task 1' }); // warms cache (1 getAll inside handler)
 
-      // Act: first read populates cache
-      await projection.getEntries();
-      expect(spy).toHaveBeenCalledTimes(1);
+      // Act: append a second event — incremental update should NOT trigger another getAll()
+      await taskHandler.handle({ content: 'Task 2' }); // incremental path: no extra getAll()
 
-      // Append a new event — should invalidate cache
-      await taskHandler.handle({ content: 'Task 2' });
+      // Both reads should hit the already-updated in-memory cache
+      const entries = await projection.getEntries();
+      expect(spy).toHaveBeenCalledTimes(1); // only the warm-up call, never again
 
-      // Next read should re-fetch from store
-      await projection.getEntries();
-      expect(spy).toHaveBeenCalledTimes(2);
+      // Both tasks should be visible thanks to the incremental update
+      expect(entries.some(e => e.content === 'Task 1')).toBe(true);
+      expect(entries.some(e => e.content === 'Task 2')).toBe(true);
     });
 
     it('should still fire subscriber callbacks when an event is appended', async () => {
@@ -1844,16 +1845,16 @@ describe('EntryListProjection', () => {
     });
 
     it('should call eventStore.getAll() only once for multiple reads between appends', async () => {
-      // Arrange
-      await taskHandler.handle({ content: 'Task 1' });
+      // Arrange: spy before handle so we count the warm-up call
       const spy = vi.spyOn(eventStore, 'getAll');
+      await taskHandler.handle({ content: 'Task 1' }); // 1 getAll inside handler
 
-      // Act: three reads with no appends in between
+      // Act: three more reads with no appends in between — all cache hits
       await projection.getEntries();
       await projection.getEntries();
       await projection.getEntries();
 
-      // Assert: single fetch for all three reads
+      // Assert: still only the single warm-up call
       expect(spy).toHaveBeenCalledTimes(1);
     });
 
