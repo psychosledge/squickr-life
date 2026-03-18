@@ -524,6 +524,114 @@ describe('formatCollectionStats', () => {
       expect(result).toBe('');
     });
 
+    it('should exclude sub-items (entries with parentEntryId) from stats', () => {
+      const node: HierarchyNode = {
+        type: 'day',
+        id: 'daily-2026-02-09',
+        label: 'Feb 9, 2026',
+        collection: {
+          id: 'daily-2026-02-09',
+          name: 'Feb 9, 2026',
+          type: 'daily',
+          date: '2026-02-09',
+          createdAt: '2026-02-09T00:00:00Z',
+          order: '2026-02-09',
+        },
+        children: [],
+        isExpanded: false,
+      };
+
+      const entries: Entry[] = [
+        {
+          id: '1',
+          type: 'task' as const,
+          content: 'Parent task',
+          status: 'open',
+          collectionId: 'daily-2026-02-09',
+          createdAt: '2026-02-09T10:00:00Z',
+          collections: [],
+        },
+        {
+          id: '2',
+          type: 'note' as const,
+          content: 'Sub-note (should NOT count)',
+          collectionId: 'daily-2026-02-09',
+          createdAt: '2026-02-09T11:00:00Z',
+          collections: [],
+          parentEntryId: '1', // sub-item
+        },
+        {
+          id: '3',
+          type: 'task' as const,
+          content: 'Sub-task (should NOT count)',
+          status: 'open',
+          collectionId: 'daily-2026-02-09',
+          createdAt: '2026-02-09T12:00:00Z',
+          collections: [],
+          parentEntryId: '1', // sub-item
+        },
+        {
+          id: '4',
+          type: 'note' as const,
+          content: 'Top-level note',
+          collectionId: 'daily-2026-02-09',
+          createdAt: '2026-02-09T13:00:00Z',
+        },
+      ];
+
+      const entriesByCollection = new Map<string | null, Entry[]>();
+      entriesByCollection.set('daily-2026-02-09', entries);
+
+      const result = formatCollectionStats(node, entriesByCollection);
+      // Only the 2 top-level entries should count (1 task, 1 note); sub-items excluded
+      expect(result).toBe('(1 task, 1 note)');
+    });
+
+    it('should exclude sub-items from monthly collection total count', () => {
+      const node: HierarchyNode = {
+        type: 'monthly',
+        id: 'feb-2026',
+        label: 'February 2026',
+        collection: {
+          id: 'feb-2026',
+          name: 'February 2026',
+          type: 'monthly',
+          date: '2026-02',
+          createdAt: '2026-02-01T00:00:00Z',
+          order: '2026-02',
+        },
+        children: [],
+        isExpanded: false,
+      };
+
+      const entries: Entry[] = [
+        {
+          id: '1',
+          type: 'task' as const,
+          content: 'Parent task',
+          status: 'open',
+          collectionId: 'feb-2026',
+          createdAt: '2026-02-01T10:00:00Z',
+          collections: [],
+        },
+        {
+          id: '2',
+          type: 'note' as const,
+          content: 'Sub-item (should NOT count)',
+          collectionId: 'feb-2026',
+          createdAt: '2026-02-01T11:00:00Z',
+          parentEntryId: '1', // sub-item
+        },
+      ];
+
+      const entriesByCollection = new Map<string | null, Entry[]>();
+      entriesByCollection.set('feb-2026', entries);
+
+      const result = formatCollectionStats(node, entriesByCollection);
+      // Only the 1 top-level entry should count
+      expect(result).toBe('(1 entry)');
+    });
+
     it('should handle collection not in entriesByCollection map', () => {
       const node: HierarchyNode = {
         type: 'day',

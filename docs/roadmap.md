@@ -198,6 +198,44 @@
 
 ---
 
-**Roadmap Status:** Post-v1.2.0 — Projection Snapshots Complete  
-**Current Phase:** Session Complete  
-**Date:** February 28, 2026
+**Roadmap Status:** Post-v1.8.1 — UAT Feedback Backlog Recorded  
+**Current Phase:** Planning  
+**Date:** March 17, 2026
+
+---
+
+## Backlog — UAT Feedback (March 17, 2026)
+
+Work is organized into three rounds by complexity and dependency.
+
+---
+
+### Round 1 — Bug fixes & quick wins (v1.9.x)
+
+| # | Item | Type | Notes |
+|---|------|------|-------|
+| 1 | Sub-items should not count toward collection stats | Bug | Exclude entries with `parentEntryId` in `collectionStatsFormatter.ts` |
+| 2 | Uncategorized collection appears in swipe nav | Bug | Exclude virtual Uncategorized from `buildNavigationEntries` in `useCollectionNavigation.ts` |
+| 3 | Swipe nav from collection list starts at first calendar entry instead of first auto-fav | Bug | URL mismatch between collection index links and `navigationEntries` — first entry should be first auto-fav at its temporal URL |
+| 5 | Clickable URLs in entry content | Improvement | Detect URLs in entry text; render as `<a>` tags in `TaskEntryItem` / note/event renderers |
+| 7 | "Remove from this collection" menu item for multi-collection entries | Improvement | Show in `EntryActionsMenu` when `entry.collections.length > 1`; uses existing `TaskRemovedFromCollection` event |
+| 8 | Collection stats separated by type | Improvement | Monthly collections currently show `(N entries)`; extend breakdown (tasks/notes/events) to match daily/custom format |
+
+---
+
+### Round 2 — Improvements requiring new preferences or domain work (v1.10.x)
+
+| # | Item | Type | Notes |
+|---|------|------|-------|
+| 6 | Calendar collections with active tasks optionally auto-favorited | Improvement | New `autoFavoriteCalendarWithActiveTasks` user preference; extends `isEffectivelyFavorited()` and Settings modal |
+| 11 | Quick daily migration of incomplete tasks | Improvement | "Migrate all open tasks → Today" bulk action on collection detail; builds on `BulkMigrateEntriesHandler` |
+
+---
+
+### Round 3 — New features, design-first (v2.x)
+
+| # | Item | Type | Notes |
+|---|------|------|-------|
+| 4 | AI-assisted journaling (brag document style) | New feature | Based on https://jvns.ca/blog/brag-documents/ — prompts for accomplishments, learnings, contributions. Needs Alex design: prompt storage, dedicated collection vs inline, cloud-only vs optional AI |
+| 9 | Gamify getting things done | New feature | Points, streaks, achievements for completing tasks. Needs Alex design: new aggregate, new events, badge/counter UI |
+| 10 | Habit tracking | New feature | Recurring entries with completion tracking. Significant new aggregate. Needs Alex design first |

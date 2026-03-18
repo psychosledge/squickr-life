@@ -59,7 +59,10 @@ export class CollectionViewProjection {
     const counts = new Map<string | null, number>();
 
     // Count entries by collection ID in memory (fast!)
+    // Sub-items (parentEntryId set) are excluded — they belong to their parent entry
+    // and should not count as independent entries in collection stats.
     for (const entry of allEntries) {
+      if (entry.parentEntryId) continue;
       for (const collectionId of CollectionViewProjection.getEffectiveCollections(entry)) {
         counts.set(collectionId, (counts.get(collectionId) ?? 0) + 1);
       }
@@ -90,7 +93,8 @@ export class CollectionViewProjection {
       // - Must be a task
       // - Must have 'open' status
       // - Must not be migrated (no migratedTo pointer)
-      if (entry.type === 'task' && entry.status === 'open' && !entry.migratedTo) {
+      // - Must not be a sub-item (parentEntryId) — sub-items belong to parent entries
+      if (entry.type === 'task' && entry.status === 'open' && !entry.migratedTo && !entry.parentEntryId) {
         for (const collectionId of CollectionViewProjection.getEffectiveCollections(entry)) {
           counts.set(collectionId, (counts.get(collectionId) ?? 0) + 1);
         }
@@ -128,6 +132,10 @@ export class CollectionViewProjection {
     for (const entry of allEntries) {
       // Skip migrated entries (they shouldn't count in stats)
       if (entry.migratedTo) continue;
+
+      // Skip sub-items (parentEntryId set) — they belong to their parent entry
+      // and should not count as independent entries in collection stats.
+      if (entry.parentEntryId) continue;
 
       for (const collectionId of CollectionViewProjection.getEffectiveCollections(entry)) {
         // Initialize stats for this collection if not exists

@@ -351,6 +351,43 @@ describe('useCollectionNavigation', () => {
     });
   });
 
+  it('should not include virtual Uncategorized collection in swipe nav even when orphaned entries exist', async () => {
+    // Bug fix: Uncategorized is only reachable from the index, not via swipe/keyboard
+    collectionsData = [
+      { id: 'c1', name: 'First', type: 'custom', order: 'a', createdAt: '2024-01-01T00:00:00Z' },
+      { id: 'c2', name: 'Second', type: 'custom', order: 'b', createdAt: '2024-01-02T00:00:00Z' },
+    ];
+
+    // Simulate orphaned entries existing (which previously caused Uncategorized to be prepended)
+    mockEntryProjection.getEntriesByCollection = vi.fn(async () => [
+      { id: 'orphan-1', type: 'task', content: 'Orphaned task', status: 'open', collections: [], createdAt: '2024-01-01T00:00:00Z' },
+    ]);
+
+    mockPathname = '/collection/c1';
+    const { result } = renderHook(
+      () => useCollectionNavigation('c1'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      // c1 should be first — no Uncategorized before it
+      expect(result.current.previousCollection).toBeNull();
+      expect(result.current.nextCollection?.id).toBe('c2');
+    });
+
+    // Uncategorized should not appear anywhere in the nav order
+    mockPathname = '/collection/c2';
+    const { result: result2 } = renderHook(
+      () => useCollectionNavigation('c2'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result2.current.previousCollection?.id).toBe('c1');
+      expect(result2.current.nextCollection).toBeNull(); // c2 is last — Uncategorized not appended
+    });
+  });
+
   describe('Swipe Gesture Sensitivity', () => {
     beforeEach(() => {
       collectionsData = [
