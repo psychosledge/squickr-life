@@ -198,9 +198,13 @@
 
 ---
 
-**Roadmap Status:** Post-v1.8.1 — UAT Feedback Backlog Recorded  
-**Current Phase:** Planning  
+**Roadmap Status:** v1.9.0 shipped — CI broken, UAT regression on #7  
+**Current Phase:** Fix CI + #7 regression before Round 2  
 **Date:** March 17, 2026
+
+> ⚠️ **Next session — start here before anything else:**
+> 1. **GitHub Actions build failing** on `v1.9.0` tag — investigate and fix CI
+> 2. **Bug #7 UAT regression** — "Remove from this collection" menu item not appearing in production despite passing tests — investigate `showRemoveFromCollection` guard conditions
 
 ---
 
