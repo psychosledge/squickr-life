@@ -86,12 +86,10 @@ export class FirestoreEventStore implements IEventStore {
       await batch.commit();
     }
     
-    // Notify subscribers once per event so incremental projection updates
-    // can apply each event individually (Phase 6 — P0-D).
+    // Notify subscribers once after all batches commit.
+    // Pass the last event so subscribers have context about what changed.
     // Non-null assertion safe because we check length > 0 above.
-    for (const event of events) {
-      this.notifySubscribers(event);
-    }
+    this.notifySubscribers(events[events.length - 1]!);
   }
 
   /**
