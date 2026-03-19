@@ -1763,6 +1763,7 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
     collections: Collection[];
     entries: Entry[];
     bulkMigrateHandle?: ReturnType<typeof vi.fn>;
+    createCollectionHandle?: ReturnType<typeof vi.fn>;
   }) {
     const mockEntryProjection = {
       getEntriesByCollection: vi.fn().mockResolvedValue(opts.entries),
@@ -1776,12 +1777,15 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
       getDeletedEntries: vi.fn().mockResolvedValue([]),
     };
 
+    // Allow callers to supply a growing collections list so post-create refreshes work
+    let storedCollections = [...opts.collections];
     const mockCollectionProjection = {
-      getCollections: vi.fn().mockResolvedValue(opts.collections),
+      getCollections: vi.fn().mockImplementation(() => Promise.resolve(storedCollections)),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
     const mockBulkMigrate = opts.bulkMigrateHandle ?? vi.fn().mockResolvedValue(undefined);
+    const mockCreateCollection = opts.createCollectionHandle ?? vi.fn().mockResolvedValue(undefined);
 
     return {
       appContext: {
@@ -1794,7 +1798,7 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
         entryProjection: mockEntryProjection,
         taskProjection: {} as any,
         collectionProjection: mockCollectionProjection,
-        createCollectionHandler: {} as any,
+        createCollectionHandler: { handle: mockCreateCollection } as any,
         migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
         addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
         removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
@@ -1814,6 +1818,7 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
         isAppReady: true,
       },
       mockBulkMigrate,
+      mockCreateCollection,
       mockEntryProjection,
       mockCollectionProjection,
     };
@@ -1823,6 +1828,7 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
     collections: Collection[];
     entries: Entry[];
     bulkMigrateHandle?: ReturnType<typeof vi.fn>;
+    createCollectionHandle?: ReturnType<typeof vi.fn>;
     collectionId?: string;
   }) {
     const { appContext } = buildAppContext(opts);
@@ -1925,15 +1931,50 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
     });
   });
 
-  it('should show an error toast when today\'s daily log does not exist', async () => {
+  it('should auto-create today\'s daily log and migrate when it does not exist yet', async () => {
     const user = userEvent.setup();
-    renderOldDailyView({
-      // no todayCollection in the list
-      collections: [oldDailyCollection],
-      entries: [openTask],
+    const newTodayId = 'newly-created-today-col';
+    const newTodayCollection: Collection = {
+      id: newTodayId,
+      name: 'Today Log (auto)',
+      type: 'daily',
+      date: todayDateKey,
+      order: 'a2',
+      createdAt: new Date().toISOString(),
+    };
+
+    const mockBulkMigrate = vi.fn().mockResolvedValue(undefined);
+
+    // Track whether creation has happened so getCollections returns
+    // the right list both before and after the auto-create step.
+    let todayCreated = false;
+    const mockCreateCollection = vi.fn().mockImplementation(async () => {
+      todayCreated = true;
+      return newTodayId;
     });
 
-    // Wait for entry content to confirm the view has loaded
+    const { appContext, mockCollectionProjection } = buildAppContext({
+      collections: [oldDailyCollection], // no todayCollection initially
+      entries: [openTask],
+      bulkMigrateHandle: mockBulkMigrate,
+      createCollectionHandle: mockCreateCollection,
+    });
+
+    // getCollections returns the growing list based on creation state
+    mockCollectionProjection.getCollections.mockImplementation(() =>
+      Promise.resolve(todayCreated ? [oldDailyCollection, newTodayCollection] : [oldDailyCollection])
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/collection/old-daily-col']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
     await waitFor(() => {
       expect(screen.getByText('Buy groceries')).toBeInTheDocument();
     });
@@ -1945,7 +1986,22 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
     await user.click(migrateItem);
 
     await waitFor(() => {
-      expect(screen.getByText(/today.*daily log.*doesn.*t exist/i)).toBeInTheDocument();
+      expect(mockCreateCollection).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'daily', date: todayDateKey })
+      );
     });
+
+    await waitFor(() => {
+      expect(mockBulkMigrate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entryIds: ['task-open'],
+          targetCollectionId: newTodayId,
+          mode: 'move',
+        })
+      );
+    });
+
+    // No error toast should appear
+    expect(screen.queryByText(/today.*daily log/i)).not.toBeInTheDocument();
   });
 });

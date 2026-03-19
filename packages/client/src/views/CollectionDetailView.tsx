@@ -339,10 +339,36 @@ export function CollectionDetailView({
 
   const handleMigrateAllToToday = async () => {
     const todayKey = getLocalDateKey();
-    const todayCollection = allCollections.find(c => c.type === 'daily' && c.date === todayKey);
+    let todayCollection = allCollections.find(c => c.type === 'daily' && c.date === todayKey);
     if (!todayCollection) {
-      setErrorMessage("Today's daily log doesn't exist yet. Please create it first.");
-      return;
+      // Auto-create today's daily log — same name-generation logic as CreateCollectionModal
+      const parts = todayKey.split('-');
+      const year = parseInt(parts[0]!, 10);
+      const month = parseInt(parts[1]!, 10) - 1; // 0-indexed
+      const day = parseInt(parts[2]!, 10);
+      const todayName = new Intl.DateTimeFormat('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      }).format(new Date(year, month, day));
+      try {
+        const newId = await createCollectionHandler.handle({
+          name: todayName,
+          type: 'daily',
+          date: todayKey,
+        });
+        // Re-fetch collections so we have the full Collection object
+        const refreshed = await collectionProjection.getCollections();
+        const created = refreshed.find(c => c.id === newId);
+        if (!created) {
+          setErrorMessage("Failed to create today's daily log.");
+          return;
+        }
+        todayCollection = created;
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Failed to create today's daily log.");
+        return;
+      }
     }
     const activeTaskIds = entries
       .filter(e =>
