@@ -86,13 +86,13 @@ export function isEffectivelyFavorited(
   if (collection.isFavorite) return true;
   
   // Auto-favorite if enabled and is recent daily log
-  if (userPreferences.autoFavoriteRecentDailyLogs && collection.type === 'daily') {
-    return isRecentDailyLog(collection, now);
+  if (userPreferences.autoFavoriteRecentDailyLogs && collection.type === 'daily' && isRecentDailyLog(collection, now)) {
+    return true;
   }
   
   // Auto-favorite if enabled and is recent monthly log
-  if (userPreferences.autoFavoriteRecentMonthlyLogs && collection.type === 'monthly') {
-    return isRecentMonthlyLog(collection, now);
+  if (userPreferences.autoFavoriteRecentMonthlyLogs && collection.type === 'monthly' && isRecentMonthlyLog(collection, now)) {
+    return true;
   }
 
   // Auto-favorite calendar collections (daily or monthly) that have active tasks

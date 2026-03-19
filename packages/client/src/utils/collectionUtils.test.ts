@@ -686,6 +686,38 @@ describe('collectionUtils', () => {
         const counts = new Map<string | null, number>([['daily-old', 0]]);
         expect(isEffectivelyFavorited(manuallyFavorited, prefsWithoutActiveTasks, new Date(), counts)).toBe(true);
       });
+
+      it('should return true for non-recent daily log with active tasks when both autoFavoriteRecentDailyLogs and autoFavoriteCalendarWithActiveTasks are enabled', () => {
+        // This is the key regression: autoFavoriteRecentDailyLogs is true but the log is old (2 days ago),
+        // so it should NOT short-circuit — autoFavoriteCalendarWithActiveTasks should still apply.
+        const counts = new Map<string | null, number>([['daily-old', 2]]);
+        const bothPrefs: UserPreferences = {
+          ...DEFAULT_USER_PREFERENCES,
+          autoFavoriteRecentDailyLogs: true,
+          autoFavoriteCalendarWithActiveTasks: true,
+        };
+        expect(isEffectivelyFavorited(dailyCollection, bothPrefs, new Date(), counts)).toBe(true);
+      });
+
+      it('should return false for non-recent daily log with 0 active tasks when both prefs are enabled', () => {
+        const counts = new Map<string | null, number>([['daily-old', 0]]);
+        const bothPrefs: UserPreferences = {
+          ...DEFAULT_USER_PREFERENCES,
+          autoFavoriteRecentDailyLogs: true,
+          autoFavoriteCalendarWithActiveTasks: true,
+        };
+        expect(isEffectivelyFavorited(dailyCollection, bothPrefs, new Date(), counts)).toBe(false);
+      });
+
+      it('should return true for non-recent monthly log with active tasks when both autoFavoriteRecentMonthlyLogs and autoFavoriteCalendarWithActiveTasks are enabled', () => {
+        const counts = new Map<string | null, number>([['monthly-old', 1]]);
+        const bothPrefs: UserPreferences = {
+          ...DEFAULT_USER_PREFERENCES,
+          autoFavoriteRecentMonthlyLogs: true,
+          autoFavoriteCalendarWithActiveTasks: true,
+        };
+        expect(isEffectivelyFavorited(monthlyCollection, bothPrefs, new Date(), counts)).toBe(true);
+      });
     });
 
     describe('isAutoFavorited', () => {
