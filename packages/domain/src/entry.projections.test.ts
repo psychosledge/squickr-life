@@ -1419,6 +1419,42 @@ describe('EntryListProjection', () => {
       expect(counts.get('collection-A')).toBeUndefined();
     });
 
+    it('Fix 3c — sub-task added to a second collection (while parent stays in original) IS counted in that second collection', async () => {
+      // Scenario exactly matching the UAT bug report:
+      //   1. Parent task exists in collection-A
+      //   2. Sub-task is created under parent (inherits collection-A)
+      //   3. Sub-task is ADDED to collection-B (multi-collection, NOT moved — still in A too)
+      //   4. collection-B should show count = 1 for the sub-task
+      //      because the parent is NOT in collection-B, so the sub-task is an
+      //      independent actionable item there.
+      const { CreateSubTaskHandler } = await import('./sub-task.handlers');
+      const { AddTaskToCollectionHandler } = await import('./collection-management.handlers');
+      const subTaskHandler = new CreateSubTaskHandler(eventStore, projection);
+      const addHandler = new AddTaskToCollectionHandler(eventStore, projection);
+
+      // Create parent + sub-task in collection-A
+      const parentId = await taskHandler.handle({ content: 'Hang guitars in office', collectionId: 'collection-A' });
+      await subTaskHandler.handle({ content: 'Find the mounts', parentEntryId: parentId });
+
+      // Retrieve the sub-task id
+      const allEntries = await projection.getEntries('all');
+      const subTask = allEntries.find(e => e.type === 'task' && (e as any).parentEntryId === parentId);
+      expect(subTask).toBeDefined();
+      const subTaskId = subTask!.id;
+
+      // Add sub-task to collection-B (does NOT remove it from collection-A)
+      // Sub-task is now in collections: ['collection-A', 'collection-B']
+      // Parent remains in collections: ['collection-A']
+      await addHandler.handle({ taskId: subTaskId, collectionId: 'collection-B' });
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+
+      // collection-A: parent counted (1); sub-task suppressed because parent is also in A
+      expect(counts.get('collection-A')).toBe(1);
+      // collection-B: sub-task counted (1); parent is NOT in B so suppression must NOT fire
+      expect(counts.get('collection-B')).toBe(1);
+    });
+
     it('Fix 3 — sub-task whose parent does not exist is counted', async () => {
       // Simulate an orphaned sub-task (parent was deleted or never synced).
       // The sub-task has a parentTaskId that references a non-existent entry.

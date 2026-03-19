@@ -29,7 +29,12 @@ export function formatCollectionStats(
   // Handle month nodes with attached monthly log (Feature 3)
   if (node.type === 'month' && node.monthlyLog) {
     const allEntries = entriesByCollection?.get(node.monthlyLog.id) || [];
-    const entries = allEntries.filter(e => !e.migratedTo && !e.deletedAt && !e.parentEntryId);
+    const topLevelIds = new Set(allEntries.filter(e => !e.parentEntryId).map(e => e.id));
+    const entries = allEntries.filter(e =>
+      !e.migratedTo &&
+      !e.deletedAt &&
+      !(e.parentEntryId && topLevelIds.has(e.parentEntryId))
+    );
     return formatTypeBreakdown(entries);
   }
 
@@ -47,8 +52,17 @@ export function formatCollectionStats(
   }
 
   const allEntries = entriesByCollection?.get(node.collection.id) || [];
-  // Exclude migrated, deleted, and sub-item entries (sub-items should not count in stats)
-  const entries = allEntries.filter(e => !e.migratedTo && !e.deletedAt && !e.parentEntryId);
+  // Build the set of top-level (non-sub-task) entry IDs present in this collection
+  // so we can suppress sub-tasks only when their parent is also in this same collection.
+  // Sub-tasks whose parent lives in a different collection are independent actionable
+  // items and MUST be counted (Fix 3 — mirrors getActiveTaskCountsByCollection logic).
+  const topLevelIds = new Set(allEntries.filter(e => !e.parentEntryId).map(e => e.id));
+  const entries = allEntries.filter(e =>
+    !e.migratedTo &&
+    !e.deletedAt &&
+    // Exclude sub-tasks only when their parent is present in this same collection
+    !(e.parentEntryId && topLevelIds.has(e.parentEntryId))
+  );
 
   if (node.type === 'monthly') {
     return formatTypeBreakdown(entries);

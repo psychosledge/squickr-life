@@ -825,6 +825,104 @@ describe('formatCollectionStats', () => {
     });
   });
 
+  describe('Fix 3 — cross-collection sub-task regression', () => {
+    /**
+     * "Find the mounts" is a sub-task of "Hang guitars in office" which lives in
+     * collection-A ("Guitar Project").  "Find the mounts" was later added to
+     * collection-B ("Yesterday") via TaskAddedToCollection.
+     *
+     * Before the fix, collectionStatsFormatter used a blanket !e.parentEntryId
+     * guard that excluded ALL sub-tasks, so "Yesterday" showed 0 tasks instead
+     * of 1.  After the fix the guard only suppresses sub-tasks whose parent is
+     * ALSO present in the same collection.
+     */
+    it('sub-task added to collection-B while parent stays in collection-A IS counted in collection-B', () => {
+      const collectionBNode: HierarchyNode = {
+        type: 'day',
+        id: 'yesterday',
+        label: 'Yesterday',
+        collection: {
+          id: 'yesterday',
+          name: 'Yesterday',
+          type: 'daily',
+          date: '2026-02-09',
+          createdAt: '2026-02-09T00:00:00Z',
+          order: '2026-02-09',
+        },
+        children: [],
+        isExpanded: false,
+      };
+
+      // The sub-task lives in collection-B; its parent lives in collection-A only.
+      const subTask: Entry = {
+        id: 'find-mounts',
+        type: 'task' as const,
+        content: 'Find the mounts',
+        status: 'open',
+        collectionId: 'guitar-project',   // original (collection-A)
+        collections: ['yesterday'],        // added to collection-B
+        createdAt: '2026-02-09T10:00:00Z',
+        parentEntryId: 'hang-guitars',     // parent is in collection-A, NOT in collection-B
+      };
+
+      // collection-B map contains only the sub-task; parent is NOT present here.
+      const entriesByCollection = new Map<string | null, Entry[]>();
+      entriesByCollection.set('yesterday', [subTask]);
+
+      const result = formatCollectionStats(collectionBNode, entriesByCollection);
+      // The parent is absent from collection-B → topLevelIds does NOT contain
+      // 'hang-guitars' → the sub-task passes the filter and IS counted.
+      expect(result).toBe('(1 task)');
+    });
+
+    it('sub-task whose parent IS in the same collection is still suppressed', () => {
+      // This is the original happy-path: sub-tasks nested under a parent that
+      // lives in the same collection must NOT inflate the count.
+      const node: HierarchyNode = {
+        type: 'day',
+        id: 'daily-2026-02-09',
+        label: 'Feb 9, 2026',
+        collection: {
+          id: 'daily-2026-02-09',
+          name: 'Feb 9, 2026',
+          type: 'daily',
+          date: '2026-02-09',
+          createdAt: '2026-02-09T00:00:00Z',
+          order: '2026-02-09',
+        },
+        children: [],
+        isExpanded: false,
+      };
+
+      const parentTask: Entry = {
+        id: 'parent-task',
+        type: 'task' as const,
+        content: 'Parent task',
+        status: 'open',
+        collectionId: 'daily-2026-02-09',
+        collections: ['daily-2026-02-09'],
+        createdAt: '2026-02-09T10:00:00Z',
+      };
+      const subTask: Entry = {
+        id: 'sub-task',
+        type: 'task' as const,
+        content: 'Sub-task (should NOT be counted)',
+        status: 'open',
+        collectionId: 'daily-2026-02-09',
+        collections: ['daily-2026-02-09'],
+        createdAt: '2026-02-09T11:00:00Z',
+        parentEntryId: 'parent-task',   // parent IS in the same collection
+      };
+
+      const entriesByCollection = new Map<string | null, Entry[]>();
+      entriesByCollection.set('daily-2026-02-09', [parentTask, subTask]);
+
+      const result = formatCollectionStats(node, entriesByCollection);
+      // Only the parent counts; sub-task is suppressed.
+      expect(result).toBe('(1 task)');
+    });
+  });
+
   // ─── Shared fixture helpers ────────────────────────────────────────────────
 
   function makeMonthlyNode(id: string): HierarchyNode {
