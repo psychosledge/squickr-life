@@ -103,6 +103,7 @@ export class CollectionViewProjection {
     // This lets us check, for any sub-task, which collections its parent occupies.
     const entryCollectionSets = new Map<string, Set<string | null>>();
     for (const entry of allEntries) {
+      if (entry.migratedTo) continue; // skip ghost originals — their migrated copy is indexed separately
       const colls: (string | null)[] =
         entry.collections.length > 0 ? [...entry.collections] : [null];
       entryCollectionSets.set(entry.id, new Set(colls));

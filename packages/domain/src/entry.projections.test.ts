@@ -1362,6 +1362,63 @@ describe('EntryListProjection', () => {
       expect(counts.get('collection-B')).toBe(1);  // sub-task (different collection from parent)
     });
 
+    it('Fix 3b — sub-task whose parent was migrated away from that collection IS counted (ghost parent should not suppress count)', async () => {
+      // Scenario:
+      //   1. Create parent + child in collection-A; cascade-migrate both to collection-B
+      //      → parent-new & child-new are in B; child-new.parentEntryId = parent-new
+      //   2. Inject a raw TaskMigrated event that marks ONLY parent-new as a ghost
+      //      (i.e. parent-new migrates to collection-C without cascading child-new).
+      //      This is the minimal state that triggers the bug:
+      //        - parent-new has migratedTo set (ghost in B)
+      //        - child-new is still active in B with parentEntryId → parent-new
+      //   Without Fix 3b the pre-pass includes parent-new in entryCollectionSets with
+      //   collections: ['collection-B'], so parentColls.has('B') → true → child-new is
+      //   incorrectly suppressed → count for B = 0.
+      //   With Fix 3b the ghost parent-new is skipped in the pre-pass →
+      //   entryCollectionSets.get(parent-new-id) = undefined → child-new IS counted → count for B = 1.
+      const { CreateSubTaskHandler } = await import('./sub-task.handlers');
+      const subTaskHandler = new CreateSubTaskHandler(eventStore, projection);
+
+      // Step 1 — create parent + child in collection-A, then migrate both to collection-B
+      const parentId = await taskHandler.handle({ content: 'Parent task', collectionId: 'collection-A' });
+      await subTaskHandler.handle({ content: 'Sub-task', parentEntryId: parentId });
+
+      const migrateHandler = new MigrateTaskHandler(eventStore, projection);
+      const parentNewId = await migrateHandler.handle({ taskId: parentId, targetCollectionId: 'collection-B' });
+
+      // Sanity: after first migration, only the parent is counted in B (child suppressed — correct Fix 3 behaviour)
+      let counts = await projection.getActiveTaskCountsByCollection();
+      expect(counts.get('collection-B')).toBe(1);
+
+      // Step 2 — inject a raw TaskMigrated event that makes parent-new a ghost WITHOUT cascading child-new.
+      // This produces the exact state the bug was triggered by:
+      //   parent-new: migratedTo set (ghost in B)
+      //   child-new:  active in B, parentEntryId → parent-new (the ghost)
+      const parentNewNewId = crypto.randomUUID();
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskMigrated',
+        aggregateId: parentNewId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: {
+          originalTaskId: parentNewId,
+          targetCollectionId: 'collection-C',
+          migratedToId: parentNewNewId,
+          migratedAt: new Date().toISOString(),
+        },
+      } as any);
+
+      counts = await projection.getActiveTaskCountsByCollection();
+      // child-new is the only active task in B; its parent (parent-new) is now a ghost.
+      // Fix 3b: ghost parent is excluded from pre-pass → child-new is counted.
+      expect(counts.get('collection-B')).toBe(1);
+      // The freshly-created parent-new-new is in C and must also be counted.
+      expect(counts.get('collection-C')).toBe(1);
+      // A only has ghosts → no count.
+      expect(counts.get('collection-A')).toBeUndefined();
+    });
+
     it('Fix 3 — sub-task whose parent does not exist is counted', async () => {
       // Simulate an orphaned sub-task (parent was deleted or never synced).
       // The sub-task has a parentTaskId that references a non-existent entry.
