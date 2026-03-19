@@ -1295,6 +1295,101 @@ describe('EntryListProjection', () => {
       
       expect(counts.has('collection-Z')).toBe(false);
     });
+
+    // ── Fix 2: drop legacy collectionId fallback ───────────────────────────
+
+    it('Fix 2 — after a task is moved (A→B via Remove+Add), getActiveTaskCountsByCollection uses collections[] not stale collectionId', async () => {
+      // After a Remove+Add move, the entry's collectionId is stale (still 'collection-A')
+      // but collections[] is ['collection-B'].
+      // Fix 2 ensures we read collections[] and never fall back to collectionId.
+      const { AddTaskToCollectionHandler } = await import('./collection-management.handlers');
+      const { RemoveTaskFromCollectionHandler } = await import('./collection-management.handlers');
+      const addHandler = new AddTaskToCollectionHandler(eventStore, projection);
+      const removeHandler = new RemoveTaskFromCollectionHandler(eventStore, projection);
+
+      // Create task originally in collection-A (collectionId = 'collection-A', collections = ['collection-A'])
+      const taskId = await taskHandler.handle({ content: 'Task to move', collectionId: 'collection-A' });
+
+      // Move: Add to B first, then remove A — collectionId stays as 'collection-A' (stale) but collections[] = ['collection-B']
+      await addHandler.handle({ taskId, collectionId: 'collection-B' });
+      await removeHandler.handle({ taskId, collectionId: 'collection-A' });
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+
+      // Should count in collection-B (per collections[]), NOT in collection-A (stale collectionId)
+      expect(counts.get('collection-A')).toBeUndefined();
+      expect(counts.get('collection-B')).toBe(1);
+    });
+
+    // ── Fix 3: sub-tasks in different collections should count ─────────────
+
+    it('Fix 3 — sub-task in same collection as parent is NOT counted', async () => {
+      const { CreateSubTaskHandler } = await import('./sub-task.handlers');
+      const subTaskHandler = new CreateSubTaskHandler(eventStore, projection);
+
+      // Create parent task in collection-A
+      const parentId = await taskHandler.handle({ content: 'Parent task', collectionId: 'collection-A' });
+      // Create sub-task (inherits collection-A from parent)
+      await subTaskHandler.handle({ content: 'Sub-task', parentEntryId: parentId });
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+
+      // Only the parent should be counted in collection-A; sub-task shares the same
+      // collection and should be suppressed.
+      expect(counts.get('collection-A')).toBe(1);
+    });
+
+    it('Fix 3 — sub-task in a different collection from its parent IS counted in that collection', async () => {
+      const { CreateSubTaskHandler } = await import('./sub-task.handlers');
+      const { AddTaskToCollectionHandler } = await import('./collection-management.handlers');
+      const subTaskHandler = new CreateSubTaskHandler(eventStore, projection);
+      const addHandler = new AddTaskToCollectionHandler(eventStore, projection);
+
+      // Create parent task in collection-A
+      const parentId = await taskHandler.handle({ content: 'Parent task', collectionId: 'collection-A' });
+      // Create sub-task (starts in collection-A by inheritance)
+      const subTaskId = await subTaskHandler.handle({ content: 'Sub-task', parentEntryId: parentId });
+      // Move sub-task to collection-B only (add B, remove A)
+      await addHandler.handle({ taskId: subTaskId, collectionId: 'collection-B' });
+      const { RemoveTaskFromCollectionHandler } = await import('./collection-management.handlers');
+      const removeHandler = new RemoveTaskFromCollectionHandler(eventStore, projection);
+      await removeHandler.handle({ taskId: subTaskId, collectionId: 'collection-A' });
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+
+      // Parent counted in collection-A; sub-task is in collection-B only → should be counted there
+      expect(counts.get('collection-A')).toBe(1);  // parent only
+      expect(counts.get('collection-B')).toBe(1);  // sub-task (different collection from parent)
+    });
+
+    it('Fix 3 — sub-task whose parent does not exist is counted', async () => {
+      // Simulate an orphaned sub-task (parent was deleted or never synced).
+      // The sub-task has a parentTaskId that references a non-existent entry.
+      // It should be counted as an independent actionable item.
+      const { InMemoryEventStore } = await import('./__tests__/in-memory-event-store');
+      const orphanEventStore = new InMemoryEventStore();
+      const orphanProjection = new EntryListProjection(orphanEventStore);
+
+      // Inject a raw TaskCreated event for a sub-task.
+      // The applicator builds collections[] from collectionId, so set collectionId = 'collection-A'.
+      await orphanEventStore.append({
+        type: 'TaskCreated',
+        payload: {
+          id: 'orphan-sub-task',
+          content: 'Orphan sub-task',
+          status: 'open',
+          collectionId: 'collection-A',
+          order: 0,
+          parentTaskId: 'non-existent-parent',  // parent does not exist in the event store
+          createdAt: new Date().toISOString(),
+        },
+      });
+
+      const counts = await orphanProjection.getActiveTaskCountsByCollection();
+
+      // Sub-task's parent is gone — it must still be counted as an independent actionable item
+      expect(counts.get('collection-A')).toBe(1);
+    });
   });
 
   describe('getEntryStatsByCollection', () => {

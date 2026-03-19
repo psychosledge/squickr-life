@@ -79,8 +79,19 @@ export class CollectionViewProjection {
    * - entry.status === 'open'
    * - !entry.migratedTo (don't count migrated originals)
    *
-   * This provides a more meaningful metric for collection badges than
-   * total entry counts, as it shows actionable work remaining.
+   * Collection bucketing rules (Fix 2 — drop legacy collectionId fallback):
+   * - Uses `entry.collections` directly (same as getEntriesByCollection).
+   * - If `entry.collections.length > 0`: count toward each collection in that array.
+   * - If `entry.collections.length === 0`: count toward `null` (uncategorized).
+   * - `entry.collectionId` is NEVER used as a fallback — it is stale after a
+   *   Remove+Add move and would cause phantom counts.
+   *
+   * Sub-task handling (Fix 3 — per-collection parent check):
+   * - A sub-task (parentEntryId set) is skipped in a given collection ONLY when
+   *   its parent is also present in that same collection.
+   * - If the parent is absent (deleted/doesn't exist) OR lives in a different
+   *   collection, the sub-task IS counted — it is an independent actionable item
+   *   in that collection.
    *
    * @returns Map of collection ID to active task count (null key = uncategorized tasks)
    */
@@ -88,15 +99,36 @@ export class CollectionViewProjection {
     const allEntries = await this.entryProjection.getEntries('all');
     const counts = new Map<string | null, number>();
 
+    // Pre-pass: build a lookup of entryId → Set<collectionId | null> for all entries.
+    // This lets us check, for any sub-task, which collections its parent occupies.
+    const entryCollectionSets = new Map<string, Set<string | null>>();
     for (const entry of allEntries) {
-      // Only count active tasks:
-      // - Must be a task
-      // - Must have 'open' status
-      // - Must not be migrated (no migratedTo pointer)
-      // - Must not be a sub-item (parentEntryId) — sub-items belong to parent entries
-      if (entry.type === 'task' && entry.status === 'open' && !entry.migratedTo && !entry.parentEntryId) {
-        for (const collectionId of CollectionViewProjection.getEffectiveCollections(entry)) {
-          counts.set(collectionId, (counts.get(collectionId) ?? 0) + 1);
+      const colls: (string | null)[] =
+        entry.collections.length > 0 ? [...entry.collections] : [null];
+      entryCollectionSets.set(entry.id, new Set(colls));
+    }
+
+    // Counting pass
+    for (const entry of allEntries) {
+      // Only count active, non-migrated tasks
+      if (entry.type !== 'task' || entry.status !== 'open' || entry.migratedTo) continue;
+
+      // Fix 2: use collections[] directly; fall back to null (uncategorized), never collectionId
+      const effectiveColls: (string | null)[] =
+        entry.collections.length > 0 ? [...entry.collections] : [null];
+
+      if (entry.parentEntryId) {
+        // Fix 3: for sub-tasks, only skip counting in collections where the parent is also present
+        const parentColls = entryCollectionSets.get(entry.parentEntryId); // undefined if parent gone
+
+        for (const collId of effectiveColls) {
+          // Skip only if the parent EXISTS AND is in the same collection
+          if (parentColls !== undefined && parentColls.has(collId)) continue;
+          counts.set(collId, (counts.get(collId) ?? 0) + 1);
+        }
+      } else {
+        for (const collId of effectiveColls) {
+          counts.set(collId, (counts.get(collId) ?? 0) + 1);
         }
       }
     }

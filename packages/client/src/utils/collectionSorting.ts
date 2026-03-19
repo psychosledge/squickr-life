@@ -81,114 +81,65 @@ export function sortDailyLogsByDate(
 
 /**
  * Get sort key for auto-favorited temporal collection (daily or monthly log).
- * 
- * Priority tiers ensure chronological ordering with monthly logs before their days:
- * - 0: Last Month
- * - 1: Current Month
- * - 2: Yesterday
- * - 3: Today
- * - 4: Tomorrow (unless tomorrow is in next month, then it gets priority 6)
- * - 5: Next Month
- * - 6: Tomorrow (when tomorrow is in next month, comes AFTER next month)
- * 
- * Key format: "{priority}-{date}" ensures stable lexicographic sorting.
- * 
+ *
+ * Uses a composite key scheme that is naturally chronological and works for any date:
+ * - Monthly log → `"{YYYY-MM}-0"` (e.g. `"2026-02-0"`)
+ * - Daily log   → `"{YYYY-MM}-1-{DD}"` (e.g. `"2026-02-1-14"`)
+ *
+ * The literal `"-0"` / `"-1-"` separators ensure monthly logs sort BEFORE the days
+ * of the same month for any month, not just the ±1 window around today:
+ *
+ *   "2026-02-0"    (Feb monthly)
+ *   "2026-02-1-14" (Feb 14)
+ *   "2026-03-0"    (March monthly)
+ *   "2026-03-1-16" (March 16)
+ *   …
+ *
+ * This replaces the old numeric-tier scheme (`0-`, `1-`, … `9-`) which only worked
+ * within a ±1-month window and shunted out-of-window dates to an opaque `9-` bucket.
+ *
  * @param collection - Daily or monthly log collection
- * @param now - Current date for calculating relative positions
- * @returns Sort key string (e.g., "1-2026-02" for current month, "3-2026-02-10" for today)
+ * @param _now - Unused (kept for API compatibility)
+ * @returns Sort key string (e.g., "2026-02-0" for a monthly log, "2026-02-1-14" for Feb 14)
  */
-function getSortKey(collection: Collection, now: Date): string {
-  // Use local timezone (not UTC) to match how collections are created
-  const getLocalDateString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-  
-  const todayStr = getLocalDateString(now);
-  const tomorrowDate = new Date(now.getTime() + 86400000);
-  const tomorrowStr = getLocalDateString(tomorrowDate);
-  const yesterdayDate = new Date(now.getTime() - 86400000);
-  const yesterdayStr = getLocalDateString(yesterdayDate);
-  
-  const currentYearMonth = todayStr.substring(0, 7); // "2026-02"
-  const tomorrowYearMonth = tomorrowStr.substring(0, 7); // "2026-02" or "2026-03" if month boundary
-  
-  // Calculate last month and next month year-months
-  const currentDate = new Date(now);
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth(); // 0-based
-  
-  // Last month: handle year boundary
-  let lastYear = currentYear;
-  let lastMonth = currentMonth - 1;
-  if (lastMonth < 0) {
-    lastMonth = 11;
-    lastYear--;
-  }
-  const lastYearMonth = `${lastYear}-${String(lastMonth + 1).padStart(2, '0')}`;
-  
-  // Next month: handle year boundary
-  let nextYear = currentYear;
-  let nextMonth = currentMonth + 1;
-  if (nextMonth > 11) {
-    nextMonth = 0;
-    nextYear++;
-  }
-  const nextYearMonth = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}`;
-  
+function getSortKey(collection: Collection, _now: Date): string {
   const date = collection.date || '';
-  
-  // Handle monthly logs
+
+  // Monthly log → "{YYYY-MM}-0"
   if (collection.type === 'monthly') {
-    if (date === lastYearMonth) return `0-${date}`;
-    if (date === currentYearMonth) return `1-${date}`;
-    if (date === nextYearMonth) return `5-${date}`;
-    // Shouldn't happen for auto-favorited, but fallback
-    return `9-${date}`;
+    return `${date}-0`;
   }
-  
-  // Handle daily logs
-  if (collection.type === 'daily') {
-    if (date === yesterdayStr) return `2-${date}`;
-    if (date === todayStr) return `3-${date}`;
-    if (date === tomorrowStr) {
-      // Edge case: If tomorrow is in next month, it should come AFTER next month
-      // This ensures monthly log appears before days of that month
-      if (tomorrowYearMonth !== currentYearMonth) {
-        return `6-${date}`; // After next month (priority 5)
-      }
-      return `4-${date}`; // Normal tomorrow priority
-    }
-    // Shouldn't happen for auto-favorited, but fallback
-    return `9-${date}`;
+
+  // Daily log → "{YYYY-MM}-1-{DD}"
+  if (collection.type === 'daily' && date.length === 10) {
+    const yearMonth = date.substring(0, 7); // "YYYY-MM"
+    const day = date.substring(8, 10);      // "DD"
+    return `${yearMonth}-1-${day}`;
   }
-  
-  // Fallback (shouldn't happen)
-  return `9-${date}`;
+
+  // Fallback (shouldn't happen for well-formed collections)
+  return `${date}-9`;
 }
 
 /**
  * Sort auto-favorited collections (daily + monthly logs) chronologically.
- * 
+ *
  * This combines favorited dailies and monthlies into a single chronological order
- * with monthly logs appearing BEFORE the days of that month.
- * 
- * Priority order (oldest first):
- * 1. Last Month (Jan)
- * 2. Current Month (Feb)
- * 3. Yesterday (Feb 9)
- * 4. Today (Feb 10)
- * 5. Tomorrow (Feb 11)
- * 6. Next Month (Mar)
- * 
- * Edge case: When tomorrow is in next month (Jan 31 → Feb 1):
- * - Next Month (Feb) comes BEFORE Tomorrow (Feb 1)
- * - This ensures monthly log appears before days of that month
- * 
+ * with monthly logs appearing BEFORE the days of that month, for any date.
+ *
+ * Sort key scheme (see `getSortKey`):
+ * - Monthly log → `"{YYYY-MM}-0"` (e.g. `"2026-02-0"`)
+ * - Daily log   → `"{YYYY-MM}-1-{DD}"` (e.g. `"2026-02-1-14"`)
+ *
+ * Example ordering:
+ *   "2026-01-0"    (Jan monthly)
+ *   "2026-01-1-30" (Jan 30)
+ *   "2026-01-1-31" (Jan 31, yesterday)
+ *   "2026-02-0"    (Feb monthly)  ← comes BEFORE Feb 1 (tomorrow)
+ *   "2026-02-1-01" (Feb 1, tomorrow)
+ *
  * @param collections - Array of auto-favorited daily and monthly logs
- * @param now - Current date for calculating relative positions
+ * @param now - Current date (passed through to getSortKey for API compatibility)
  * @returns Sorted array (does not mutate input)
  */
 export function sortAutoFavoritedChronologically(

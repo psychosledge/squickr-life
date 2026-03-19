@@ -813,6 +813,69 @@ describe('sortCollectionsHierarchically', () => {
       // Auto-favorited collections appear TWICE
       expect(sorted.map(c => c.id)).toEqual(['current-month', 'today', 'current-month', 'today']);
     });
+
+    // Fix 1 — composite key scheme works for any date, including out-of-window dates
+    describe('Fix 1 — composite sort key handles out-of-window dates correctly', () => {
+      it('should sort: Feb monthly < Feb 14 < March monthly < March 16 (out-of-window, no special-casing)', () => {
+        const autoFavoriteAllPreferences: UserPreferences = {
+          ...DEFAULT_USER_PREFERENCES,
+          autoFavoriteRecentDailyLogs: true,
+          autoFavoriteRecentMonthlyLogs: true,
+        };
+
+        // Use a date far in the future so none of the test dates are in the ±1-month window.
+        // With the old tier scheme, all of these would fall through to the "9-" bucket
+        // and sort incorrectly. The new composite key must handle them correctly.
+        const now = new Date('2030-06-15T12:00:00Z');
+
+        const collections: Collection[] = [
+          { id: 'mar-16', name: 'Mar 16', type: 'daily', date: '2026-03-16', order: 'z3', createdAt: '2024-01-01T00:00:00Z' },
+          { id: 'feb-14', name: 'Feb 14', type: 'daily', date: '2026-02-14', order: 'z1', createdAt: '2024-01-01T00:00:00Z' },
+          { id: 'mar-monthly', name: 'March 2026', type: 'monthly', date: '2026-03', order: 'z2', createdAt: '2024-01-01T00:00:00Z' },
+          { id: 'feb-monthly', name: 'Feb 2026', type: 'monthly', date: '2026-02', order: 'z0', createdAt: '2024-01-01T00:00:00Z' },
+        ];
+
+        const sorted = sortCollectionsHierarchically(collections, autoFavoriteAllPreferences, now);
+
+        // Expected auto-favorites order: Feb monthly → Feb 14 → March monthly → March 16
+        // (Each appears twice: once in auto-favorites, once in calendar)
+        const ids = sorted.map(c => c.id);
+        // Find first occurrences (auto-favorites section)
+        const firstFebMonthly = ids.indexOf('feb-monthly');
+        const firstFeb14 = ids.indexOf('feb-14');
+        const firstMarMonthly = ids.indexOf('mar-monthly');
+        const firstMar16 = ids.indexOf('mar-16');
+
+        expect(firstFebMonthly).toBeLessThan(firstFeb14);
+        expect(firstFeb14).toBeLessThan(firstMarMonthly);
+        expect(firstMarMonthly).toBeLessThan(firstMar16);
+      });
+
+      it('should sort monthly before its own days even for very old dates outside the ±1 window', () => {
+        const autoFavoriteAllPreferences: UserPreferences = {
+          ...DEFAULT_USER_PREFERENCES,
+          autoFavoriteRecentDailyLogs: true,
+          autoFavoriteRecentMonthlyLogs: true,
+        };
+
+        // now = Feb 10, 2026; the "old" dates are from 2025-06, far outside the ±1-month window
+        const now = new Date('2026-02-10T12:00:00Z');
+
+        const collections: Collection[] = [
+          { id: 'jun-15', name: 'Jun 15', type: 'daily', date: '2025-06-15', order: 'z1', createdAt: '2024-01-01T00:00:00Z' },
+          { id: 'jun-monthly', name: 'June 2025', type: 'monthly', date: '2025-06', order: 'z0', createdAt: '2024-01-01T00:00:00Z' },
+        ];
+
+        const sorted = sortCollectionsHierarchically(collections, autoFavoriteAllPreferences, now);
+
+        // June monthly should come before June 15 — even for dates outside the ±1-month window
+        const ids = sorted.map(c => c.id);
+        const firstJunMonthly = ids.indexOf('jun-monthly');
+        const firstJun15 = ids.indexOf('jun-15');
+
+        expect(firstJunMonthly).toBeLessThan(firstJun15);
+      });
+    });
   });
 });
 });
