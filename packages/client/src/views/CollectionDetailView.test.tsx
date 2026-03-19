@@ -12,7 +12,7 @@ import { CollectionDetailView } from './CollectionDetailView';
 import { AppProvider } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import type { Collection, Entry } from '@squickr/domain';
-import { DEFAULT_USER_PREFERENCES } from '@squickr/domain';
+import { DEFAULT_USER_PREFERENCES, getLocalDateKey } from '@squickr/domain';
 
 // Mock useTutorial to avoid needing TutorialProvider in tests
 vi.mock('../hooks/useTutorial', () => ({
@@ -1716,6 +1716,236 @@ describe('CollectionDetailView - Ghost entries excluded from selection (Fix 4)',
     // Only the non-ghost entry (completedSubTask) should be selected → 1
     await waitFor(() => {
       expect(screen.getByText(/1 selected/i)).toBeInTheDocument();
+    });
+  });
+});
+
+// ─── Migrate all open tasks → Today ──────────────────────────────────────────
+describe('CollectionDetailView - Migrate all open tasks to Today', () => {
+  // Build date-agnostic test data: compute today's key and two days ago dynamically
+  const todayDateKey = getLocalDateKey(); // e.g. "2026-03-18"
+
+  // Build "two days ago" date key to use as the "old" daily collection
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  const oldDateKey = getLocalDateKey(twoDaysAgo);
+
+  const todayCollection: Collection = {
+    id: 'today-col',
+    name: 'Today Log',
+    type: 'daily',
+    date: todayDateKey,
+    order: 'a0',
+    createdAt: new Date().toISOString(),
+  };
+
+  const oldDailyCollection: Collection = {
+    id: 'old-daily-col',
+    name: 'Old Daily Log',
+    type: 'daily',
+    date: oldDateKey,
+    order: 'a1',
+    createdAt: twoDaysAgo.toISOString(),
+  };
+
+  const openTask: Entry = {
+    id: 'task-open',
+    type: 'task',
+    content: 'Buy groceries',
+    status: 'open',
+    createdAt: twoDaysAgo.toISOString(),
+    order: 'a0',
+    collectionId: 'old-daily-col',
+    collections: [],
+  };
+
+  function buildAppContext(opts: {
+    collections: Collection[];
+    entries: Entry[];
+    bulkMigrateHandle?: ReturnType<typeof vi.fn>;
+  }) {
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue(opts.entries),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue(opts.entries),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+    };
+
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue(opts.collections),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    const mockBulkMigrate = opts.bulkMigrateHandle ?? vi.fn().mockResolvedValue(undefined);
+
+    return {
+      appContext: {
+        eventStore: {
+          append: vi.fn(),
+          getEvents: vi.fn().mockResolvedValue([]),
+          getAll: vi.fn().mockResolvedValue([]),
+          subscribe: vi.fn().mockReturnValue(() => {}),
+        },
+        entryProjection: mockEntryProjection,
+        taskProjection: {} as any,
+        collectionProjection: mockCollectionProjection,
+        createCollectionHandler: {} as any,
+        migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        bulkMigrateEntriesHandler: { handle: mockBulkMigrate } as any,
+        restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        userPreferences: DEFAULT_USER_PREFERENCES,
+        isAppReady: true,
+      },
+      mockBulkMigrate,
+      mockEntryProjection,
+      mockCollectionProjection,
+    };
+  }
+
+  function renderOldDailyView(opts: {
+    collections: Collection[];
+    entries: Entry[];
+    bulkMigrateHandle?: ReturnType<typeof vi.fn>;
+    collectionId?: string;
+  }) {
+    const { appContext } = buildAppContext(opts);
+    const collectionId = opts.collectionId ?? 'old-daily-col';
+    return render(
+      <MemoryRouter initialEntries={[`/collection/${collectionId}`]}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it('should show "Migrate all open tasks → Today" menu item when collection is NOT today and has active tasks', async () => {
+    const user = userEvent.setup();
+    renderOldDailyView({
+      collections: [oldDailyCollection, todayCollection],
+      entries: [openTask],
+    });
+
+    // Wait for entry content to confirm the view has loaded
+    await waitFor(() => {
+      expect(screen.getByText('Buy groceries')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    expect(screen.getByText(/Migrate all open tasks → Today/i)).toBeInTheDocument();
+  });
+
+  it('should NOT show "Migrate all open tasks → Today" when the collection IS today\'s log', async () => {
+    const user = userEvent.setup();
+    renderOldDailyView({
+      collections: [oldDailyCollection, todayCollection],
+      entries: [openTask],
+      collectionId: 'today-col',
+    });
+
+    // Wait for entry content to confirm the view has loaded
+    await waitFor(() => {
+      expect(screen.getByText('Buy groceries')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    expect(screen.queryByText(/Migrate all open tasks → Today/i)).not.toBeInTheDocument();
+  });
+
+  it('should NOT show "Migrate all open tasks → Today" when collection has no active tasks', async () => {
+    const user = userEvent.setup();
+    const completedTask: Entry = { ...openTask, status: 'completed' };
+    renderOldDailyView({
+      collections: [oldDailyCollection, todayCollection],
+      entries: [completedTask],
+    });
+
+    // Wait for the collection menu button to confirm the view has loaded
+    await waitFor(() => {
+      expect(screen.getByLabelText(/collection menu/i)).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    expect(screen.queryByText(/Migrate all open tasks → Today/i)).not.toBeInTheDocument();
+  });
+
+  it('should call bulkMigrateEntriesHandler with active task IDs and today\'s collection ID when migrate item is clicked', async () => {
+    const user = userEvent.setup();
+    const mockBulkMigrate = vi.fn().mockResolvedValue(undefined);
+    renderOldDailyView({
+      collections: [oldDailyCollection, todayCollection],
+      entries: [openTask],
+      bulkMigrateHandle: mockBulkMigrate,
+    });
+
+    // Wait for entry content to confirm the view has loaded
+    await waitFor(() => {
+      expect(screen.getByText('Buy groceries')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/Migrate all open tasks → Today/i);
+    await user.click(migrateItem);
+
+    await waitFor(() => {
+      expect(mockBulkMigrate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entryIds: ['task-open'],
+          targetCollectionId: 'today-col',
+          mode: 'move',
+        })
+      );
+    });
+  });
+
+  it('should show an error toast when today\'s daily log does not exist', async () => {
+    const user = userEvent.setup();
+    renderOldDailyView({
+      // no todayCollection in the list
+      collections: [oldDailyCollection],
+      entries: [openTask],
+    });
+
+    // Wait for entry content to confirm the view has loaded
+    await waitFor(() => {
+      expect(screen.getByText('Buy groceries')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/Migrate all open tasks → Today/i);
+    await user.click(migrateItem);
+
+    await waitFor(() => {
+      expect(screen.getByText(/today.*daily log.*doesn.*t exist/i)).toBeInTheDocument();
     });
   });
 });

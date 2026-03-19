@@ -39,6 +39,7 @@ export function CollectionIndexView() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [deletedCollections, setDeletedCollections] = useState<Collection[]>([]);
   const [entriesByCollection, setEntriesByCollection] = useState<Map<string | null, Entry[]>>(new Map());
+  const [activeTaskCountsByCollection, setActiveTaskCountsByCollection] = useState<Map<string | null, number>>(new Map());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
@@ -58,6 +59,7 @@ export function CollectionIndexView() {
     
     // Get active task counts for all collections in a single query (avoids N+1 pattern)
     const allCounts = await entryProjection.getActiveTaskCountsByCollection();
+    setActiveTaskCountsByCollection(allCounts);
     
     // Get all entries grouped by collection for stats
     const allEntries = await entryProjection.getEntries('all');
@@ -137,7 +139,7 @@ export function CollectionIndexView() {
   // than the raw stable collection URL.
   const nextEntry = useMemo(() => {
     const now = new Date();
-    const entries = buildNavigationEntries(collections, userPreferences, now);
+    const entries = buildNavigationEntries(collections, userPreferences, now, activeTaskCountsByCollection);
     return entries.length > 0 ? entries[0] : null;
   }, [collections, userPreferences]);
 
@@ -324,6 +326,7 @@ export function CollectionIndexView() {
           entriesByCollection={entriesByCollection}
           deletedCollections={deletedCollections}
           onRestoreCollection={handleRestoreCollection}
+          activeTaskCountsByCollection={activeTaskCountsByCollection}
         />
       </div>
 

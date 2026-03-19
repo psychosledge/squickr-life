@@ -313,3 +313,85 @@ describe('CollectionHeader - data-tutorial-id anchor', () => {
     expect(anchor).not.toBeInTheDocument();
   });
 });
+
+// ─── Migrate all open tasks → Today ──────────────────────────────────────────
+describe('CollectionHeader - onMigrateAllToToday', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+
+  beforeEach(() => {
+    mockCollectionProjection = {
+      getCollections: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+  });
+
+  function renderHeader(props = {}) {
+    return render(
+      <BrowserRouter>
+        <AppProvider
+          value={{
+            eventStore: {
+              getAll: vi.fn().mockResolvedValue([]),
+              subscribe: vi.fn().mockReturnValue(() => {}),
+            } as any,
+            collectionProjection: mockCollectionProjection,
+            entryProjection: mockEntryProjection,
+            taskProjection: {} as any,
+            createCollectionHandler: {} as any,
+            migrateTaskHandler: {} as any,
+          }}
+        >
+          <CollectionHeader
+            collectionName="January 12"
+            collectionId="daily-col"
+            onRename={vi.fn()}
+            onDelete={vi.fn()}
+            onSettings={vi.fn()}
+            {...props}
+          />
+        </AppProvider>
+      </BrowserRouter>
+    );
+  }
+
+  it('should render "Migrate all open tasks → Today" menu item when onMigrateAllToToday is provided', async () => {
+    const user = userEvent.setup();
+    renderHeader({ onMigrateAllToToday: vi.fn() });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    expect(screen.getByText(/Migrate all open tasks → Today/i)).toBeInTheDocument();
+  });
+
+  it('should NOT render "Migrate all open tasks → Today" menu item when onMigrateAllToToday is undefined', async () => {
+    const user = userEvent.setup();
+    renderHeader({ onMigrateAllToToday: undefined });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    expect(screen.queryByText(/Migrate all open tasks → Today/i)).not.toBeInTheDocument();
+  });
+
+  it('should call onMigrateAllToToday and close the menu when the item is clicked', async () => {
+    const user = userEvent.setup();
+    const onMigrateAllToToday = vi.fn();
+    renderHeader({ onMigrateAllToToday });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/Migrate all open tasks → Today/i);
+    await user.click(migrateItem);
+
+    expect(onMigrateAllToToday).toHaveBeenCalledOnce();
+    // Menu should be closed after click
+    expect(screen.queryByText(/Migrate all open tasks → Today/i)).not.toBeInTheDocument();
+  });
+});

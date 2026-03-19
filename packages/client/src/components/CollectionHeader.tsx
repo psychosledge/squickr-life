@@ -22,6 +22,7 @@ interface CollectionHeaderProps {
   isFavorite?: boolean;
   isVirtual?: boolean;
   onEnterSelectionMode?: () => void;
+  onMigrateAllToToday?: () => void;
 }
 
 export function CollectionHeader({
@@ -34,6 +35,7 @@ export function CollectionHeader({
   isFavorite = false,
   isVirtual = false,
   onEnterSelectionMode,
+  onMigrateAllToToday,
 }: CollectionHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -84,6 +86,11 @@ export function CollectionHeader({
   const handleEnterSelectionMode = () => {
     setIsMenuOpen(false);
     onEnterSelectionMode?.();
+  };
+
+  const handleMigrateAllToToday = () => {
+    setIsMenuOpen(false);
+    onMigrateAllToToday?.();
   };
 
   return (
@@ -208,6 +215,21 @@ export function CollectionHeader({
                     type="button"
                   >
                     Select Entries
+                  </button>
+                )}
+                {onMigrateAllToToday && (
+                  <button
+                    onClick={handleMigrateAllToToday}
+                    className="
+                      w-full px-4 py-2
+                      text-left text-gray-700 dark:text-gray-300
+                      hover:bg-gray-100 dark:hover:bg-gray-700
+                      transition-colors
+                      focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                    "
+                    type="button"
+                  >
+                    Migrate all open tasks → Today
                   </button>
                 )}
                 {onToggleFavorite && (

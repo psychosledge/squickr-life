@@ -46,6 +46,8 @@ describe('SettingsModal', () => {
     vi.mocked(useUserPreferences).mockReturnValue({
       defaultCompletedTaskBehavior: 'move-to-bottom',
       autoFavoriteRecentDailyLogs: false,
+      autoFavoriteRecentMonthlyLogs: false,
+      autoFavoriteCalendarWithActiveTasks: false,
     });
   });
 
@@ -70,6 +72,8 @@ describe('SettingsModal', () => {
     vi.mocked(useUserPreferences).mockReturnValue({
       defaultCompletedTaskBehavior: 'collapse',
       autoFavoriteRecentDailyLogs: true,
+      autoFavoriteRecentMonthlyLogs: false,
+      autoFavoriteCalendarWithActiveTasks: false,
     });
 
     render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
@@ -298,5 +302,44 @@ describe('SettingsModal', () => {
     // Should reset to original value
     const resetDropdown = screen.getByLabelText('Default Completed Task Behavior') as HTMLSelectElement;
     expect(resetDropdown.value).toBe('move-to-bottom'); // original default
+  });
+
+  it('should render the auto-favorite logs with active tasks checkbox with correct label', () => {
+    render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+    expect(screen.getByLabelText(/Auto-favorite logs with active tasks/i)).toBeInTheDocument();
+  });
+
+  it('should reflect current autoFavoriteCalendarWithActiveTasks preference when modal opens', () => {
+    vi.mocked(useUserPreferences).mockReturnValue({
+      defaultCompletedTaskBehavior: 'move-to-bottom',
+      autoFavoriteRecentDailyLogs: false,
+      autoFavoriteRecentMonthlyLogs: false,
+      autoFavoriteCalendarWithActiveTasks: true,
+    });
+
+    render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+    const checkbox = screen.getByLabelText(/Auto-favorite logs with active tasks/i) as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it('should include autoFavoriteCalendarWithActiveTasks in the saved event when toggled', async () => {
+    const user = userEvent.setup();
+    const appendSpy = vi.spyOn(mockEventStore, 'append');
+
+    render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+    // Toggle the new checkbox (currently false → true)
+    const checkbox = screen.getByLabelText(/Auto-favorite logs with active tasks/i);
+    await user.click(checkbox);
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(appendSpy).toHaveBeenCalled();
+      const event = appendSpy.mock.calls[0][0];
+      expect(event.payload.autoFavoriteCalendarWithActiveTasks).toBe(true);
+    });
   });
 });

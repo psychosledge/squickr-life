@@ -218,12 +218,14 @@ export function sortAutoFavoritedChronologically(
  * @param collections - Array of collections to sort
  * @param userPreferences - User preferences (for auto-favorite logic)
  * @param now - Current date for calculating Today/Tomorrow/Yesterday (defaults to new Date())
+ * @param activeTaskCountsByCollection - Optional map of collection ID → active task count
  * @returns Sorted array of collections (does not mutate input)
  */
 export function sortCollectionsHierarchically(
   collections: Collection[],
   userPreferences: UserPreferences,
-  now: Date = new Date()
+  now: Date = new Date(),
+  activeTaskCountsByCollection?: Map<string | null, number> | null
 ): Collection[] {
   // Separate collections by type
   const monthlyLogs = collections.filter(c => c.type === 'monthly');
@@ -233,15 +235,15 @@ export function sortCollectionsHierarchically(
   );
   
   // Separate favorited from non-favorited (for customs, dailies, and monthlies)
-  const favoritedCustoms = customCollections.filter(c => isEffectivelyFavorited(c, userPreferences, now));
-  const unfavoritedCustoms = customCollections.filter(c => !isEffectivelyFavorited(c, userPreferences, now));
+  const favoritedCustoms = customCollections.filter(c => isEffectivelyFavorited(c, userPreferences, now, activeTaskCountsByCollection));
+  const unfavoritedCustoms = customCollections.filter(c => !isEffectivelyFavorited(c, userPreferences, now, activeTaskCountsByCollection));
   
-  const favoritedDailies = dailyLogs.filter(c => isEffectivelyFavorited(c, userPreferences, now));
+  const favoritedDailies = dailyLogs.filter(c => isEffectivelyFavorited(c, userPreferences, now, activeTaskCountsByCollection));
   // For calendar: include all dailies EXCEPT manually favorited ones
   // (manually favorited appear once in favorites section, auto-favorited appear twice)
   const allDailiesForCalendar = dailyLogs.filter(c => !c.isFavorite);
   
-  const favoritedMonthlies = monthlyLogs.filter(c => isEffectivelyFavorited(c, userPreferences, now));
+  const favoritedMonthlies = monthlyLogs.filter(c => isEffectivelyFavorited(c, userPreferences, now, activeTaskCountsByCollection));
   // For calendar: include all monthlies EXCEPT manually favorited ones
   const allMonthliesForCalendar = monthlyLogs.filter(c => !c.isFavorite);
   
@@ -251,8 +253,8 @@ export function sortCollectionsHierarchically(
     ...favoritedMonthlies.filter(c => c.isFavorite)
   ];
   const autoFavoritedTemporals = [
-    ...favoritedDailies.filter(c => isAutoFavorited(c, userPreferences, now)),
-    ...favoritedMonthlies.filter(c => isAutoFavorited(c, userPreferences, now))
+    ...favoritedDailies.filter(c => isAutoFavorited(c, userPreferences, now, activeTaskCountsByCollection)),
+    ...favoritedMonthlies.filter(c => isAutoFavorited(c, userPreferences, now, activeTaskCountsByCollection))
   ];
   
   // Sort favorited customs by order field (includes manually favorited temporal collections)

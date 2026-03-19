@@ -609,4 +609,106 @@ describe('collectionUtils', () => {
       expect(isAutoFavorited(collection, preferences)).toBe(false);
     });
   });
+
+  describe('autoFavoriteCalendarWithActiveTasks', () => {
+    const prefsWithActiveTasks: UserPreferences = {
+      ...DEFAULT_USER_PREFERENCES,
+      autoFavoriteCalendarWithActiveTasks: true,
+    };
+
+    const prefsWithoutActiveTasks: UserPreferences = {
+      ...DEFAULT_USER_PREFERENCES,
+      autoFavoriteCalendarWithActiveTasks: false,
+    };
+
+    const dailyCollection: Collection = {
+      id: 'daily-old',
+      name: 'Monday, January 12',
+      type: 'daily',
+      date: '2026-01-12',
+      order: 'a',
+      createdAt: '2026-01-12T00:00:00Z',
+    };
+
+    const monthlyCollection: Collection = {
+      id: 'monthly-old',
+      name: 'December 2025',
+      type: 'monthly',
+      date: '2025-12',
+      order: 'a',
+      createdAt: '2025-12-01T00:00:00Z',
+    };
+
+    const customCollection: Collection = {
+      id: 'custom-1',
+      name: 'Books',
+      type: 'custom',
+      order: 'a',
+      createdAt: '2026-01-01T00:00:00Z',
+    };
+
+    describe('isEffectivelyFavorited', () => {
+      it('should return true for daily log with active tasks when preference is enabled and count > 0', () => {
+        const counts = new Map<string | null, number>([['daily-old', 3]]);
+        expect(isEffectivelyFavorited(dailyCollection, prefsWithActiveTasks, new Date(), counts)).toBe(true);
+      });
+
+      it('should return false for daily log with 0 active tasks even when preference is enabled', () => {
+        const counts = new Map<string | null, number>([['daily-old', 0]]);
+        expect(isEffectivelyFavorited(dailyCollection, prefsWithActiveTasks, new Date(), counts)).toBe(false);
+      });
+
+      it('should return false for daily log when activeTaskCountsByCollection is not passed even if preference is enabled', () => {
+        expect(isEffectivelyFavorited(dailyCollection, prefsWithActiveTasks, new Date())).toBe(false);
+      });
+
+      it('should return false for daily log when activeTaskCountsByCollection is null', () => {
+        expect(isEffectivelyFavorited(dailyCollection, prefsWithActiveTasks, new Date(), null)).toBe(false);
+      });
+
+      it('should return true for monthly log with active tasks when preference is enabled', () => {
+        const counts = new Map<string | null, number>([['monthly-old', 2]]);
+        expect(isEffectivelyFavorited(monthlyCollection, prefsWithActiveTasks, new Date(), counts)).toBe(true);
+      });
+
+      it('should return false for custom collection with active tasks (only calendar collections qualify)', () => {
+        const counts = new Map<string | null, number>([['custom-1', 5]]);
+        expect(isEffectivelyFavorited(customCollection, prefsWithActiveTasks, new Date(), counts)).toBe(false);
+      });
+
+      it('should return false when autoFavoriteCalendarWithActiveTasks is false even with active tasks', () => {
+        const counts = new Map<string | null, number>([['daily-old', 3]]);
+        expect(isEffectivelyFavorited(dailyCollection, prefsWithoutActiveTasks, new Date(), counts)).toBe(false);
+      });
+
+      it('should return true for manually favorited collection regardless of active task count', () => {
+        const manuallyFavorited: Collection = { ...dailyCollection, isFavorite: true };
+        const counts = new Map<string | null, number>([['daily-old', 0]]);
+        expect(isEffectivelyFavorited(manuallyFavorited, prefsWithoutActiveTasks, new Date(), counts)).toBe(true);
+      });
+    });
+
+    describe('isAutoFavorited', () => {
+      it('should return true for daily log with active tasks when preference is enabled', () => {
+        const counts = new Map<string | null, number>([['daily-old', 1]]);
+        expect(isAutoFavorited(dailyCollection, prefsWithActiveTasks, new Date(), counts)).toBe(true);
+      });
+
+      it('should return false for manually favorited daily log with active tasks', () => {
+        const manuallyFavorited: Collection = { ...dailyCollection, isFavorite: true };
+        const counts = new Map<string | null, number>([['daily-old', 3]]);
+        expect(isAutoFavorited(manuallyFavorited, prefsWithActiveTasks, new Date(), counts)).toBe(false);
+      });
+
+      it('should return false for daily log with 0 tasks even when preference enabled', () => {
+        const counts = new Map<string | null, number>([['daily-old', 0]]);
+        expect(isAutoFavorited(dailyCollection, prefsWithActiveTasks, new Date(), counts)).toBe(false);
+      });
+
+      it('should return true for monthly log with active tasks when preference is enabled', () => {
+        const counts = new Map<string | null, number>([['monthly-old', 2]]);
+        expect(isAutoFavorited(monthlyCollection, prefsWithActiveTasks, new Date(), counts)).toBe(true);
+      });
+    });
+  });
 });

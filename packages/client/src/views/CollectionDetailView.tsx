@@ -14,6 +14,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Collection, Entry } from '@squickr/domain';
+import { getLocalDateKey } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useCollectionHandlers } from '../hooks/useCollectionHandlers';
@@ -336,6 +337,30 @@ export function CollectionDetailView({
     setIsBulkMigrateModalOpen(false);
   };
 
+  const handleMigrateAllToToday = async () => {
+    const todayKey = getLocalDateKey();
+    const todayCollection = allCollections.find(c => c.type === 'daily' && c.date === todayKey);
+    if (!todayCollection) {
+      setErrorMessage("Today's daily log doesn't exist yet. Please create it first.");
+      return;
+    }
+    const activeTaskIds = entries
+      .filter(e =>
+        e.type === 'task' &&
+        e.status === 'open' &&
+        !e.migratedTo &&
+        !(e as EntryWithGhost).renderAsGhost &&
+        !e.deletedAt
+      )
+      .map(e => e.id);
+    if (activeTaskIds.length === 0) return;
+    try {
+      await operations.handleBulkMigrateWithMode(activeTaskIds, todayCollection.id, 'move');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to migrate tasks');
+    }
+  };
+
   // Sub-task modal handlers
   const handleOpenSubTaskModal = (parentEntry: Entry) => {
     setSubTaskParent(parentEntry);
@@ -448,17 +473,32 @@ export function CollectionDetailView({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header with back button and menu */}
-      <CollectionHeader
-        collectionName={getCollectionDisplayName(collection, new Date())}
-        collectionId={collection.id}
-        onRename={operations.handleRenameCollection}
-        onDelete={operations.handleDeleteCollection}
-        onSettings={operations.handleOpenSettings}
-        onToggleFavorite={collection.id === UNCATEGORIZED_COLLECTION_ID ? undefined : operations.handleToggleFavorite}
-        isFavorite={collection.isFavorite}
-        isVirtual={collection.id === UNCATEGORIZED_COLLECTION_ID}
-        onEnterSelectionMode={selection.enterSelectionMode}
-      />
+      {(() => {
+        const todayKey = getLocalDateKey();
+        const isTodaysLog = collection.type === 'daily' && collection.date === todayKey;
+        const hasActiveTasks = entries.some(e =>
+          e.type === 'task' &&
+          e.status === 'open' &&
+          !e.migratedTo &&
+          !(e as EntryWithGhost).renderAsGhost &&
+          !e.deletedAt
+        );
+        const showMigrateAllToToday = !isTodaysLog && hasActiveTasks && collection.id !== UNCATEGORIZED_COLLECTION_ID;
+        return (
+          <CollectionHeader
+            collectionName={getCollectionDisplayName(collection, new Date())}
+            collectionId={collection.id}
+            onRename={operations.handleRenameCollection}
+            onDelete={operations.handleDeleteCollection}
+            onSettings={operations.handleOpenSettings}
+            onToggleFavorite={collection.id === UNCATEGORIZED_COLLECTION_ID ? undefined : operations.handleToggleFavorite}
+            isFavorite={collection.isFavorite}
+            isVirtual={collection.id === UNCATEGORIZED_COLLECTION_ID}
+            onEnterSelectionMode={selection.enterSelectionMode}
+            onMigrateAllToToday={showMigrateAllToToday ? handleMigrateAllToToday : undefined}
+          />
+        );
+      })()}
 
       {/* Entry list - dynamic bottom padding when selection toolbar is visible */}
       <div className={`py-8 px-4 ${selection.isSelectionMode ? 'pb-52' : 'pb-20'}`}>

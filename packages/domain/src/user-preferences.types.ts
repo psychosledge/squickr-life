@@ -22,6 +22,9 @@ export interface UserPreferences {
   /** Auto-favorite monthly logs for last month, current month, and next month */
   readonly autoFavoriteRecentMonthlyLogs: boolean;
   
+  /** Auto-favorite daily and monthly logs that have at least one open task */
+  readonly autoFavoriteCalendarWithActiveTasks: boolean;
+  
   /** When preferences were last updated (ISO 8601) */
   readonly updatedAt?: string;
 }
@@ -34,6 +37,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   defaultCompletedTaskBehavior: 'keep-in-place',
   autoFavoriteRecentDailyLogs: false,
   autoFavoriteRecentMonthlyLogs: false,
+  autoFavoriteCalendarWithActiveTasks: false,
 };
 
 // ============================================================================
@@ -56,6 +60,7 @@ export interface UserPreferencesUpdated extends DomainEvent {
     readonly defaultCompletedTaskBehavior?: CompletedTaskBehavior;
     readonly autoFavoriteRecentDailyLogs?: boolean;
     readonly autoFavoriteRecentMonthlyLogs?: boolean;
+    readonly autoFavoriteCalendarWithActiveTasks?: boolean;
     readonly updatedAt: string;
   };
 }
@@ -76,6 +81,7 @@ export interface UpdateUserPreferencesCommand {
   readonly defaultCompletedTaskBehavior?: CompletedTaskBehavior;
   readonly autoFavoriteRecentDailyLogs?: boolean;
   readonly autoFavoriteRecentMonthlyLogs?: boolean;
+  readonly autoFavoriteCalendarWithActiveTasks?: boolean;
   readonly userId?: string;
 }
 

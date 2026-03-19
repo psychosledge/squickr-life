@@ -73,12 +73,14 @@ export function isRecentMonthlyLog(collection: Collection, now: Date = new Date(
  * @param collection - The collection to check
  * @param userPreferences - The user's preferences
  * @param now - Current date/time (defaults to new Date() if not provided)
+ * @param activeTaskCountsByCollection - Optional map of collection ID → active task count (for autoFavoriteCalendarWithActiveTasks)
  * @returns true if the collection should be displayed as favorited
  */
 export function isEffectivelyFavorited(
   collection: Collection,
   userPreferences: UserPreferences,
-  now: Date = new Date()
+  now: Date = new Date(),
+  activeTaskCountsByCollection?: Map<string | null, number> | null
 ): boolean {
   // Manual favorite always takes precedence
   if (collection.isFavorite) return true;
@@ -92,6 +94,15 @@ export function isEffectivelyFavorited(
   if (userPreferences.autoFavoriteRecentMonthlyLogs && collection.type === 'monthly') {
     return isRecentMonthlyLog(collection, now);
   }
+
+  // Auto-favorite calendar collections (daily or monthly) that have active tasks
+  if (
+    userPreferences.autoFavoriteCalendarWithActiveTasks &&
+    (collection.type === 'daily' || collection.type === 'monthly') &&
+    activeTaskCountsByCollection != null
+  ) {
+    return (activeTaskCountsByCollection.get(collection.id) ?? 0) > 0;
+  }
   
   return false;
 }
@@ -103,12 +114,14 @@ export function isEffectivelyFavorited(
  * @param collection - The collection to check
  * @param userPreferences - The user's preferences
  * @param now - Current date/time (defaults to new Date() if not provided)
+ * @param activeTaskCountsByCollection - Optional map of collection ID → active task count (for autoFavoriteCalendarWithActiveTasks)
  * @returns true if the collection is auto-favorited but not manually favorited
  */
 export function isAutoFavorited(
   collection: Collection,
   userPreferences: UserPreferences,
-  now: Date = new Date()
+  now: Date = new Date(),
+  activeTaskCountsByCollection?: Map<string | null, number> | null
 ): boolean {
   // Manual favorite takes precedence
   if (collection.isFavorite) return false;
@@ -129,6 +142,15 @@ export function isAutoFavorited(
     isRecentMonthlyLog(collection, now)
   ) {
     return true;
+  }
+
+  // Check if it would be auto-favorited via active tasks
+  if (
+    userPreferences.autoFavoriteCalendarWithActiveTasks &&
+    (collection.type === 'daily' || collection.type === 'monthly') &&
+    activeTaskCountsByCollection != null
+  ) {
+    return (activeTaskCountsByCollection.get(collection.id) ?? 0) > 0;
   }
   
   return false;

@@ -304,6 +304,72 @@ describe('UserPreferencesProjection', () => {
     });
   });
 
+  describe('autoFavoriteCalendarWithActiveTasks', () => {
+    it('should have default value of false', async () => {
+      // Act
+      const preferences = await projection.getUserPreferences();
+
+      // Assert
+      expect(preferences.autoFavoriteCalendarWithActiveTasks).toBe(false);
+    });
+
+    it('should merge autoFavoriteCalendarWithActiveTasks from false to true', async () => {
+      // Arrange
+      const metadata = generateEventMetadata();
+      const event: UserPreferencesUpdated = {
+        ...metadata,
+        type: 'UserPreferencesUpdated',
+        aggregateId: 'user-preferences',
+        payload: {
+          autoFavoriteCalendarWithActiveTasks: true,
+          updatedAt: metadata.timestamp,
+        },
+      };
+      await eventStore.append(event);
+
+      // Act
+      const preferences = await projection.getUserPreferences();
+
+      // Assert
+      expect(preferences.autoFavoriteCalendarWithActiveTasks).toBe(true);
+      // Other defaults should remain
+      expect(preferences.defaultCompletedTaskBehavior).toBe('keep-in-place');
+    });
+
+    it('should retain autoFavoriteCalendarWithActiveTasks across unrelated updates', async () => {
+      // Arrange - first set it to true
+      const metadata1 = generateEventMetadata();
+      await eventStore.append({
+        ...metadata1,
+        type: 'UserPreferencesUpdated',
+        aggregateId: 'user-preferences',
+        payload: {
+          autoFavoriteCalendarWithActiveTasks: true,
+          updatedAt: metadata1.timestamp,
+        },
+      } as UserPreferencesUpdated);
+
+      // Then update an unrelated preference
+      const metadata2 = generateEventMetadata();
+      await eventStore.append({
+        ...metadata2,
+        type: 'UserPreferencesUpdated',
+        aggregateId: 'user-preferences',
+        payload: {
+          defaultCompletedTaskBehavior: 'collapse' as const,
+          updatedAt: metadata2.timestamp,
+        },
+      } as UserPreferencesUpdated);
+
+      // Act
+      const preferences = await projection.getUserPreferences();
+
+      // Assert - autoFavoriteCalendarWithActiveTasks should still be true
+      expect(preferences.autoFavoriteCalendarWithActiveTasks).toBe(true);
+      expect(preferences.defaultCompletedTaskBehavior).toBe('collapse');
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should ignore non-UserPreferences events', async () => {
       // Arrange - Create a non-user-preferences event

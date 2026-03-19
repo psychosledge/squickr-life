@@ -140,6 +140,39 @@ describe('UpdateUserPreferencesHandler', () => {
     });
   });
 
+  describe('autoFavoriteCalendarWithActiveTasks', () => {
+    it('should include autoFavoriteCalendarWithActiveTasks in event payload when provided', async () => {
+      // Arrange
+      const command: UpdateUserPreferencesCommand = {
+        autoFavoriteCalendarWithActiveTasks: true,
+      };
+
+      // Act
+      await handler.handle(command);
+
+      // Assert
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(1);
+      const event = events[0] as UserPreferencesUpdated;
+      expect(event.type).toBe('UserPreferencesUpdated');
+      expect(event.payload.autoFavoriteCalendarWithActiveTasks).toBe(true);
+    });
+
+    it('should accept partial command with only autoFavoriteCalendarWithActiveTasks (no throw)', async () => {
+      // Arrange
+      const command: UpdateUserPreferencesCommand = {
+        autoFavoriteCalendarWithActiveTasks: false,
+      };
+
+      // Act & Assert (should not throw)
+      await expect(handler.handle(command)).resolves.toBeUndefined();
+      const events = await eventStore.getAll();
+      expect(events).toHaveLength(1);
+      const event = events[0] as UserPreferencesUpdated;
+      expect(event.payload.autoFavoriteCalendarWithActiveTasks).toBe(false);
+    });
+  });
+
   describe('Partial Updates', () => {
     it('should allow updating only defaultCompletedTaskBehavior', async () => {
       // Arrange

@@ -74,9 +74,10 @@ function getTemporalUrl(collection: Collection, now: Date): string | null {
 export function buildNavigationEntries(
   collections: Collection[],
   userPreferences: UserPreferences,
-  now: Date = new Date()
+  now: Date = new Date(),
+  activeTaskCountsByCollection?: Map<string | null, number> | null
 ): NavigationEntry[] {
-  const sorted = sortCollectionsHierarchically(collections, userPreferences, now);
+  const sorted = sortCollectionsHierarchically(collections, userPreferences, now, activeTaskCountsByCollection);
   
   // Track first occurrence of each collection ID
   const firstOccurrence = new Map<string, number>();
@@ -88,7 +89,7 @@ export function buildNavigationEntries(
   
   return sorted.map((collection, index) => {
     const isFirstOccurrence = firstOccurrence.get(collection.id) === index;
-    const isAutoFav = isEffectivelyFavorited(collection, userPreferences, now) 
+    const isAutoFav = isEffectivelyFavorited(collection, userPreferences, now, activeTaskCountsByCollection) 
       && !collection.isFavorite;
     
     let url: string;

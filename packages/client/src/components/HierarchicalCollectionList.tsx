@@ -18,6 +18,7 @@ interface HierarchicalCollectionListProps {
   entriesByCollection?: Map<string | null, Entry[]>;
   deletedCollections?: Collection[];
   onRestoreCollection?: (collectionId: string) => void;
+  activeTaskCountsByCollection?: Map<string | null, number> | null;
 }
 
 /**
@@ -65,6 +66,7 @@ export function HierarchicalCollectionList({
   entriesByCollection,
   deletedCollections,
   onRestoreCollection,
+  activeTaskCountsByCollection,
 }: HierarchicalCollectionListProps) {
   // Get userPreferences from context
   const { userPreferences } = useApp();
@@ -147,8 +149,8 @@ export function HierarchicalCollectionList({
   
   // Build navigation entries to get URLs for each collection
   const navigationEntries = useMemo(() => {
-    return buildNavigationEntries(collections, userPreferences, now);
-  }, [collections, userPreferences, now]);
+    return buildNavigationEntries(collections, userPreferences, now, activeTaskCountsByCollection);
+  }, [collections, userPreferences, now, activeTaskCountsByCollection]);
   
   // Create a map of collection ID → URL for efficient lookup
   const collectionUrlMap = useMemo(() => {
@@ -168,7 +170,7 @@ export function HierarchicalCollectionList({
   const favoriteCustomNodes = nodes.filter(node => {
     // For custom collections, check if favorited
     if (node.type === 'custom' && node.collection) {
-      return isEffectivelyFavorited(node.collection, userPreferences, now);
+      return isEffectivelyFavorited(node.collection, userPreferences, now, activeTaskCountsByCollection);
     }
     return false;
   });
@@ -183,7 +185,7 @@ export function HierarchicalCollectionList({
     const favoritedDateCollections = collections
       .filter(collection => 
         (collection.type === 'daily' || collection.type === 'monthly') &&
-        isEffectivelyFavorited(collection, userPreferences, now)
+        isEffectivelyFavorited(collection, userPreferences, now, activeTaskCountsByCollection)
       );
     
     // Sort both daily and monthly logs chronologically (Feature 1: chronological auto-favorites)
@@ -202,7 +204,7 @@ export function HierarchicalCollectionList({
         isExpanded: false,
       } as HierarchyNode;
     });
-  }, [collections, userPreferences, now]);
+  }, [collections, userPreferences, now, activeTaskCountsByCollection]);
   
   const allFavoriteNodes = useMemo(
     () => [...favoriteCustomNodes, ...favoriteDayNodes], 
