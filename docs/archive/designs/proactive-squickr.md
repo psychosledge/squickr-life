@@ -300,21 +300,16 @@ Phase 1 ships useful immediately (review screen, accessible from nav). Phase 2 a
 
 ---
 
-## Open questions for the user
+## Decisions
 
-These need answers before implementation begins:
+All open questions resolved (2026-03-19):
 
-1. **Habit notification time** — should each recurring task habit have its own notification time (e.g. "Remind me about exercise at 6am, dishes at 9pm"), or a single global "habit reminder time" per day?
-
-2. **Missed vs skipped** — do you want an explicit "skip today" action on a habit (with optional reason), or should missed days just appear as gaps in the history grid with no action required?
-
-3. **Stalled threshold** — 14 days is the proposed default for "stalled project" detection. Does that feel right for your workflow, or would you prefer something shorter (7 days) or longer?
-
-4. **Review screen placement** — bottom tab bar item, sidebar nav item, or accessible only via notification + a buried menu option? (Depends on how often you'd open it directly vs. via notification.)
-
-5. **Notification permission timing** — should the app ask for notification permission immediately after sign-in, or wait until the user explicitly enables notifications in Settings? (Asking immediately is more likely to be granted; asking later is less surprising.)
-
-6. **Habit on daily log** — when a recurring task is due, should it appear at the top of the daily log (above other tasks), inline with other tasks (sorted by creation time), or in a separate "Habits" section within the daily log?
+1. **Habit notification time** — each habit has its own individual notification time.
+2. **Missed vs skipped** — explicit "skip today" action available on each habit entry; missed days show as gaps.
+3. **Stalled threshold** — 14 days.
+4. **Review screen placement** — avatar/profile menu. Notification is the primary entry point; the menu item is the always-accessible fallback. Does not clutter the primary nav.
+5. **Notification permission timing** — request immediately after sign-in.
+6. **Habit on daily log** — separate "Habits" section at the top of the daily log, above regular tasks. Allows habits to be scanned and checked off as a unit before engaging with the task list.
 
 ---
 
