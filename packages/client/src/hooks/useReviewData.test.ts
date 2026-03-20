@@ -156,6 +156,24 @@ describe('useReviewData', () => {
     expect(result.current.stalledTasks).toEqual(stalledTasks);
   });
 
+  it('returns collectionMap built from collectionProjection', async () => {
+    // Arrange
+    const collections = [
+      { id: 'col-1', name: 'January 2026', type: 'monthly' as const, order: 'a0', createdAt: '' },
+      { id: 'col-2', name: 'February 2026', type: 'monthly' as const, order: 'a1', createdAt: '' },
+    ];
+    setupMocks({}, { getCollections: vi.fn().mockResolvedValue(collections) });
+
+    // Act
+    const { result } = renderHook(() => useReviewData('weekly'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Assert
+    expect(result.current.collectionMap).toBeInstanceOf(Map);
+    expect(result.current.collectionMap.get('col-1')?.name).toBe('January 2026');
+    expect(result.current.collectionMap.get('col-2')?.name).toBe('February 2026');
+  });
+
   it('passes correct weekly date range to getCompletedInRange', async () => {
     // Arrange
     const { entryProjection } = setupMocks();
@@ -168,7 +186,7 @@ describe('useReviewData', () => {
     // Assert — check that getCompletedInRange was called with dates matching the weekly range
     expect(entryProjection.getCompletedInRange).toHaveBeenCalledTimes(1);
     const [calledFrom, calledTo] = entryProjection.getCompletedInRange.mock.calls[0] as [Date, Date];
-    // Compare day-level precision (date strings), not exact ms, since getDateRange is called twice
+    // Compare day-level precision (date strings) — dateRange is computed via useMemo
     expect(calledFrom.toDateString()).toBe(weekRange.from.toDateString());
     expect(calledTo.toDateString()).toBe(weekRange.to.toDateString());
   });

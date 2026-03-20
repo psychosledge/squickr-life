@@ -4,13 +4,10 @@
  * Phase 1 (Proactive Squickr — Review Screen): Assembles the full review
  * screen from its sub-components. Reads the period from the `?period` query
  * parameter (defaults to "weekly"), delegates data fetching to `useReviewData`,
- * and builds the collection map needed by ReviewCompletedSection.
+ * and uses the collection map returned by the hook for ReviewCompletedSection.
  */
 
-import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { Collection } from '@squickr/domain';
-import { useApp } from '../context/AppContext';
 import { useReviewData } from '../hooks/useReviewData';
 import { ReviewHeader } from '../components/ReviewHeader';
 import { ReviewCompletedSection } from '../components/ReviewCompletedSection';
@@ -24,18 +21,7 @@ export function ReviewView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const period = (searchParams.get('period') as ReviewPeriod) ?? 'weekly';
 
-  const { completedEntries, stalledTasks, dateRange, isLoading } = useReviewData(period);
-  const { collectionProjection } = useApp();
-  const [collections, setCollections] = useState<Collection[]>([]);
-
-  useEffect(() => {
-    collectionProjection.getCollections().then(setCollections);
-  }, [collectionProjection]);
-
-  const collectionMap = useMemo(
-    () => new Map(collections.map(c => [c.id, c])),
-    [collections],
-  );
+  const { completedEntries, stalledTasks, collectionMap, dateRange, isLoading } = useReviewData(period);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900" data-testid="review-view">

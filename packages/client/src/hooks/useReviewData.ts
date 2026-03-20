@@ -9,8 +9,8 @@
  * entries are created, completed, or migrated.
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import type { Entry, StalledTask } from '@squickr/domain';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { Collection, Entry, StalledTask } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { getDateRange } from '../utils/reviewDateRange';
 import type { ReviewPeriod } from '../utils/reviewDateRange';
@@ -20,6 +20,7 @@ import type { ReviewPeriod } from '../utils/reviewDateRange';
 export interface ReviewData {
   completedEntries: Entry[];
   stalledTasks: StalledTask[];
+  collectionMap: Map<string, Collection>;
   period: ReviewPeriod;
   dateRange: { from: Date; to: Date };
   isLoading: boolean;
@@ -32,28 +33,28 @@ export function useReviewData(period: ReviewPeriod = 'weekly'): ReviewData {
 
   const [completedEntries, setCompletedEntries] = useState<Entry[]>([]);
   const [stalledTasks, setStalledTasks] = useState<StalledTask[]>([]);
+  const [collectionMap, setCollectionMap] = useState<Map<string, Collection>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
 
-  const dateRange = getDateRange(period);
+  const dateRange = useMemo(() => getDateRange(period), [period]);
 
   const fetchData = useCallback(async () => {
     // Build getCollection callback fresh on each fetch so the collection
     // map reflects the latest state.
     const collections = await collectionProjection.getCollections();
-    const collectionMap = new Map(collections.map(c => [c.id, c]));
-    const getCollection = (id: string) => collectionMap.get(id);
-
-    const { from, to } = getDateRange(period);
+    const map = new Map(collections.map(c => [c.id, c]));
+    const getCollection = (id: string) => map.get(id);
 
     const [completed, stalled] = await Promise.all([
-      entryProjection.getCompletedInRange(from, to),
+      entryProjection.getCompletedInRange(dateRange.from, dateRange.to),
       entryProjection.getStalledMonthlyTasks(14, getCollection),
     ]);
 
+    setCollectionMap(map);
     setCompletedEntries(completed);
     setStalledTasks(stalled);
     setIsLoading(false);
-  }, [period, entryProjection, collectionProjection]);
+  }, [dateRange, entryProjection, collectionProjection]);
 
   // Initial load + re-fetch when period changes
   useEffect(() => {
@@ -72,6 +73,7 @@ export function useReviewData(period: ReviewPeriod = 'weekly'): ReviewData {
   return {
     completedEntries,
     stalledTasks,
+    collectionMap,
     period,
     dateRange,
     isLoading,

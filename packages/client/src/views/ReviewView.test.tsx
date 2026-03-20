@@ -106,6 +106,7 @@ const defaultDateRange = {
 const defaultReviewData = {
   completedEntries: [],
   stalledTasks: [],
+  collectionMap: new Map(),
   period: 'weekly' as const,
   dateRange: defaultDateRange,
   isLoading: false,
@@ -256,12 +257,14 @@ describe('ReviewView', () => {
     expect(header).toHaveAttribute('data-period', 'monthly');
   });
 
-  it('calls getCollections from collectionProjection on mount', async () => {
+  it('collectionMap is provided by useReviewData (not fetched separately by the view)', () => {
+    // collectionMap now comes from useReviewData, so ReviewView no longer
+    // calls collectionProjection.getCollections() independently.
+    const collectionMap = new Map([['col-1', { id: 'col-1', name: 'Test', type: 'monthly' as const, order: 'a0', createdAt: '' }]]);
+    mockUseReviewData.mockReturnValue({ ...defaultReviewData, collectionMap });
     renderReviewView();
-
-    await waitFor(() => {
-      expect(mockGetCollections).toHaveBeenCalled();
-    });
+    // If the view rendered without errors, the collectionMap was wired through correctly
+    expect(screen.getByTestId('review-view')).toBeInTheDocument();
   });
 
   it('shows loading indicator (not the sections) while isLoading is true', () => {

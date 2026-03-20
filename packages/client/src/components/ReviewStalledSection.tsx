@@ -17,15 +17,17 @@ interface ReviewStalledSectionProps {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Group stalled tasks by their collectionName (already resolved in StalledTask).
+ * Group stalled tasks by their collectionId (unique identifier), but display
+ * collectionName as the heading. Grouping by name would incorrectly merge
+ * two different collections that happen to share the same name.
  */
-function groupByCollectionName(
+function groupByCollectionId(
   stalledTasks: StalledTask[],
 ): Map<string, StalledTask[]> {
   const groups = new Map<string, StalledTask[]>();
 
   for (const task of stalledTasks) {
-    const key = task.collectionName;
+    const key = task.collectionId;
     if (!groups.has(key)) {
       groups.set(key, []);
     }
@@ -49,8 +51,8 @@ export function ReviewStalledSection({ stalledTasks }: ReviewStalledSectionProps
     );
   }
 
-  // ── Group by collection name ─────────────────────────────────────────────
-  const groups = groupByCollectionName(stalledTasks);
+  // ── Group by collection ID ───────────────────────────────────────────────
+  const groups = groupByCollectionId(stalledTasks);
 
   return (
     <section aria-label="Stalled projects">
@@ -64,16 +66,16 @@ export function ReviewStalledSection({ stalledTasks }: ReviewStalledSectionProps
 
       {/* Collection groups */}
       <div className="space-y-4">
-        {Array.from(groups.entries()).map(([collectionName, tasks]) => (
-          <div key={collectionName}>
-            {/* Collection subheading */}
+        {Array.from(groups.entries()).map(([collectionId, tasks]) => (
+          <div key={collectionId}>
+            {/* Collection subheading — display name, not ID */}
             <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
-              {collectionName}
+              {tasks[0]?.collectionName ?? collectionId}
             </h3>
 
             {/* Task list */}
             <ul className="space-y-1">
-              {tasks.map((stalledTask) => (
+              {tasks.map((stalledTask: StalledTask) => (
                 <li
                   key={stalledTask.entry.id}
                   className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"

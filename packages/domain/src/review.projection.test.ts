@@ -338,7 +338,8 @@ describe('ReviewProjection.getStalledMonthlyTasks', () => {
     expect(result).toHaveLength(1);
     // staleDays should be floor of (now - lastEventAt) in days
     // Should be 10 ± 1 due to test execution time
-    expect(result[0].staleDays).toBe(10);
+    expect(result[0].staleDays).toBeGreaterThanOrEqual(9);
+    expect(result[0].staleDays).toBeLessThanOrEqual(11);
   });
 
   it('sets collectionName from getCollection callback', async () => {

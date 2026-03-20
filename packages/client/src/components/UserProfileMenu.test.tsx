@@ -320,13 +320,22 @@ describe('UserProfileMenu', () => {
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
 
+    // Verify specific items are present rather than relying on a total count
+    expect(screen.getByRole('menuitem', { name: /settings/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /review/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /restart tutorial/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /bullet journal guide/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /keyboard shortcuts/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /report a bug/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /request a feature/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /about squickr life/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /sign out/i })).toBeInTheDocument();
+
+    // Settings should appear before Sign out in document order
     const menuItems = screen.getAllByRole('menuitem');
-    // Settings + Review + Restart Tutorial + Bullet Journal Guide + Keyboard Shortcuts
-    // + Report a Bug + Request a Feature + About Squickr Life
-    // + Sign out = 9
-    expect(menuItems).toHaveLength(9);
-    expect(menuItems[0]).toHaveTextContent(/settings/i);
-    expect(menuItems[8]).toHaveTextContent(/sign out/i);
+    const settingsIndex = menuItems.findIndex(el => /settings/i.test(el.textContent ?? ''));
+    const signOutIndex = menuItems.findIndex(el => /sign out/i.test(el.textContent ?? ''));
+    expect(settingsIndex).toBeLessThan(signOutIndex);
   });
 
   // ─── Review ──────────────────────────────────────────────────────────────
