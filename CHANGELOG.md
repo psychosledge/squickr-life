@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-03-19
+
+### Added
+- **Auto-favorite calendar logs with active tasks (#6):** New user preference `autoFavoriteCalendarWithActiveTasks` automatically promotes any calendar collection (daily or monthly) that contains open tasks into the favorites section — keeping actionable days visible without manual starring.
+  - New checkbox in Settings modal: "Auto-favorite calendar logs with open tasks"
+  - Extends `isEffectivelyFavorited()` in `collectionUtils.ts` to evaluate active task counts
+  - New `getActiveTaskCountForCollection()` helper in `CollectionViewProjection`
+  - Preference stored in `UserPreferences` domain type and persisted via existing preferences handler
+
+- **Migrate all open tasks to Today (#11):** New bulk action in the collection header menu — "Migrate all open tasks → Today" — moves every incomplete task in the current collection to today's daily log in one step.
+  - Auto-creates today's daily log if it doesn't already exist before migrating
+  - Uses existing `BulkMigrateEntriesHandler` infrastructure
+  - Available on all collection types via `CollectionHeader` menu
+
+### Fixed
+- **"Remove from this collection" for sub-tasks in multiple collections (#7 follow-up):** The menu item was missing for sub-tasks that belonged to multiple collections via the multi-collection pattern. Fixed predicate to check `entry.collections` array (not legacy `collectionId`) for sub-tasks.
+- **Auto-favorite sort order:** Auto-favorited calendar logs with active tasks now sort correctly in chronological order alongside other auto-favorited entries.
+- **Phantom task count in sidebar stats:** Ghost original entries (tasks moved out of a collection) were being counted in the active task total used to determine auto-favorite eligibility. Fixed by excluding `renderAsGhost: true` entries from the active task count pre-pass.
+- **Sub-task count in sidebar stats (Bug #3):** Cross-collection sub-tasks were double-counted in collection stats. Fixed `collectionStatsFormatter` to correctly handle sub-tasks that appear via the multi-collection pattern.
+- **CI flakiness:** `nextCollection`/`previousCollection` name assertions moved inside `waitFor` to prevent race conditions in navigation tests.
+
+### Tests
+- 754 domain tests passing (up from 741 at v1.9.0)
+- 51 infrastructure tests passing (unchanged)
+- 1,222 client tests passing (up from ~1,127 at v1.9.0)
+
 ## [1.3.0] - 2026-02-28
 
 ### Added
