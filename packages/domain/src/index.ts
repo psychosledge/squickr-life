@@ -213,6 +213,8 @@ export { EntryListProjection } from './entry.projections';
 export { CollectionViewProjection } from './collection-view.projection';
 export { SubTaskProjection } from './sub-task.projection';
 export { DailyLogProjection } from './daily-log.projection';
+export { ReviewProjection } from './review.projection';
+export type { StalledTask } from './review.projection';
 export { EntryEventApplicator } from './entry.event-applicator';
 export { CollectionListProjection } from './collection.projections';
 export { UserPreferencesProjection } from './user-preferences.projections';

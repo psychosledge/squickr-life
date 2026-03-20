@@ -10,6 +10,7 @@ import { AddTaskToCollectionHandler, RemoveTaskFromCollectionHandler } from './c
 import type { CreateTaskCommand, CreateNoteCommand, CreateEventCommand } from './task.types';
 import type { ISnapshotStore, ProjectionSnapshot } from './snapshot-store';
 import { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
+import type { Collection } from './collection.types';
 
 // ---------------------------------------------------------------------------
 // Minimal in-memory snapshot store for use in tests.
@@ -2527,4 +2528,83 @@ describe('EntryListProjection', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// EntryListProjection — review delegation
+// ---------------------------------------------------------------------------
+
+describe('EntryListProjection — review delegation', () => {
+  let eventStore: IEventStore;
+  let projection: EntryListProjection;
+  let taskProjection: TaskListProjection;
+  let createTask: CreateTaskHandler;
+  let completeTask: CompleteTaskHandler;
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    projection = new EntryListProjection(eventStore);
+    taskProjection = new TaskListProjection(eventStore);
+    createTask = new CreateTaskHandler(eventStore, taskProjection, projection);
+    completeTask = new CompleteTaskHandler(eventStore, projection);
+  });
+
+  it('getCompletedInRange delegates to ReviewProjection correctly', async () => {
+    // Arrange: create and complete a task
+    const taskId = await createTask.handle({ content: 'Completed task' });
+    await completeTask.handle({ taskId });
+
+    const from = new Date(Date.now() - 60_000); // 1 minute ago
+    const to = new Date(Date.now() + 60_000);   // 1 minute from now
+
+    // Act
+    const results = await projection.getCompletedInRange(from, to);
+
+    // Assert: the completed task appears in the range
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ type: 'task', id: taskId });
+  });
+
+  it('getStalledMonthlyTasks delegates to ReviewProjection correctly', async () => {
+    // Arrange: a monthly collection
+    const collectionId = 'monthly-col-1';
+    const monthlyCollection: Collection = {
+      id: collectionId,
+      name: 'March 2026',
+      type: 'monthly',
+      order: 'a0',
+      createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+
+    // Insert a raw TaskCreated event dated 40 days ago so that the task is stale
+    const taskId = crypto.randomUUID();
+    const oldTimestamp = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+    await eventStore.append({
+      id: crypto.randomUUID(),
+      type: 'TaskCreated',
+      aggregateId: taskId,
+      timestamp: oldTimestamp,
+      version: 1,
+      payload: {
+        id: taskId,
+        content: 'Stale monthly task',
+        createdAt: oldTimestamp,
+        status: 'open',
+        collectionId,
+      },
+    });
+
+    const getCollection = (id: string): Collection | undefined =>
+      id === collectionId ? monthlyCollection : undefined;
+
+    // Act
+    const stalled = await projection.getStalledMonthlyTasks(30, getCollection);
+
+    // Assert: the stale task is detected via the façade
+    expect(stalled.length).toBeGreaterThanOrEqual(1);
+    expect(stalled[0]).toMatchObject({
+      collectionId,
+      collectionName: 'March 2026',
+    });
+    expect(stalled[0]!.staleDays).toBeGreaterThanOrEqual(30);
+  });
+});
 

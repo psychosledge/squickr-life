@@ -15,6 +15,9 @@ import { logger } from './logger';
 import { CollectionViewProjection } from './collection-view.projection';
 import { SubTaskProjection } from './sub-task.projection';
 import { DailyLogProjection } from './daily-log.projection';
+import { ReviewProjection } from './review.projection';
+import type { StalledTask } from './review.projection';
+import type { Collection } from './collection.types';
 
 /**
  * EntryListProjection - Unified Read Model for Tasks, Notes, and Events
@@ -39,9 +42,11 @@ export class EntryListProjection {
   private readonly collectionView = new CollectionViewProjection(this);
   private readonly subTask = new SubTaskProjection(this);
   private readonly dailyLog = new DailyLogProjection(this);
+  private readonly review: ReviewProjection;
 
   constructor(private readonly eventStore: IEventStore, snapshotStore?: ISnapshotStore) {
     this.snapshotStore = snapshotStore;
+    this.review = new ReviewProjection(this, this.eventStore);
     // Subscribe to event store changes to enable reactive projections
     this.eventStore.subscribe((event: DomainEvent) => {
       // If this event was already baked into the hydrated snapshot, absorb silently.
@@ -417,5 +422,20 @@ export class EntryListProjection {
     filter: EntryFilter = 'all'
   ): Promise<DailyLog[]> {
     return this.dailyLog.getDailyLogs(limit, beforeDate, filter);
+  }
+
+  // ── ReviewProjection delegates ─────────────────────────────────────────────
+
+  /** @see ReviewProjection.getCompletedInRange */
+  async getCompletedInRange(from: Date, to: Date): Promise<Entry[]> {
+    return this.review.getCompletedInRange(from, to);
+  }
+
+  /** @see ReviewProjection.getStalledMonthlyTasks */
+  async getStalledMonthlyTasks(
+    olderThanDays: number,
+    getCollection: (id: string) => Collection | undefined,
+  ): Promise<StalledTask[]> {
+    return this.review.getStalledMonthlyTasks(olderThanDays, getCollection);
   }
 }
