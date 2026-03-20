@@ -19,7 +19,7 @@ import { FAB } from '../components/FAB';
 import { DarkModeToggle } from '../components/DarkModeToggle';
 import { UserProfileMenu } from '../components/UserProfileMenu';
 import { CollectionNavigationControls } from '../components/CollectionNavigationControls';
-import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
+import { UNCATEGORIZED_COLLECTION_ID, ROUTES } from '../routes';
 import { logger } from '../utils/logger';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { buildNavigationEntries } from '../utils/navigationEntries';
@@ -288,6 +288,7 @@ export function CollectionIndexView() {
                 user={user} 
                 onSignOut={handleSignOut}
                 onSettingsClick={() => setIsSettingsModalOpen(true)}
+                onReviewClick={() => navigate(ROUTES.review)}
               />
             )}
           </div>

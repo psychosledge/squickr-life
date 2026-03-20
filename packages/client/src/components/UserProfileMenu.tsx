@@ -29,9 +29,10 @@ interface UserProfileMenuProps {
   user: User;
   onSignOut: () => Promise<void>;
   onSettingsClick: () => void;
+  onReviewClick: () => void;
 }
 
-export function UserProfileMenu({ user, onSignOut, onSettingsClick }: UserProfileMenuProps) {
+export function UserProfileMenu({ user, onSignOut, onSettingsClick, onReviewClick }: UserProfileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -74,6 +75,11 @@ export function UserProfileMenu({ user, onSignOut, onSettingsClick }: UserProfil
   const handleSettingsClick = () => {
     setIsOpen(false);
     onSettingsClick();
+  };
+
+  const handleReviewClick = () => {
+    setIsOpen(false);
+    onReviewClick();
   };
 
   const handleSignOut = async () => {
@@ -186,6 +192,18 @@ export function UserProfileMenu({ user, onSignOut, onSettingsClick }: UserProfil
             >
               <span>⚙️</span>
               <span>Settings</span>
+            </button>
+          </div>
+
+          {/* Review */}
+          <div className="px-2 py-1">
+            <button
+              role="menuitem"
+              onClick={handleReviewClick}
+              className={menuItemButtonClass}
+            >
+              <span>📋</span>
+              <span>Review</span>
             </button>
           </div>
 
