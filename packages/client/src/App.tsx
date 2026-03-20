@@ -36,6 +36,7 @@ import { useTutorial } from './hooks/useTutorial';
 import { TUTORIAL_STEP_COUNT } from './context/TutorialContext';
 import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
+import { ReviewView } from './views/ReviewView';
 import { SignInView } from './views/SignInView';
 import { SyncManager } from './firebase/SyncManager';
 import { SnapshotManager } from './snapshot-manager';
@@ -573,6 +574,7 @@ function AppContent() {
             {/* Phase 2D: Collection Index is now the default */}
             <Route path={ROUTES.index} element={<CollectionIndexView />} />
             <Route path={ROUTES.collection} element={<CollectionDetailView />} />
+            <Route path={ROUTES.review} element={<ReviewView />} />
           </Routes>
         </BrowserRouter>
       </DebugProvider>

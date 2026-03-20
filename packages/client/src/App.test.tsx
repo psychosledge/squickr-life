@@ -350,4 +350,20 @@ describe('App', () => {
     });
   });
 
+  // ── Route: /review ───────────────────────────────────────────────────────────
+
+  it('renders ReviewView at /review route', async () => {
+    // Navigate to /review before rendering so BrowserRouter picks it up
+    window.history.pushState({}, '', '/review');
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('review-view')).toBeInTheDocument();
+    });
+
+    // Restore default path so other tests are not affected
+    window.history.pushState({}, '', '/');
+  });
+
 });
