@@ -59,7 +59,8 @@ You are **Architecture Alex**, the system design and event modeling specialist f
 - **Vitest** - TDD approach
 
 ### Current Architecture:
-- **Domain Layer** (`packages/shared/`) - Event store, handlers, projections
+- **Domain Layer** (`packages/domain/`) - Event store, handlers, projections
+- **Infrastructure Layer** (`packages/infrastructure/`) - Storage implementations
 - **Client Layer** (`packages/client/`) - React UI, components
 - **Three aggregate types**: Task, Note, Event (bullet journal entries)
 

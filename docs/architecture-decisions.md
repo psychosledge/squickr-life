@@ -28,7 +28,7 @@ Use monorepo with pnpm workspaces:
 - `packages/client` - React PWA
 - `packages/domain` - Pure business logic, event sourcing, types (Clean Architecture core)
 - `packages/infrastructure` - EventStore implementations (IndexedDB, InMemory)
-- `packages/backend` - Supabase functions (future)
+- `packages/backend` - Firebase Admin SDK functions (future)
 
 ### Rationale
 - **Type Safety**: Shared types ensure client/backend use identical event schemas
@@ -1193,7 +1193,7 @@ Potential future ADRs:
 ## ADR-013: Bulk Migration UX - Terminology and Accessibility
 
 **Date**: 2026-02-08  
-**Status**: In Progress (Phase 1 Complete)
+**Status**: Complete (2026-02-15)
 
 ### Context
 

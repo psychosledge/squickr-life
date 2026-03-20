@@ -13,7 +13,7 @@ Squickr Life uses a **tag-based deployment workflow** with continuous integratio
 
 - **Development:** Work directly on `master` branch
 - **CI Validation:** Every push to `master` runs build + tests automatically
-- **Production:** Tag releases with `git tag v0.x.0` to deploy
+- **Production:** Tag releases with `git tag vX.Y.Z` to deploy
 - **Deploy Target:** GitHub Pages at squickr.com
 
 ---
@@ -71,7 +71,7 @@ git push origin master
 
 ```bash
 # Create annotated tag with release notes
-git tag -a v0.9.0 -m "v0.9.0 - Code Quality & Polish
+git tag -a vX.Y.Z -m "vX.Y.Z - Code Quality & Polish
 
 Features:
 - Centralized timezone utilities
@@ -83,7 +83,7 @@ Development Time: ~3 hours
 Test Coverage: 1,500+ tests"
 
 # Push tag to remote
-git push origin v0.9.0
+git push origin vX.Y.Z
 ```
 
 **This triggers deployment to production!** Tags are the ONLY way to deploy.
@@ -99,7 +99,7 @@ git push origin v0.9.0
 **Notes:**
 - ✅ All work happens on `master`
 - ✅ Every push runs CI validation (build + tests)
-- ✅ Tags trigger deployment (`v0.8.0`, `v0.9.0`, etc.)
+- ✅ Tags trigger deployment (`vX.Y.0`, `vX.Y.Z`, etc.)
 - ❌ Pushing to master does NOT deploy (only validates)
 
 ---
@@ -150,10 +150,10 @@ git push origin v0.9.0
 git tag -l
 
 # View tag details
-git show v0.8.0
+git show vX.Y.0
 
 # Checkout specific version
-git checkout v0.8.0
+git checkout vX.Y.0
 ```
 
 ### GitHub Releases
@@ -191,8 +191,8 @@ npm version minor  # or major/patch
 git push origin master
 
 # 3. Create release tag
-git tag -a v0.9.0 -m "v0.9.0 - Feature Name"
-git push origin v0.9.0
+git tag -a vX.Y.Z -m "vX.Y.Z - Feature Name"
+git push origin vX.Y.Z
 ```
 
 ### Hotfix Release
@@ -207,25 +207,25 @@ npm version patch
 git push origin master
 
 # 3. Tag hotfix
-git tag -a v0.8.1 -m "v0.8.1 - Hotfix: description"
-git push origin v0.8.1
+git tag -a vX.Y.1 -m "vX.Y.1 - Hotfix: description"
+git push origin vX.Y.1
 ```
 
 ### Rollback (Emergency)
 
 ```bash
 # 1. Checkout previous version
-git checkout v0.8.0
+git checkout vX.Y.0
 
 # 2. Create rollback branch
-git checkout -b rollback-to-v0.8.0
+git checkout -b rollback-to-vX.Y.0
 
 # 3. Force push to master (if absolutely necessary)
-git push origin rollback-to-v0.8.0:master --force
+git push origin rollback-to-vX.Y.0:master --force
 
 # 4. Tag as emergency release
-git tag -a v0.8.2 -m "v0.8.2 - Emergency rollback"
-git push origin v0.8.2
+git tag -a vX.Y.2 -m "vX.Y.2 - Emergency rollback"
+git push origin vX.Y.2
 ```
 
 **⚠️ Warning:** Force push should be rare and only for critical issues.
@@ -273,8 +273,8 @@ open https://squickr.com
 
 ### Wrong Version Deployed
 
-1. Tag correct version: `git tag -a v0.x.x <commit-sha>`
-2. Push tag: `git push origin v0.x.x`
+1. Tag correct version: `git tag -a vX.Y.Z <commit-sha>`
+2. Push tag: `git push origin vX.Y.Z`
 3. GitHub Pages will deploy from latest push to master
 
 ### Cache Issues
@@ -298,7 +298,7 @@ GitHub Pages may cache for 5-10 minutes:
 - ✅ Removed pr-validation.yml workflow
 - ✅ Set master as default branch
 - ✅ Archived production branch as `archive/production` tag
-- ✅ Created v0.8.0 tag for current release
+- ✅ Created vX.Y.0 tag for current release
 
 **Benefits:**
 - Simpler workflow (no PRs needed)

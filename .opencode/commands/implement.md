@@ -17,8 +17,9 @@ Requirements:
 6. Report back with summary
 
 Project structure:
-- Domain: packages/shared/src/
-- Tests: packages/shared/tests/
+- Domain: packages/domain/src/
+- Infrastructure: packages/infrastructure/src/
+- Tests: packages/domain/tests/ or packages/infrastructure/tests/
 - UI: packages/client/src/components/
 
 Follow event sourcing patterns: Commands → Events → Projections

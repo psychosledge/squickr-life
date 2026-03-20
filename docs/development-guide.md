@@ -15,16 +15,19 @@ Practical guide for working with the Squickr Life codebase.
 ```
 squickr/life/
 ├── packages/
-│   ├── shared/              # Domain logic + event sourcing
-│   │   ├── src/
-│   │   │   ├── event-store.ts
-│   │   │   ├── indexeddb-event-store.ts
-│   │   │   ├── task.types.ts
-│   │   │   ├── *.handlers.ts         # Command handlers
-│   │   │   ├── entry.projections.ts  # Read models
-│   │   │   ├── date-utils.ts
-│   │   │   └── index.ts
-│   │   └── tests/
+│   ├── domain/              # Pure business logic + event sourcing
+│   │   └── src/
+│   │       ├── event-store.ts
+│   │       ├── task.types.ts
+│   │       ├── *.handlers.ts         # Command handlers
+│   │       ├── entry.projections.ts  # Read models
+│   │       ├── date-utils.ts
+│   │       └── index.ts
+│   │
+│   ├── infrastructure/      # Storage implementations
+│   │   └── src/
+│   │       ├── indexeddb-event-store.ts
+│   │       └── index.ts
 │   │
 │   └── client/              # React UI
 │       ├── src/
@@ -34,15 +37,15 @@ squickr/life/
 │       └── tests/
 │
 ├── .opencode/
-│   ├── agents/              # Alex, Casey, Sam, Diane
-│   └── commands/            # /design, /implement, /debug, /review
+│   ├── agents/              # Alex, Casey, Sam
+│   └── commands/            # /design, /implement, /review
 │
 └── docs/
     ├── README.md
     ├── opencode-workflow.md
     ├── development-guide.md        # This file
     ├── architecture-decisions.md
-    └── event-models.md
+
 ```
 
 ### Key Files
@@ -92,9 +95,6 @@ Use slash commands from OpenCode:
 # Implement with TDD
 /implement add recurring tasks feature
 
-# Debug if issues
-/debug tasks duplicating on submit
-
 # Always review before commit
 /review
 ```
@@ -105,7 +105,7 @@ Use slash commands from OpenCode:
 # Dev server
 cd packages/client
 pnpm dev
-# → http://localhost:3002
+# → http://localhost:3000
 
 # Tests
 cd packages/domain
@@ -476,6 +476,5 @@ git diff
 ## Further Reading
 
 - **Architecture decisions:** `docs/architecture-decisions.md`
-- **Event model reference:** `docs/event-models.md`
 - **Agent workflow:** `docs/opencode-workflow.md`
 - **Code:** `packages/domain/src/` (TypeScript is self-documenting)

@@ -42,7 +42,7 @@ cd packages/domain && pnpm test run
 
 # Start dev server
 cd packages/client && pnpm dev
-# Opens browser to http://localhost:5173
+# Opens browser to http://localhost:3000
 ```
 
 ## Documentation
@@ -53,7 +53,6 @@ Key docs:
 - **[OpenCode Workflow](docs/opencode-workflow.md)** - Agent team and development loop
 - **[Development Guide](docs/development-guide.md)** - How to implement features
 - **[Architecture Decisions](docs/architecture-decisions.md)** - Design decisions (ADRs)
-- **[Event Models](docs/event-models.md)** - Event sourcing reference
 
 ## Working with OpenCode
 
@@ -65,37 +64,16 @@ This project uses a **3-agent orchestrator pattern**:
 
 **Development loop:**
 1. User requests feature
-2. OpenCode delegates to Sam via `/implement`
-3. Sam implements with TDD → OpenCode calls Casey via `/review`
-4. User does manual testing
-5. User says "commit" → OpenCode creates commit
+2. OpenCode delegates to Alex via `/design`
+3. User approves the plan
+4. OpenCode delegates to Sam via `/implement`
+5. Sam implements with TDD → OpenCode calls Casey via `/review`
+6. User does manual testing
+7. User says "commit" → OpenCode creates commit
 
 **For details:** [docs/opencode-workflow.md](docs/opencode-workflow.md)
 
-## Current Status
-
-**✅ Phase 1: PWA Deployment** - Installable, offline-first mobile app  
-**✅ Phase 2: Mobile UX Polish** - FAB workflow, dark mode, mobile-optimized interactions  
-**✅ Phase 3: Collections** - Full Collections feature with navigation (Phases 1A-2D complete)  
-**✅ Phase 4: Firebase Sync** - Multi-device cloud sync with Google authentication
-**✅ Phase 5: Clean Architecture** - Domain/infrastructure split, Firebase refactoring
-
-**Latest Updates (Session 4 - Feb 7, 2026):**
-- ✅ Clean Architecture refactoring (domain/infrastructure packages)
-- ✅ Firebase moved to infrastructure layer following Dependency Inversion
-- ✅ FirestoreEventStore implements IEventStore interface
-- ✅ 1,118 tests passing (417 domain + 16 infrastructure + 685 client)
-- ✅ Deployed to production at squickr.com
-
-## What's Next
-
-**Potential Future Enhancements:**
-1. **Advanced Collection Features** - Filtering, search, templates, bulk operations
-2. **Calendar Integration** - Daily log views with calendar navigation
-3. **Habit Tracking** - Recurring tasks and habit charts
-4. **Export/Import** - Backup and restore functionality
-
-See **[docs/next-session-roadmap.md](docs/next-session-roadmap.md)** for detailed enhancement backlog.
+See **[docs/](docs/** for additional documentation.
 
 ## Learning Goals
 

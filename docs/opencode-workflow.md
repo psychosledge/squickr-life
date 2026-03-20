@@ -37,9 +37,8 @@ User Request
      ↓
 OpenCode (Orchestrator)
      ↓
-Evaluates task complexity
+Always delegates — no exceptions
      ↓
-     ├─→ Trivial (1-2 lines)? → OpenCode handles directly
      ├─→ Architecture/Design? → /design (Alex)
      ├─→ Implementation/Bug fixes? → /implement (Sam)
      └─→ Code review? → /review (Casey)
@@ -53,11 +52,10 @@ Evaluates task complexity
 - Coordinate between agents (e.g., Alex → Sam → Casey)
 - Track progress with TodoWrite tool
 - Report back to user with summaries
-- Handle trivial changes directly (typos, 1-2 line fixes)
 
 **What OpenCode Does NOT Do:**
-- Implement large features directly (delegates to Sam)
-- Skip delegation for non-trivial work
+- Implement any code directly, including trivial changes (always delegates to Sam)
+- Skip delegation for any work, no matter how small
 - Review its own code (always uses Casey via `/review`)
 - Make architectural decisions alone (consults Alex via `/design`)
 
@@ -250,11 +248,13 @@ This is our **primary workflow** for all development. For multi-item sessions, w
 │  - Check console for errors                            │
 │  - Verify data persistence                             │
 │                                                         │
-│  IF bugs found:                                         │
-│  User: "There's a bug with X"                          │
-│  OpenCode: `/implement [fix the bug]`                  │
-│  Sam: *Investigates and fixes*                         │
-│  OpenCode: `/review` → Casey → Commit                  │
+  │  IF bugs found:                                         │
+  │  User: "There's a bug with X"                          │
+  │  OpenCode: `/design [fix the bug]` → Alex plans fix    │
+  │  User: *approves fix plan*                             │
+  │  OpenCode: `/implement [fix per Alex's plan]`          │
+  │  Sam: *Investigates and fixes*                         │
+  │  OpenCode: `/review` → Casey → Commit                  │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -266,12 +266,11 @@ When the user says "ship it":
 
 1. Bump version in all `package.json` files (`package.json`, `packages/client`, `packages/domain`, `packages/infrastructure`)
 2. Update `docs/roadmap.md` — add release entry, update current version and status
-3. Update `docs/current-session.md` — mark status complete, mark all items ✅
-4. Commit: `chore: bump version to vX.Y.Z and update docs`
-5. Push commits: `git push`
-6. Create and push tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
+3. Commit: `chore: bump version to vX.Y.Z and update docs`
+4. Push commits: `git push`
+5. Create and push tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
 
-> **The tag is what triggers deployment to production.** Pushing commits alone does NOT deploy. Step 6 is mandatory.
+> **The tag is what triggers deployment to production.** Pushing commits alone does NOT deploy. Step 5 is mandatory.
 
 ### Key Points:
 
@@ -377,9 +376,8 @@ OpenCode should read these files to get context:
 1. **docs/opencode-workflow.md** - Agent workflow (this file)
 2. **docs/development-guide.md** - How to do common tasks  
 3. **docs/architecture-decisions.md** - ADRs
-4. **docs/event-models.md** - Event sourcing reference
-5. **Git log** - `git log --oneline -10` to see recent work
-6. **Todo list** - Use `todoread` tool to see task status
+4. **Git log** - `git log --oneline -10` to see recent work
+5. **Todo list** - Use `todoread` tool to see task status
 
 ---
 
@@ -436,14 +434,22 @@ OpenCode: [Calls `/implement fix tag dropdown not closing`]
 ```
 User: There's a bug - notes aren't saving
 
-OpenCode: [Calls `/implement fix notes not saving`]
+OpenCode: [Calls `/design fix notes not saving`]
 
-Sam: Investigated and fixed:
+Alex: Root cause analysis:
      
-     Root cause: NoteHandler.ts:42
-     The event store append() is called but not awaited.
+     NoteHandler.ts:42 — event store append() called but not awaited.
      
-     Fix: Added `await` before eventStore.append()
+     Fix plan: Add `await` before eventStore.append()
+     Add regression test to cover async path.
+
+User: looks good, go ahead
+
+OpenCode: [Calls `/implement fix notes not saving per Alex's plan`]
+
+Sam: Fixed:
+     
+     Added `await` before eventStore.append()
      Added regression test
      All tests passing
 
@@ -507,7 +513,7 @@ OpenCode: [Breaks down into subtasks, delegates to Sam]
 
 ### For OpenCode (Orchestrator)
 
-1. **Always delegate non-trivial work** - Use slash commands
+1. **Always delegate all work** - Use slash commands, even for trivial changes
 2. **Always `/review` before commit** - Never skip Casey
 3. **Wait for "commit"** - Never commit without user approval
 4. **Use TodoWrite** - Track all tasks and progress
@@ -540,7 +546,6 @@ Located in: `.opencode/commands/`
 ### Documentation Files
 - **Development guide:** `docs/development-guide.md`
 - **Architecture decisions:** `docs/architecture-decisions.md`
-- **Event models:** `docs/event-models.md`
 - **Workflow (this file):** `docs/opencode-workflow.md`
 - **Todo list:** Use `todoread` tool
 
@@ -566,5 +571,4 @@ Any agent may ask clarifying questions at any point. Questions should be asked b
 ---
 
 For development practices, see `development-guide.md`.  
-For architecture decisions, see `architecture-decisions.md`.  
-For event sourcing reference, see `event-models.md`.
+For architecture decisions, see `architecture-decisions.md`.

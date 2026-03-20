@@ -15,5 +15,4 @@ Provide:
 - Tradeoffs and alternatives
 - ADR format (if architectural decision)
 
-Project context: Event-sourced bullet journal with Tasks, Notes, Events.
-Current architecture in docs/architecture-decisions.md
+Project docs: docs/architecture-decisions.md

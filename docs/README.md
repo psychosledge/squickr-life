@@ -7,11 +7,9 @@ Quick navigation to find what you need.
 | Doc | Purpose | When to Read |
 |-----|---------|--------------|
 | **[Main README](../README.md)** | Project overview, setup, quick start | First time or showing others |
-| **[Current Session](current-session.md)** | Active session plan + approved item list | At the start of every session |
 | **[OpenCode Workflow](opencode-workflow.md)** | Agent team, slash commands, development loop | Every session (orchestrator guide) |
 | **[Development Guide](development-guide.md)** | TDD workflow, testing patterns, common tasks | When implementing features |
 | **[Architecture Decisions](architecture-decisions.md)** | Design decisions and rationale (ADRs) | When making design choices |
-| **[Event Models Reference](event-models.md)** | Quick event sourcing reference | When designing new events |
 | **[Roadmap](roadmap.md)** | Version history and upcoming features | Planning next work |
 | **[Retrospective](retrospective.md)** | Architectural retrospective — what we'd do differently | Before major refactoring |
 | **[Deployment Guide](deployment-guide.md)** | Release process and validation | Before merging to production |
@@ -27,9 +25,8 @@ Completed feature designs (for reference):
 
 ### Starting a New Session
 1. Check git log: `git log --oneline -10`
-2. Read: **[Current Session](current-session.md)** — active plan and item status
-3. Read: **[OpenCode Workflow](opencode-workflow.md)** — remember the agent team
-4. Say to OpenCode: *"I'm ready for our next session"*
+2. Read: **[OpenCode Workflow](opencode-workflow.md)** — remember the agent team
+3. Say to OpenCode: *"I'm ready for our next session"*
 
 ### Implementing a Feature
 1. Read: **[Development Guide > Common Tasks](development-guide.md#common-tasks)**
@@ -42,9 +39,8 @@ Completed feature designs (for reference):
 3. Alex will create ADR
 
 ### Understanding Event Sourcing
-1. Read: **[Event Models Reference](event-models.md)** - Quick patterns
-2. Check: `packages/domain/src/task.types.ts` - Full TypeScript definitions
-3. Read: **[Architecture ADR-002](architecture-decisions.md#adr-002-event-sourcing-with-cqrs)** - Why we chose this
+1. Check: `packages/domain/src/task.types.ts` - Full TypeScript definitions
+2. Read: **[Architecture ADR-002](architecture-decisions.md#adr-002-event-sourcing-with-cqrs)** - Why we chose this
 
 ---
 
@@ -78,13 +74,20 @@ Completed feature designs (for reference):
 - ADR-005: Discriminated unions
 - ADR-006: Reactive projections
 - ADR-007: Daily logs view
+- ADR-008: Collections
+- ADR-009: Bullet journal icon system
+- ADR-010: Firebase backend sync
+- ADR-011: Hierarchical collection architecture
+- ADR-012: Firebase clean architecture refactoring
+- ADR-013: Bulk migration UX
+- ADR-014: Portal-based menu positioning
+- ADR-015: Multi-collection event pattern
+- ADR-016: Projection snapshots
+- ADR-017: Remote snapshot store
+- ADR-018: Background sync absorption
 
 ### event-models.md
-- Quick event sourcing reference
-- Event naming conventions
-- Aggregate types (Task, Note, Event)
-- Projection patterns
-- Points to TypeScript source for full schemas
+- Deleted — event schemas live in `packages/domain/src/task.types.ts`
 
 ---
 
@@ -116,8 +119,7 @@ Completed feature designs (for reference):
 → [Architecture Decisions](architecture-decisions.md)
 
 **"What events exist?"**
-→ `packages/domain/src/task.types.ts` (source of truth)  
-→ [Event Models Reference](event-models.md) (quick summary)
+→ `packages/domain/src/task.types.ts` (source of truth)
 
 **"What's the agent workflow?"**
 → [OpenCode Workflow](opencode-workflow.md)
@@ -133,7 +135,7 @@ Completed feature designs (for reference):
 - Architecture decisions change → Update ADRs
 - New patterns emerge → Update development guide
 - Agent workflow changes → Update opencode-workflow.md
-- New aggregate types added → Update event-models.md
+- New aggregate types added → Update `packages/domain/src/task.types.ts`
 
 **Don't update for:**
 - Feature implementation progress (that's in git)
