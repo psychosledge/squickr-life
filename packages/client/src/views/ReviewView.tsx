@@ -21,7 +21,7 @@ export function ReviewView() {
   const [searchParams, setSearchParams] = useSearchParams();
   const period = (searchParams.get('period') as ReviewPeriod) ?? 'weekly';
 
-  const { completedEntries, stalledTasks, collectionMap, dateRange, isLoading } = useReviewData(period);
+  const { completedEntries, stalledTasks, collectionMap, habits, dateRange, isLoading } = useReviewData(period);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900" data-testid="review-view">
@@ -45,7 +45,7 @@ export function ReviewView() {
             period={period}
           />
           <ReviewStalledSection stalledTasks={stalledTasks} />
-          <ReviewHabitSection />
+          <ReviewHabitSection habits={habits} />
         </div>
       )}
     </div>

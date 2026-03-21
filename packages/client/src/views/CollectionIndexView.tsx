@@ -289,6 +289,7 @@ export function CollectionIndexView() {
                 onSignOut={handleSignOut}
                 onSettingsClick={() => setIsSettingsModalOpen(true)}
                 onReviewClick={() => navigate(ROUTES.review)}
+                onHabitsClick={() => navigate(ROUTES.habits)}
               />
             )}
           </div>

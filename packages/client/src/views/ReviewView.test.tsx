@@ -93,7 +93,7 @@ vi.mock('../components/ReviewStalledSection', () => ({
 }));
 
 vi.mock('../components/ReviewHabitSection', () => ({
-  ReviewHabitSection: () => <div data-testid="review-habit-section" />,
+  ReviewHabitSection: ({ habits }: { habits: any[] }) => <div data-testid="review-habit-section" data-habits-count={habits.length} />,
 }));
 
 // ─── Test fixtures ─────────────────────────────────────────────────────────────
@@ -107,6 +107,7 @@ const defaultReviewData = {
   completedEntries: [],
   stalledTasks: [],
   collectionMap: new Map(),
+  habits: [],
   period: 'weekly' as const,
   dateRange: defaultDateRange,
   isLoading: false,
@@ -141,6 +142,14 @@ function renderReviewView(initialPath = '/review') {
     restoreEventHandler: {} as any,
     userPreferences: DEFAULT_USER_PREFERENCES,
     isAppReady: true,
+    createHabitHandler: {} as any,
+    updateHabitTitleHandler: {} as any,
+    updateHabitFrequencyHandler: {} as any,
+    completeHabitHandler: {} as any,
+    revertHabitCompletionHandler: {} as any,
+    archiveHabitHandler: {} as any,
+    restoreHabitHandler: {} as any,
+    reorderHabitHandler: {} as any,
   };
 
   return render(

@@ -23,11 +23,13 @@ import { useApp } from '../context/AppContext';
 function makeEntryProjection(overrides: Partial<{
   getCompletedInRange: ReturnType<typeof vi.fn>;
   getStalledMonthlyTasks: ReturnType<typeof vi.fn>;
+  getActiveHabits: ReturnType<typeof vi.fn>;
   subscribe: ReturnType<typeof vi.fn>;
 }> = {}) {
   return {
     getCompletedInRange: vi.fn().mockResolvedValue([]),
     getStalledMonthlyTasks: vi.fn().mockResolvedValue([]),
+    getActiveHabits: vi.fn().mockResolvedValue([]),
     subscribe: vi.fn().mockReturnValue(() => {}),
     ...overrides,
   };
@@ -73,6 +75,14 @@ function setupMocks(
     restoreEventHandler: {} as any,
     userPreferences: {} as any,
     isAppReady: true,
+    createHabitHandler: {} as any,
+    updateHabitTitleHandler: {} as any,
+    updateHabitFrequencyHandler: {} as any,
+    completeHabitHandler: {} as any,
+    revertHabitCompletionHandler: {} as any,
+    archiveHabitHandler: {} as any,
+    restoreHabitHandler: {} as any,
+    reorderHabitHandler: {} as any,
   });
 
   return { entryProjection, collectionProjection };
@@ -286,5 +296,42 @@ describe('useReviewData', () => {
 
     // Assert
     expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns active habits from entryProjection', async () => {
+    // Arrange
+    const habits = [
+      {
+        id: 'habit-1',
+        title: 'Morning Run',
+        frequency: { type: 'daily' as const },
+        currentStreak: 3,
+        longestStreak: 7,
+        history: [],
+        isScheduledToday: true,
+        isCompletedToday: false,
+        order: '2026-01-01T00:00:00.000Z',
+      },
+    ];
+    setupMocks({ getActiveHabits: vi.fn().mockResolvedValue(habits) });
+
+    // Act
+    const { result } = renderHook(() => useReviewData('weekly'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Assert
+    expect(result.current.habits).toEqual(habits);
+  });
+
+  it('returns empty habits array when no active habits', async () => {
+    // Arrange
+    setupMocks({ getActiveHabits: vi.fn().mockResolvedValue([]) });
+
+    // Act
+    const { result } = renderHook(() => useReviewData('weekly'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Assert
+    expect(result.current.habits).toEqual([]);
   });
 });

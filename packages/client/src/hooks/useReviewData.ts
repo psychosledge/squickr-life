@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Collection, Entry, StalledTask } from '@squickr/domain';
+import type { Collection, Entry, StalledTask, HabitReadModel } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { getDateRange } from '../utils/reviewDateRange';
 import type { ReviewPeriod } from '../utils/reviewDateRange';
@@ -21,6 +21,7 @@ export interface ReviewData {
   completedEntries: Entry[];
   stalledTasks: StalledTask[];
   collectionMap: Map<string, Collection>;
+  habits: HabitReadModel[];
   period: ReviewPeriod;
   dateRange: { from: Date; to: Date };
   isLoading: boolean;
@@ -34,6 +35,7 @@ export function useReviewData(period: ReviewPeriod = 'weekly'): ReviewData {
   const [completedEntries, setCompletedEntries] = useState<Entry[]>([]);
   const [stalledTasks, setStalledTasks] = useState<StalledTask[]>([]);
   const [collectionMap, setCollectionMap] = useState<Map<string, Collection>>(new Map());
+  const [habits, setHabits] = useState<HabitReadModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const dateRange = useMemo(() => getDateRange(period), [period]);
@@ -45,14 +47,16 @@ export function useReviewData(period: ReviewPeriod = 'weekly'): ReviewData {
     const map = new Map(collections.map(c => [c.id, c]));
     const getCollection = (id: string) => map.get(id);
 
-    const [completed, stalled] = await Promise.all([
+    const [completed, stalled, activeHabits] = await Promise.all([
       entryProjection.getCompletedInRange(dateRange.from, dateRange.to),
       entryProjection.getStalledMonthlyTasks(14, getCollection),
+      entryProjection.getActiveHabits(),
     ]);
 
     setCollectionMap(map);
     setCompletedEntries(completed);
     setStalledTasks(stalled);
+    setHabits(activeHabits);
     setIsLoading(false);
   }, [dateRange, entryProjection, collectionProjection]);
 
@@ -74,6 +78,7 @@ export function useReviewData(period: ReviewPeriod = 'weekly'): ReviewData {
     completedEntries,
     stalledTasks,
     collectionMap,
+    habits,
     period,
     dateRange,
     isLoading,

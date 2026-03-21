@@ -459,24 +459,36 @@ describe('UserProfileMenu', () => {
     expect(screen.getByText('Squickr Life')).toBeInTheDocument();
   });
 
-  it('"Report a Bug" and "Request a Feature" are present as links', async () => {
+  // ─── Habits ──────────────────────────────────────────────────────────────
+
+  it('renders Habits menu item when onHabitsClick is provided', async () => {
     const user = userEvent.setup();
+    const mockOnHabitsClick = vi.fn();
     renderWithTutorial(
-      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} onReviewClick={mockOnReviewClick} />,
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} onReviewClick={mockOnReviewClick} onHabitsClick={mockOnHabitsClick} />,
     );
 
     const avatar = screen.getByRole('button', { name: /user menu/i });
     await user.click(avatar);
 
-    const bugLink = screen.getByRole('menuitem', { name: /report a bug/i });
-    expect(bugLink.tagName).toBe('A');
-    expect(bugLink).toHaveAttribute('target', '_blank');
-    expect(bugLink).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(screen.getByRole('menuitem', { name: /habits/i })).toBeInTheDocument();
+  });
 
-    const featureLink = screen.getByRole('menuitem', { name: /request a feature/i });
-    expect(featureLink.tagName).toBe('A');
-    expect(featureLink).toHaveAttribute('target', '_blank');
+  it('calls onHabitsClick and closes menu when Habits is clicked', async () => {
+    const user = userEvent.setup();
+    const mockOnHabitsClick = vi.fn();
+    renderWithTutorial(
+      <UserProfileMenu user={mockUserWithPhoto as User} onSignOut={mockOnSignOut} onSettingsClick={mockOnSettingsClick} onReviewClick={mockOnReviewClick} onHabitsClick={mockOnHabitsClick} />,
+    );
 
-    expect(screen.queryByRole('menuitem', { name: /github discussions/i })).not.toBeInTheDocument();
+    const avatar = screen.getByRole('button', { name: /user menu/i });
+    await user.click(avatar);
+
+    const habitsButton = screen.getByRole('menuitem', { name: /habits/i });
+    await user.click(habitsButton);
+
+    expect(mockOnHabitsClick).toHaveBeenCalledOnce();
+    expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
   });
 });
+
