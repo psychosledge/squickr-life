@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-03-20
+
+### Added
+- **Review screen — Phase 1 of Proactive Squickr:** New `/review` route accessible from the avatar/profile menu on the collection index. Shows a weekly or monthly retrospective with three sections:
+  - **Completed work:** Entries completed during the selected period, grouped by collection. Read-only — no edit/migrate/delete actions.
+  - **Stalled projects:** Monthly collection tasks with no content activity in 14+ days, sorted most-stale-first. Staleness is based on content events only (`TaskCreated`, `TaskCompleted`, `TaskReopened`, `TaskTitleChanged`, `TaskDeleted`, `TaskRestored`, `TaskReordered`) — collection-management events (migration, reordering between collections) are intentionally excluded.
+  - **Habits (placeholder):** Section reserved for Phase 2 habit tracking.
+  - Period toggle between "This Week" and "This Month". Date ranges use local timezone.
+  - Multi-collection tasks appear under all collections they belong to.
+  - New `ReviewProjection` domain class (`getCompletedInRange`, `getStalledMonthlyTasks`) wired as a façade inside `EntryListProjection`.
+  - New `useReviewData` hook, `ReviewHeader`, `ReviewCompletedSection`, `ReviewStalledSection`, `ReviewHabitSection` components.
+  - ADR-019 documents the design decisions.
+- **774 domain tests, 1,287 client tests passing.**
+
 ## [1.10.0] - 2026-03-19
 
 ### Added
