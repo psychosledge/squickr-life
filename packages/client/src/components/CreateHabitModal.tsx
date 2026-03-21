@@ -97,7 +97,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-70 p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

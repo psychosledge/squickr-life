@@ -117,6 +117,13 @@ function buildHistory(
 
     const hasCompletion = state.completions.has(dateKey) && !state.reverted.has(dateKey);
 
+    // NEW: Days before the habit was created are not-scheduled
+    const createdKey = state.createdAt.slice(0, 10);
+    if (dateKey < createdKey) {
+      history.push({ date: dateKey, status: 'not-scheduled' });
+      continue;
+    }
+
     if (hasCompletion) {
       status = 'completed';
     } else if (isFuture) {

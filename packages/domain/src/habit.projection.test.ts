@@ -288,6 +288,8 @@ describe('HabitProjection', () => {
       const otherDay = ((dayOfWeek + 1) % 7) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'weekly', targetDays: [dayOfWeek] },
+        // Created 30 days ago so the full history window is within the habit's lifetime
+        createdAt: makeDate(-30) + 'T00:00:00.000Z',
       });
       const habit = await projection.getHabitById(habitId);
 
@@ -302,7 +304,10 @@ describe('HabitProjection', () => {
     });
 
     it('should mark past scheduled days as missed (daily habit)', async () => {
-      const habitId = await appendHabitCreated(eventStore);
+      // Created 30 days ago so the full 30-day history window is within the habit's lifetime
+      const habitId = await appendHabitCreated(eventStore, {
+        createdAt: makeDate(-30) + 'T00:00:00.000Z',
+      });
       const habit = await projection.getHabitById(habitId);
       // yesterday should be missed (daily, not completed)
       const yesterdayStatus = habit!.history.find(h => h.date === yesterday);
@@ -466,6 +471,83 @@ describe('HabitProjection', () => {
       await appendHabitCompleted(eventStore, habitId, today);
       const habit = await projection.getHabitById(habitId);
       expect(habit!.currentStreak).toBe(1);
+    });
+  });
+
+  // ── buildHistory: pre-creation days should be not-scheduled ───────────────
+
+  describe('buildHistory: days before createdAt are not-scheduled', () => {
+    it('should mark all 25 days before creation as not-scheduled for a daily habit', async () => {
+      // Habit created 5 days ago
+      const createdDate = makeDate(-5);
+      const createdAt = createdDate + 'T12:00:00.000Z';
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt,
+      });
+
+      const habit = await projection.getHabitById(habitId);
+      const history = habit!.history;
+
+      // History covers 30 days total (i=29 down to i=0 = today)
+      // Days 29..5 days ago are before creation → not-scheduled
+      const beforeCreation = history.filter(h => h.date < createdDate);
+      expect(beforeCreation.length).toBeGreaterThan(0);
+      for (const day of beforeCreation) {
+        expect(day.status).toBe('not-scheduled');
+      }
+    });
+
+    it('should mark the 5 days since creation (excluding today) as missed when no completions', async () => {
+      // Habit created 5 days ago, no completions
+      const createdDate = makeDate(-5);
+      const createdAt = createdDate + 'T12:00:00.000Z';
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt,
+      });
+
+      const habit = await projection.getHabitById(habitId);
+      const history = habit!.history;
+
+      // Days from creation up to (but not including today), plus today itself should be missed
+      const onOrAfterCreation = history.filter(h => h.date >= createdDate);
+      // All 6 days (creation day + 4 days between + today) have no completions → missed
+      expect(onOrAfterCreation.length).toBe(6); // -5, -4, -3, -2, -1, today
+      for (const day of onOrAfterCreation) {
+        expect(day.status).toBe('missed');
+      }
+    });
+
+    it('should treat the createdAt boundary day itself as scheduled (missed, not not-scheduled)', async () => {
+      // Habit created exactly on createdDate
+      const createdDate = makeDate(-5);
+      const createdAt = createdDate + 'T00:00:00.000Z';
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt,
+      });
+
+      const habit = await projection.getHabitById(habitId);
+      const creationDay = habit!.history.find(h => h.date === createdDate);
+      expect(creationDay).toBeDefined();
+      // The creation day is scheduled — should be missed (not not-scheduled)
+      expect(creationDay!.status).toBe('missed');
+    });
+
+    it('should NOT show not-scheduled for days on or after createdAt', async () => {
+      const createdDate = makeDate(-3);
+      const createdAt = createdDate + 'T09:00:00.000Z';
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt,
+      });
+
+      const habit = await projection.getHabitById(habitId);
+      const afterOrOnCreation = habit!.history.filter(h => h.date >= createdDate);
+      for (const day of afterOrOnCreation) {
+        expect(day.status).not.toBe('not-scheduled');
+      }
     });
   });
 });

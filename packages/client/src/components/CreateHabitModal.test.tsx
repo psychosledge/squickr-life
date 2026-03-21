@@ -397,4 +397,19 @@ describe('CreateHabitModal', () => {
     expect(freq.targetDays).toContain(1);  // Monday
     expect(freq.targetDays).toContain(3);  // Wednesday
   });
+
+  it('should have a backdrop with z-[200] to stay above EntryActionsMenu portals (z-[150])', () => {
+    const { container } = render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    // The backdrop is the outermost fixed div
+    const backdrop = container.firstChild as HTMLElement;
+    expect(backdrop).toBeTruthy();
+    expect(backdrop.className).toContain('z-[200]');
+  });
 });

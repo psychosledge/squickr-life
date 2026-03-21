@@ -23,9 +23,26 @@ export class CollectionViewProjection {
    * @returns Array of collection IDs (or `[null]` for uncategorized entries)
    */
   private static getEffectiveCollections(entry: Entry): (string | null)[] {
-    return entry.collections.length > 0
-      ? entry.collections
-      : [entry.collectionId ?? null];
+    if (entry.collections.length > 0) return entry.collections;
+    // Modern entries (collectionHistory defined) trust collections[] even when empty.
+    // Only legacy entries (no collectionHistory) fall back to collectionId.
+    //
+    // However, we must distinguish two "empty collections[]" cases:
+    //   1. Never-categorised modern entry: collectionHistory is [] → count as uncategorized (null)
+    //   2. Removed-from-all modern entry:  collectionHistory has ≥1 removedAt entry → omit entirely
+    //
+    // Legacy entries (collectionHistory === undefined) always fall back to collectionId.
+    if (entry.collectionHistory === undefined) {
+      return [entry.collectionId ?? null];
+    }
+    // Modern entry: check whether any collection was explicitly removed
+    const hasRemoval = entry.collectionHistory.some(h => h.removedAt !== undefined);
+    if (hasRemoval) {
+      // Intentionally emptied — do not count in any collection
+      return [];
+    }
+    // Never had a collection (or all history entries are still active) → uncategorized
+    return [null];
   }
 
   /**

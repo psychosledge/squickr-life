@@ -1856,6 +1856,91 @@ describe('EntryListProjection', () => {
   });
 
   // ============================================================================
+  // Bug Fix: getEffectiveCollections must use collectionHistory guard for modern entries
+  //
+  // When a modern entry (collectionHistory !== undefined) has collections[] emptied via
+  // TaskRemovedFromCollection, getEffectiveCollections must NOT fall back to collectionId.
+  // Only legacy entries (no collectionHistory) should fall back.
+  //
+  // Without the fix, a modern entry removed from its only collection gets re-counted
+  // in the original collection via the stale collectionId fallback.
+  // ============================================================================
+  describe('getEffectiveCollections — modern entries with empty collections[] must not fall back to collectionId', () => {
+    it('getEntryCountsByCollection: modern entry removed from its only collection should NOT appear in any collection stats', async () => {
+      // Arrange: create a modern task in collection-A (creates collectionHistory)
+      const taskId = await taskHandler.handle({ content: 'Task to remove', collectionId: 'collection-A' });
+
+      // Add to B so the handler guard allows removal from A (need 2+ collections to remove one)
+      const addHandler = new AddTaskToCollectionHandler(eventStore, projection);
+      await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+      // Bypass the handler guard: inject TaskRemovedFromCollection for B directly
+      // (simulates the case where collections[] is fully emptied for a modern entry)
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskRemovedFromCollection',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId, collectionId: 'collection-B', removedAt: new Date().toISOString() },
+      } as import('./task.types').TaskRemovedFromCollection);
+
+      // Also remove from A via the handler (guard now allows it since task is still in A per handler state)
+      // Actually we need to directly inject the removal from A too, bypassing the guard
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskRemovedFromCollection',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId, collectionId: 'collection-A', removedAt: new Date().toISOString() },
+      } as import('./task.types').TaskRemovedFromCollection);
+
+      // Act: get counts — the entry now has collections: [] and collectionHistory defined
+      const counts = await projection.getEntryCountsByCollection();
+
+      // Assert: modern entry with empty collections[] should appear in NO collection (not fall back to collectionId)
+      expect(counts.get('collection-A')).toBeUndefined();
+      expect(counts.get('collection-B')).toBeUndefined();
+    });
+
+    it('getEntryStatsByCollection: modern entry removed from its only collection should NOT appear in any stats', async () => {
+      // Arrange: create a modern task in collection-A
+      const taskId = await taskHandler.handle({ content: 'Removed task', collectionId: 'collection-A' });
+
+      // Add to B so we can remove from both
+      const addHandler = new AddTaskToCollectionHandler(eventStore, projection);
+      await addHandler.handle({ taskId, collectionId: 'collection-B' });
+
+      // Bypass the guard and inject removal events directly for both collections
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskRemovedFromCollection',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId, collectionId: 'collection-B', removedAt: new Date().toISOString() },
+      } as import('./task.types').TaskRemovedFromCollection);
+
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskRemovedFromCollection',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId, collectionId: 'collection-A', removedAt: new Date().toISOString() },
+      } as import('./task.types').TaskRemovedFromCollection);
+
+      // Act
+      const stats = await projection.getEntryStatsByCollection();
+
+      // Assert: modern entry with empty collections[] should not count in any collection
+      expect(stats.get('collection-A')).toBeUndefined();
+      expect(stats.get('collection-B')).toBeUndefined();
+    });
+  });
+
+  // ============================================================================
   // Bug Fix B2: getEntriesByCollection should use collections[] not legacy collectionId
   // After a task is moved A → B via Remove+Add (ADR-015 path), collectionId stays 'A'
   // but collections[] correctly reflects ['B']. The query must use collections[].
