@@ -6,8 +6,18 @@
  *
  * Bucketing rules:
  *  - All entry types (tasks, notes, events): use `entry.collections[]`.
- *    If `collections` is empty or absent, fall back to
- *    `[entry.collectionId ?? null]` for legacy entries.
+ *  - If `collections` is empty or absent, behaviour depends on whether this is
+ *    a "modern" or "legacy" entry:
+ *
+ *    • Modern entry (collectionHistory is defined): went through the multi-
+ *      collection event system. Trust `collections[]` even when it is empty —
+ *      an empty array means "belongs to no collection" and the entry should
+ *      not be placed into any bucket (avoids ghost tasks in monthly log stats
+ *      after TaskRemovedFromCollection empties the array).
+ *
+ *    • Legacy entry (collectionHistory is undefined): created before the
+ *      multi-collection system. Fall back to `[collectionId ?? null]` to
+ *      preserve existing behaviour for old data.
  *
  * An entry that belongs to N collections will appear in N buckets, which is
  * intentional — each collection's stats should count it independently.
@@ -21,12 +31,20 @@ export function buildEntriesByCollectionMap(
   const map = new Map<string | null, Entry[]>();
 
   for (const entry of entries) {
-    // All entry types use the multi-collection pattern — collections[] is the source of truth.
-    // Fall back to collectionId for legacy entries whose collections array is empty.
+    // Determine whether this entry went through the modern multi-collection
+    // event system. TaskCreated (and equivalents for notes/events) always
+    // initialises collectionHistory: [] for new entries, so its presence —
+    // even as an empty array — is a reliable marker of a modern entry.
+    const isModernEntry = entry.collectionHistory !== undefined;
+
+    // collections[] is the source of truth for modern entries.
+    // For legacy entries (no collectionHistory), fall back to collectionId.
     const entryCollections =
       entry.collections && entry.collections.length > 0
         ? entry.collections
-        : [entry.collectionId ?? null];
+        : isModernEntry
+          ? []                           // Modern entry with empty collections[] = belongs nowhere
+          : [entry.collectionId ?? null]; // Legacy entry: fall back to collectionId
 
     for (const cid of entryCollections) {
       const key = cid ?? null;

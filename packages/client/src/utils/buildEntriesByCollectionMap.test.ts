@@ -102,10 +102,13 @@ describe('buildEntriesByCollectionMap', () => {
     });
 
     it('falls back to collectionId for a legacy task whose collections[] is empty', () => {
+      // Legacy entry: no collectionHistory field — old data before multi-collection system.
+      // collectionId fallback must still apply.
       const task = makeTask({
         id: 'task-legacy-1',
         collectionId: 'legacy-col',
         collections: [],
+        // collectionHistory intentionally absent (legacy entry)
       });
 
       const result = buildEntriesByCollectionMap([task]);
@@ -124,6 +127,67 @@ describe('buildEntriesByCollectionMap', () => {
       const result = buildEntriesByCollectionMap([task]);
 
       expect(result.get(null)).toEqual([task]);
+    });
+
+    it('does NOT place a modern task in the old monthly log after TaskRemovedFromCollection empties collections[]', () => {
+      // Regression test for: monthly log showing "1 task" when there are no active tasks.
+      //
+      // A modern task (has collectionHistory) that was removed from its only collection
+      // ends up with collections: []. The old fallback incorrectly re-bucketed it under
+      // collectionId (the monthly log), causing ghost tasks to appear in stats.
+      //
+      // Expected: a task with collectionHistory defined but collections[] empty belongs
+      // to NO collection — it should NOT appear in any bucket.
+      const monthlyLogId = 'monthly-log-feb-2026';
+      const task = makeTask({
+        id: 'task-removed-1',
+        collectionId: monthlyLogId,         // stale — was here before removal
+        collections: [],                     // emptied by TaskRemovedFromCollection
+        collectionHistory: [                 // proves this is a modern entry
+          {
+            collectionId: monthlyLogId,
+            addedAt: '2026-02-01T08:00:00Z',
+            removedAt: '2026-02-10T09:00:00Z',
+          },
+        ],
+      });
+
+      const result = buildEntriesByCollectionMap([task]);
+
+      // Must NOT appear in the monthly log bucket
+      expect(result.has(monthlyLogId)).toBe(false);
+      // Must NOT appear anywhere at all (it belongs to no collection)
+      expect(result.size).toBe(0);
+    });
+
+    it('preserves collectionId fallback ONLY for entries with NO collectionHistory (truly legacy)', () => {
+      // Contrasts the two cases side-by-side to make the distinction explicit.
+      const legacyTask = makeTask({
+        id: 'legacy',
+        collectionId: 'col-legacy',
+        collections: [],
+        // collectionHistory: undefined — legacy, use collectionId fallback
+      });
+      const modernTask = makeTask({
+        id: 'modern',
+        collectionId: 'col-old',            // stale pointer from before removal
+        collections: [],                     // emptied by modern event system
+        collectionHistory: [
+          {
+            collectionId: 'col-old',
+            addedAt: '2026-01-01T00:00:00Z',
+            removedAt: '2026-01-15T00:00:00Z',
+          },
+        ],
+      });
+
+      const result = buildEntriesByCollectionMap([legacyTask, modernTask]);
+
+      // Legacy task: falls back to collectionId
+      expect(result.get('col-legacy')).toEqual([legacyTask]);
+      // Modern task: trusts collections[] (empty) — does NOT fall back to stale collectionId
+      expect(result.has('col-old')).toBe(false);
+      expect(result.size).toBe(1);
     });
   });
 
