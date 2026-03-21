@@ -50,6 +50,14 @@ export function renderWithAppProvider(
     restoreEventHandler: {} as any,
     userPreferences: options.userPreferences ?? DEFAULT_USER_PREFERENCES,
     isAppReady: true,
+    createHabitHandler: {} as any,
+    updateHabitTitleHandler: {} as any,
+    updateHabitFrequencyHandler: {} as any,
+    completeHabitHandler: {} as any,
+    revertHabitCompletionHandler: {} as any,
+    archiveHabitHandler: {} as any,
+    restoreHabitHandler: {} as any,
+    reorderHabitHandler: {} as any,
   };
 
   const wrapped = (

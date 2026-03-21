@@ -26,6 +26,15 @@ import {
   UserPreferencesProjection,
   DEFAULT_USER_PREFERENCES,
   UserPreferences,
+  // Habit handlers (Phase 2)
+  CreateHabitHandler,
+  UpdateHabitTitleHandler,
+  UpdateHabitFrequencyHandler,
+  CompleteHabitHandler,
+  RevertHabitCompletionHandler,
+  ArchiveHabitHandler,
+  RestoreHabitHandler as RestoreHabitHandlerClass,
+  ReorderHabitHandler,
 } from '@squickr/domain';
 import { IndexedDBEventStore, FirestoreEventStore, IndexedDBSnapshotStore, FirestoreSnapshotStore } from '@squickr/infrastructure';
 import { AppProvider } from './context/AppContext';
@@ -276,6 +285,16 @@ function AppContent() {
   const [restoreTaskHandler] = useState(() => new RestoreTaskHandler(eventStore, entryProjection));
   const [restoreNoteHandler] = useState(() => new RestoreNoteHandler(eventStore, entryProjection));
   const [restoreEventHandler] = useState(() => new RestoreEventHandler(eventStore, entryProjection));
+
+  // Habit handlers (Phase 2)
+  const [createHabitHandler] = useState(() => new CreateHabitHandler(eventStore));
+  const [updateHabitTitleHandler] = useState(() => new UpdateHabitTitleHandler(eventStore));
+  const [updateHabitFrequencyHandler] = useState(() => new UpdateHabitFrequencyHandler(eventStore));
+  const [completeHabitHandler] = useState(() => new CompleteHabitHandler(eventStore));
+  const [revertHabitCompletionHandler] = useState(() => new RevertHabitCompletionHandler(eventStore));
+  const [archiveHabitHandler] = useState(() => new ArchiveHabitHandler(eventStore));
+  const [restoreHabitHandler] = useState(() => new RestoreHabitHandlerClass(eventStore));
+  const [reorderHabitHandler] = useState(() => new ReorderHabitHandler(eventStore));
   
   // User preferences (reactive)
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(DEFAULT_USER_PREFERENCES);
@@ -511,6 +530,15 @@ function AppContent() {
     restoreEventHandler,
     userPreferences,
     isAppReady,
+    // Habit handlers (Phase 2)
+    createHabitHandler,
+    updateHabitTitleHandler,
+    updateHabitFrequencyHandler,
+    completeHabitHandler,
+    revertHabitCompletionHandler,
+    archiveHabitHandler,
+    restoreHabitHandler,
+    reorderHabitHandler,
   };
 
   // Show main app for authenticated users

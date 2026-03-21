@@ -7,6 +7,7 @@
  * Phase 2A: Initial setup with CollectionListProjection
  * Phase 2B+: Will be used by Collection views
  * Phase 4: Added userPreferences to eliminate 6-level props drilling
+ * Phase 2 Habits: Added 8 habit handlers
  */
 
 import { createContext, useContext } from 'react';
@@ -33,6 +34,14 @@ import type {
   RestoreNoteHandler,
   RestoreEventHandler,
   UserPreferences,
+  CreateHabitHandler,
+  UpdateHabitTitleHandler,
+  UpdateHabitFrequencyHandler,
+  CompleteHabitHandler,
+  RevertHabitCompletionHandler,
+  ArchiveHabitHandler,
+  RestoreHabitHandler,
+  ReorderHabitHandler,
 } from '@squickr/domain';
 
 interface AppContextValue {
@@ -60,6 +69,15 @@ interface AppContextValue {
   userPreferences: UserPreferences;
   /** True once IndexedDB has loaded AND the initial Firestore sync has completed (or timed out). */
   isAppReady: boolean;
+  // Habit handlers (Phase 2)
+  createHabitHandler: CreateHabitHandler;
+  updateHabitTitleHandler: UpdateHabitTitleHandler;
+  updateHabitFrequencyHandler: UpdateHabitFrequencyHandler;
+  completeHabitHandler: CompleteHabitHandler;
+  revertHabitCompletionHandler: RevertHabitCompletionHandler;
+  archiveHabitHandler: ArchiveHabitHandler;
+  restoreHabitHandler: RestoreHabitHandler;
+  reorderHabitHandler: ReorderHabitHandler;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
