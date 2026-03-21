@@ -40,6 +40,7 @@ import { SelectionToolbar } from '../components/SelectionToolbar';
 import { SwipeIndicator } from '../components/SwipeIndicator';
 import { FAB } from '../components/FAB';
 import { ErrorToast } from '../components/ErrorToast';
+import { CreateHabitModal } from '../components/CreateHabitModal';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { DEBOUNCE } from '../utils/constants';
 import { getDateKeyForTemporal, getMonthKeyForTemporal } from '../utils/temporalUtils';
@@ -846,8 +847,17 @@ export function CollectionDetailView({
         />
       )}
 
-      {/* CreateHabitModal — wired in Commit 11 */}
-      {isCreateHabitModalOpen && null}
+      {/* CreateHabitModal — opened from HabitsSection "Add habit" button */}
+      {isCreateHabitModalOpen && (
+        <CreateHabitModal
+          isOpen={isCreateHabitModalOpen}
+          onClose={() => setIsCreateHabitModalOpen(false)}
+          onSubmit={async (cmd) => {
+            await habitsMgmt.createHabit(cmd);
+            setIsCreateHabitModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -9,6 +9,8 @@ export const ROUTES = {
   index: '/',
   collection: '/collection/:id',
   review: '/review',
+  habits: '/habits',
+  habitDetail: '/habits/:habitId',
 } as const;
 
 /**

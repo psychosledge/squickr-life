@@ -109,6 +109,14 @@ describe('CollectionIndexView - Header Branding', () => {
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
+      createHabitHandler: {} as any,
+      updateHabitTitleHandler: {} as any,
+      updateHabitFrequencyHandler: {} as any,
+      completeHabitHandler: {} as any,
+      revertHabitCompletionHandler: {} as any,
+      archiveHabitHandler: {} as any,
+      restoreHabitHandler: {} as any,
+      reorderHabitHandler: {} as any,
     };
 
     return render(
@@ -219,6 +227,14 @@ describe('CollectionIndexView - Navigation Arrows', () => {
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
+      createHabitHandler: {} as any,
+      updateHabitTitleHandler: {} as any,
+      updateHabitFrequencyHandler: {} as any,
+      completeHabitHandler: {} as any,
+      revertHabitCompletionHandler: {} as any,
+      archiveHabitHandler: {} as any,
+      restoreHabitHandler: {} as any,
+      reorderHabitHandler: {} as any,
     };
 
     return render(
@@ -421,6 +437,14 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
+      createHabitHandler: {} as any,
+      updateHabitTitleHandler: {} as any,
+      updateHabitFrequencyHandler: {} as any,
+      completeHabitHandler: {} as any,
+      revertHabitCompletionHandler: {} as any,
+      archiveHabitHandler: {} as any,
+      restoreHabitHandler: {} as any,
+      reorderHabitHandler: {} as any,
     };
 
     return render(
@@ -639,6 +663,14 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
+      createHabitHandler: {} as any,
+      updateHabitTitleHandler: {} as any,
+      updateHabitFrequencyHandler: {} as any,
+      completeHabitHandler: {} as any,
+      revertHabitCompletionHandler: {} as any,
+      archiveHabitHandler: {} as any,
+      restoreHabitHandler: {} as any,
+      reorderHabitHandler: {} as any,
     };
 
     return render(
@@ -750,6 +782,14 @@ describe('CollectionIndexView - Auto-trigger tutorial (integration)', () => {
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
+      createHabitHandler: {} as any,
+      updateHabitTitleHandler: {} as any,
+      updateHabitFrequencyHandler: {} as any,
+      completeHabitHandler: {} as any,
+      revertHabitCompletionHandler: {} as any,
+      archiveHabitHandler: {} as any,
+      restoreHabitHandler: {} as any,
+      reorderHabitHandler: {} as any,
     };
 
     return render(
@@ -856,6 +896,14 @@ describe('CollectionIndexView - data-tutorial-id anchor on h1', () => {
       bulkMigrateEntriesHandler: {} as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
+      createHabitHandler: {} as any,
+      updateHabitTitleHandler: {} as any,
+      updateHabitFrequencyHandler: {} as any,
+      completeHabitHandler: {} as any,
+      revertHabitCompletionHandler: {} as any,
+      archiveHabitHandler: {} as any,
+      restoreHabitHandler: {} as any,
+      reorderHabitHandler: {} as any,
     };
 
     return render(
