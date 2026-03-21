@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-03-20
+
+### Added
+- **Habit Tracking — Phase 2 of Proactive Squickr:** Full habit tracking system with streak algorithms, 30-day history grids, and management screens.
+  - **Domain:** New `Habit` aggregate with 8 event handlers (`HabitCreated`, `HabitTitleUpdated`, `HabitFrequencyUpdated`, `HabitCompleted`, `HabitCompletionReverted`, `HabitArchived`, `HabitRestored`, `HabitReordered`). Supports daily, weekly (specific days), and every-N-days frequencies.
+  - **Streak algorithms:** Daily streaks require completion every day; weekly streaks require completion on all specified days each week; every-N-days streaks use rolling windows. `currentStreak`, `longestStreak`, and 30-day `history` computed in `HabitProjection`.
+  - **HabitsSection:** Appears at the top of daily collection views only. Shows each habit as a toggleable row with a streak badge and a 7-day mini completion grid. Single-tap to complete or revert.
+  - **CreateHabitModal:** Title input, frequency selector (daily / weekly / every-N-days). Weekly habits show a 7-button day-picker (defaults to today's day of week). Notification time field present but disabled (Phase 3).
+  - **HabitsView (`/habits`):** Management screen listing all active and archived habits. FAB to create new habits. Accessible via avatar menu → "📊 Habits".
+  - **HabitDetailView (`/habits/:habitId`):** Full detail screen with current streak, longest streak, 30-day completion rate, and a 7-column Mon–Sun calendar grid (`HabitHistoryGrid`).
+  - **ReviewHabitSection:** Phase 1 placeholder replaced with real data — shows streak and 30-day completion rate for each active habit.
+  - **Ritual reminders:** `ritualReminders` field added to `UserPreferences` (morning/evening schedules) — stored in domain, exposed in Phase 3 UI.
+  - **ADR-020** documents all Phase 2 design decisions.
+- **870 domain tests, 1,376 client tests passing.**
+
 ## [1.11.0] - 2026-03-20
 
 ### Added

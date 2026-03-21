@@ -1,7 +1,7 @@
 # Product Roadmap
 **Last Updated:** March 20, 2026  
-**Current Version:** v1.11.0  
-**Status:** v1.11.0 shipped — Proactive Squickr Phase 1 (Review Screen) complete
+**Current Version:** v1.12.0  
+**Status:** v1.12.0 shipped — Proactive Squickr Phase 2 (Habit Tracking) complete
 
 > **Version history:** See `CHANGELOG.md` for all past releases.
 
@@ -9,16 +9,16 @@
 
 ## Up Next — Under Discussion
 
-### Next: Proactive Squickr Phase 2 & 3 (design complete, not yet started)
+### Next: Proactive Squickr Phase 3 (design complete, not yet started)
 
 Design: `docs/archive/designs/proactive-squickr.md`
 
-Three phases — Phase 1 shipped in v1.11.0:
+Three phases — Phases 1 and 2 shipped:
 
 | Phase | Feature | Status |
 |-------|---------|--------|
 | 1 | **Review screen** | ✅ Shipped in v1.11.0 — `/review` route, weekly/monthly completed work + stalled projects + habit placeholder |
-| 2 | **Habit tracking** | New `Habit` aggregate. Recurring tasks (with streak + 30-day history grid) appear in a dedicated "Habits" section at top of daily log. Ritual reminders (notification-only) stored in `UserPreferences`. |
+| 2 | **Habit tracking** | ✅ Shipped in v1.12.0 — New `Habit` aggregate, streak algorithms, HabitsSection in daily logs, HabitsView, HabitDetailView, real ReviewHabitSection |
 | 3 | **FCM push notifications** | First real use of `packages/backend`. Cloud Functions on schedule → FCM → Android lock screen. Morning migration nudge, weekly/monthly review prompts, per-habit reminders. Permission requested immediately on sign-in. |
 
 ### Retired (superseded by Proactive Squickr)
