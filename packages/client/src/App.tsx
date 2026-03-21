@@ -47,6 +47,7 @@ import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
 import { ReviewView } from './views/ReviewView';
 import { HabitsView } from './views/HabitsView';
+import { HabitDetailView } from './views/HabitDetailView';
 import { SignInView } from './views/SignInView';
 import { SyncManager } from './firebase/SyncManager';
 import { SnapshotManager } from './snapshot-manager';
@@ -605,7 +606,7 @@ function AppContent() {
             <Route path={ROUTES.collection} element={<CollectionDetailView />} />
             <Route path={ROUTES.review} element={<ReviewView />} />
             <Route path={ROUTES.habits} element={<HabitsView />} />
-            <Route path={ROUTES.habitDetail} element={<HabitsView />} />
+            <Route path={ROUTES.habitDetail} element={<HabitDetailView />} />
           </Routes>
         </BrowserRouter>
       </DebugProvider>
