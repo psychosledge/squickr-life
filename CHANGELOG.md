@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-03-21
+
+### Fixed
+- **Collection stats phantom task count:** Tasks moved out of a collection via `TaskRemovedFromCollection` (which empties `collections[]`) were incorrectly falling back to the stale `collectionId` in both `buildEntriesByCollectionMap` and `getEffectiveCollections`, causing them to reappear in that collection's sidebar stats as active tasks. Fixed by trusting `collections[]` for modern entries (identified by `collectionHistory !== undefined`); only truly legacy entries (no `collectionHistory`) fall back to `collectionId`.
+- **Habit history showing red before habit existed:** The 30-day history grid marked days prior to a habit's creation date as `missed` (red) because `isScheduledOn` returned `true` for daily habits regardless of creation date. Days before `createdAt` are now correctly marked `not-scheduled` (empty/grey).
+- **Entry action menus bleeding through CreateHabitModal:** The modal backdrop used `z-70` (= 70) while `EntryActionsMenu` renders via a fixed-position portal at `z-[150]`, causing entry menus to appear on top of the open habit modal. Fixed by bumping the modal backdrop to `z-[200]`, consistent with other full-screen modals.
+- **876 domain tests, 1,379 client tests passing.**
+
 ## [1.12.0] - 2026-03-20
 
 ### Added

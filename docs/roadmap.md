@@ -1,7 +1,7 @@
 # Product Roadmap
-**Last Updated:** March 20, 2026  
-**Current Version:** v1.12.0  
-**Status:** v1.12.0 shipped — Proactive Squickr Phase 2 (Habit Tracking) complete
+**Last Updated:** March 21, 2026  
+**Current Version:** v1.12.1  
+**Status:** v1.12.1 shipped — UAT bug fixes for Habit Tracking
 
 > **Version history:** See `CHANGELOG.md` for all past releases.
 
