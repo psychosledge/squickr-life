@@ -2608,3 +2608,85 @@ describe('EntryListProjection — review delegation', () => {
   });
 });
 
+// ============================================================================
+// HabitProjection integration via EntryListProjection facade
+// ============================================================================
+
+describe('EntryListProjection — HabitProjection facade', () => {
+  let eventStore: IEventStore;
+  let projection: EntryListProjection;
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    projection = new EntryListProjection(eventStore);
+  });
+
+  async function appendHabitCreated(habitId: string, title = 'Morning run'): Promise<void> {
+    await eventStore.append({
+      id: crypto.randomUUID(),
+      type: 'HabitCreated',
+      aggregateId: habitId,
+      timestamp: new Date().toISOString(),
+      version: 1,
+      payload: {
+        habitId,
+        title,
+        frequency: { type: 'daily' },
+        order: 'a0',
+        createdAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  it('getActiveHabits() returns empty when no habits', async () => {
+    const habits = await projection.getActiveHabits();
+    expect(habits).toEqual([]);
+  });
+
+  it('getActiveHabits() returns a created habit', async () => {
+    const habitId = crypto.randomUUID();
+    await appendHabitCreated(habitId);
+    const habits = await projection.getActiveHabits();
+    expect(habits).toHaveLength(1);
+    expect(habits[0]!.id).toBe(habitId);
+  });
+
+  it('getAllHabits() includes archived habits', async () => {
+    const habitId = crypto.randomUUID();
+    await appendHabitCreated(habitId);
+    await eventStore.append({
+      id: crypto.randomUUID(),
+      type: 'HabitArchived',
+      aggregateId: habitId,
+      timestamp: new Date().toISOString(),
+      version: 1,
+      payload: { habitId, archivedAt: new Date().toISOString() },
+    });
+    const active = await projection.getActiveHabits();
+    expect(active).toHaveLength(0);
+    const all = await projection.getAllHabits();
+    expect(all).toHaveLength(1);
+  });
+
+  it('getHabitById() returns the correct habit', async () => {
+    const habitId = crypto.randomUUID();
+    await appendHabitCreated(habitId, 'Read 10 pages');
+    const habit = await projection.getHabitById(habitId);
+    expect(habit).toBeDefined();
+    expect(habit!.title).toBe('Read 10 pages');
+  });
+
+  it('getHabitById() returns undefined for unknown id', async () => {
+    const habit = await projection.getHabitById('no-such-id');
+    expect(habit).toBeUndefined();
+  });
+
+  it('getHabitsForDate() returns daily habits scheduled for any date', async () => {
+    const habitId = crypto.randomUUID();
+    await appendHabitCreated(habitId);
+    const today = new Date().toISOString().slice(0, 10);
+    const habits = await projection.getHabitsForDate(today);
+    expect(habits).toHaveLength(1);
+  });
+});
+

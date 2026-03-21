@@ -122,6 +122,8 @@ export type {
   UserPreferencesUpdated,
   UpdateUserPreferencesCommand,
   UserPreferencesEvent,
+  RitualReminder,
+  RitualSchedule,
 } from './user-preferences.types';
 export { DEFAULT_USER_PREFERENCES } from './user-preferences.types';
 
@@ -194,6 +196,43 @@ export {
 // User Preferences Command Handlers
 export { UpdateUserPreferencesHandler } from './user-preferences.handlers';
 
+// Habit domain types (Phase 2)
+export type {
+  HabitFrequency,
+  Habit,
+  HabitDayStatus,
+  HabitReadModel,
+  HabitCreated,
+  HabitTitleChanged,
+  HabitFrequencyChanged,
+  HabitCompleted,
+  HabitCompletionReverted,
+  HabitArchived,
+  HabitRestored,
+  HabitReordered,
+  HabitEvent,
+  CreateHabitCommand,
+  UpdateHabitTitleCommand,
+  UpdateHabitFrequencyCommand,
+  CompleteHabitCommand,
+  RevertHabitCompletionCommand,
+  ArchiveHabitCommand,
+  RestoreHabitCommand,
+  ReorderHabitCommand,
+} from './habit.types';
+
+// Habit Command Handlers (Phase 2)
+export {
+  CreateHabitHandler,
+  UpdateHabitTitleHandler,
+  UpdateHabitFrequencyHandler,
+  CompleteHabitHandler,
+  RevertHabitCompletionHandler,
+  ArchiveHabitHandler,
+  RestoreHabitHandler,
+  ReorderHabitHandler,
+} from './habit.handlers';
+
 // Helpers
 export { generateEventMetadata } from './event-helpers';
 export type { EventMetadata } from './event-helpers';
@@ -218,4 +257,5 @@ export type { StalledTask } from './review.projection';
 export { EntryEventApplicator } from './entry.event-applicator';
 export { CollectionListProjection } from './collection.projections';
 export { UserPreferencesProjection } from './user-preferences.projections';
+export { HabitProjection } from './habit.projection';
 

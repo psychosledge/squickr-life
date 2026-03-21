@@ -6,6 +6,26 @@ import type { CompletedTaskBehavior } from './collection.types';
 // ============================================================================
 
 /**
+ * RitualSchedule — days of week and/or time of day a ritual reminder fires.
+ */
+export interface RitualSchedule {
+  /** Days of week: 0=Sun … 6=Sat */
+  readonly daysOfWeek?: Array<0 | 1 | 2 | 3 | 4 | 5 | 6>;
+  /** Time of day in "HH:MM" format (local time) */
+  readonly timeOfDay?: string;
+}
+
+/**
+ * RitualReminder — a reminder associated with a Ritual (Phase 3 habit).
+ */
+export interface RitualReminder {
+  readonly id: string;
+  readonly habitId: string;
+  readonly schedule: RitualSchedule;
+  readonly enabled: boolean;
+}
+
+/**
  * User preferences - global settings for the application
  * This is a singleton aggregate with aggregateId: 'user-preferences'
  */
@@ -25,6 +45,9 @@ export interface UserPreferences {
   /** Auto-favorite daily and monthly logs that have at least one open task */
   readonly autoFavoriteCalendarWithActiveTasks: boolean;
   
+  /** Ritual reminders for habit-based rituals (Phase 3) */
+  readonly ritualReminders?: RitualReminder[];
+
   /** When preferences were last updated (ISO 8601) */
   readonly updatedAt?: string;
 }
@@ -61,6 +84,7 @@ export interface UserPreferencesUpdated extends DomainEvent {
     readonly autoFavoriteRecentDailyLogs?: boolean;
     readonly autoFavoriteRecentMonthlyLogs?: boolean;
     readonly autoFavoriteCalendarWithActiveTasks?: boolean;
+    readonly ritualReminders?: RitualReminder[];
     readonly updatedAt: string;
   };
 }
@@ -82,6 +106,7 @@ export interface UpdateUserPreferencesCommand {
   readonly autoFavoriteRecentDailyLogs?: boolean;
   readonly autoFavoriteRecentMonthlyLogs?: boolean;
   readonly autoFavoriteCalendarWithActiveTasks?: boolean;
+  readonly ritualReminders?: RitualReminder[];
   readonly userId?: string;
 }
 

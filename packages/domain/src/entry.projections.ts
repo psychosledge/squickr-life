@@ -18,6 +18,8 @@ import { DailyLogProjection } from './daily-log.projection';
 import { ReviewProjection } from './review.projection';
 import type { StalledTask } from './review.projection';
 import type { Collection } from './collection.types';
+import { HabitProjection } from './habit.projection';
+import type { HabitReadModel } from './habit.types';
 
 /**
  * EntryListProjection - Unified Read Model for Tasks, Notes, and Events
@@ -43,10 +45,12 @@ export class EntryListProjection {
   private readonly subTask = new SubTaskProjection(this);
   private readonly dailyLog = new DailyLogProjection(this);
   private readonly review: ReviewProjection;
+  private readonly habit: HabitProjection;
 
   constructor(private readonly eventStore: IEventStore, snapshotStore?: ISnapshotStore) {
     this.snapshotStore = snapshotStore;
     this.review = new ReviewProjection(this, this.eventStore);
+    this.habit = new HabitProjection(this.eventStore);
     // Subscribe to event store changes to enable reactive projections
     this.eventStore.subscribe((event: DomainEvent) => {
       // If this event was already baked into the hydrated snapshot, absorb silently.
@@ -437,5 +441,27 @@ export class EntryListProjection {
     getCollection: (id: string) => Collection | undefined,
   ): Promise<StalledTask[]> {
     return this.review.getStalledMonthlyTasks(olderThanDays, getCollection);
+  }
+
+  // ── HabitProjection delegates ──────────────────────────────────────────────
+
+  /** @see HabitProjection.getActiveHabits */
+  async getActiveHabits(): Promise<HabitReadModel[]> {
+    return this.habit.getActiveHabits();
+  }
+
+  /** @see HabitProjection.getAllHabits */
+  async getAllHabits(): Promise<HabitReadModel[]> {
+    return this.habit.getAllHabits();
+  }
+
+  /** @see HabitProjection.getHabitById */
+  async getHabitById(habitId: string): Promise<HabitReadModel | undefined> {
+    return this.habit.getHabitById(habitId);
+  }
+
+  /** @see HabitProjection.getHabitsForDate */
+  async getHabitsForDate(date: string): Promise<HabitReadModel[]> {
+    return this.habit.getHabitsForDate(date);
   }
 }

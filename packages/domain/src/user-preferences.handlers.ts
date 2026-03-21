@@ -39,7 +39,8 @@ export class UpdateUserPreferencesHandler {
       command.defaultCompletedTaskBehavior !== undefined ||
       command.autoFavoriteRecentDailyLogs !== undefined ||
       command.autoFavoriteRecentMonthlyLogs !== undefined ||
-      command.autoFavoriteCalendarWithActiveTasks !== undefined;
+      command.autoFavoriteCalendarWithActiveTasks !== undefined ||
+      command.ritualReminders !== undefined;
 
     if (!hasPreferenceField) {
       throw new Error('At least one preference field must be provided');
@@ -65,6 +66,7 @@ export class UpdateUserPreferencesHandler {
       autoFavoriteRecentDailyLogs?: boolean;
       autoFavoriteRecentMonthlyLogs?: boolean;
       autoFavoriteCalendarWithActiveTasks?: boolean;
+      ritualReminders?: typeof command.ritualReminders;
       updatedAt: string;
     } = {
       updatedAt: metadata.timestamp,
@@ -84,6 +86,10 @@ export class UpdateUserPreferencesHandler {
 
     if (command.autoFavoriteCalendarWithActiveTasks !== undefined) {
       payload.autoFavoriteCalendarWithActiveTasks = command.autoFavoriteCalendarWithActiveTasks;
+    }
+
+    if (command.ritualReminders !== undefined) {
+      payload.ritualReminders = command.ritualReminders;
     }
 
     // Create UserPreferencesUpdated event
