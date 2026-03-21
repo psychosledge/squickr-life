@@ -78,6 +78,7 @@ describe('CollectionDetailView', () => {
     mockEntryProjection = {
       getEntriesByCollection: vi.fn().mockResolvedValue(mockEntries),
       getEntriesForCollectionView: vi.fn().mockResolvedValue(mockEntries), // Phase 2: Ghost entries
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
       getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
       getSubTasks: vi.fn().mockResolvedValue([]),
@@ -135,6 +136,14 @@ describe('CollectionDetailView', () => {
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
+      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     };
 
     return render(
@@ -302,6 +311,7 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
       getDeletedEntries: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
     };
 
     mockTaskProjection = {
@@ -341,6 +351,14 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
+      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     };
 
     return render(
@@ -509,6 +527,7 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
       getDeletedEntries: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -543,6 +562,15 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
       addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
     };
 
@@ -852,6 +880,7 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
     getDeletedEntries: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -891,6 +920,15 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
       addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
     };
 
@@ -1062,6 +1100,7 @@ describe('CollectionDetailView - Temporal Route Navigation Fix', () => {
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
     getDeletedEntries: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -1098,6 +1137,15 @@ describe('CollectionDetailView - Temporal Route Navigation Fix', () => {
       addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
     };
 
@@ -1175,6 +1223,7 @@ describe('CollectionDetailView - Error Toast', () => {
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
     getDeletedEntries: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -1207,6 +1256,14 @@ describe('CollectionDetailView - Error Toast', () => {
       addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
       userPreferences: DEFAULT_USER_PREFERENCES,
       isAppReady: true,
       ...overrides,
@@ -1499,6 +1556,7 @@ describe('CollectionDetailView - Completed sub-task stays with parent (Fix 3)', 
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(true),
     getDeletedEntries: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -1622,6 +1680,7 @@ describe('CollectionDetailView - Ghost entries excluded from selection (Fix 4)',
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
     getDeletedEntries: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
     };
 
     mockEventStore = {
@@ -1775,6 +1834,7 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
       getDeletedEntries: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
     };
 
     // Allow callers to supply a growing collections list so post-create refreshes work
@@ -1814,6 +1874,14 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
         addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
         removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
         moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+        reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
         userPreferences: DEFAULT_USER_PREFERENCES,
         isAppReady: true,
       },

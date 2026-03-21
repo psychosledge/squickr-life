@@ -23,7 +23,10 @@ import { useEntryOperations } from '../hooks/useEntryOperations';
 import { useSelectionMode } from '../hooks/useSelectionMode';
 import { useCollectionNavigation } from '../hooks/useCollectionNavigation';
 import { useTutorial } from '../hooks/useTutorial';
+import { useHabitsForDate } from '../hooks/useHabitsForDate';
+import { useHabitsManagement } from '../hooks/useHabitsManagement';
 import { CollectionHeader } from '../components/CollectionHeader';
+import { HabitsSection } from '../components/HabitsSection';
 import { EntryList } from '../components/EntryList';
 import { EntryInputModal } from '../components/EntryInputModal';
 import { RenameCollectionModal } from '../components/RenameCollectionModal';
@@ -83,6 +86,12 @@ export function CollectionDetailView({
   const [entries, setEntries] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Habit hooks — only active for daily collections
+  const habitDate = collection?.type === 'daily' && collection.date ? collection.date : '';
+  const { habits, isLoading: habitsLoading } = useHabitsForDate(habitDate);
+  const habitsMgmt = useHabitsManagement();
+  const [isCreateHabitModalOpen, setIsCreateHabitModalOpen] = useState(false);
 
   // Tutorial Option A: resume when user first navigates into a collection,
   // but only AFTER loading is complete so Joyride's target elements are in the DOM.
@@ -528,6 +537,20 @@ export function CollectionDetailView({
 
       {/* Entry list - dynamic bottom padding when selection toolbar is visible */}
       <div className={`py-8 px-4 ${selection.isSelectionMode ? 'pb-52' : 'pb-20'}`}>
+        {/* Habits section — only shown for daily collections, above the entry list */}
+        {collection.type === 'daily' && (
+          <HabitsSection
+            habits={habits}
+            isLoading={habitsLoading}
+            date={habitDate}
+            collectionId={collection.id}
+            onComplete={(cmd) => habitsMgmt.completeHabit(cmd)}
+            onRevert={(cmd) => habitsMgmt.revertHabitCompletion(cmd)}
+            onAddHabit={() => setIsCreateHabitModalOpen(true)}
+            onNavigateToHabit={(habitId) => navigate(`/habits/${habitId}`)}
+          />
+        )}
+
         {/* Active entries (or all entries if not collapsed) */}
         <EntryList
           entries={activeTasks}
@@ -822,6 +845,9 @@ export function CollectionDetailView({
           onDismiss={() => setErrorMessage(null)}
         />
       )}
+
+      {/* CreateHabitModal — wired in Commit 11 */}
+      {isCreateHabitModalOpen && null}
     </div>
   );
 }
