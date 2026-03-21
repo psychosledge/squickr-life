@@ -208,4 +208,19 @@ describe('useHabitsForDate', () => {
     // Assert
     expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
   });
+
+  it('returns empty habits and isLoading: false immediately when date is empty string', async () => {
+    // Arrange
+    const { entryProjection } = setupMocks();
+
+    // Act
+    const { result } = renderHook(() => useHabitsForDate(''));
+
+    // Assert — should settle without calling getHabitsForDate
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.habits).toEqual([]);
+    expect(entryProjection.getHabitsForDate).not.toHaveBeenCalled();
+  });
 });

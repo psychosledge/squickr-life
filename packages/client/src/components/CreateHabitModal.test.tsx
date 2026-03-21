@@ -147,7 +147,10 @@ describe('CreateHabitModal', () => {
 
     const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
     expect(cmd.title).toBe('Run');
-    expect(cmd.frequency).toEqual({ type: 'weekly', targetDays: [] });
+    expect(cmd.frequency.type).toBe('weekly');
+    // targetDays defaults to today's day of week (non-empty)
+    expect((cmd.frequency as { type: 'weekly'; targetDays: number[] }).targetDays).toHaveLength(1);
+    expect((cmd.frequency as { type: 'weekly'; targetDays: number[] }).targetDays[0]).toBe(new Date().getDay());
   });
 
   it('should call onSubmit with every-n-days frequency when selected', async () => {
@@ -278,5 +281,120 @@ describe('CreateHabitModal', () => {
       const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
       expect(cmd.title).toBe('Meditate');
     });
+  });
+
+  it('weekly: default targetDays contains today\'s day of week', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Habit Name'), 'Run');
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'weekly');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
+    const freq = cmd.frequency as { type: 'weekly'; targetDays: number[] };
+    expect(freq.type).toBe('weekly');
+    expect(freq.targetDays).toContain(new Date().getDay());
+  });
+
+  it('weekly: toggling a day adds it to targetDays', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Habit Name'), 'Run');
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'weekly');
+
+    // Click Monday (day 1) to add it
+    await user.click(screen.getByRole('button', { name: 'Monday' }));
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
+    const freq = cmd.frequency as { type: 'weekly'; targetDays: number[] };
+    expect(freq.targetDays).toContain(1);
+  });
+
+  it('weekly: cannot de-select the last remaining day', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Habit Name'), 'Run');
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'weekly');
+
+    // The only selected day is today; clicking it should NOT remove it
+    const todayIndex = new Date().getDay();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    await user.click(screen.getByRole('button', { name: dayNames[todayIndex] }));
+
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
+    const freq = cmd.frequency as { type: 'weekly'; targetDays: number[] };
+    // Still contains today's day — de-select was blocked
+    expect(freq.targetDays).toContain(todayIndex);
+    expect(freq.targetDays.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('weekly: submit with specific days produces correct targetDays', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Habit Name'), 'Run');
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'weekly');
+
+    // Add Monday (1) and Wednesday (3) to whatever is already selected
+    await user.click(screen.getByRole('button', { name: 'Monday' }));
+    await user.click(screen.getByRole('button', { name: 'Wednesday' }));
+
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
+    const freq = cmd.frequency as { type: 'weekly'; targetDays: number[] };
+    expect(freq.type).toBe('weekly');
+    expect(freq.targetDays).toContain(1);  // Monday
+    expect(freq.targetDays).toContain(3);  // Wednesday
   });
 });

@@ -26,6 +26,11 @@ export function useHabitsForDate(date: string): HabitsForDateData {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
+    if (!date) {
+      setHabits([]);
+      setIsLoading(false);
+      return;
+    }
     const result = await entryProjection.getHabitsForDate(date);
     setHabits(result);
     setIsLoading(false);

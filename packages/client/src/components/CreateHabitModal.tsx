@@ -17,9 +17,13 @@ type FrequencyType = 'daily' | 'weekly' | 'every-n-days';
  * - Frequency selector (daily / weekly / every-n-days)
  * - Disabled notification time field (Phase 3 placeholder)
  */
+const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
+const DAY_FULL_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+
 export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModalProps) {
   const [title, setTitle] = useState('');
   const [frequencyType, setFrequencyType] = useState<FrequencyType>('daily');
+  const [targetDays, setTargetDays] = useState<number[]>([new Date().getDay()]);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -50,7 +54,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
       case 'daily':
         return { type: 'daily' };
       case 'weekly':
-        return { type: 'weekly', targetDays: [] };
+        return { type: 'weekly', targetDays: targetDays as Array<0|1|2|3|4|5|6> };
       case 'every-n-days':
         return { type: 'every-n-days', n: 2 };
     }
@@ -72,6 +76,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
       await onSubmit(cmd);
       setTitle('');
       setFrequencyType('daily');
+      setTargetDays([new Date().getDay()]);
       setError('');
       onClose();
     } catch (err) {
@@ -159,6 +164,47 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
               <option value="every-n-days">Every N Days</option>
             </select>
           </div>
+
+          {/* Day-of-week picker — shown only for weekly frequency */}
+          {frequencyType === 'weekly' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Days of Week
+              </label>
+              <div className="flex gap-1" role="group" aria-label="Days of week">
+                {DAY_LABELS.map((label, dayIndex) => {
+                  const isSelected = targetDays.includes(dayIndex);
+                  return (
+                    <button
+                      key={dayIndex}
+                      type="button"
+                      aria-label={DAY_FULL_LABELS[dayIndex]}
+                      aria-pressed={isSelected}
+                      onClick={() => {
+                        if (isSelected && targetDays.length === 1) {
+                          // Prevent de-selecting the last day
+                          return;
+                        }
+                        setTargetDays(prev =>
+                          isSelected
+                            ? prev.filter(d => d !== dayIndex)
+                            : [...prev, dayIndex].sort((a, b) => a - b),
+                        );
+                      }}
+                      className={`w-9 h-9 rounded-full text-sm font-medium transition-colors
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+                        ${isSelected
+                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Notification Time (disabled - Phase 3) */}
           <div className="mb-6">
