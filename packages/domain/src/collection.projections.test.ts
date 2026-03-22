@@ -52,12 +52,12 @@ describe('CollectionListProjection', () => {
 
       const collections = await projection.getCollections();
       expect(collections).toHaveLength(2);
-      expect(collections[0].id).toBe('col-1');
-      expect(collections[0].name).toBe('First Collection');
-      expect(collections[0].type).toBe('log');
-      expect(collections[1].id).toBe('col-2');
-      expect(collections[1].name).toBe('Second Collection');
-      expect(collections[1].type).toBe('custom');
+      expect(collections[0]!.id).toBe('col-1');
+      expect(collections[0]!.name).toBe('First Collection');
+      expect(collections[0]!.type).toBe('log');
+      expect(collections[1]!.id).toBe('col-2');
+      expect(collections[1]!.name).toBe('Second Collection');
+      expect(collections[1]!.type).toBe('custom');
     });
 
     it('should handle CollectionRenamed events', async () => {
@@ -90,7 +90,7 @@ describe('CollectionListProjection', () => {
 
       const collections = await projection.getCollections();
       expect(collections).toHaveLength(1);
-      expect(collections[0].name).toBe('New Name');
+      expect(collections[0]!.name).toBe('New Name');
     });
 
     it('should handle CollectionReordered events', async () => {
@@ -123,7 +123,7 @@ describe('CollectionListProjection', () => {
 
       const collections = await projection.getCollections();
       expect(collections).toHaveLength(1);
-      expect(collections[0].order).toBe('a1');
+      expect(collections[0]!.order).toBe('a1');
     });
 
     it('should filter out deleted collections', async () => {
@@ -169,7 +169,7 @@ describe('CollectionListProjection', () => {
 
       const collections = await projection.getCollections();
       expect(collections).toHaveLength(1);
-      expect(collections[0].id).toBe('col-2');
+      expect(collections[0]!.id).toBe('col-2');
     });
 
     it('should sort collections by order field', async () => {
@@ -205,8 +205,8 @@ describe('CollectionListProjection', () => {
       const collections = await projection.getCollections();
       expect(collections).toHaveLength(2);
       // Should be sorted by order, not creation time
-      expect(collections[0].id).toBe('col-2'); // 'a0' comes first
-      expect(collections[1].id).toBe('col-1'); // 'a1' comes second
+      expect(collections[0]!.id).toBe('col-2'); // 'a0' comes first
+      expect(collections[1]!.id).toBe('col-1'); // 'a1' comes second
     });
 
     it('should handle multiple events for same collection', async () => {
@@ -251,8 +251,8 @@ describe('CollectionListProjection', () => {
 
       const collections = await projection.getCollections();
       expect(collections).toHaveLength(1);
-      expect(collections[0].name).toBe('Renamed');
-      expect(collections[0].order).toBe('a2');
+      expect(collections[0]!.name).toBe('Renamed');
+      expect(collections[0]!.order).toBe('a2');
     });
 
     it('should include userId if provided', async () => {
@@ -273,7 +273,7 @@ describe('CollectionListProjection', () => {
       await eventStore.append(event);
 
       const collections = await projection.getCollections();
-      expect(collections[0].userId).toBe('user-123');
+      expect(collections[0]!.userId).toBe('user-123');
     });
   });
 
@@ -416,7 +416,7 @@ describe('CollectionListProjection', () => {
 
       const collections = await projection.getCollections();
       expect(collections).toHaveLength(1);
-      expect(collections[0].settings?.collapseCompleted).toBe(true);
+      expect(collections[0]!.settings?.collapseCompleted).toBe(true);
     });
 
     it('should update settings when changed', async () => {
@@ -757,8 +757,8 @@ describe('CollectionListProjection', () => {
 
       const deletedCollections = await projection.getDeletedCollections();
       expect(deletedCollections).toHaveLength(1);
-      expect(deletedCollections[0].id).toBe('col-1');
-      expect(deletedCollections[0].deletedAt).toBe('2026-01-26T00:02:00.000Z');
+      expect(deletedCollections[0]!.id).toBe('col-1');
+      expect(deletedCollections[0]!.deletedAt).toBe('2026-01-26T00:02:00.000Z');
     });
 
     it('should sort deleted collections by deletedAt descending (most recent first)', async () => {
@@ -812,8 +812,8 @@ describe('CollectionListProjection', () => {
       const deletedCollections = await projection.getDeletedCollections();
       expect(deletedCollections).toHaveLength(2);
       // Most recently deleted first
-      expect(deletedCollections[0].id).toBe('col-2');
-      expect(deletedCollections[1].id).toBe('col-1');
+      expect(deletedCollections[0]!.id).toBe('col-2');
+      expect(deletedCollections[1]!.id).toBe('col-1');
     });
 
     it('should not include restored collections', async () => {
@@ -999,8 +999,8 @@ describe('CollectionListProjection', () => {
 
       collections = await projection.getCollections();
       expect(collections).toHaveLength(1);
-      expect(collections[0].id).toBe('col-1');
-      expect(collections[0].deletedAt).toBeUndefined();
+      expect(collections[0]!.id).toBe('col-1');
+      expect(collections[0]!.deletedAt).toBeUndefined();
     });
 
     it('should not include restored collection in getDeletedCollections()', async () => {

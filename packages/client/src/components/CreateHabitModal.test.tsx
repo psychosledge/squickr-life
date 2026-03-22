@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { CreateHabitModal } from './CreateHabitModal';
 import type { CreateHabitCommand } from '@squickr/domain';
@@ -177,7 +177,7 @@ describe('CreateHabitModal', () => {
     expect(cmd.frequency).toEqual({ type: 'every-n-days', n: 2 });
   });
 
-  it('should show a disabled notification time field', () => {
+  it('notification time: field is enabled', () => {
     render(
       <CreateHabitModal
         isOpen={true}
@@ -187,7 +187,7 @@ describe('CreateHabitModal', () => {
     );
 
     const notifInput = screen.getByLabelText(/Notification Time/i);
-    expect(notifInput).toBeDisabled();
+    expect(notifInput).not.toBeDisabled();
   });
 
   it('should close modal and reset form after successful submit', async () => {
@@ -411,5 +411,115 @@ describe('CreateHabitModal', () => {
     const backdrop = container.firstChild as HTMLElement;
     expect(backdrop).toBeTruthy();
     expect(backdrop.className).toContain('z-[200]');
+  });
+
+  it('every-n-days: changing interval to 7 submits frequency { type: every-n-days, n: 7 }', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Habit Name'), 'Water plants');
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'every-n-days');
+
+    const intervalInput = screen.getByLabelText('Repeat interval (days)');
+    fireEvent.change(intervalInput, { target: { value: '7' } });
+
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
+    expect(cmd.frequency).toEqual({ type: 'every-n-days', n: 7 });
+  });
+
+  it('notification time: setting a value includes notificationTime in command', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Habit Name'), 'Meditate');
+    const notifInput = screen.getByLabelText(/Notification Time/i);
+    await user.clear(notifInput);
+    await user.type(notifInput, '08:00');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
+    expect(cmd.notificationTime).toBe('08:00');
+  });
+
+  it('notification time: leaving empty omits notificationTime from command', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Habit Name'), 'Meditate');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+
+    const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
+    expect(cmd.notificationTime).toBeUndefined();
+  });
+
+  it('notification time: resets to empty after successful submit', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    const { rerender } = render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={onClose}
+        onSubmit={onSubmit}
+      />
+    );
+
+    await user.type(screen.getByLabelText('Habit Name'), 'Meditate');
+    const notifInput = screen.getByLabelText(/Notification Time/i) as HTMLInputElement;
+    await user.clear(notifInput);
+    await user.type(notifInput, '08:00');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    // Re-open modal
+    rerender(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={onClose}
+        onSubmit={onSubmit}
+      />
+    );
+
+    const reopenedNotifInput = screen.getByLabelText(/Notification Time/i) as HTMLInputElement;
+    expect(reopenedNotifInput.value).toBe('');
   });
 });

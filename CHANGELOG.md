@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.1] - 2026-03-22
+
+### Added
+- **FrequencyPicker component:** Extracted shared `FrequencyPicker` controlled component (daily / weekly / every-N-days) used by both `CreateHabitModal` and `HabitDetailView`. Supports day-of-week toggle buttons with full accessible `aria-label`/`aria-pressed` attributes and a last-day guard (cannot deselect the only remaining day). Includes 14 dedicated tests.
+- **HabitDetailView — inline title editing:** Pencil button in the header opens an inline text input pre-populated with the current title. Enter saves, Escape cancels. Save button disabled when input is empty. Errors shown inline.
+- **HabitDetailView — collapsible Settings section:** Expands to show a `FrequencyPicker` seeded with the habit's current frequency. "Save Changes" button disabled until the frequency actually differs; collapses on successful save.
+- **HabitDetailView — archive with confirmation:** "Archive Habit" button requires a two-step confirmation ("Archive this habit? This cannot be undone.") before calling `archiveHabitHandler`. Navigates to `/habits` on success; shows inline error on failure.
+
+### Fixed
+- **CreateHabitModal — every-N-days input wired:** The "Every N Days" interval number input now correctly sends `{ type: 'every-n-days', n }` in the `CreateHabitCommand` (previously the `nDays` state was not plumbed through).
+- **CreateHabitModal — notification time field enabled:** The notification time `<input type="time">` is now active; when filled, `notificationTime` is included in the `CreateHabitCommand`; leaving it blank omits the field. Form resets on successful submit.
+
+### Tests
+- **897 domain tests, 1,447 client tests passing** (client: +38 tests — FrequencyPicker ×14, CreateHabitModal +4, HabitDetailView +20).
+
+### Code Quality
+- **Pre-existing TypeScript lint fixes:** Resolved compiler errors in 4 test files — removed unused `HabitFrequencyChanged` import and `otherDay` variable in `habit.projection.test.ts`; added `!` non-null assertions on array index accesses in `collection.projections.test.ts` and `collection-management.test.ts`; added missing `collections: []` to Note/Event fixtures in `collectionStatsFormatter.test.ts`.
+
 ## [1.13.0] - 2026-03-21
 
 ### Added

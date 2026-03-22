@@ -67,8 +67,8 @@ describe('Multi-Collection Management', () => {
       const task = await projection.getTaskById(taskId);
       expect(task?.collections).toEqual(['monthly-log', 'daily-log']);
       expect(task?.collectionHistory).toHaveLength(2);
-      expect(task?.collectionHistory?.[1].collectionId).toBe('daily-log');
-      expect(task?.collectionHistory?.[1].removedAt).toBeUndefined();
+      expect(task?.collectionHistory?.[1]?.collectionId).toBe('daily-log');
+      expect(task?.collectionHistory?.[1]?.removedAt).toBeUndefined();
     });
     
     it('should be idempotent (adding to same collection twice)', async () => {
@@ -96,8 +96,8 @@ describe('Multi-Collection Management', () => {
       await addToCollectionHandler.handle({ taskId, collectionId: 'daily-log' });
       
       const task = await projection.getTaskById(taskId);
-      expect(task?.collectionHistory?.[0].addedAt).toBeDefined();
-      expect(task?.collectionHistory?.[1].addedAt).toBeDefined();
+      expect(task?.collectionHistory?.[0]?.addedAt).toBeDefined();
+      expect(task?.collectionHistory?.[1]?.addedAt).toBeDefined();
     });
   });
   
@@ -131,7 +131,7 @@ describe('Multi-Collection Management', () => {
       
       const task = await projection.getTaskById(taskId);
       expect(task?.collections).toEqual(['daily-log']);
-      expect(task?.collectionHistory?.[0].removedAt).toBeDefined();
+      expect(task?.collectionHistory?.[0]?.removedAt).toBeDefined();
     });
     
     it('should be idempotent (removing from same collection twice - both calls no-op if task not in collection)', async () => {
@@ -296,8 +296,8 @@ describe('Multi-Collection Management', () => {
       
       const task = await projection.getTaskById(taskId);
       expect(task?.collections).toEqual(['daily-log']);
-      expect(task?.collectionHistory?.[0].removedAt).toBeDefined();
-      expect(task?.collectionHistory?.[1].collectionId).toBe('daily-log');
+      expect(task?.collectionHistory?.[0]?.removedAt).toBeDefined();
+      expect(task?.collectionHistory?.[1]?.collectionId).toBe('daily-log');
     });
     
     it('should remove from current collection only when moving (not all collections)', async () => {
@@ -421,7 +421,7 @@ describe('Multi-Collection Management', () => {
         userId: 'user-1',
       });
       
-      const task2 = await createTaskHandler.handle({
+      await createTaskHandler.handle({
         content: 'Task 2',
         collectionId: 'daily-log',
         userId: 'user-1',
@@ -430,7 +430,7 @@ describe('Multi-Collection Management', () => {
       const entries = await projection.getEntriesForCollectionView('monthly-log');
       
       expect(entries).toHaveLength(1);
-      expect(entries[0].id).toBe(task1);
+      expect(entries[0]!.id).toBe(task1);
       expect((entries[0] as any).renderAsGhost).toBe(false);
     });
     
@@ -461,7 +461,7 @@ describe('Multi-Collection Management', () => {
     });
     
     it('should not show ghost if task was never in collection', async () => {
-      const taskId = await createTaskHandler.handle({
+      await createTaskHandler.handle({
         content: 'Task',
         collectionId: 'monthly-log',
         userId: 'user-1',
@@ -491,7 +491,7 @@ describe('Multi-Collection Management', () => {
       expect((dailyEntries[0] as any).renderAsGhost).toBe(false);
       
       // Same task ID in both
-      expect(monthlyEntries[0].id).toBe(dailyEntries[0].id);
+      expect(monthlyEntries[0]!.id).toBe(dailyEntries[0]!.id);
     });
   });
 });

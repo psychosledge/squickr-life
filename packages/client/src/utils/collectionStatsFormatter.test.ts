@@ -95,6 +95,7 @@ describe('formatCollectionStats', () => {
           content: 'Note 1',
           collectionId: 'feb-2026',
           createdAt: '2026-02-02T10:00:00Z',
+          collections: [],
         },
         {
           id: '3',
@@ -103,6 +104,7 @@ describe('formatCollectionStats', () => {
           eventDate: '2026-02-03',
           collectionId: 'feb-2026',
           createdAt: '2026-02-03T10:00:00Z',
+          collections: [],
         },
       ];
 
@@ -217,6 +219,7 @@ describe('formatCollectionStats', () => {
           content: 'Note 1',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T12:00:00Z',
+          collections: [],
         },
         {
           id: '4',
@@ -225,6 +228,7 @@ describe('formatCollectionStats', () => {
           eventDate: '2026-02-09',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T13:00:00Z',
+          collections: [],
         },
       ];
 
@@ -268,6 +272,7 @@ describe('formatCollectionStats', () => {
           content: 'Note 1',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T11:00:00Z',
+          collections: [],
         },
         {
           id: '3',
@@ -276,6 +281,7 @@ describe('formatCollectionStats', () => {
           eventDate: '2026-02-09',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T12:00:00Z',
+          collections: [],
         },
       ];
 
@@ -387,6 +393,7 @@ describe('formatCollectionStats', () => {
           content: 'Note 1',
           collectionId: 'work-projects',
           createdAt: '2026-02-09T11:00:00Z',
+          collections: [],
         },
       ];
 
@@ -434,6 +441,7 @@ describe('formatCollectionStats', () => {
           content: 'Note 1', 
           createdAt: '2026-02-07T00:00:00.000Z', 
           collectionId: '1',
+          collections: [],
         },
       ];
       // Should only count non-migrated entries (1 task, 1 note)
@@ -492,6 +500,7 @@ describe('formatCollectionStats', () => {
           content: 'Note 1',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T14:00:00Z',
+          collections: [],
         },
       ];
 
@@ -576,6 +585,7 @@ describe('formatCollectionStats', () => {
           content: 'Top-level note',
           collectionId: 'daily-2026-02-09',
           createdAt: '2026-02-09T13:00:00Z',
+          collections: [],
         },
       ];
 
@@ -621,6 +631,7 @@ describe('formatCollectionStats', () => {
           collectionId: 'feb-2026',
           createdAt: '2026-02-01T11:00:00Z',
           parentEntryId: '1', // sub-item
+          collections: [],
         },
       ];
 

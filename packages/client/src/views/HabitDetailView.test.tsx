@@ -68,13 +68,15 @@ function buildMockAppContext(habit: HabitReadModel | null = makeHabit()) {
     userPreferences: DEFAULT_USER_PREFERENCES,
     isAppReady: true,
     createHabitHandler: { handle: vi.fn() } as any,
-    updateHabitTitleHandler: { handle: vi.fn() } as any,
-    updateHabitFrequencyHandler: { handle: vi.fn() } as any,
+    updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     completeHabitHandler: { handle: vi.fn() } as any,
     revertHabitCompletionHandler: { handle: vi.fn() } as any,
-    archiveHabitHandler: { handle: vi.fn() } as any,
+    archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     restoreHabitHandler: { handle: vi.fn() } as any,
     reorderHabitHandler: { handle: vi.fn() } as any,
+    setHabitNotificationTimeHandler: { handle: vi.fn() } as any,
+    clearHabitNotificationTimeHandler: { handle: vi.fn() } as any,
   };
 }
 
@@ -154,6 +156,296 @@ describe('HabitDetailView', () => {
     renderView();
     await waitFor(() => {
       expect(screen.getByText(/daily/i)).toBeInTheDocument();
+    });
+  });
+
+  // ─── Title Editing ──────────────────────────────────────────────────────────
+
+  describe('Title editing', () => {
+    it('shows an edit button in the header', async () => {
+      renderView();
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /edit habit title/i })).toBeInTheDocument();
+      });
+    });
+
+    it('clicking edit button shows title input pre-populated with habit title', async () => {
+      const user = userEvent.setup();
+      renderView();
+
+      await waitFor(() => screen.getByRole('button', { name: /edit habit title/i }));
+      await user.click(screen.getByRole('button', { name: /edit habit title/i }));
+
+      const input = screen.getByRole('textbox', { name: /edit habit title/i });
+      expect(input).toBeInTheDocument();
+      expect((input as HTMLInputElement).value).toBe('Morning Run');
+    });
+
+    it('title input has aria-label "Edit habit title"', async () => {
+      const user = userEvent.setup();
+      renderView();
+
+      await waitFor(() => screen.getByRole('button', { name: /edit habit title/i }));
+      await user.click(screen.getByRole('button', { name: /edit habit title/i }));
+
+      expect(screen.getByRole('textbox', { name: 'Edit habit title' })).toBeInTheDocument();
+    });
+
+    it('confirming calls updateHabitTitleHandler.handle with correct args', async () => {
+      const user = userEvent.setup({ delay: null });
+      const appContext = buildMockAppContext();
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /edit habit title/i }));
+      await user.click(screen.getByRole('button', { name: /edit habit title/i }));
+
+      const input = screen.getByRole('textbox', { name: /edit habit title/i });
+      await user.clear(input);
+      await user.type(input, 'New Name');
+      await user.click(screen.getByRole('button', { name: /save title/i }));
+
+      await waitFor(() => {
+        expect(appContext.updateHabitTitleHandler.handle).toHaveBeenCalledWith({
+          habitId: 'habit-1',
+          title: 'New Name',
+        });
+      });
+    });
+
+    it('pressing Escape cancels edit — no handler call, input disappears', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext();
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /edit habit title/i }));
+      await user.click(screen.getByRole('button', { name: /edit habit title/i }));
+
+      const input = screen.getByRole('textbox', { name: /edit habit title/i });
+      await user.type(input, ' Extra');
+      await user.keyboard('{Escape}');
+
+      expect(screen.queryByRole('textbox', { name: /edit habit title/i })).not.toBeInTheDocument();
+      expect(appContext.updateHabitTitleHandler.handle).not.toHaveBeenCalled();
+    });
+
+    it('pressing Enter in title input saves the title', async () => {
+      const user = userEvent.setup({ delay: null });
+      const appContext = buildMockAppContext();
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /edit habit title/i }));
+      await user.click(screen.getByRole('button', { name: /edit habit title/i }));
+
+      const input = screen.getByRole('textbox', { name: /edit habit title/i });
+      await user.clear(input);
+      await user.type(input, 'New Name{Enter}');
+
+      await waitFor(() => {
+        expect(appContext.updateHabitTitleHandler.handle).toHaveBeenCalledWith({
+          habitId: 'habit-1',
+          title: 'New Name',
+        });
+      });
+    });
+
+    it('save button is disabled when input is empty', async () => {
+      const user = userEvent.setup();
+      renderView();
+
+      await waitFor(() => screen.getByRole('button', { name: /edit habit title/i }));
+      await user.click(screen.getByRole('button', { name: /edit habit title/i }));
+
+      const input = screen.getByRole('textbox', { name: /edit habit title/i });
+      await user.clear(input);
+
+      expect(screen.getByRole('button', { name: /save title/i })).toBeDisabled();
+    });
+
+    it('shows error when updateHabitTitleHandler rejects', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext();
+      (appContext.updateHabitTitleHandler.handle as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('Title update failed'),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /edit habit title/i }));
+      await user.click(screen.getByRole('button', { name: /edit habit title/i }));
+
+      await user.click(screen.getByRole('button', { name: /save title/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/title update failed/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ─── Settings Section ───────────────────────────────────────────────────────
+
+  describe('Settings section', () => {
+    it('settings section is collapsed by default — toggle button visible, content hidden', async () => {
+      renderView();
+      await waitFor(() => {
+        const btn = screen.getByRole('button', { name: /settings/i });
+        expect(btn).toBeInTheDocument();
+        expect(btn).toHaveAttribute('aria-expanded', 'false');
+      });
+    });
+
+    it('clicking Settings button opens the section', async () => {
+      const user = userEvent.setup();
+      renderView();
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      expect(screen.getByRole('button', { name: /settings/i })).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('open section contains frequency controls', async () => {
+      const user = userEvent.setup();
+      renderView();
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      // Frequency dropdown should be present
+      expect(screen.getByLabelText('Frequency')).toBeInTheDocument();
+    });
+
+    it('Save Changes button is present when settings open', async () => {
+      const user = userEvent.setup();
+      renderView();
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
+    });
+
+    it('Save Changes is disabled when frequency has not changed', async () => {
+      const user = userEvent.setup();
+      renderView();
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled();
+    });
+
+    it('clicking Save Changes calls updateHabitFrequencyHandler.handle', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(
+        makeHabit({ frequency: { type: 'daily' } }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      // Change frequency to weekly — now Save Changes should be enabled
+      await user.selectOptions(screen.getByLabelText('Frequency'), 'weekly');
+
+      const saveBtn = screen.getByRole('button', { name: /save changes/i });
+      expect(saveBtn).not.toBeDisabled();
+      await user.click(saveBtn);
+
+      await waitFor(() => {
+        expect(appContext.updateHabitFrequencyHandler.handle).toHaveBeenCalledWith(
+          expect.objectContaining({ habitId: 'habit-1' }),
+        );
+      });
+    });
+  });
+
+  // ─── Archive ────────────────────────────────────────────────────────────────
+
+  describe('Archive', () => {
+    it('shows "Archive Habit" button', async () => {
+      renderView();
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /archive habit/i })).toBeInTheDocument();
+      });
+    });
+
+    it('clicking Archive Habit shows confirmation UI — does NOT call handler', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext();
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /archive habit/i }));
+      await user.click(screen.getByRole('button', { name: /archive habit/i }));
+
+      expect(screen.getByText(/archive this habit\? this cannot be undone/i)).toBeInTheDocument();
+      expect(appContext.archiveHabitHandler.handle).not.toHaveBeenCalled();
+    });
+
+    it('confirmation shows Cancel and Archive buttons', async () => {
+      const user = userEvent.setup();
+      renderView();
+
+      await waitFor(() => screen.getByRole('button', { name: /archive habit/i }));
+      await user.click(screen.getByRole('button', { name: /archive habit/i }));
+
+      expect(screen.getByRole('button', { name: /^cancel$/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^archive$/i })).toBeInTheDocument();
+    });
+
+    it('Cancel returns to normal — no handler call', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext();
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /archive habit/i }));
+      await user.click(screen.getByRole('button', { name: /archive habit/i }));
+      await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+      expect(screen.queryByText(/archive this habit\? this cannot be undone/i)).not.toBeInTheDocument();
+      expect(appContext.archiveHabitHandler.handle).not.toHaveBeenCalled();
+    });
+
+    it('confirming Archive calls archiveHabitHandler.handle with correct habitId', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext();
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /archive habit/i }));
+      await user.click(screen.getByRole('button', { name: /archive habit/i }));
+      await user.click(screen.getByRole('button', { name: /^archive$/i }));
+
+      await waitFor(() => {
+        expect(appContext.archiveHabitHandler.handle).toHaveBeenCalledWith({ habitId: 'habit-1' });
+      });
+    });
+
+    it('after archive, navigates to /habits', async () => {
+      const user = userEvent.setup();
+      renderView();
+
+      await waitFor(() => screen.getByRole('button', { name: /archive habit/i }));
+      await user.click(screen.getByRole('button', { name: /archive habit/i }));
+      await user.click(screen.getByRole('button', { name: /^archive$/i }));
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/habits');
+      });
+    });
+
+    it('shows error when archive handler rejects', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext();
+      (appContext.archiveHabitHandler.handle as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('Archive failed'),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /archive habit/i }));
+      await user.click(screen.getByRole('button', { name: /archive habit/i }));
+      await user.click(screen.getByRole('button', { name: /^archive$/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/archive failed/i)).toBeInTheDocument();
+      });
     });
   });
 });

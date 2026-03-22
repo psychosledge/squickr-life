@@ -1,5 +1,15 @@
+/**
+ * CreateHabitModal Component
+ *
+ * Modal for creating a new habit with:
+ * - Title input (auto-focused)
+ * - FrequencyPicker (daily / weekly / every-n-days)
+ * - Notification time field (optional, Phase 3)
+ */
 import { useState, useEffect, useRef, FormEvent, KeyboardEvent } from 'react';
 import type { CreateHabitCommand, HabitFrequency } from '@squickr/domain';
+import { FrequencyPicker } from './FrequencyPicker';
+import type { FrequencyType } from './FrequencyPicker';
 
 interface CreateHabitModalProps {
   isOpen: boolean;
@@ -7,23 +17,12 @@ interface CreateHabitModalProps {
   onSubmit: (cmd: CreateHabitCommand) => Promise<void>;
 }
 
-type FrequencyType = 'daily' | 'weekly' | 'every-n-days';
-
-/**
- * CreateHabitModal Component
- *
- * Modal for creating a new habit with:
- * - Title input (auto-focused)
- * - Frequency selector (daily / weekly / every-n-days)
- * - Disabled notification time field (Phase 3 placeholder)
- */
-const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
-const DAY_FULL_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
-
 export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModalProps) {
   const [title, setTitle] = useState('');
   const [frequencyType, setFrequencyType] = useState<FrequencyType>('daily');
   const [targetDays, setTargetDays] = useState<number[]>([new Date().getDay()]);
+  const [nDays, setNDays] = useState(2);
+  const [notificationTime, setNotificationTime] = useState('');
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -56,7 +55,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
       case 'weekly':
         return { type: 'weekly', targetDays: targetDays as Array<0|1|2|3|4|5|6> };
       case 'every-n-days':
-        return { type: 'every-n-days', n: 2 };
+        return { type: 'every-n-days', n: nDays };
     }
   };
 
@@ -70,6 +69,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
       title: trimmed,
       frequency: buildFrequency(),
       order: new Date().toISOString(),
+      ...(notificationTime ? { notificationTime } : {}),
     };
 
     try {
@@ -77,6 +77,8 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
       setTitle('');
       setFrequencyType('daily');
       setTargetDays([new Date().getDay()]);
+      setNDays(2);
+      setNotificationTime('');
       setError('');
       onClose();
     } catch (err) {
@@ -144,83 +146,32 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
           </div>
 
           {/* Frequency */}
-          <div className="mb-4">
-            <label
-              htmlFor="habit-frequency"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
-              Frequency
-            </label>
-            <select
-              id="habit-frequency"
-              value={frequencyType}
-              onChange={(e) => setFrequencyType(e.target.value as FrequencyType)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="every-n-days">Every N Days</option>
-            </select>
-          </div>
+          <FrequencyPicker
+            frequencyType={frequencyType}
+            onFrequencyTypeChange={setFrequencyType}
+            targetDays={targetDays}
+            onTargetDaysChange={setTargetDays}
+            nDays={nDays}
+            onNDaysChange={setNDays}
+          />
 
-          {/* Day-of-week picker — shown only for weekly frequency */}
-          {frequencyType === 'weekly' && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Days of Week
-              </label>
-              <div className="flex gap-1" role="group" aria-label="Days of week">
-                {DAY_LABELS.map((label, dayIndex) => {
-                  const isSelected = targetDays.includes(dayIndex);
-                  return (
-                    <button
-                      key={dayIndex}
-                      type="button"
-                      aria-label={DAY_FULL_LABELS[dayIndex]}
-                      aria-pressed={isSelected}
-                      onClick={() => {
-                        if (isSelected && targetDays.length === 1) {
-                          // Prevent de-selecting the last day
-                          return;
-                        }
-                        setTargetDays(prev =>
-                          isSelected
-                            ? prev.filter(d => d !== dayIndex)
-                            : [...prev, dayIndex].sort((a, b) => a - b),
-                        );
-                      }}
-                      className={`w-9 h-9 rounded-full text-sm font-medium transition-colors
-                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
-                        ${isSelected
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Notification Time (disabled - Phase 3) */}
+          {/* Notification Time (optional) */}
           <div className="mb-6">
             <label
               htmlFor="habit-notification-time"
-              className="block text-sm font-medium text-gray-400 dark:text-gray-500 mb-2"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
             >
-              Notification Time (coming soon)
+              Notification Time
+              <span className="ml-1 text-xs text-gray-400">(optional)</span>
             </label>
             <input
               id="habit-notification-time"
               type="time"
-              disabled
-              className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg
-                         bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500
-                         cursor-not-allowed"
+              value={notificationTime}
+              onChange={(e) => setNotificationTime(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 

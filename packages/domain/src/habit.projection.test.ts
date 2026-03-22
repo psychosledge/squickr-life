@@ -8,7 +8,6 @@ import type {
   HabitRestored,
   HabitCompleted,
   HabitCompletionReverted,
-  HabitFrequencyChanged,
 } from './habit.types';
 
 // ============================================================================
@@ -285,7 +284,6 @@ describe('HabitProjection', () => {
 
     it('should mark not-scheduled days for weekly habit', async () => {
       const dayOfWeek = new Date(today).getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
-      const otherDay = ((dayOfWeek + 1) % 7) as 0 | 1 | 2 | 3 | 4 | 5 | 6;
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'weekly', targetDays: [dayOfWeek] },
         // Created 30 days ago so the full history window is within the habit's lifetime
