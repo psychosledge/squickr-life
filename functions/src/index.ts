@@ -7,7 +7,11 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
+import * as admin from "firebase-admin";
 import {setGlobalOptions} from "firebase-functions";
+
+// Initialize Firebase Admin SDK
+admin.initializeApp();
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -24,7 +28,4 @@ import {setGlobalOptions} from "firebase-functions";
 // this will be the maximum concurrent request count.
 setGlobalOptions({ maxInstances: 10 });
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+export { habitReminderFanOut } from "./habit-reminder-fanout";
