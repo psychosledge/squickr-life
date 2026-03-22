@@ -210,6 +210,8 @@ export type {
   HabitArchived,
   HabitRestored,
   HabitReordered,
+  HabitNotificationTimeSet,
+  HabitNotificationTimeCleared,
   HabitEvent,
   CreateHabitCommand,
   UpdateHabitTitleCommand,
@@ -219,6 +221,8 @@ export type {
   ArchiveHabitCommand,
   RestoreHabitCommand,
   ReorderHabitCommand,
+  SetHabitNotificationTimeCommand,
+  ClearHabitNotificationTimeCommand,
 } from './habit.types';
 
 // Habit Command Handlers (Phase 2)
@@ -231,6 +235,8 @@ export {
   ArchiveHabitHandler,
   RestoreHabitHandler,
   ReorderHabitHandler,
+  SetHabitNotificationTimeHandler,
+  ClearHabitNotificationTimeHandler,
 } from './habit.handlers';
 
 // Helpers

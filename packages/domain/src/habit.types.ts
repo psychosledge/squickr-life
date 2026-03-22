@@ -129,6 +129,25 @@ export interface HabitReordered extends DomainEvent {
   };
 }
 
+export interface HabitNotificationTimeSet extends DomainEvent {
+  readonly type: 'HabitNotificationTimeSet';
+  readonly aggregateId: string; // habitId
+  readonly payload: {
+    readonly habitId: string;
+    readonly notificationTime: string; // "HH:MM" 24-hour, e.g. "07:30"
+    readonly updatedAt: string; // ISO timestamp
+  };
+}
+
+export interface HabitNotificationTimeCleared extends DomainEvent {
+  readonly type: 'HabitNotificationTimeCleared';
+  readonly aggregateId: string; // habitId
+  readonly payload: {
+    readonly habitId: string;
+    readonly clearedAt: string; // ISO timestamp
+  };
+}
+
 /** Union type of all habit domain events */
 export type HabitEvent =
   | HabitCreated
@@ -138,7 +157,9 @@ export type HabitEvent =
   | HabitCompletionReverted
   | HabitArchived
   | HabitRestored
-  | HabitReordered;
+  | HabitReordered
+  | HabitNotificationTimeSet
+  | HabitNotificationTimeCleared;
 
 // ============================================================================
 // Habit Commands
@@ -183,4 +204,13 @@ export interface RestoreHabitCommand {
 export interface ReorderHabitCommand {
   readonly habitId: string;
   readonly order: string;
+}
+
+export interface SetHabitNotificationTimeCommand {
+  readonly habitId: string;
+  readonly notificationTime: string; // "HH:MM" validated in handler
+}
+
+export interface ClearHabitNotificationTimeCommand {
+  readonly habitId: string;
 }

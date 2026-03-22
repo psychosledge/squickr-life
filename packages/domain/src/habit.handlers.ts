@@ -8,6 +8,8 @@ import type {
   ArchiveHabitCommand,
   RestoreHabitCommand,
   ReorderHabitCommand,
+  SetHabitNotificationTimeCommand,
+  ClearHabitNotificationTimeCommand,
   HabitCreated,
   HabitTitleChanged,
   HabitFrequencyChanged,
@@ -16,6 +18,8 @@ import type {
   HabitArchived,
   HabitRestored,
   HabitReordered,
+  HabitNotificationTimeSet,
+  HabitNotificationTimeCleared,
 } from './habit.types';
 import { validateHabitTitle, validateHabitFrequency } from './habit-validation';
 import { generateEventMetadata } from './event-helpers';
@@ -336,6 +340,69 @@ export class ReorderHabitHandler {
         habitId: command.habitId,
         order: command.order,
         reorderedAt: metadata.timestamp,
+      },
+    };
+
+    await this.eventStore.append(event);
+  }
+}
+
+// ============================================================================
+// Phase 3.1: SetHabitNotificationTime, ClearHabitNotificationTime
+// ============================================================================
+
+const NOTIFICATION_TIME_RE = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * Set (or update) the push notification time for a habit
+ */
+export class SetHabitNotificationTimeHandler {
+  constructor(private readonly eventStore: IEventStore) {}
+
+  async handle(command: SetHabitNotificationTimeCommand): Promise<void> {
+    if (!NOTIFICATION_TIME_RE.test(command.notificationTime)) {
+      throw new Error(
+        `Invalid notificationTime "${command.notificationTime}": expected HH:MM in 24-hour format`,
+      );
+    }
+
+    await requireHabitActive(this.eventStore, command.habitId);
+
+    const metadata = generateEventMetadata();
+
+    const event: HabitNotificationTimeSet = {
+      ...metadata,
+      type: 'HabitNotificationTimeSet',
+      aggregateId: command.habitId,
+      payload: {
+        habitId: command.habitId,
+        notificationTime: command.notificationTime,
+        updatedAt: metadata.timestamp,
+      },
+    };
+
+    await this.eventStore.append(event);
+  }
+}
+
+/**
+ * Clear the push notification time for a habit (idempotent — no error if already absent)
+ */
+export class ClearHabitNotificationTimeHandler {
+  constructor(private readonly eventStore: IEventStore) {}
+
+  async handle(command: ClearHabitNotificationTimeCommand): Promise<void> {
+    await requireHabitActive(this.eventStore, command.habitId);
+
+    const metadata = generateEventMetadata();
+
+    const event: HabitNotificationTimeCleared = {
+      ...metadata,
+      type: 'HabitNotificationTimeCleared',
+      aggregateId: command.habitId,
+      payload: {
+        habitId: command.habitId,
+        clearedAt: metadata.timestamp,
       },
     };
 

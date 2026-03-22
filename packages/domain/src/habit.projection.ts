@@ -440,6 +440,18 @@ function replayEvents(events: DomainEvent[]): Map<string, HabitState> {
         if (s) s.order = p.order;
         break;
       }
+      case 'HabitNotificationTimeSet': {
+        const p = (event as import('./habit.types').HabitNotificationTimeSet).payload;
+        const s = states.get(p.habitId);
+        if (s) s.notificationTime = p.notificationTime;
+        break;
+      }
+      case 'HabitNotificationTimeCleared': {
+        const p = (event as import('./habit.types').HabitNotificationTimeCleared).payload;
+        const s = states.get(p.habitId);
+        if (s) s.notificationTime = undefined;
+        break;
+      }
       // Ignore unrelated events
     }
   }
