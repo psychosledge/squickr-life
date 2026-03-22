@@ -52,6 +52,7 @@ import { SignInView } from './views/SignInView';
 import { SyncManager } from './firebase/SyncManager';
 import { SnapshotManager } from './snapshot-manager';
 import { firestore } from './firebase/config';
+import { registerFcmToken } from './firebase/fcm';
 import { ROUTES } from './routes';
 import { logger } from './utils/logger';
 
@@ -492,6 +493,17 @@ function AppContent() {
     !isRemoteRestoring &&
     (!isSyncing || (syncManager?.initialSyncComplete ?? true)) &&
     syncError === null;
+
+  // Register FCM token once the app is ready and the user is signed in.
+  // 2-second delay keeps it off the critical path so it doesn't compete with
+  // the initial render. Silent fail — registerFcmToken never throws.
+  useEffect(() => {
+    if (!isAppReady || !user) return;
+    const timer = setTimeout(() => {
+      registerFcmToken(user.uid).catch(() => { /* silent fail */ });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [isAppReady, user?.uid]);
 
   // Show loading while auth state or IndexedDB is initializing
   if (authLoading || isLoading) {
