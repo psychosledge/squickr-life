@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-03-21
+
+### Added
+- **FCM Push Notifications — Phase 3 of Proactive Squickr:** Habit-based push notifications via Firebase Cloud Messaging.
+  - **Domain:** Two new domain events (`HabitNotificationTimeSet`, `HabitNotificationTimeCleared`) and matching commands/handlers. Projection updated to maintain `notificationTime` on `HabitReadModel`.
+  - **Client — FCM token registration:** `registerFcmToken()` runs once on app ready (2s delay), gated by `localStorage['fcm-permission-requested']`. Token stored at `users/{uid}/fcmTokens/{sha256(token)}` with `{ token, timezone, lastSeenAt, appVersion, createdAt }`. Silent fail on permission denial or unsupported platform.
+  - **Client — Service worker:** `public/firebase-messaging-sw.js` handles background FCM messages with `showNotification` (title, body, icon) and `notificationclick` opens/focuses the PWA.
+  - **Client — Notifications settings tab:** New "Notifications" tab in the Settings modal. Per-habit `<input type="time">` fields to set/clear notification times. Shows a blocked banner when notification permission is denied.
+  - **Cloud Function — `habitReminderFanOut`:** Runs every 15 minutes (Firebase Cloud Functions v2 `onSchedule`). For each user with active FCM tokens: prunes stale tokens (60-day TTL via batched Firestore writes), checks each habit's `notificationTime` against a ±7-minute window, verifies the habit is scheduled today and not yet completed, writes an idempotency log (`users/{uid}/notificationLog/{habitId}-{YYYY-MM-DD}`, 7-day TTL) before fan-out to prevent duplicate sends, then sends an FCM notification to all user devices. Invalid tokens are automatically deleted on send failure.
+  - **Firestore rules:** `fcmTokens` subcollection (owner read/write) and `notificationLog` subcollection (owner read, function write) security rules added.
+  - **Firestore index:** Composite index on `fcmTokens.lastSeenAt` (COLLECTION_GROUP, ASCENDING) required for the `habitReminderFanOut` collectionGroup queries.
+  - **897 domain tests, 1,409 client tests, 58 function tests passing.**
+
 ## [1.12.1] - 2026-03-21
 
 ### Fixed
