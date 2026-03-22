@@ -78,6 +78,23 @@ describe('FrequencyPicker', () => {
     expect(onNDaysChange).toHaveBeenCalledWith(7);
   });
 
+  it('calls onNDaysChange with 2 when input is cleared (NaN fallback)', () => {
+    const onNDaysChange = vi.fn();
+    render(
+      <FrequencyPicker
+        {...defaultProps}
+        frequencyType="every-n-days"
+        nDays={7}
+        onNDaysChange={onNDaysChange}
+      />,
+    );
+
+    const input = screen.getByLabelText('Repeat interval (days)');
+    fireEvent.change(input, { target: { value: '' } });
+
+    expect(onNDaysChange).toHaveBeenCalledWith(2);
+  });
+
   it('clamps nDays to minimum of 2', async () => {
     const user = userEvent.setup();
     const onNDaysChange = vi.fn();

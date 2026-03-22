@@ -487,6 +487,72 @@ describe('CreateHabitModal', () => {
     expect(cmd.notificationTime).toBeUndefined();
   });
 
+  it('should reset all fields when cancel is clicked after entering values', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={onClose}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    // Enter a title and switch frequency to every-n-days
+    await user.type(screen.getByLabelText('Habit Name'), 'Read');
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'every-n-days');
+
+    // Click cancel
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    // Simulate reopening
+    rerender(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={onClose}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    // Fields should be reset to defaults
+    expect((screen.getByLabelText('Habit Name') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Frequency') as HTMLSelectElement).value).toBe('daily');
+  });
+
+  it('should reset all fields when Escape is pressed', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={onClose}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    // Enter a title and switch frequency to every-n-days
+    await user.type(screen.getByLabelText('Habit Name'), 'Meditate');
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'every-n-days');
+
+    // Press Escape
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    // Simulate reopening
+    rerender(
+      <CreateHabitModal
+        isOpen={true}
+        onClose={onClose}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    // Fields should be reset to defaults
+    expect((screen.getByLabelText('Habit Name') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Frequency') as HTMLSelectElement).value).toBe('daily');
+  });
+
   it('notification time: resets to empty after successful submit', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

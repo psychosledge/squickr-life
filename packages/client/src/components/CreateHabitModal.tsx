@@ -33,11 +33,21 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
     }
   }, [isOpen]);
 
+  const handleClose = () => {
+    setTitle('');
+    setFrequencyType('daily');
+    setTargetDays([new Date().getDay()]);
+    setNDays(2);
+    setNotificationTime('');
+    setError('');
+    onClose();
+  };
+
   // Handle Escape key to close modal
   useEffect(() => {
     const handleEscape = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        handleClose();
       }
     };
 
@@ -46,7 +56,8 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
       return () => document.removeEventListener('keydown', handleEscape);
     }
     return undefined;
-  }, [isOpen, onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const buildFrequency = (): HabitFrequency => {
     switch (frequencyType) {
@@ -101,7 +112,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) handleClose();
       }}
     >
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
@@ -179,7 +190,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
           <div className="flex gap-3 justify-end">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700
                          hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors
                          focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
