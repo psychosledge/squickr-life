@@ -20,6 +20,8 @@ module.exports = {
   ignorePatterns: [
     "/lib/**/*", // Ignore built files.
     "/generated/**/*", // Ignore generated files.
+    "jest.config.js", // Jest config not in tsconfig scope.
+    "**/*.test.ts", // Test files — not deployed, skip strict doc rules.
   ],
   plugins: [
     "@typescript-eslint",
@@ -29,5 +31,10 @@ module.exports = {
     "quotes": ["error", "double"],
     "import/no-unresolved": 0,
     "indent": ["error", 2],
+    // Relax Google config rules that conflict with the project's code style
+    "max-len": ["error", { "code": 120 }],
+    "object-curly-spacing": ["error", "always"],
+    "require-jsdoc": "off",
+    "valid-jsdoc": "off",
   },
 };

@@ -8,7 +8,7 @@
  */
 
 import * as admin from "firebase-admin";
-import {setGlobalOptions} from "firebase-functions";
+import { setGlobalOptions } from "firebase-functions";
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
