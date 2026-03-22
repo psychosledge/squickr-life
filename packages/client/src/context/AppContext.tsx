@@ -42,6 +42,8 @@ import type {
   ArchiveHabitHandler,
   RestoreHabitHandler,
   ReorderHabitHandler,
+  SetHabitNotificationTimeHandler,
+  ClearHabitNotificationTimeHandler,
 } from '@squickr/domain';
 
 interface AppContextValue {
@@ -78,6 +80,9 @@ interface AppContextValue {
   archiveHabitHandler: ArchiveHabitHandler;
   restoreHabitHandler: RestoreHabitHandler;
   reorderHabitHandler: ReorderHabitHandler;
+  // Habit notification handlers (Phase 3.3)
+  setHabitNotificationTimeHandler: SetHabitNotificationTimeHandler;
+  clearHabitNotificationTimeHandler: ClearHabitNotificationTimeHandler;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);

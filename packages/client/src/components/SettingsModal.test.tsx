@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { SettingsModal } from './SettingsModal';
-import type { IEventStore, UserPreferences, CompletedTaskBehavior } from '@squickr/domain';
+import type { IEventStore } from '@squickr/domain';
 import { InMemoryEventStore } from '@squickr/infrastructure';
 
 // Mock hooks
@@ -27,20 +27,31 @@ describe('SettingsModal', () => {
   let mockEventStore: IEventStore;
   const mockOnClose = vi.fn();
 
+  // Mock entryProjection with getActiveHabits returning an empty list by default
+  const mockEntryProjection = {
+    getActiveHabits: vi.fn().mockResolvedValue([]),
+    subscribe: vi.fn().mockReturnValue(() => {}),
+  };
+
   beforeEach(() => {
     // Reset mocks
     vi.clearAllMocks();
     
     // Setup event store
     mockEventStore = new InMemoryEventStore();
+
+    // Reset entryProjection mocks
+    mockEntryProjection.getActiveHabits.mockResolvedValue([]);
+    mockEntryProjection.subscribe.mockReturnValue(() => {});
     
     // Mock useApp hook
     vi.mocked(useApp).mockReturnValue({
       eventStore: mockEventStore,
+      entryProjection: mockEntryProjection as unknown as ReturnType<typeof useApp>['entryProjection'],
       user: null,
       loading: false,
       signOut: vi.fn(),
-    });
+    } as unknown as ReturnType<typeof useApp>);
     
     // Mock useUserPreferences hook with defaults
     vi.mocked(useUserPreferences).mockReturnValue({
@@ -340,6 +351,55 @@ describe('SettingsModal', () => {
       expect(appendSpy).toHaveBeenCalled();
       const event = appendSpy.mock.calls[0][0];
       expect(event.payload.autoFavoriteCalendarWithActiveTasks).toBe(true);
+    });
+  });
+
+  // ── Tab navigation tests ───────────────────────────────────────────────────
+
+  describe('tab navigation', () => {
+    it('renders "Preferences" tab button', () => {
+      render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+      expect(screen.getByRole('tab', { name: /preferences/i })).toBeInTheDocument();
+    });
+
+    it('renders "Notifications" tab button', () => {
+      render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+      expect(screen.getByRole('tab', { name: /notifications/i })).toBeInTheDocument();
+    });
+
+    it('shows preferences content by default', () => {
+      render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+      expect(screen.getByText('User Preferences')).toBeInTheDocument();
+      expect(screen.getByLabelText('Default Completed Task Behavior')).toBeInTheDocument();
+    });
+
+    it('clicking "Notifications" tab shows NotificationsTab content', async () => {
+      const user = userEvent.setup();
+
+      render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+      await user.click(screen.getByRole('tab', { name: /notifications/i }));
+
+      // NotificationsTab renders — we should see the notifications content
+      // (either "No habits yet" or the habits list)
+      expect(screen.queryByLabelText('Default Completed Task Behavior')).not.toBeInTheDocument();
+    });
+
+    it('clicking "Preferences" tab after switching to Notifications switches back', async () => {
+      const user = userEvent.setup();
+
+      render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+      // Go to Notifications
+      await user.click(screen.getByRole('tab', { name: /notifications/i }));
+
+      // Go back to Preferences
+      await user.click(screen.getByRole('tab', { name: /preferences/i }));
+
+      expect(screen.getByLabelText('Default Completed Task Behavior')).toBeInTheDocument();
     });
   });
 });

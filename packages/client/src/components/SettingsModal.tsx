@@ -4,6 +4,7 @@
  * Modal for updating user preferences/settings.
  * 
  * Features:
+ * - Tabbed interface: "Preferences" and "Notifications"
  * - Default completed task behavior dropdown
  * - Auto-favorite recent daily logs checkbox
  * - Escape key to close
@@ -14,11 +15,16 @@
  */
 
 import { useState, useEffect, FormEvent } from 'react';
-import type { CompletedTaskBehavior } from '@squickr/domain';
-import { UpdateUserPreferencesHandler } from '@squickr/domain';
+import type { CompletedTaskBehavior, HabitReadModel } from '@squickr/domain';
+import { UpdateUserPreferencesHandler, SetHabitNotificationTimeHandler, ClearHabitNotificationTimeHandler } from '@squickr/domain';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useApp } from '../context/AppContext';
 import { BEHAVIOR_LABELS, BEHAVIOR_DESCRIPTIONS } from '../utils/constants';
+import { NotificationsTab } from './NotificationsTab';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type SettingsTab = 'preferences' | 'notifications';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -27,14 +33,42 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const currentPreferences = useUserPreferences();
-  const { eventStore } = useApp();
+  const { eventStore, entryProjection } = useApp();
   
+  const [activeTab, setActiveTab] = useState<SettingsTab>('preferences');
   const [defaultCompletedTaskBehavior, setDefaultCompletedTaskBehavior] = useState<CompletedTaskBehavior>('move-to-bottom');
   const [autoFavoriteRecentDailyLogs, setAutoFavoriteRecentDailyLogs] = useState(false);
   const [autoFavoriteRecentMonthlyLogs, setAutoFavoriteRecentMonthlyLogs] = useState(false);
   const [autoFavoriteCalendarWithActiveTasks, setAutoFavoriteCalendarWithActiveTasks] = useState(false);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Habits for the Notifications tab
+  const [activeHabits, setActiveHabits] = useState<HabitReadModel[]>([]);
+
+  // Load active habits whenever the modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadHabits = async () => {
+      try {
+        const habits = await entryProjection.getActiveHabits();
+        setActiveHabits(habits);
+      } catch {
+        // Silent fail — notifications tab will show empty state
+        setActiveHabits([]);
+      }
+    };
+
+    void loadHabits();
+
+    // Subscribe to projection changes so list stays fresh
+    const unsub = entryProjection.subscribe(() => {
+      void loadHabits();
+    });
+
+    return () => unsub();
+  }, [isOpen, entryProjection]);
 
   // Initialize settings when modal opens
   useEffect(() => {
@@ -45,6 +79,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setAutoFavoriteCalendarWithActiveTasks(currentPreferences.autoFavoriteCalendarWithActiveTasks);
       setError('');
       setIsSaving(false);
+      setActiveTab('preferences');
     }
   }, [isOpen, currentPreferences]);
 
@@ -129,6 +164,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
   };
 
+  const handleSetTime = async (habitId: string, notificationTime: string) => {
+    const handler = new SetHabitNotificationTimeHandler(eventStore);
+    await handler.handle({ habitId, notificationTime });
+  };
+
+  const handleClearTime = async (habitId: string) => {
+    const handler = new ClearHabitNotificationTimeHandler(eventStore);
+    await handler.handle({ habitId });
+  };
+
   // Don't render anything when closed
   if (!isOpen) {
     return null;
@@ -145,176 +190,223 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       }}
     >
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
           Settings
         </h2>
-        <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-4">
-          User Preferences
-        </h3>
 
-        <form onSubmit={handleSubmit}>
-          {/* Default Completed Task Behavior */}
-          <div className="mb-6">
-            <label htmlFor="default-completed-task-behavior" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Default Completed Task Behavior
-            </label>
-            <select
-              id="default-completed-task-behavior"
-              value={defaultCompletedTaskBehavior}
-              onChange={(e) => setDefaultCompletedTaskBehavior(e.target.value as CompletedTaskBehavior)}
-              disabled={isSaving}
-              className="
-                w-full px-3 py-2
-                bg-white dark:bg-gray-700
-                border border-gray-300 dark:border-gray-600
-                rounded-lg
-                text-gray-900 dark:text-white
-                focus:outline-none focus:ring-2 focus:ring-blue-500
-                cursor-pointer
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
-            >
-              <option value="keep-in-place">{BEHAVIOR_LABELS['keep-in-place']}</option>
-              <option value="move-to-bottom">{BEHAVIOR_LABELS['move-to-bottom']}</option>
-              <option value="collapse">{BEHAVIOR_LABELS['collapse']}</option>
-            </select>
-            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              New collections will use this behavior.
-            </div>
-            <div className="mt-1 text-xs text-gray-600 dark:text-gray-300">
-              {BEHAVIOR_DESCRIPTIONS[defaultCompletedTaskBehavior]}
-            </div>
-          </div>
+        {/* Tab bar */}
+        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4" role="tablist">
+          <button
+            role="tab"
+            type="button"
+            aria-selected={activeTab === 'preferences'}
+            onClick={() => setActiveTab('preferences')}
+            className={`
+              px-4 py-2 text-sm font-medium border-b-2 transition-colors
+              ${activeTab === 'preferences'
+                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-500'}
+            `}
+          >
+            Preferences
+          </button>
+          <button
+            role="tab"
+            type="button"
+            aria-selected={activeTab === 'notifications'}
+            onClick={() => setActiveTab('notifications')}
+            className={`
+              px-4 py-2 text-sm font-medium border-b-2 transition-colors
+              ${activeTab === 'notifications'
+                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300 dark:hover:border-gray-500'}
+            `}
+          >
+            Notifications
+          </button>
+        </div>
 
-          {/* Auto-favorite Recent Daily Logs */}
-          <div className="mb-6">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoFavoriteRecentDailyLogs}
-                onChange={(e) => setAutoFavoriteRecentDailyLogs(e.target.checked)}
-                disabled={isSaving}
-                className="
-                  mt-0.5
-                  w-4 h-4
-                  text-blue-600
-                  border-gray-300 dark:border-gray-600
-                  rounded
-                  focus:ring-2 focus:ring-blue-500
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                "
-              />
-              <div className="flex-1">
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  Auto-favorite recent daily logs
-                </span>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Automatically show Today, Yesterday, and Tomorrow daily logs in Favorites section.
-                </p>
+        {/* ── Preferences tab ── */}
+        {activeTab === 'preferences' && (
+          <>
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-4">
+              User Preferences
+            </h3>
+
+            <form onSubmit={handleSubmit}>
+              {/* Default Completed Task Behavior */}
+              <div className="mb-6">
+                <label htmlFor="default-completed-task-behavior" className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                  Default Completed Task Behavior
+                </label>
+                <select
+                  id="default-completed-task-behavior"
+                  value={defaultCompletedTaskBehavior}
+                  onChange={(e) => setDefaultCompletedTaskBehavior(e.target.value as CompletedTaskBehavior)}
+                  disabled={isSaving}
+                  className="
+                    w-full px-3 py-2
+                    bg-white dark:bg-gray-700
+                    border border-gray-300 dark:border-gray-600
+                    rounded-lg
+                    text-gray-900 dark:text-white
+                    focus:outline-none focus:ring-2 focus:ring-blue-500
+                    cursor-pointer
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                  "
+                >
+                  <option value="keep-in-place">{BEHAVIOR_LABELS['keep-in-place']}</option>
+                  <option value="move-to-bottom">{BEHAVIOR_LABELS['move-to-bottom']}</option>
+                  <option value="collapse">{BEHAVIOR_LABELS['collapse']}</option>
+                </select>
+                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  New collections will use this behavior.
+                </div>
+                <div className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                  {BEHAVIOR_DESCRIPTIONS[defaultCompletedTaskBehavior]}
+                </div>
               </div>
-            </label>
-          </div>
 
-          {/* Auto-favorite Recent Monthly Logs */}
-          <div className="mb-6">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoFavoriteRecentMonthlyLogs}
-                onChange={(e) => setAutoFavoriteRecentMonthlyLogs(e.target.checked)}
-                disabled={isSaving}
-                className="
-                  mt-0.5
-                  w-4 h-4
-                  text-blue-600
-                  border-gray-300 dark:border-gray-600
-                  rounded
-                  focus:ring-2 focus:ring-blue-500
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                "
-              />
-              <div className="flex-1">
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  Auto-favorite recent monthly logs
-                </span>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Automatically show last month, current month, and next month in Favorites section.
-                </p>
+              {/* Auto-favorite Recent Daily Logs */}
+              <div className="mb-6">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoFavoriteRecentDailyLogs}
+                    onChange={(e) => setAutoFavoriteRecentDailyLogs(e.target.checked)}
+                    disabled={isSaving}
+                    className="
+                      mt-0.5
+                      w-4 h-4
+                      text-blue-600
+                      border-gray-300 dark:border-gray-600
+                      rounded
+                      focus:ring-2 focus:ring-blue-500
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                    "
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Auto-favorite recent daily logs
+                    </span>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Automatically show Today, Yesterday, and Tomorrow daily logs in Favorites section.
+                    </p>
+                  </div>
+                </label>
               </div>
-            </label>
-          </div>
 
-          {/* Auto-favorite Logs with Active Tasks */}
-          <div className="mb-6">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoFavoriteCalendarWithActiveTasks}
-                onChange={(e) => setAutoFavoriteCalendarWithActiveTasks(e.target.checked)}
-                disabled={isSaving}
-                className="
-                  mt-0.5
-                  w-4 h-4
-                  text-blue-600
-                  border-gray-300 dark:border-gray-600
-                  rounded
-                  focus:ring-2 focus:ring-blue-500
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                "
-              />
-              <div className="flex-1">
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  Auto-favorite logs with active tasks
-                </span>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Automatically show daily and monthly logs in Favorites when they have at least one open task.
-                </p>
+              {/* Auto-favorite Recent Monthly Logs */}
+              <div className="mb-6">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoFavoriteRecentMonthlyLogs}
+                    onChange={(e) => setAutoFavoriteRecentMonthlyLogs(e.target.checked)}
+                    disabled={isSaving}
+                    className="
+                      mt-0.5
+                      w-4 h-4
+                      text-blue-600
+                      border-gray-300 dark:border-gray-600
+                      rounded
+                      focus:ring-2 focus:ring-blue-500
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                    "
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Auto-favorite recent monthly logs
+                    </span>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Automatically show last month, current month, and next month in Favorites section.
+                    </p>
+                  </div>
+                </label>
               </div>
-            </label>
-          </div>
 
-          {error && (
-            <div className="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
-              {error}
-            </div>
-          )}
+              {/* Auto-favorite Logs with Active Tasks */}
+              <div className="mb-6">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoFavoriteCalendarWithActiveTasks}
+                    onChange={(e) => setAutoFavoriteCalendarWithActiveTasks(e.target.checked)}
+                    disabled={isSaving}
+                    className="
+                      mt-0.5
+                      w-4 h-4
+                      text-blue-600
+                      border-gray-300 dark:border-gray-600
+                      rounded
+                      focus:ring-2 focus:ring-blue-500
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                    "
+                  />
+                  <div className="flex-1">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Auto-favorite logs with active tasks
+                    </span>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Automatically show daily and monthly logs in Favorites when they have at least one open task.
+                    </p>
+                  </div>
+                </label>
+              </div>
 
-          <div className="flex gap-3 justify-end">
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={isSaving}
-              className="
-                px-4 py-2
-                text-gray-700 dark:text-gray-300
-                bg-gray-100 dark:bg-gray-700 
-                hover:bg-gray-200 dark:hover:bg-gray-600
-                rounded-lg
-                transition-colors
-                focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2
-                disabled:opacity-50 disabled:cursor-not-allowed
-              "
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="
-                px-4 py-2
-                bg-blue-600 hover:bg-blue-700
-                text-white
-                rounded-lg 
-                transition-colors
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                disabled:opacity-50 disabled:cursor-not-allowed
-                min-w-[80px]
-              "
-            >
-              {isSaving ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </form>
+              {error && (
+                <div className="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                  className="
+                    px-4 py-2
+                    text-gray-700 dark:text-gray-300
+                    bg-gray-100 dark:bg-gray-700 
+                    hover:bg-gray-200 dark:hover:bg-gray-600
+                    rounded-lg
+                    transition-colors
+                    focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                  "
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="
+                    px-4 py-2
+                    bg-blue-600 hover:bg-blue-700
+                    text-white
+                    rounded-lg 
+                    transition-colors
+                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    min-w-[80px]
+                  "
+                >
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+
+        {/* ── Notifications tab ── */}
+        {activeTab === 'notifications' && (
+          <NotificationsTab
+            habits={activeHabits}
+            onSetTime={handleSetTime}
+            onClearTime={handleClearTime}
+          />
+        )}
       </div>
     </div>
   );

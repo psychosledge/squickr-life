@@ -35,6 +35,9 @@ import {
   ArchiveHabitHandler,
   RestoreHabitHandler as RestoreHabitHandlerClass,
   ReorderHabitHandler,
+  // Habit notification handlers (Phase 3.3)
+  SetHabitNotificationTimeHandler,
+  ClearHabitNotificationTimeHandler,
 } from '@squickr/domain';
 import { IndexedDBEventStore, FirestoreEventStore, IndexedDBSnapshotStore, FirestoreSnapshotStore } from '@squickr/infrastructure';
 import { AppProvider } from './context/AppContext';
@@ -298,6 +301,9 @@ function AppContent() {
   const [archiveHabitHandler] = useState(() => new ArchiveHabitHandler(eventStore));
   const [restoreHabitHandler] = useState(() => new RestoreHabitHandlerClass(eventStore));
   const [reorderHabitHandler] = useState(() => new ReorderHabitHandler(eventStore));
+  // Habit notification handlers (Phase 3.3)
+  const [setHabitNotificationTimeHandler] = useState(() => new SetHabitNotificationTimeHandler(eventStore));
+  const [clearHabitNotificationTimeHandler] = useState(() => new ClearHabitNotificationTimeHandler(eventStore));
   
   // User preferences (reactive)
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(DEFAULT_USER_PREFERENCES);
@@ -553,6 +559,9 @@ function AppContent() {
     archiveHabitHandler,
     restoreHabitHandler,
     reorderHabitHandler,
+    // Habit notification handlers (Phase 3.3)
+    setHabitNotificationTimeHandler,
+    clearHabitNotificationTimeHandler,
   };
 
   // Show main app for authenticated users
