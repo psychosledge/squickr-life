@@ -1,16 +1,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "events",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "timestamp",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "fcmTokens",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
