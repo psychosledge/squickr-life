@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-03-22
+
+### Fixed
+- **Monthly log ghost active-task count (Bug 1):** `getActiveTaskCountsByCollection()` was using an inline `entry.collections.length > 0 ? [...entry.collections] : [null]` fallback in both the pre-pass and the counting pass instead of calling `getEffectiveCollections()`. Tasks explicitly removed from all collections (empty `collections[]`, `collectionHistory` containing a `removedAt` entry) were incorrectly bucketed as uncategorised (`null`) and counted as active tasks. Both inline fallbacks replaced with `CollectionViewProjection.getEffectiveCollections(entry)` plus an `if (colls.length === 0) continue` guard — intentionally emptied tasks are now omitted from all counts.
+- **HabitDetailView missing notification time in Settings (Bug 2):** The Settings section's "Save Changes" path only saved the frequency; `setHabitNotificationTimeHandler` and `clearHabitNotificationTimeHandler` were not wired up. Added the `<input type="time">` field to the Settings panel, synced it from `habit.notificationTime` when settings open, and updated `saveSettings()` to conditionally call the appropriate handler when the notification time changes.
+
+### Tests
+- **898 domain tests, 1,461 client tests passing** (+1 domain regression test for ghost active-task count, +10 client tests for notification time in HabitDetailView Settings).
+
 ## [1.13.1] - 2026-03-22
 
 ### Added

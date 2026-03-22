@@ -59,6 +59,14 @@ export class CollectionViewProjection {
     // moved via TaskRemovedFromCollection + TaskAddedToCollection (the Remove+Add path).
     return allEntries.filter(entry => {
       if (collectionId === null) {
+        // For the uncategorized bucket we use raw collections.length === 0 rather than
+        // getEffectiveCollections(), which would exclude modern entries that were
+        // intentionally removed from all collections (returning []). The deliberate
+        // choice here is to surface such "orphaned" entries in the uncategorized view
+        // so the user can see and act on them, rather than silently hiding them.
+        // Count methods (getActiveTaskCountsByCollection, getEntryStatsByCollection)
+        // intentionally diverge by using getEffectiveCollections() to omit these entries
+        // from all count buckets — preventing phantom badge counts.
         return entry.collections.length === 0;
       }
       return entry.collections.includes(collectionId);
@@ -121,8 +129,8 @@ export class CollectionViewProjection {
     const entryCollectionSets = new Map<string, Set<string | null>>();
     for (const entry of allEntries) {
       if (entry.migratedTo) continue; // skip ghost originals — their migrated copy is indexed separately
-      const colls: (string | null)[] =
-        entry.collections.length > 0 ? [...entry.collections] : [null];
+      const colls = CollectionViewProjection.getEffectiveCollections(entry);
+      if (colls.length === 0) continue; // intentionally emptied — omit from lookup entirely
       entryCollectionSets.set(entry.id, new Set(colls));
     }
 
@@ -131,9 +139,9 @@ export class CollectionViewProjection {
       // Only count active, non-migrated tasks
       if (entry.type !== 'task' || entry.status !== 'open' || entry.migratedTo) continue;
 
-      // Fix 2: use collections[] directly; fall back to null (uncategorized), never collectionId
-      const effectiveColls: (string | null)[] =
-        entry.collections.length > 0 ? [...entry.collections] : [null];
+      // Fix 2: use getEffectiveCollections() — handles legacy fallback, removed-from-all omission, and uncategorized null
+      const effectiveColls = CollectionViewProjection.getEffectiveCollections(entry);
+      if (effectiveColls.length === 0) continue; // intentionally emptied — omit from all counts
 
       if (entry.parentEntryId) {
         // Fix 3: for sub-tasks, only skip counting in collections where the parent is also present

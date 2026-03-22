@@ -356,6 +356,174 @@ describe('HabitDetailView', () => {
         );
       });
     });
+
+    // ─── Notification time field ────────────────────────────────────────────────
+
+    describe('Notification time field', () => {
+      it('notification time input is present when settings section is open', async () => {
+        const user = userEvent.setup();
+        renderView();
+
+        await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+        await user.click(screen.getByRole('button', { name: /settings/i }));
+
+        expect(screen.getByLabelText(/notification time/i)).toBeInTheDocument();
+      });
+
+      it('input is pre-populated with habit.notificationTime when it exists', async () => {
+        const user = userEvent.setup();
+        const appContext = buildMockAppContext(makeHabit({ notificationTime: '08:30' }));
+        renderView('habit-1', appContext);
+
+        await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+        await user.click(screen.getByRole('button', { name: /settings/i }));
+
+        const input = screen.getByLabelText(/notification time/i) as HTMLInputElement;
+        expect(input.value).toBe('08:30');
+      });
+
+      it('input is empty when habit.notificationTime is undefined', async () => {
+        const user = userEvent.setup();
+        const appContext = buildMockAppContext(makeHabit({ notificationTime: undefined }));
+        renderView('habit-1', appContext);
+
+        await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+        await user.click(screen.getByRole('button', { name: /settings/i }));
+
+        const input = screen.getByLabelText(/notification time/i) as HTMLInputElement;
+        expect(input.value).toBe('');
+      });
+
+      it('Save Changes button is enabled when notification time changes (frequency unchanged)', async () => {
+        const user = userEvent.setup();
+        const appContext = buildMockAppContext(makeHabit({ notificationTime: undefined }));
+        renderView('habit-1', appContext);
+
+        await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+        await user.click(screen.getByRole('button', { name: /settings/i }));
+
+        // Frequency is unchanged — only change notification time
+        const input = screen.getByLabelText(/notification time/i);
+        await user.type(input, '09:00');
+
+        expect(screen.getByRole('button', { name: /save changes/i })).not.toBeDisabled();
+      });
+
+      it('Save Changes calls setHabitNotificationTimeHandler.handle with correct args when time is entered', async () => {
+        const user = userEvent.setup();
+        const appContext = buildMockAppContext(makeHabit({ notificationTime: undefined }));
+        (appContext.setHabitNotificationTimeHandler.handle as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+        renderView('habit-1', appContext);
+
+        await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+        await user.click(screen.getByRole('button', { name: /settings/i }));
+
+        const input = screen.getByLabelText(/notification time/i);
+        await user.type(input, '07:00');
+
+        await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+        await waitFor(() => {
+          expect(appContext.setHabitNotificationTimeHandler.handle).toHaveBeenCalledWith({
+            habitId: 'habit-1',
+            notificationTime: '07:00',
+          });
+        });
+      });
+
+      it('Save Changes calls clearHabitNotificationTimeHandler.handle when time is cleared', async () => {
+        const user = userEvent.setup();
+        const appContext = buildMockAppContext(makeHabit({ notificationTime: '08:30' }));
+        (appContext.clearHabitNotificationTimeHandler.handle as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+        renderView('habit-1', appContext);
+
+        await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+        await user.click(screen.getByRole('button', { name: /settings/i }));
+
+        const input = screen.getByLabelText(/notification time/i) as HTMLInputElement;
+        await user.clear(input);
+
+        await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+        await waitFor(() => {
+          expect(appContext.clearHabitNotificationTimeHandler.handle).toHaveBeenCalledWith({
+            habitId: 'habit-1',
+          });
+        });
+      });
+
+      it('Save Changes is disabled when nothing has changed (notification time at initial value)', async () => {
+        const user = userEvent.setup();
+        const appContext = buildMockAppContext(makeHabit({ notificationTime: '08:30' }));
+        renderView('habit-1', appContext);
+
+        await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+        await user.click(screen.getByRole('button', { name: /settings/i }));
+
+        // Neither frequency nor notification time changed
+        expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled();
+      });
+
+      it('does NOT call updateHabitFrequencyHandler.handle when only notification time changed', async () => {
+        const user = userEvent.setup();
+        const appContext = buildMockAppContext(makeHabit({ notificationTime: undefined }));
+        (appContext.setHabitNotificationTimeHandler.handle as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+        renderView('habit-1', appContext);
+
+        await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+        await user.click(screen.getByRole('button', { name: /settings/i }));
+
+        // Only change notification time, leave frequency as daily (unchanged)
+        const input = screen.getByLabelText(/notification time/i);
+        await user.type(input, '07:00');
+
+        await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+        await waitFor(() => {
+          expect(appContext.setHabitNotificationTimeHandler.handle).toHaveBeenCalled();
+        });
+        expect(appContext.updateHabitFrequencyHandler.handle).not.toHaveBeenCalled();
+      });
+
+      it('closes settings section after successful notification-only save', async () => {
+        const user = userEvent.setup();
+        const appContext = buildMockAppContext(makeHabit({ notificationTime: undefined }));
+        (appContext.setHabitNotificationTimeHandler.handle as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+        renderView('habit-1', appContext);
+
+        await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+        await user.click(screen.getByRole('button', { name: /settings/i }));
+
+        const input = screen.getByLabelText(/notification time/i);
+        await user.type(input, '09:00');
+        await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+        // After successful save the settings panel should be collapsed
+        await waitFor(() => {
+          expect(screen.queryByLabelText(/notification time/i)).not.toBeInTheDocument();
+        });
+      });
+
+      it('shows error message when setHabitNotificationTimeHandler rejects', async () => {
+        const user = userEvent.setup();
+        const appContext = buildMockAppContext(makeHabit({ notificationTime: undefined }));
+        (appContext.setHabitNotificationTimeHandler.handle as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+          new Error('Notification save failed'),
+        );
+        renderView('habit-1', appContext);
+
+        await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+        await user.click(screen.getByRole('button', { name: /settings/i }));
+
+        const input = screen.getByLabelText(/notification time/i);
+        await user.type(input, '09:00');
+        await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+        await waitFor(() => {
+          expect(screen.getByRole('alert')).toHaveTextContent('Notification save failed');
+        });
+      });
+    });
   });
 
   // ─── Archive ────────────────────────────────────────────────────────────────

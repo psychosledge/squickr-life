@@ -1484,6 +1484,45 @@ describe('EntryListProjection', () => {
       // Sub-task's parent is gone — it must still be counted as an independent actionable item
       expect(counts.get('collection-A')).toBe(1);
     });
+
+    it('should NOT count a task removed from its only collection via TaskRemovedFromCollection — removed task must be omitted not bucketed as null', async () => {
+      // Regression test for v1.14.0 ghost active-task count.
+      // A task with collections: [] and collectionHistory containing a removedAt entry
+      // should be omitted from ALL counts, not counted under null.
+      const taskId = await taskHandler.handle({
+        content: 'Task to remove',
+        collectionId: 'monthly-col',
+      });
+
+      // Force-inject a TaskRemovedFromCollection that empties collections[].
+      // We bypass the handler guard (which requires ≥2 collections) to directly
+      // reproduce the state: collections: [], collectionHistory has removedAt.
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskRemovedFromCollection',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: {
+          taskId,
+          collectionId: 'monthly-col',
+          removedAt: new Date().toISOString(),
+        },
+      } as import('./task.types').TaskRemovedFromCollection);
+
+      // Verify the resulting entry state
+      const entries = await projection.getEntries('all');
+      const task = entries.find(e => e.id === taskId)!;
+      expect(task.collections).toEqual([]);
+      expect(task.collectionHistory?.some(h => h.removedAt)).toBe(true);
+
+      const counts = await projection.getActiveTaskCountsByCollection();
+
+      // Before fix: counts.get(null) === 1 (task mis-bucketed as uncategorised)
+      // After fix:  counts.get(null) is undefined (task omitted entirely)
+      expect(counts.get(null)).toBeUndefined();
+      expect(counts.get('monthly-col')).toBeUndefined();
+    });
   });
 
   describe('getEntryStatsByCollection', () => {

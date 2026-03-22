@@ -53,6 +53,8 @@ export function HabitDetailView() {
     updateHabitTitleHandler,
     updateHabitFrequencyHandler,
     archiveHabitHandler,
+    setHabitNotificationTimeHandler,
+    clearHabitNotificationTimeHandler,
   } = useApp();
 
   const [habit, setHabit] = useState<HabitReadModel | null | undefined>(undefined); // undefined = loading
@@ -67,8 +69,11 @@ export function HabitDetailView() {
   const [editFreqType, setEditFreqType] = useState<FrequencyType>('daily');
   const [editTargetDays, setEditTargetDays] = useState<number[]>([new Date().getDay()]);
   const [editNDays, setEditNDays] = useState(2);
-  const [isFreqSaving, setIsFreqSaving] = useState(false);
-  const [freqSaveError, setFreqSaveError] = useState('');
+  const [isSettingsSaving, setIsSettingsSaving] = useState(false);
+  const [settingsSaveError, setSettingsSaveError] = useState('');
+
+  // ── Notification time edit state ──
+  const [editNotificationTime, setEditNotificationTime] = useState('');
 
   // ── Archive state ──
   const [isArchiveConfirming, setIsArchiveConfirming] = useState(false);
@@ -101,6 +106,7 @@ export function HabitDetailView() {
       habit.frequency.type === 'weekly' ? [...habit.frequency.targetDays] : [new Date().getDay()],
     );
     setEditNDays(habit.frequency.type === 'every-n-days' ? habit.frequency.n : 2);
+    setEditNotificationTime(habit.notificationTime ?? '');
   }, [isSettingsOpen, habit?.id]);
 
   // ── Loading / not found ──
@@ -177,20 +183,34 @@ export function HabitDetailView() {
   };
 
   const isFreqUnchanged = frequencyEqual(habit.frequency, buildEditFrequency());
+  const isNotifUnchanged = (editNotificationTime || '') === (habit.notificationTime || '');
+  const isSettingsUnchanged = isFreqUnchanged && isNotifUnchanged;
 
-  const saveFrequency = async () => {
-    setIsFreqSaving(true);
-    setFreqSaveError('');
+  const saveSettings = async () => {
+    setIsSettingsSaving(true);
+    setSettingsSaveError('');
     try {
-      await updateHabitFrequencyHandler.handle({
-        habitId: habit.id,
-        frequency: buildEditFrequency(),
-      });
+      if (!isFreqUnchanged) {
+        await updateHabitFrequencyHandler.handle({
+          habitId: habit.id,
+          frequency: buildEditFrequency(),
+        });
+      }
+      if (!isNotifUnchanged) {
+        if (editNotificationTime) {
+          await setHabitNotificationTimeHandler.handle({
+            habitId: habit.id,
+            notificationTime: editNotificationTime,
+          });
+        } else {
+          await clearHabitNotificationTimeHandler.handle({ habitId: habit.id });
+        }
+      }
       setIsSettingsOpen(false);
     } catch (err) {
-      setFreqSaveError(err instanceof Error ? err.message : 'Failed to update frequency');
+      setSettingsSaveError(err instanceof Error ? err.message : 'Failed to update settings');
     } finally {
-      setIsFreqSaving(false);
+      setIsSettingsSaving(false);
     }
   };
 
@@ -334,22 +354,42 @@ export function HabitDetailView() {
                 />
               </div>
 
-              {freqSaveError && (
+              {/* Notification Time */}
+              <div className="mt-4">
+                <label
+                  htmlFor="habit-detail-notification-time"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Notification Time
+                  <span className="ml-1 text-xs text-gray-400">(optional)</span>
+                </label>
+                <input
+                  id="habit-detail-notification-time"
+                  type="time"
+                  value={editNotificationTime}
+                  onChange={(e) => setEditNotificationTime(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                             bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {settingsSaveError && (
                 <p className="text-sm text-red-600 dark:text-red-400 mb-3" role="alert">
-                  {freqSaveError}
+                  {settingsSaveError}
                 </p>
               )}
 
               <button
                 type="button"
                 aria-label="Save changes"
-                onClick={saveFrequency}
-                disabled={isFreqUnchanged || isFreqSaving}
+                onClick={saveSettings}
+                disabled={isSettingsUnchanged || isSettingsSaving}
                 className="w-full mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg
                            transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500
                            focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isFreqSaving ? 'Saving…' : 'Save Changes'}
+                {isSettingsSaving ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
           )}
