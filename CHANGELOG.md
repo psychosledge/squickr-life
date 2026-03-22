@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CreateHabitModal — notification time field enabled:** The notification time `<input type="time">` is now active; when filled, `notificationTime` is included in the `CreateHabitCommand`; leaving it blank omits the field. Form resets on successful submit.
 
 ### Tests
-- **897 domain tests, 1,447 client tests passing** (client: +38 tests — FrequencyPicker ×14, CreateHabitModal +4, HabitDetailView +20).
+- **897 domain tests, 1,448 client tests passing** (client: +39 tests — FrequencyPicker ×14, CreateHabitModal ×25, HabitDetailView ×27).
 
 ### Code Quality
 - **Pre-existing TypeScript lint fixes:** Resolved compiler errors in 4 test files — removed unused `HabitFrequencyChanged` import and `otherDay` variable in `habit.projection.test.ts`; added `!` non-null assertions on array index accesses in `collection.projections.test.ts` and `collection-management.test.ts`; added missing `collections: []` to Note/Event fixtures in `collectionStatsFormatter.test.ts`.

@@ -16,7 +16,7 @@
 - [x] T3.4: Enable notification time in `CreateHabitModal` + update tests
 
 ## M4: Review | depends: M2, M3
-- [ ] T4.1: Casey reviews all changes — quality, coverage, regressions
+- [x] T4.1: Casey reviews all changes — quality, coverage, regressions
 
 ## M5: Commit | depends: M4
-- [ ] T5.1: Full test suite passes, bump versions to 1.13.1, update CHANGELOG, commit
+- [x] T5.1: Full test suite passes, bump versions to 1.13.1, update CHANGELOG, commit
