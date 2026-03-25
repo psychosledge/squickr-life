@@ -11,6 +11,7 @@ import { ROUTES } from '../routes';
 import { useCollectionNavigation } from '../hooks/useCollectionNavigation';
 import { CollectionNavigationControls } from './CollectionNavigationControls';
 import { ENTRY_ICONS } from '../utils/constants';
+import { CollectionDebugPanel } from './CollectionDebugPanel';
 
 interface CollectionHeaderProps {
   collectionName: string;
@@ -152,12 +153,14 @@ export function CollectionHeader({
           {collectionName}
         </Link>
 
-        {/* Right: Menu button (or spacer for virtual collections) */}
+        {/* Right: Debug panel + Menu button (or spacer for virtual collections) */}
         {isVirtual ? (
           // Spacer for layout balance (same width as menu button)
           <div className="w-10" />
         ) : (
-          <div className="relative" ref={menuRef}>
+          <div className="flex items-center gap-2">
+            <CollectionDebugPanel collectionId={collectionId} />
+            <div className="relative" ref={menuRef}>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               data-tutorial-id="tutorial-collection-menu"
@@ -288,6 +291,7 @@ export function CollectionHeader({
                 </button>
               </div>
             )}
+            </div>
           </div>
         )}
       </div>

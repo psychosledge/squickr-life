@@ -4,6 +4,15 @@ import { EventHistoryDebugTool } from './EventHistoryDebugTool';
 import type { Entry, DomainEvent } from '@squickr/domain';
 import * as DebugContext from '../context/DebugContext';
 
+// Mock navigator.clipboard
+Object.defineProperty(navigator, 'clipboard', {
+  value: {
+    writeText: vi.fn().mockResolvedValue(undefined),
+  },
+  writable: true,
+  configurable: true,
+});
+
 // Mock import.meta.env
 const mockEnv = {
   DEV: true,
@@ -500,6 +509,40 @@ describe('EventHistoryDebugTool', () => {
       expect(panel).toHaveClass('fixed');
       expect(panel).toHaveClass('top-4');
       expect(panel).toHaveClass('right-4');
+    });
+  });
+
+  describe('Clipboard Copy', () => {
+    beforeEach(() => {
+      vi.mocked(navigator.clipboard.writeText).mockClear();
+    });
+
+    it('copy button renders in expanded panel header', () => {
+      render(<EventHistoryDebugTool entry={mockEntry} />);
+
+      const button = screen.getByText('🐛 3');
+      fireEvent.click(button);
+
+      expect(screen.getByTitle('Copy all events as JSON')).toBeInTheDocument();
+    });
+
+    it('clicking copy button calls clipboard.writeText with JSON-stringified event history', async () => {
+      render(<EventHistoryDebugTool entry={mockEntry} />);
+
+      const button = screen.getByText('🐛 3');
+      fireEvent.click(button);
+
+      const copyButton = screen.getByTitle('Copy all events as JSON');
+      fireEvent.click(copyButton);
+
+      await vi.waitFor(() => {
+        expect(navigator.clipboard.writeText).toHaveBeenCalledOnce();
+      });
+
+      const calledWith = vi.mocked(navigator.clipboard.writeText).mock.calls[0][0];
+      const parsed = JSON.parse(calledWith);
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toHaveLength(3);
     });
   });
 });

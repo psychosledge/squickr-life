@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Entry, DomainEvent } from '@squickr/domain';
 import { useDebug } from '../context/DebugContext';
+import { useCopyToClipboard } from '../hooks/useCopyToClipboard';
 
 /**
  * Debug tool for viewing the complete event history of an entry.
@@ -36,6 +37,7 @@ function hasPayloadField(
 export const EventHistoryDebugTool: React.FC<EventHistoryDebugToolProps> = ({ entry }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { events, isEnabled } = useDebug();
+  const { copied, copy } = useCopyToClipboard();
 
   // Only show in development mode
   if (!isEnabled) {
@@ -72,10 +74,10 @@ export const EventHistoryDebugTool: React.FC<EventHistoryDebugToolProps> = ({ en
     });
   };
 
-  const formatEvent = (event: DomainEvent, index: number) => {
+  const formatEvent = (event: DomainEvent) => {
     const timestamp = new Date(event.timestamp).toLocaleString();
     return (
-      <div key={index} className="border-b border-gray-600 pb-2 mb-2">
+      <div key={event.id} className="border-b border-gray-600 pb-2 mb-2">
         <div className="font-bold text-blue-300">{event.type}</div>
         <div className="text-xs text-gray-400">{timestamp}</div>
         <pre className="text-xs bg-gray-800 p-2 mt-1 rounded overflow-x-auto">
@@ -101,12 +103,21 @@ export const EventHistoryDebugTool: React.FC<EventHistoryDebugToolProps> = ({ en
         <div className="fixed top-4 right-4 bg-gray-900 text-white rounded shadow-2xl w-96 max-h-[80vh] overflow-y-auto z-[999]">
           <div className="sticky top-0 bg-gray-900 border-b border-gray-700 p-3 flex justify-between items-center">
             <h3 className="font-bold text-sm">Event History</h3>
-            <button
-              onClick={handleToggle}
-              className="text-gray-400 hover:text-white"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => copy(JSON.stringify(eventHistory, null, 2))}
+                className="text-gray-400 hover:text-white text-xs"
+                title="Copy all events as JSON"
+              >
+                {copied ? '✓ Copied!' : '📋 Copy'}
+              </button>
+              <button
+                onClick={handleToggle}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
           </div>
           <div className="p-3">
             <div className="text-xs text-gray-400 mb-2">

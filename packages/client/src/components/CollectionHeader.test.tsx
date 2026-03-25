@@ -10,6 +10,11 @@ import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { CollectionHeader } from './CollectionHeader';
 import { AppProvider } from '../context/AppContext';
+import * as DebugContext from '../context/DebugContext';
+
+// Mock useDebug hook (for CollectionDebugPanel inside CollectionHeader)
+const mockUseDebug = vi.fn();
+vi.spyOn(DebugContext, 'useDebug').mockImplementation(mockUseDebug);
 
 // Mock useNavigate from react-router-dom
 const mockNavigate = vi.fn();
@@ -27,6 +32,8 @@ describe('CollectionHeader', () => {
 
   beforeEach(() => {
     mockNavigate.mockClear();
+    // CollectionDebugPanel is rendered inside CollectionHeader; gate it off by default
+    mockUseDebug.mockReturnValue({ events: [], isEnabled: false });
     
     mockCollectionProjection = {
       getCollections: vi.fn(async () => []),
@@ -170,6 +177,7 @@ describe('CollectionHeader - Virtual Collection Behavior', () => {
 
   beforeEach(() => {
     mockNavigate.mockClear();
+    mockUseDebug.mockReturnValue({ events: [], isEnabled: false });
     
     mockCollectionProjection = {
       getCollections: vi.fn(async () => []),
@@ -262,6 +270,7 @@ describe('CollectionHeader - data-tutorial-id anchor', () => {
   let mockEntryProjection: any;
 
   beforeEach(() => {
+    mockUseDebug.mockReturnValue({ events: [], isEnabled: false });
     mockCollectionProjection = {
       getCollections: vi.fn(async () => []),
       subscribe: vi.fn(() => () => {}),
@@ -320,6 +329,7 @@ describe('CollectionHeader - onMigrateAllToToday', () => {
   let mockEntryProjection: any;
 
   beforeEach(() => {
+    mockUseDebug.mockReturnValue({ events: [], isEnabled: false });
     mockCollectionProjection = {
       getCollections: vi.fn(async () => []),
       subscribe: vi.fn(() => () => {}),
@@ -393,5 +403,66 @@ describe('CollectionHeader - onMigrateAllToToday', () => {
     expect(onMigrateAllToToday).toHaveBeenCalledOnce();
     // Menu should be closed after click
     expect(screen.queryByText(/Migrate all open tasks → Today/i)).not.toBeInTheDocument();
+  });
+});
+
+// ─── CollectionDebugPanel integration ────────────────────────────────────────
+describe('CollectionHeader - CollectionDebugPanel integration', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+
+  beforeEach(() => {
+    mockNavigate.mockClear();
+    mockCollectionProjection = {
+      getCollections: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+  });
+
+  function renderHeader(props = {}) {
+    return render(
+      <BrowserRouter>
+        <AppProvider
+          value={{
+            eventStore: {
+              getAll: vi.fn().mockResolvedValue([]),
+              subscribe: vi.fn().mockReturnValue(() => {}),
+            } as any,
+            collectionProjection: mockCollectionProjection,
+            entryProjection: mockEntryProjection,
+            taskProjection: {} as any,
+            createCollectionHandler: {} as any,
+            migrateTaskHandler: {} as any,
+          }}
+        >
+          <CollectionHeader
+            collectionName="Test Collection"
+            collectionId="col-test"
+            onRename={vi.fn()}
+            onDelete={vi.fn()}
+            onSettings={vi.fn()}
+            {...props}
+          />
+        </AppProvider>
+      </BrowserRouter>
+    );
+  }
+
+  it('renders debug button when isEnabled is true', () => {
+    mockUseDebug.mockReturnValue({ events: [], isEnabled: true });
+    renderHeader();
+
+    expect(screen.getByTitle(/view collection events/i)).toBeInTheDocument();
+  });
+
+  it('does not render debug button when isEnabled is false', () => {
+    mockUseDebug.mockReturnValue({ events: [], isEnabled: false });
+    renderHeader();
+
+    expect(screen.queryByTitle(/view collection events/i)).not.toBeInTheDocument();
   });
 });
