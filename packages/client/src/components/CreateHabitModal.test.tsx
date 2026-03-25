@@ -368,6 +368,27 @@ describe('CreateHabitModal', () => {
   });
 
   it('weekly: submit with specific days produces correct targetDays', async () => {
+    // This test is day-of-week sensitive: clicking a day that is already selected (today)
+    // deselects it instead of adding it. We first select Sunday (0) to ensure there are
+    // 2 days selected, then deselect today so we can build a known [1, 3] (Mon + Wed) set.
+    // Simplest robust approach: click Sunday to guarantee it's added, then click Monday,
+    // then click Wednesday, relying only on the sorted final state to contain 1 and 3.
+    // To avoid ambiguity, we pin the "today" day by rendering with a mocked Date during
+    // the initial state setup. Use a direct Date constructor override scoped to the render.
+    const OriginalDate = globalThis.Date;
+    // Temporarily make new Date() return a Tuesday (2026-03-24) so targetDays = [2]
+    const MockDate = class extends OriginalDate {
+      constructor(...args: any[]) {
+        if (args.length === 0) {
+          super('2026-03-24T12:00:00'); // Tuesday
+        } else {
+          super(...(args as []));
+        }
+      }
+      static now() { return new OriginalDate('2026-03-24T12:00:00').getTime(); }
+    } as typeof Date;
+    globalThis.Date = MockDate;
+
     const user = userEvent.setup();
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     render(
@@ -378,10 +399,13 @@ describe('CreateHabitModal', () => {
       />
     );
 
+    // Restore real Date immediately after render (before any user interaction)
+    globalThis.Date = OriginalDate;
+
     await user.type(screen.getByLabelText('Habit Name'), 'Run');
     await user.selectOptions(screen.getByLabelText('Frequency'), 'weekly');
 
-    // Add Monday (1) and Wednesday (3) to whatever is already selected
+    // targetDays was initialised as [2] (Tuesday). Monday (1) and Wednesday (3) are unselected.
     await user.click(screen.getByRole('button', { name: 'Monday' }));
     await user.click(screen.getByRole('button', { name: 'Wednesday' }));
 

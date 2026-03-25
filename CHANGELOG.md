@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.2] - 2026-03-25
+
+### Fixed
+- **Sub-task collectionId inheritance (ADR-021):** Sub-tasks created under a moved parent were appearing in the wrong collection's monthly log stats. Root cause: `CreateSubTaskHandler` was reading `parentTask.collectionId` — a legacy scalar set once at `TaskCreated` time, never updated when the parent moves. Authoritative membership is `parentTask.collections[]` (ADR-015). Fix: `CreateSubTaskCommand` now carries `collectionId` (passed from the active route); the handler uses it directly instead of inheriting the stale scalar. Secondary fix: `isSubTaskMigrated()` in `sub-task.projection.ts` was also using the stale scalar — updated to use the `collections[]` intersection check instead.
+- **`habitReminderFanOut` error visibility:** Added explicit `err.message` extraction to both catch blocks in the scheduled function (`pruneStaleTokens` and the `fcmTokens` collectionGroup query). Firebase console URL for any missing index will now appear verbatim in Cloud Function logs, making `FAILED_PRECONDITION` root causes diagnosable without manual log parsing.
+
+### Added
+- **Collection debug panel (ADR-022):** Dev-only `🐛 N` button in every collection header (gated by `useDebug().isEnabled`) opens a panel listing all events that affected that collection. Two-pass filter: (1) find entry IDs historically in the collection via membership events, (2) include lifecycle + membership events + all events for attributed entries. Clipboard copy (`📋 Copy` / `✓ Copied!`) in the panel header.
+- **Clipboard copy for entry-level debug tool (ADR-022):** `EventHistoryDebugTool` (the per-entry debug button) now has a `📋 Copy` / `✓ Copied!` button that copies the full event JSON to the clipboard.
+- **`useCopyToClipboard` hook (ADR-022):** Shared clipboard hook with `useRef` timer cleanup — prevents stale state on unmount and fixes the rapid double-click reset bug.
+- **Firestore index (source-control):** Added `fcmTokens.lastSeenAt` COLLECTION_GROUP ASCENDING index to `firestore.indexes.json` for source-control and new-environment reproducibility (the index already existed in the Firebase project, so the deploy was a no-op on the current project).
+
+### Tests
+- **902 domain tests, 1,473 client tests passing** (client: +15 tests — `useCopyToClipboard` ×5, `CollectionDebugPanel` ×11, `CollectionHeader` ×2 integration, `EventHistoryDebugTool` ×2 clipboard; domain: +5 regression tests for `CreateSubTaskHandler` and `isSubTaskMigrated`).
+- **Bug fix:** `CreateHabitModal` weekly-frequency test (`weekly: submit with specific days produces correct targetDays`) was day-of-week sensitive — it would fail whenever the test ran on Monday or Wednesday because clicking an already-selected day deselects it. Fixed by temporarily substituting `Date` during render to return a Tuesday, ensuring Monday and Wednesday are always in the unselected state when the test clicks them.
+
 ## [1.13.1] - 2026-03-22
 
 ### Added

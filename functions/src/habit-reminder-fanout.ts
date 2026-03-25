@@ -242,7 +242,11 @@ export const habitReminderFanOut = onSchedule(
     try {
       await pruneStaleTokens(db);
     } catch (err) {
-      console.error("habitReminderFanOut: error pruning stale tokens", err);
+      const message = (err as { message?: string })?.message ?? String(err);
+      console.error(
+        `habitReminderFanOut: error pruning stale tokens — ${message}`,
+        err
+      );
       // Non-fatal — continue with fan-out
     }
 
@@ -261,7 +265,11 @@ export const habitReminderFanOut = onSchedule(
         )
         .get();
     } catch (err) {
-      console.error("habitReminderFanOut: error querying fcmTokens", err);
+      const message = (err as { message?: string })?.message ?? String(err);
+      console.error(
+        `habitReminderFanOut: error querying fcmTokens — ${message}`,
+        err
+      );
       return;
     }
 
