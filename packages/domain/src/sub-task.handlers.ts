@@ -13,7 +13,7 @@ import { generateKeyBetween } from 'fractional-indexing';
  * Responsibilities:
  * - Validate command input (business rules)
  * - Validate parent task exists and is not a sub-task (2-level limit)
- * - Sub-task inherits parent's collectionId
+ * - Sub-task uses collectionId from the command (the currently viewed collection, not stale parent.collectionId)
  * - Generate unique identifiers
  * - Generate fractional index for task ordering
  * - Create TaskCreated event with parentTaskId (event payload - immutable field name)
@@ -75,7 +75,7 @@ export class CreateSubTaskHandler {
     const metadata = generateEventMetadata();
 
     // Create TaskCreated event with parentTaskId set (this makes it a sub-task)
-    // Sub-task inherits parent's collectionId (Option 1 from design doc)
+    // Sub-task uses the collectionId from the command (the currently viewed collection)
     const event: TaskCreated = {
       ...metadata,
       type: 'TaskCreated',
@@ -86,7 +86,7 @@ export class CreateSubTaskHandler {
         createdAt: metadata.timestamp,
         status: 'open',
         order,
-        collectionId: parentTask.collectionId, // Inherit parent's collection
+        collectionId: command.collectionId, // Use command's collectionId, not stale parent.collectionId
         userId: command.userId,
         parentTaskId: command.parentEntryId, // Event payload field name stays for backward compat of stored events
       },

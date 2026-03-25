@@ -226,6 +226,7 @@ describe('Multi-Collection Management', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub Task',
         parentEntryId: parentId,
+        collectionId: 'monthly-log',
         userId: 'user-1',
       });
 
@@ -263,6 +264,7 @@ describe('Multi-Collection Management', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub Task',
         parentEntryId: parentId,
+        collectionId: 'monthly-log',
         userId: 'user-1',
       });
 

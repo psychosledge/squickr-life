@@ -47,15 +47,18 @@ describe('MoveEntryToCollectionHandler - Phase 3 Parent Cascade (Bug Reproductio
     // Create 3 sub-tasks (all inherit parent's collection)
     await createSubTaskHandler.handle({
       content: 'Set up analytics',
-      parentEntryId: parent.id
+      parentEntryId: parent.id,
+      collectionId: 'work-projects'
     });
     await createSubTaskHandler.handle({
       content: 'Write blog post',
-      parentEntryId: parent.id
+      parentEntryId: parent.id,
+      collectionId: 'work-projects'
     });
     await createSubTaskHandler.handle({
       content: 'Deploy to production',
-      parentEntryId: parent.id
+      parentEntryId: parent.id,
+      collectionId: 'work-projects'
     });
 
     // Verify all 3 children are in same collection as parent

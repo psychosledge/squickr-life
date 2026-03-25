@@ -79,9 +79,9 @@ describe('DeleteParentTaskHandler', () => {
     it('should throw error when trying to delete parent with children and not confirmed', async () => {
       // Arrange: Create parent with 3 sub-tasks
       const parentId = await createTaskHandler.handle({ content: 'Plan vacation' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book flights' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book hotel' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Research activities' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book flights', collectionId: 'test-collection' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book hotel', collectionId: 'test-collection' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Research activities', collectionId: 'test-collection' });
 
       const command: DeleteParentTaskCommand = {
         taskId: parentId,
@@ -97,11 +97,11 @@ describe('DeleteParentTaskHandler', () => {
     it('should throw error with correct count for different number of children', async () => {
       // Arrange: 5 children
       const parentId = await createTaskHandler.handle({ content: 'Big project' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 3' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 4' });
-      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 5' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1', collectionId: 'test-collection' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2', collectionId: 'test-collection' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 3', collectionId: 'test-collection' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 4', collectionId: 'test-collection' });
+      await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 5', collectionId: 'test-collection' });
 
       const command: DeleteParentTaskCommand = {
         taskId: parentId,
@@ -117,8 +117,8 @@ describe('DeleteParentTaskHandler', () => {
     it('should throw error even if all children are completed', async () => {
       // Arrange: Parent with children (doesn't matter if complete or not - delete always requires confirmation)
       const parentId = await createTaskHandler.handle({ content: 'Completed project' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1' });
-      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1', collectionId: 'test-collection' });
+      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2', collectionId: 'test-collection' });
 
       // Complete children (deletion still requires confirmation)
       const { CompleteTaskHandler } = await import('./task.handlers');
@@ -142,9 +142,9 @@ describe('DeleteParentTaskHandler', () => {
     it('should cascade delete parent and all children when confirmed', async () => {
       // Arrange: Create parent with 3 sub-tasks
       const parentId = await createTaskHandler.handle({ content: 'Plan vacation' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book flights' });
-      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book hotel' });
-      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Research activities' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book flights', collectionId: 'test-collection' });
+      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Book hotel', collectionId: 'test-collection' });
+      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Research activities', collectionId: 'test-collection' });
 
       const eventCountBefore = (await eventStore.getAll()).length;
 
@@ -194,9 +194,9 @@ describe('DeleteParentTaskHandler', () => {
     it('should delete all children regardless of completion status', async () => {
       // Arrange: Mix of completed and incomplete children
       const parentId = await createTaskHandler.handle({ content: 'Project' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1' });
-      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2' });
-      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 3' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1', collectionId: 'test-collection' });
+      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2', collectionId: 'test-collection' });
+      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 3', collectionId: 'test-collection' });
 
       // Complete child1 and child3
       const { CompleteTaskHandler } = await import('./task.handlers');
@@ -237,8 +237,8 @@ describe('DeleteParentTaskHandler', () => {
     it('should delete children before parent (event order)', async () => {
       // Arrange
       const parentId = await createTaskHandler.handle({ content: 'Project' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1' });
-      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1', collectionId: 'test-collection' });
+      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2', collectionId: 'test-collection' });
 
       const eventCountBefore = (await eventStore.getAll()).length;
 
@@ -296,9 +296,9 @@ describe('DeleteParentTaskHandler', () => {
     it('should delete sub-tasks even if they are in different collections (symlink behavior)', async () => {
       // Arrange: Parent in one collection, sub-tasks migrated to different collections
       const parentId = await createTaskHandler.handle({ content: 'Project', collectionId: 'work-projects' });
-      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1' });
-      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2' });
-      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 3' });
+      const child1Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 1', collectionId: 'test-collection' });
+      const child2Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 2', collectionId: 'test-collection' });
+      const child3Id = await createSubTaskHandler.handle({ parentEntryId: parentId, content: 'Task 3', collectionId: 'test-collection' });
 
       // Move child2 and child3 to different collections (simulates migration)
       const { MoveEntryToCollectionHandler } = await import('./task.handlers');

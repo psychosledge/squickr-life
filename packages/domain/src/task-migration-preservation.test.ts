@@ -254,11 +254,13 @@ describe('Migration Pointer Preservation (Issue #2)', () => {
       await createSubTaskHandler.handle({
         content: 'Child 1',
         parentEntryId: parentId,
+        collectionId: 'collection-a',
       });
 
       await createSubTaskHandler.handle({
         content: 'Child 2',
         parentEntryId: parentId,
+        collectionId: 'collection-a',
       });
 
       // Act: Migrate parent to Collection B (cascade should migrate children)

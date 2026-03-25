@@ -46,9 +46,9 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ content: 'Set up analytics', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ content: 'Write blog post', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ content: 'Deploy to production', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Set up analytics', parentEntryId: parent.id, collectionId: 'work-projects' });
+    await createSubTaskHandler.handle({ content: 'Write blog post', parentEntryId: parent.id, collectionId: 'work-projects' });
+    await createSubTaskHandler.handle({ content: 'Deploy to production', parentEntryId: parent.id, collectionId: 'work-projects' });
 
     const allTasks = await entryProjection.getTasks();
     const children = allTasks.filter(t => t.parentEntryId === parent.id);
@@ -136,9 +136,9 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ content: 'Set up analytics', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ content: 'Write blog post', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ content: 'Deploy to production', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Set up analytics', parentEntryId: parent.id, collectionId: 'work-projects' });
+    await createSubTaskHandler.handle({ content: 'Write blog post', parentEntryId: parent.id, collectionId: 'work-projects' });
+    await createSubTaskHandler.handle({ content: 'Deploy to production', parentEntryId: parent.id, collectionId: 'work-projects' });
 
     // Step 2: Migrate parent to "Monthly Log"
     await migrateTaskHandler.handle({
@@ -171,9 +171,9 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ content: 'Set up analytics', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ content: 'Write blog post', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ content: 'Deploy to production', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Set up analytics', parentEntryId: parent.id, collectionId: 'work-projects' });
+    await createSubTaskHandler.handle({ content: 'Write blog post', parentEntryId: parent.id, collectionId: 'work-projects' });
+    await createSubTaskHandler.handle({ content: 'Deploy to production', parentEntryId: parent.id, collectionId: 'work-projects' });
 
     const allTasks = await entryProjection.getTasks();
     const children = allTasks.filter(t => t.parentEntryId === parent.id);

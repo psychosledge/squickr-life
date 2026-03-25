@@ -4,7 +4,7 @@ import { CreateSubTaskHandler } from './sub-task.handlers';
 import { EntryListProjection } from './entry.projections';
 import { CreateTaskHandler } from './task.handlers';
 import { TaskListProjection } from './task.projections';
-import type { CreateSubTaskCommand, TaskCreated, TaskDeleted } from './task.types';
+import type { CreateSubTaskCommand, TaskCreated, TaskDeleted, TaskAddedToCollection, TaskRemovedFromCollection } from './task.types';
 
 /**
  * Sub-Task Handlers Test Suite
@@ -12,7 +12,7 @@ import type { CreateSubTaskCommand, TaskCreated, TaskDeleted } from './task.type
  * Tests Phase 1 functionality:
  * - Creating sub-tasks under parent tasks
  * - Validation (parent exists, parent is not sub-task, title not empty)
- * - Sub-task inherits parent's collectionId
+ * - Sub-task uses collectionId from command (not stale parent.collectionId)
  * - 2-level hierarchy enforcement
  */
 describe('CreateSubTaskHandler', () => {
@@ -40,6 +40,7 @@ describe('CreateSubTaskHandler', () => {
       const command: CreateSubTaskCommand = {
         content: 'Write blog post',
         parentEntryId: parentId,
+        collectionId: 'work-projects',
       };
 
       // Act: Create sub-task
@@ -53,7 +54,7 @@ describe('CreateSubTaskHandler', () => {
       expect(subTaskEvent.type).toBe('TaskCreated');
       expect(subTaskEvent.payload.content).toBe('Write blog post');
       expect(subTaskEvent.payload.parentTaskId).toBe(parentId); // Event payload field - immutable
-      expect(subTaskEvent.payload.collectionId).toBe('work-projects'); // Inherits parent's collection
+      expect(subTaskEvent.payload.collectionId).toBe('work-projects'); // Uses command's collectionId
       expect(subTaskEvent.payload.status).toBe('open');
       expect(subTaskId).toBe(subTaskEvent.payload.id);
     });
@@ -68,6 +69,7 @@ describe('CreateSubTaskHandler', () => {
       const command: CreateSubTaskCommand = {
         content: '  Sub-task with spaces  ',
         parentEntryId: parentId,
+        collectionId: 'some-collection',
       };
 
       // Act
@@ -79,7 +81,7 @@ describe('CreateSubTaskHandler', () => {
       expect(subTaskEvent.payload.content).toBe('Sub-task with spaces');
     });
 
-    it('should inherit parent collectionId when parent is in collection', async () => {
+    it('should use command collectionId when parent is in collection', async () => {
       // Arrange
       const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
       const parentId = await createTaskHandler.handle({
@@ -90,6 +92,7 @@ describe('CreateSubTaskHandler', () => {
       const command: CreateSubTaskCommand = {
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'monthly-2026-02',
       };
 
       // Act
@@ -101,26 +104,28 @@ describe('CreateSubTaskHandler', () => {
       expect(subTaskEvent.payload.collectionId).toBe('monthly-2026-02');
     });
 
-    it('should inherit undefined collectionId when parent has no collection', async () => {
-      // Arrange
+    it('should use command collectionId even when parent is in a different collection', async () => {
+      // Arrange: Parent in collection-A
       const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent',
-        // No collectionId
+        collectionId: 'collection-A',
       });
 
+      // Command specifies collection-B (the currently viewed collection)
       const command: CreateSubTaskCommand = {
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'collection-B',
       };
 
       // Act
       await handler.handle(command);
 
-      // Assert
+      // Assert: uses command.collectionId, NOT parent's collectionId
       const events = await eventStore.getAll();
       const subTaskEvent = events[1] as TaskCreated;
-      expect(subTaskEvent.payload.collectionId).toBeUndefined();
+      expect(subTaskEvent.payload.collectionId).toBe('collection-B');
     });
 
     it('should create multiple sub-tasks under same parent', async () => {
@@ -135,16 +140,19 @@ describe('CreateSubTaskHandler', () => {
       const subTask1Id = await handler.handle({
         content: 'Write blog post',
         parentEntryId: parentId,
+        collectionId: 'work',
       });
 
       const subTask2Id = await handler.handle({
         content: 'Deploy to production',
         parentEntryId: parentId,
+        collectionId: 'work',
       });
 
       const subTask3Id = await handler.handle({
         content: 'Send announcement',
         parentEntryId: parentId,
+        collectionId: 'work',
       });
 
       // Assert
@@ -157,6 +165,55 @@ describe('CreateSubTaskHandler', () => {
       
       expect([subTask1Id, subTask2Id, subTask3Id]).toHaveLength(3);
       expect(new Set([subTask1Id, subTask2Id, subTask3Id]).size).toBe(3); // All unique
+    });
+
+    it('assigns the collectionId from the command, not parentTask.collectionId (regression: stale collectionId bug)', async () => {
+      // Arrange: create parent in 'collection-A', then move it to 'collection-B'
+      // so parentTask.collectionId (legacy field) is still 'collection-A',
+      // but the parent's collections[] = ['collection-B'] after the move.
+      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const parentId = await createTaskHandler.handle({
+        content: 'Parent task',
+        collectionId: 'collection-A',
+      });
+
+      // Simulate move: append TaskAddedToCollection + TaskRemovedFromCollection events
+      // so parent's collections[] changes to ['collection-B']
+      // (The stale parentTask.collectionId scalar field remains 'collection-A')
+      const addEvent: TaskAddedToCollection = {
+        id: crypto.randomUUID(),
+        type: 'TaskAddedToCollection',
+        aggregateId: parentId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId: parentId, collectionId: 'collection-B', addedAt: new Date().toISOString() },
+      };
+      await eventStore.append(addEvent);
+
+      const removeEvent: TaskRemovedFromCollection = {
+        id: crypto.randomUUID(),
+        type: 'TaskRemovedFromCollection',
+        aggregateId: parentId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId: parentId, collectionId: 'collection-A', removedAt: new Date().toISOString() },
+      };
+      await eventStore.append(removeEvent);
+
+      // Act: Create sub-task while viewing 'collection-B' (command.collectionId = 'collection-B')
+      const subTaskId = await handler.handle({
+        content: 'Sub-task created in collection-B',
+        parentEntryId: parentId,
+        collectionId: 'collection-B', // Currently viewed collection
+      });
+
+      // Assert: SubTaskCreated event has collectionId = 'collection-B', NOT 'collection-A'
+      const events = await eventStore.getAll();
+      const subTaskEvent = events.find(e => e.aggregateId === subTaskId) as TaskCreated;
+      expect(subTaskEvent).toBeDefined();
+      expect(subTaskEvent.type).toBe('TaskCreated');
+      expect(subTaskEvent.payload.collectionId).toBe('collection-B'); // From command, NOT stale 'collection-A'
+      expect(subTaskEvent.payload.collectionId).not.toBe('collection-A'); // NOT the stale legacy field
     });
   });
 
@@ -171,6 +228,7 @@ describe('CreateSubTaskHandler', () => {
       const command: CreateSubTaskCommand = {
         content: '',
         parentEntryId: parentId,
+        collectionId: 'some-collection',
       };
 
       // Act & Assert
@@ -187,6 +245,7 @@ describe('CreateSubTaskHandler', () => {
       const command: CreateSubTaskCommand = {
         content: '   ',
         parentEntryId: parentId,
+        collectionId: 'some-collection',
       };
 
       // Act & Assert
@@ -203,6 +262,7 @@ describe('CreateSubTaskHandler', () => {
       const command: CreateSubTaskCommand = {
         content: 'a'.repeat(501),
         parentEntryId: parentId,
+        collectionId: 'some-collection',
       };
 
       // Act & Assert
@@ -214,6 +274,7 @@ describe('CreateSubTaskHandler', () => {
       const command: CreateSubTaskCommand = {
         content: 'Sub-task',
         parentEntryId: 'non-existent-parent',
+        collectionId: 'some-collection',
       };
 
       // Act & Assert
@@ -230,12 +291,14 @@ describe('CreateSubTaskHandler', () => {
       const childId = await handler.handle({
         content: 'Parent (sub-task)',
         parentEntryId: parentId,
+        collectionId: 'some-collection',
       });
 
       // Act & Assert: Try to create sub-task of sub-task
       const command: CreateSubTaskCommand = {
         content: 'Grandchild',
         parentEntryId: childId,
+        collectionId: 'some-collection',
       };
 
       await expect(handler.handle(command)).rejects.toThrow(
@@ -268,6 +331,7 @@ describe('CreateSubTaskHandler', () => {
       const command: CreateSubTaskCommand = {
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'some-collection',
       };
 
       await expect(handler.handle(command)).rejects.toThrow(`Parent task ${parentId} not found`);
@@ -286,6 +350,7 @@ describe('CreateSubTaskHandler', () => {
       const command: CreateSubTaskCommand = {
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'some-collection',
         userId: 'user-456', // Different user creating sub-task
       };
 
@@ -311,6 +376,7 @@ describe('CreateSubTaskHandler', () => {
         const id = await handler.handle({
           content: `Sub-task ${i}`,
           parentEntryId: parentId,
+          collectionId: 'some-collection',
         });
         subTaskIds.push(id);
       }
@@ -332,6 +398,7 @@ describe('CreateSubTaskHandler', () => {
       const command: CreateSubTaskCommand = {
         content: maxTitle,
         parentEntryId: parentId,
+        collectionId: 'some-collection',
       };
 
       // Act

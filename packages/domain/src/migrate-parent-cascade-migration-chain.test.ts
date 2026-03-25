@@ -44,9 +44,9 @@ describe('Migration Chain - UI Indicators', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ content: 'Sub-task A', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ content: 'Sub-task B', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ content: 'Sub-task C', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Sub-task A', parentEntryId: parent.id, collectionId: 'work-projects' });
+    await createSubTaskHandler.handle({ content: 'Sub-task B', parentEntryId: parent.id, collectionId: 'work-projects' });
+    await createSubTaskHandler.handle({ content: 'Sub-task C', parentEntryId: parent.id, collectionId: 'work-projects' });
 
     const allTasks = await entryProjection.getTasks();
     const children = allTasks.filter(t => t.parentEntryId === parent.id);
@@ -160,7 +160,7 @@ describe('Migration Chain - UI Indicators', () => {
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ content: 'Child', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Child', parentEntryId: parent.id, collectionId: 'collection-a' });
     const allTasksAfterCreate = await entryProjection.getTasks();
     const child = allTasksAfterCreate.find(t => t.content === 'Child')!;
 

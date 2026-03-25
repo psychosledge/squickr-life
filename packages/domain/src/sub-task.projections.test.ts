@@ -4,7 +4,7 @@ import { EntryListProjection } from './entry.projections';
 import { CreateTaskHandler, CompleteTaskHandler, MigrateTaskHandler } from './task.handlers';
 import { CreateSubTaskHandler } from './sub-task.handlers';
 import { TaskListProjection } from './task.projections';
-import type { TaskDeleted } from './task.types';
+import type { TaskDeleted, TaskAddedToCollection } from './task.types';
 
 /**
  * Sub-Task Projection Test Suite
@@ -61,16 +61,19 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTask1Id = await createSubTaskHandler.handle({
         content: 'Write blog post',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
         content: 'Deploy to production',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask3Id = await createSubTaskHandler.handle({
         content: 'Send announcement',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Act
@@ -92,6 +95,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const childId = await createSubTaskHandler.handle({
         content: 'Parent',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Act
@@ -115,11 +119,13 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       await createSubTaskHandler.handle({
         content: 'Sub-task 1',
         parentEntryId: parentId,
+        collectionId: 'work',
       });
 
       await createSubTaskHandler.handle({
         content: 'Sub-task 2',
         parentEntryId: parentId,
+        collectionId: 'work',
       });
 
       // Act
@@ -140,11 +146,13 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTask1Id = await createSubTaskHandler.handle({
         content: 'Sub-task 1',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
         content: 'Sub-task 2',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Delete sub-task 1
@@ -195,6 +203,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask = await projection.getTaskById(subTaskId);
@@ -230,6 +239,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       await createSubTaskHandler.handle({
         content: 'Child',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Act
@@ -248,6 +258,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const childId = await createSubTaskHandler.handle({
         content: 'Child',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Initially parent
@@ -302,21 +313,25 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTask1Id = await createSubTaskHandler.handle({
         content: 'Write blog post',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
         content: 'Deploy',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       await createSubTaskHandler.handle({
         content: 'Announce',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       await createSubTaskHandler.handle({
         content: 'Monitor',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Complete 2 out of 4
@@ -343,16 +358,19 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTask1Id = await createSubTaskHandler.handle({
         content: 'Sub 1',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
         content: 'Sub 2',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask3Id = await createSubTaskHandler.handle({
         content: 'Sub 3',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Complete all
@@ -380,11 +398,13 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       await createSubTaskHandler.handle({
         content: 'Sub 1',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       await createSubTaskHandler.handle({
         content: 'Sub 2',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Act
@@ -407,16 +427,19 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTask1Id = await createSubTaskHandler.handle({
         content: 'Sub 1',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
         content: 'Sub 2',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       await createSubTaskHandler.handle({
         content: 'Sub 3',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Complete sub-task 1
@@ -477,6 +500,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask = await projection.getTaskById(subTaskId);
@@ -499,6 +523,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Delete parent
@@ -551,6 +576,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'work', // Same collection as parent — NOT migrated
       });
 
       const subTask = await projection.getTaskById(subTaskId);
@@ -576,6 +602,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Write blog post',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Migrate sub-task to "today" collection
@@ -612,6 +639,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Migrate sub-task to "today" collection
@@ -647,6 +675,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Migrate sub-task to uncategorized (null)
@@ -681,6 +710,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Migrate sub-task
@@ -724,11 +754,13 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTask1Id = await createSubTaskHandler.handle({
         content: 'Write blog post',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
         content: 'Deploy to production',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Migrate both sub-tasks to different collections
@@ -759,6 +791,123 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       
       expect(migratedChild1!.collectionId).toBe('today');
       expect(migratedChild2!.collectionId).toBe('tomorrow');
+    });
+
+    // ============================================================================
+    // Phase 2: collections[] intersection tests (ADR-021 fix for isSubTaskMigrated)
+    // ============================================================================
+
+    it('task shares a collection with parent (collections[] intersection) → not migrated', async () => {
+      // Arrange: Both parent and sub-task in 'shared-collection'
+      const parentId = await createTaskHandler.handle({
+        content: 'Parent',
+        collectionId: 'shared-collection',
+      });
+
+      const subTaskId = await createSubTaskHandler.handle({
+        content: 'Sub-task in same collection',
+        parentEntryId: parentId,
+        collectionId: 'shared-collection', // Same collection as parent
+      });
+
+      const subTask = await projection.getTaskById(subTaskId);
+
+      // Act
+      const isMigrated = await projection.isSubTaskMigrated(subTask!);
+
+      // Assert: Shares collection with parent → NOT migrated
+      expect(isMigrated).toBe(false);
+    });
+
+    it('task shares no collection with parent (collections[] intersection) → migrated', async () => {
+      // Arrange: Parent in 'collection-A', sub-task created in 'collection-B' (different)
+      const parentId = await createTaskHandler.handle({
+        content: 'Parent in collection-A',
+        collectionId: 'collection-A',
+      });
+
+      // Sub-task created in a different collection (simulates the stale collectionId scenario)
+      const subTaskId = await createSubTaskHandler.handle({
+        content: 'Sub-task in collection-B',
+        parentEntryId: parentId,
+        collectionId: 'collection-B', // Different from parent
+      });
+
+      const subTask = await projection.getTaskById(subTaskId);
+
+      // Act
+      const isMigrated = await projection.isSubTaskMigrated(subTask!);
+
+      // Assert: No shared collection with parent → IS migrated
+      expect(isMigrated).toBe(true);
+    });
+
+    it('task in multiple collections with one matching parent (collections[] intersection) → not migrated', async () => {
+      // Arrange: Parent in 'work', sub-task in ['work', 'daily'] (multi-collection)
+      const parentId = await createTaskHandler.handle({
+        content: 'Parent in work',
+        collectionId: 'work',
+      });
+
+      // Create sub-task in 'work' first
+      const subTaskId = await createSubTaskHandler.handle({
+        content: 'Multi-collection sub-task',
+        parentEntryId: parentId,
+        collectionId: 'work',
+      });
+
+      // Also add sub-task to 'daily' (now it is in ['work', 'daily'])
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskAddedToCollection' as const,
+        aggregateId: subTaskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId: subTaskId, collectionId: 'daily', addedAt: new Date().toISOString() },
+      } as TaskAddedToCollection);
+
+      const subTask = await projection.getTaskById(subTaskId);
+
+      // Act
+      const isMigrated = await projection.isSubTaskMigrated(subTask!);
+
+      // Assert: sub-task.collections = ['work', 'daily'], parent.collections = ['work']
+      // Intersection = ['work'] (non-empty) → NOT migrated
+      expect(isMigrated).toBe(false);
+    });
+
+    it('parent in multiple collections with one matching sub-task (mirror intersection) → not migrated', async () => {
+      // Arrange: Parent in ['work', 'daily'], sub-task in ['daily'] only
+      const parentId = await createTaskHandler.handle({
+        content: 'Parent in work',
+        collectionId: 'work',
+      });
+
+      // Also add parent to 'daily' (now parent is in ['work', 'daily'])
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskAddedToCollection' as const,
+        aggregateId: parentId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId: parentId, collectionId: 'daily', addedAt: new Date().toISOString() },
+      } as TaskAddedToCollection);
+
+      // Create sub-task in 'daily' only
+      const subTaskId = await createSubTaskHandler.handle({
+        content: 'Sub-task in daily only',
+        parentEntryId: parentId,
+        collectionId: 'daily',
+      });
+
+      const subTask = await projection.getTaskById(subTaskId);
+
+      // Act
+      const isMigrated = await projection.isSubTaskMigrated(subTask!);
+
+      // Assert: sub-task.collections = ['daily'], parent.collections = ['work', 'daily']
+      // Intersection = ['daily'] (non-empty) → NOT migrated
+      expect(isMigrated).toBe(false);
     });
   });
 
@@ -793,16 +942,19 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const sub1_1Id = await createSubTaskHandler.handle({
         content: 'Sub 1-1',
         parentEntryId: parent1Id,
+        collectionId: 'test-collection',
       });
 
       const sub1_2Id = await createSubTaskHandler.handle({
         content: 'Sub 1-2',
         parentEntryId: parent1Id,
+        collectionId: 'test-collection',
       });
 
       const sub2_1Id = await createSubTaskHandler.handle({
         content: 'Sub 2-1',
         parentEntryId: parent2Id,
+        collectionId: 'test-collection',
       });
 
       // Act
@@ -830,11 +982,13 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTask1Id = await createSubTaskHandler.handle({
         content: 'Sub-task 1',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       const subTask2Id = await createSubTaskHandler.handle({
         content: 'Sub-task 2 (will be migrated)',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Migrate sub-task 2
@@ -869,9 +1023,9 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const parent2Id = await createTaskHandler.handle({ content: 'Parent 2' });
       const parent3Id = await createTaskHandler.handle({ content: 'Parent 3' });
 
-      await createSubTaskHandler.handle({ content: 'Sub 1-1', parentEntryId: parent1Id });
-      await createSubTaskHandler.handle({ content: 'Sub 2-1', parentEntryId: parent2Id });
-      await createSubTaskHandler.handle({ content: 'Sub 3-1', parentEntryId: parent3Id });
+      await createSubTaskHandler.handle({ content: 'Sub 1-1', parentEntryId: parent1Id, collectionId: 'test-collection' });
+      await createSubTaskHandler.handle({ content: 'Sub 2-1', parentEntryId: parent2Id, collectionId: 'test-collection' });
+      await createSubTaskHandler.handle({ content: 'Sub 3-1', parentEntryId: parent3Id, collectionId: 'test-collection' });
 
       // Act: Only request parent1 and parent3
       const result = await projection.getSubTasksForMultipleParents([parent1Id, parent3Id]);
@@ -888,9 +1042,9 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const parent1Id = await createTaskHandler.handle({ content: 'Parent 1' });
       const parent2Id = await createTaskHandler.handle({ content: 'Parent 2' });
 
-      await createSubTaskHandler.handle({ content: 'Sub 1-1', parentEntryId: parent1Id });
-      await createSubTaskHandler.handle({ content: 'Sub 1-2', parentEntryId: parent1Id });
-      await createSubTaskHandler.handle({ content: 'Sub 2-1', parentEntryId: parent2Id });
+      await createSubTaskHandler.handle({ content: 'Sub 1-1', parentEntryId: parent1Id, collectionId: 'test-collection' });
+      await createSubTaskHandler.handle({ content: 'Sub 1-2', parentEntryId: parent1Id, collectionId: 'test-collection' });
+      await createSubTaskHandler.handle({ content: 'Sub 2-1', parentEntryId: parent2Id, collectionId: 'test-collection' });
 
       // Act: Compare batch query vs individual queries
       const batchResult = await projection.getSubTasksForMultipleParents([parent1Id, parent2Id]);
@@ -910,6 +1064,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'find hardware',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Act
@@ -937,6 +1092,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Delete the parent
@@ -969,14 +1125,17 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTask1Id = await createSubTaskHandler.handle({
         content: 'Sub-task 1',
         parentEntryId: parent1Id,
+        collectionId: 'test-collection',
       });
       const subTask2Id = await createSubTaskHandler.handle({
         content: 'Sub-task 2',
         parentEntryId: parent2Id,
+        collectionId: 'test-collection',
       });
       const subTask3Id = await createSubTaskHandler.handle({
         content: 'Sub-task 3',
         parentEntryId: parent1Id,
+        collectionId: 'test-collection',
       });
 
       // Act
@@ -1000,6 +1159,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub-task in work',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
 
       // Migrate sub-task to 'home' collection (different from parent)
@@ -1022,6 +1182,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
       const subTaskId = await createSubTaskHandler.handle({
         content: 'Sub-task',
         parentEntryId: parentId,
+        collectionId: 'test-collection',
       });
       const regularTaskId = await createTaskHandler.handle({ content: 'Regular Task' });
 
@@ -1035,3 +1196,4 @@ describe('EntryListProjection - Sub-Task Queries', () => {
     });
   });
 });
+

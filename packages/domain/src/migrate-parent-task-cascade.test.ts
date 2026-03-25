@@ -43,9 +43,9 @@ describe('MigrateTaskHandler - Phase 3 Parent Cascade (Symlink Pattern)', () => 
     const tasks = await entryProjection.getTasks();
     const parent = tasks[0]!;
 
-    await createSubTaskHandler.handle({ content: 'Set up analytics', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ content: 'Write blog post', parentEntryId: parent.id });
-    await createSubTaskHandler.handle({ content: 'Deploy to production', parentEntryId: parent.id });
+    await createSubTaskHandler.handle({ content: 'Set up analytics', parentEntryId: parent.id, collectionId: 'work-projects' });
+    await createSubTaskHandler.handle({ content: 'Write blog post', parentEntryId: parent.id, collectionId: 'work-projects' });
+    await createSubTaskHandler.handle({ content: 'Deploy to production', parentEntryId: parent.id, collectionId: 'work-projects' });
 
     const allTasks = await entryProjection.getTasks();
     const children = allTasks.filter(t => t.parentEntryId === parent.id);

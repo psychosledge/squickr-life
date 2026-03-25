@@ -155,6 +155,7 @@ export interface CreateTaskCommand {
 export interface CreateSubTaskCommand {
   readonly content: string;
   readonly parentEntryId: string; // Required - which entry to add sub-task under
+  readonly collectionId?: string; // Optional - undefined means uncategorized, matching CreateTaskCommand behaviour
   readonly userId?: string;
 }
 

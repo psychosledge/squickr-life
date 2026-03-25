@@ -223,10 +223,12 @@ describe('MoveEntryToCollectionHandler', () => {
       await createSubTaskHandler.handle({
         content: 'Child 1',
         parentEntryId: parentId,
+        collectionId: 'collection-A',
       });
       await createSubTaskHandler.handle({
         content: 'Child 2',
         parentEntryId: parentId,
+        collectionId: 'collection-A',
       });
 
       // Verify children are in same collection as parent
@@ -270,10 +272,12 @@ describe('MoveEntryToCollectionHandler', () => {
       await createSubTaskHandler.handle({
         content: 'Child 1',
         parentEntryId: parentId,
+        collectionId: 'collection-A',
       });
       await createSubTaskHandler.handle({
         content: 'Child 2',
         parentEntryId: parentId,
+        collectionId: 'collection-A',
       });
 
       const children = await entryProjection.getSubTasks(parentId);

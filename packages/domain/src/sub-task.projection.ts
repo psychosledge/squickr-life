@@ -141,19 +141,24 @@ export class SubTaskProjection {
   /**
    * Check if a sub-task has been migrated to a different collection (Phase 2: Migration/Symlink)
    *
-   * A sub-task is considered "migrated" when:
-   * - It has a parentEntryId (is a sub-task), AND
-   * - Its collectionId differs from its parent's collectionId
+   * A sub-task is considered "migrated" when its collections[] array shares NO collection
+   * with its parent's collections[] array (i.e. the intersection is empty).
+   *
+   * This uses a collections[] intersection check rather than a scalar collectionId comparison
+   * (ADR-021 fix) because:
+   * - The scalar collectionId field can be stale (written from parentTask.collectionId at creation)
+   * - Multi-collection tasks (added to multiple collections via TaskAddedToCollection) need
+   *   to be compared by their full collections[] membership, not just a single scalar
    *
    * Returns false if:
    * - Task is not a sub-task (no parentEntryId)
-   * - Task is in the same collection as parent (unmigrated sub-task)
+   * - Task shares at least one collection with its parent (unmigrated sub-task)
    * - Parent task doesn't exist (edge case - orphaned sub-task)
    *
    * This determines whether to show the 🔗 icon and migration indicators.
    *
    * @param task - The task to check
-   * @returns true if sub-task is migrated to different collection, false otherwise
+   * @returns true if sub-task shares no collection with parent (is migrated), false otherwise
    */
   async isSubTaskMigrated(task: Task): Promise<boolean> {
     // Not a sub-task - cannot be migrated
@@ -169,12 +174,15 @@ export class SubTaskProjection {
       return false;
     }
 
-    // Compare collection IDs (normalize undefined to null for comparison)
-    const taskCollectionId = task.collectionId ?? null;
-    const parentCollectionId = parent.collectionId ?? null;
+    // Compare collection IDs using collections[] array intersection (ADR-021 fix)
+    // A sub-task is migrated if it shares NO collection with its parent.
+    // This correctly handles multi-collection tasks and avoids stale scalar collectionId comparisons.
+    const taskInParentCollection = task.collections.some(
+      id => parent.collections.includes(id)
+    );
 
-    // Migrated if collection IDs differ
-    return taskCollectionId !== parentCollectionId;
+    // Migrated if task shares no collection with parent
+    return !taskInParentCollection;
   }
 
   /**

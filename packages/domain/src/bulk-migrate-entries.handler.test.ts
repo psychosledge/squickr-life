@@ -514,6 +514,7 @@ describe('BulkMigrateEntriesHandler', () => {
       const subTaskId = await createSubTaskHandler.handle({
         parentEntryId: parentId,
         content: 'Sub-task',
+        collectionId: 'monthly-log',
       });
       
       // 3. Migrate sub-task to 2/15 (using AddTaskToCollection)
@@ -583,6 +584,7 @@ describe('BulkMigrateEntriesHandler', () => {
       const subTaskId = await createSubTaskHandler.handle({
         parentEntryId: parentId,
         content: 'Migrated Sub-task',
+        collectionId: 'monthly-log',
       });
       
       // Verify initial state: sub-task has monthly-log as collectionId

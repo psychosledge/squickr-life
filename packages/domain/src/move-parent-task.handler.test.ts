@@ -92,15 +92,18 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
 
       await createSubTaskHandler.handle({ 
         content: 'Set up analytics',
-        parentEntryId: parent.id
+        parentEntryId: parent.id,
+        collectionId: 'work-projects'
       });
       await createSubTaskHandler.handle({ 
         content: 'Deploy to production',
-        parentEntryId: parent.id
+        parentEntryId: parent.id,
+        collectionId: 'work-projects'
       });
       await createSubTaskHandler.handle({ 
         content: 'Update documentation',
-        parentEntryId: parent.id
+        parentEntryId: parent.id,
+        collectionId: 'work-projects'
       });
 
       // Verify all in same collection
@@ -161,11 +164,13 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       // Create 2 children
       await createSubTaskHandler.handle({ 
         content: 'Child 1',
-        parentEntryId: parent.id
+        parentEntryId: parent.id,
+        collectionId: 'collection-1'
       });
       await createSubTaskHandler.handle({ 
         content: 'Child 2',
-        parentEntryId: parent.id
+        parentEntryId: parent.id,
+        collectionId: 'collection-1'
       });
 
       const allTasks = await projection.getTasks();
@@ -229,15 +234,18 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
       // Create 3 children
       await createSubTaskHandler.handle({ 
         content: 'Set up analytics',
-        parentEntryId: parent.id
+        parentEntryId: parent.id,
+        collectionId: 'work-projects'
       });
       await createSubTaskHandler.handle({ 
         content: 'Write blog post',
-        parentEntryId: parent.id
+        parentEntryId: parent.id,
+        collectionId: 'work-projects'
       });
       await createSubTaskHandler.handle({ 
         content: 'Deploy to production',
-        parentEntryId: parent.id
+        parentEntryId: parent.id,
+        collectionId: 'work-projects'
       });
 
       const allTasks = await projection.getTasks();
@@ -358,7 +366,8 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
 
       await createSubTaskHandler.handle({ 
         content: 'Child task',
-        parentEntryId: parent.id
+        parentEntryId: parent.id,
+        collectionId: 'collection-1'
       });
 
       const eventCountBefore = (await eventStore.getAll()).length;
