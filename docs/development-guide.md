@@ -264,6 +264,49 @@ afterEach(() => {
 });
 ```
 
+### CI Timezone Rule: Always Anchor to UTC Noon
+
+**CI runs on UTC.** Any test that pins the clock with `vi.setSystemTime()` and then computes a local date string must follow this rule:
+
+> **Use UTC noon (`T12:00:00Z`) as the anchor.** At noon UTC, `getFullYear/getMonth/getDate` return the same calendar date in every timezone from UTC-11 to UTC+11.
+
+**Compute expected date strings dynamically — never hardcode them:**
+
+```typescript
+// ✅ Correct — works on UTC CI and any local machine
+vi.useFakeTimers();
+vi.setSystemTime(new Date('2026-03-26T12:00:00Z')); // UTC noon
+
+const now = new Date();
+const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+// localToday === '2026-03-26' in any timezone
+
+expect(result.lastEntry.date).toBe(localToday); // ✅ always passes
+
+// ❌ Wrong — only works on UTC− machines, fails on CI
+vi.setSystemTime(new Date('2026-03-26T02:00:00Z'));
+const localToday = '2026-03-25'; // hardcoded: assumes UTC-3 or more negative
+expect(result.lastEntry.date).toBe(localToday); // ❌ fails on UTC runner
+```
+
+**Testing tomorrow/yesterday relative to a mocked today:**
+
+```typescript
+vi.useFakeTimers();
+vi.setSystemTime(new Date('2026-03-26T12:00:00Z'));
+
+const now = new Date();
+const pad = (n: number) => String(n).padStart(2, '0');
+const localToday    = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+const tomorrow = new Date(now);
+tomorrow.setDate(tomorrow.getDate() + 1);
+const localTomorrow = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+```
+
+**Why not test the UTC/local boundary directly?**
+The UTC-boundary edge case (e.g. "UTC is March 26 but local is still March 25") can only be exercised on a machine with a real UTC− offset. On a UTC CI runner the two dates are always equal, so the test can never be green. Trust the code review that `getFullYear/getMonth/getDate` is correct; test the observable behaviour (today succeeds, tomorrow throws) portably instead.
+
 ---
 
 ## Common Tasks
