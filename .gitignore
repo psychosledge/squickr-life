@@ -40,3 +40,6 @@ coverage/
 # Misc
 *.tsbuildinfo
 .cache/
+
+# AI tooling
+.opencode/
