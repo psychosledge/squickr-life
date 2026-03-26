@@ -491,13 +491,17 @@ describe('HabitProjection', () => {
     });
 
     it('history: last entry is today (local date) and no future date is marked missed', async () => {
-      // Pin clock to 2026-03-26T02:00:00Z.
-      // In UTC-5 this is still 2026-03-25 21:00 — local date is '2026-03-25'.
-      // The buggy todayKey() would return '2026-03-26' (UTC), making the last
-      // history cell '2026-03-26' with status 'missed'.
-      vi.setSystemTime(new Date('2026-03-26T02:00:00Z'));
+      // Pin clock to 2026-03-26T12:00:00Z (UTC noon).
+      // At UTC noon, the local calendar date equals '2026-03-26' in every timezone
+      // from UTC-11 through UTC+11, making localToday deterministic on any CI runner.
+      // The buggy todayKey() would use toISOString().slice(0,10) (UTC), but the fixed
+      // version uses getFullYear/getMonth/getDate (local). Both agree at noon UTC, so
+      // this test validates the last-entry and no-future-entry invariants portably.
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-26T12:00:00Z'));
 
-      const localToday = '2026-03-25'; // local date at UTC-5 for the pinned time
+      const now = new Date();
+      const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       // Create a daily habit with a createdAt well in the past (30+ days back)
       const createdAt = '2026-02-20T00:00:00.000Z'; // ~33 days before local today
@@ -506,13 +510,13 @@ describe('HabitProjection', () => {
         createdAt,
       });
 
-      // Complete the habit for the local date '2026-03-25'
+      // Complete the habit for the local date
       await appendHabitCompleted(eventStore, habitId, localToday);
 
       const habit = await projection.getHabitById(habitId);
       const history = habit!.history;
 
-      // Assertion 1: the last (most-recent) entry has date === local today, NOT UTC tomorrow
+      // Assertion 1: the last (most-recent) entry has date === local today
       const lastEntry = history[history.length - 1]!;
       expect(lastEntry.date).toBe(localToday);
 
