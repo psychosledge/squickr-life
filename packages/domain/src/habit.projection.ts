@@ -43,9 +43,13 @@ function msToDateKey(ms: number): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/** Today's date key in UTC (matches test helpers that use new Date().toISOString().slice(0,10)). */
+/** Today's date key in local calendar time (fixes UTC-offset bug for users west of UTC). */
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 /** Day-of-week (0=Sun…6=Sat) for a YYYY-MM-DD string, using local noon.
@@ -510,8 +514,8 @@ export class HabitProjection {
   // ── Public query methods ───────────────────────────────────────────────────
 
   /** Returns all non-archived habits, sorted by `order` field ascending. */
-  async getActiveHabits(): Promise<HabitReadModel[]> {
-    const today = todayKey();
+  async getActiveHabits(options?: { asOf?: string }): Promise<HabitReadModel[]> {
+    const today = options?.asOf ?? todayKey();
     const states = await this.loadStates();
     return [...states.values()]
       .filter(s => !s.archivedAt)
@@ -520,8 +524,8 @@ export class HabitProjection {
   }
 
   /** Returns all habits (active + archived), sorted by `order` field ascending. */
-  async getAllHabits(): Promise<HabitReadModel[]> {
-    const today = todayKey();
+  async getAllHabits(options?: { asOf?: string }): Promise<HabitReadModel[]> {
+    const today = options?.asOf ?? todayKey();
     const states = await this.loadStates();
     return [...states.values()]
       .sort((a, b) => a.order.localeCompare(b.order))
@@ -529,8 +533,8 @@ export class HabitProjection {
   }
 
   /** Returns a single habit by ID, or `undefined` if not found. */
-  async getHabitById(habitId: string): Promise<HabitReadModel | undefined> {
-    const today = todayKey();
+  async getHabitById(habitId: string, options?: { asOf?: string }): Promise<HabitReadModel | undefined> {
+    const today = options?.asOf ?? todayKey();
     const states = await this.loadStates();
     const state = states.get(habitId);
     if (!state) return undefined;
@@ -541,8 +545,8 @@ export class HabitProjection {
    * Returns all non-archived habits that are scheduled on the given date.
    * Sorted by `order` field ascending.
    */
-  async getHabitsForDate(date: string): Promise<HabitReadModel[]> {
-    const today = todayKey();
+  async getHabitsForDate(date: string, options?: { asOf?: string }): Promise<HabitReadModel[]> {
+    const today = options?.asOf ?? todayKey();
     const states = await this.loadStates();
     return [...states.values()]
       .filter(s => !s.archivedAt)

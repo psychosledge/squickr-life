@@ -90,7 +90,7 @@ export function CollectionDetailView({
 
   // Habit hooks — only active for daily collections
   const habitDate = collection?.type === 'daily' && collection.date ? collection.date : '';
-  const { habits, isLoading: habitsLoading } = useHabitsForDate(habitDate);
+  const { habits, isLoading: habitsLoading } = useHabitsForDate(habitDate, { asOf: habitDate || undefined });
   const habitsMgmt = useHabitsManagement();
   const [isCreateHabitModalOpen, setIsCreateHabitModalOpen] = useState(false);
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import type { IEventStore } from './event-store';
 import {
@@ -25,6 +25,25 @@ import type {
 // ============================================================================
 // Helpers
 // ============================================================================
+
+/** Returns today's local date as YYYY-MM-DD (matches todayKey() in handlers/projection). */
+function localTodayKey(): string {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** Returns a local date offset by `days` from today. */
+function localOffsetKey(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 /** Build a HabitCreated event in the store directly (bypasses handler) */
 async function seedHabit(
@@ -266,7 +285,7 @@ describe('UpdateHabitFrequencyHandler', () => {
 describe('CompleteHabitHandler', () => {
   let eventStore: IEventStore;
   let handler: CompleteHabitHandler;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localTodayKey();
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
@@ -308,7 +327,7 @@ describe('CompleteHabitHandler', () => {
 
   it('should throw if date is in the future', async () => {
     const habitId = await seedHabit(eventStore);
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const tomorrow = localOffsetKey(1);
     await expect(
       handler.handle({ habitId, date: tomorrow, collectionId: 'col-1' })
     ).rejects.toThrow('future');
@@ -350,7 +369,7 @@ describe('CompleteHabitHandler', () => {
 describe('RevertHabitCompletionHandler', () => {
   let eventStore: IEventStore;
   let handler: RevertHabitCompletionHandler;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localTodayKey();
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
@@ -493,5 +512,59 @@ describe('ReorderHabitHandler', () => {
   it('should throw if order is empty', async () => {
     const habitId = await seedHabit(eventStore);
     await expect(handler.handle({ habitId, order: '' })).rejects.toThrow('order');
+  });
+});
+
+// ============================================================================
+// Fix 1: CompleteHabitHandler UTC guard — use local date, not UTC date
+// ============================================================================
+
+describe('CompleteHabitHandler: UTC guard uses local date', () => {
+  let eventStore: IEventStore;
+  let handler: CompleteHabitHandler;
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    handler = new CompleteHabitHandler(eventStore);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should reject UTC-today as a future date when local date is still yesterday', async () => {
+    // Environment is UTC-4. Pin clock to 2026-03-26T03:00:00Z:
+    //   • UTC  date = '2026-03-26'
+    //   • Local date = '2026-03-25'  (03:00 UTC − 4h = 23:00 March 25 local)
+    //
+    // Completing for '2026-03-26' must be rejected as a future date, because
+    // the local calendar day is still March 25.
+    //
+    // Buggy code: today = '2026-03-26' (UTC) → '2026-03-26' > '2026-03-26' = false → no throw
+    // Fixed code: today = '2026-03-25' (local) → '2026-03-26' > '2026-03-25' = true → throws ✓
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-26T03:00:00Z'));
+
+    const habitId = crypto.randomUUID();
+    const createdEvent: import('./habit.types').HabitCreated = {
+      id: crypto.randomUUID(),
+      type: 'HabitCreated',
+      aggregateId: habitId,
+      timestamp: '2026-01-01T00:00:00.000Z',
+      version: 1,
+      payload: {
+        habitId,
+        title: 'Morning run',
+        frequency: { type: 'daily' },
+        order: 'a0',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    };
+    await eventStore.append(createdEvent);
+
+    // '2026-03-26' is UTC-today but local-tomorrow → must throw
+    await expect(
+      handler.handle({ habitId, date: '2026-03-26', collectionId: 'col-1' })
+    ).rejects.toThrow('future date');
   });
 });

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.3] - 2026-03-25
+
+### Fixed
+- **Habit history grid — local date anchoring:** `todayKey()` in the habit projection was using `new Date().toISOString().slice(0, 10)` (UTC date), which caused the last cell of the 30-day history grid to appear red/missed for users west of UTC in the post-midnight window (UTC had rolled over to tomorrow, anchoring the grid one day ahead). Fixed by using `getFullYear()`/`getMonth()`/`getDate()` (local calendar date) — consistent with how the rest of the UI interprets "today".
+- **`CompleteHabitHandler` — UTC future-date guard:** The same `toISOString().slice(0, 10)` pattern in the command handler's "no future dates" guard could incorrectly reject a valid completion for a user west of UTC just after midnight. Fixed with the same local-date approach.
+- **Habit history grid — past daily log view:** When viewing a past day's log, the habit history grid was showing today's completions/misses instead of anchoring to the viewed date. Added optional `{ asOf?: string }` parameter to all four `HabitProjection` query methods (`getActiveHabits`, `getAllHabits`, `getHabitById`, `getHabitsForDate`), defaulting to the real local today. `CollectionDetailView` now passes `collection.date` as `asOf` when rendering a daily log, so the history grid treats the viewed date as "today" — entries after it appear grey (future) rather than red (missed).
+
+### Tests
+- **909 domain tests, 1,474 client tests passing** (+6 domain: UTC guard regression test for `CompleteHabitHandler`, 5 `asOf` option tests across all 4 projection query methods; +1 client: `asOf` forwarding test for `useHabitsForDate` hook).
+
 ## [1.13.2] - 2026-03-25
 
 ### Fixed

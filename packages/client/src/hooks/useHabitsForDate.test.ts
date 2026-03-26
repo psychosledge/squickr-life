@@ -143,7 +143,24 @@ describe('useHabitsForDate', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     // Assert
-    expect(entryProjection.getHabitsForDate).toHaveBeenCalledWith('2026-03-15');
+    expect(entryProjection.getHabitsForDate).toHaveBeenCalledWith('2026-03-15', undefined);
+  });
+
+  it('forwards asOf option to getHabitsForDate', async () => {
+    // Arrange
+    const { entryProjection } = setupMocks();
+
+    // Act
+    const { result } = renderHook(() =>
+      useHabitsForDate('2026-03-20', { asOf: '2026-03-15' }),
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Assert
+    expect(entryProjection.getHabitsForDate).toHaveBeenCalledWith(
+      '2026-03-20',
+      { asOf: '2026-03-15' },
+    );
   });
 
   it('re-fetches when entryProjection notifies subscribers', async () => {
@@ -189,7 +206,7 @@ describe('useHabitsForDate', () => {
     await waitFor(() => {
       expect(entryProjection.getHabitsForDate).toHaveBeenCalledTimes(2);
     });
-    expect(entryProjection.getHabitsForDate).toHaveBeenCalledWith('2026-03-19');
+    expect(entryProjection.getHabitsForDate).toHaveBeenCalledWith('2026-03-19', undefined);
   });
 
   it('unsubscribes from entryProjection on unmount', async () => {

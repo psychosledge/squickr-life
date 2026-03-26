@@ -19,11 +19,16 @@ export interface HabitsForDateData {
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useHabitsForDate(date: string): HabitsForDateData {
+export function useHabitsForDate(
+  date: string,
+  options?: { asOf?: string },
+): HabitsForDateData {
   const { entryProjection } = useApp();
 
   const [habits, setHabits] = useState<HabitReadModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const asOf = options?.asOf;
 
   const fetchData = useCallback(async () => {
     if (!date) {
@@ -31,10 +36,10 @@ export function useHabitsForDate(date: string): HabitsForDateData {
       setIsLoading(false);
       return;
     }
-    const result = await entryProjection.getHabitsForDate(date);
+    const result = await entryProjection.getHabitsForDate(date, asOf ? { asOf } : undefined);
     setHabits(result);
     setIsLoading(false);
-  }, [date, entryProjection]);
+  }, [date, asOf, entryProjection]);
 
   // Initial load + re-fetch when date changes
   useEffect(() => {

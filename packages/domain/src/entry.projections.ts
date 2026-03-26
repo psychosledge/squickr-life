@@ -446,22 +446,22 @@ export class EntryListProjection {
   // ── HabitProjection delegates ──────────────────────────────────────────────
 
   /** @see HabitProjection.getActiveHabits */
-  async getActiveHabits(): Promise<HabitReadModel[]> {
-    return this.habit.getActiveHabits();
+  async getActiveHabits(options?: { asOf?: string }): Promise<HabitReadModel[]> {
+    return this.habit.getActiveHabits(options);
   }
 
   /** @see HabitProjection.getAllHabits */
-  async getAllHabits(): Promise<HabitReadModel[]> {
-    return this.habit.getAllHabits();
+  async getAllHabits(options?: { asOf?: string }): Promise<HabitReadModel[]> {
+    return this.habit.getAllHabits(options);
   }
 
   /** @see HabitProjection.getHabitById */
-  async getHabitById(habitId: string): Promise<HabitReadModel | undefined> {
-    return this.habit.getHabitById(habitId);
+  async getHabitById(habitId: string, options?: { asOf?: string }): Promise<HabitReadModel | undefined> {
+    return this.habit.getHabitById(habitId, options);
   }
 
   /** @see HabitProjection.getHabitsForDate */
-  async getHabitsForDate(date: string): Promise<HabitReadModel[]> {
-    return this.habit.getHabitsForDate(date);
+  async getHabitsForDate(date: string, options?: { asOf?: string }): Promise<HabitReadModel[]> {
+    return this.habit.getHabitsForDate(date, options);
   }
 }

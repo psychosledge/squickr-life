@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import type { IEventStore } from './event-store';
 import { HabitProjection } from './habit.projection';
@@ -17,7 +17,19 @@ import type {
 function makeDate(daysFromToday: number): string {
   const d = new Date();
   d.setDate(d.getDate() + daysFromToday);
-  return d.toISOString().slice(0, 10);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** Returns today's local date as a YYYY-MM-DD string (matches todayKey() in projection). */
+function localDateKey(): string {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 const today = makeDate(0);
@@ -39,7 +51,7 @@ async function appendHabitCreated(
       title: 'Morning run',
       frequency: { type: 'daily' },
       order: 'a0',
-      createdAt: overrides.createdAt ?? new Date().toISOString(),
+      createdAt: overrides.createdAt ?? `${localDateKey()}T00:00:00.000Z`,
       ...overrides,
     },
   };
@@ -226,7 +238,7 @@ describe('HabitProjection', () => {
       // createdAt = today (days diff = 0), n = 3 → 0 % 3 = 0 → scheduled
       await appendHabitCreated(eventStore, {
         frequency: { type: 'every-n-days', n: 3 },
-        createdAt: new Date().toISOString(),
+        createdAt: `${today}T00:00:00.000Z`,
         order: 'a0',
       });
       const habits = await projection.getHabitsForDate(today);
@@ -235,10 +247,9 @@ describe('HabitProjection', () => {
 
     it('should not return every-n-days habit when not on schedule', async () => {
       // createdAt = yesterday (days diff = 1), n = 3 → 1 % 3 = 1 ≠ 0 → not scheduled
-      const yesterdayISO = new Date(Date.now() - 86400000).toISOString();
       await appendHabitCreated(eventStore, {
         frequency: { type: 'every-n-days', n: 3 },
-        createdAt: yesterdayISO,
+        createdAt: `${yesterday}T00:00:00.000Z`,
         order: 'a0',
       });
       const habits = await projection.getHabitsForDate(today);
@@ -463,12 +474,56 @@ describe('HabitProjection', () => {
     it('should return 1 when the most recent window has a completion', async () => {
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'every-n-days', n: 3 },
-        createdAt: new Date().toISOString(),
+        createdAt: `${today}T00:00:00.000Z`,
       });
       // Complete today (which is in window 0)
       await appendHabitCompleted(eventStore, habitId, today);
       const habit = await projection.getHabitById(habitId);
       expect(habit!.currentStreak).toBe(1);
+    });
+  });
+
+  // ── todayKey: local date (UTC-offset bug regression) ──────────────────────
+
+  describe('history: timezone / local date', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('history: last entry is today (local date) and no future date is marked missed', async () => {
+      // Pin clock to 2026-03-26T02:00:00Z.
+      // In UTC-5 this is still 2026-03-25 21:00 — local date is '2026-03-25'.
+      // The buggy todayKey() would return '2026-03-26' (UTC), making the last
+      // history cell '2026-03-26' with status 'missed'.
+      vi.setSystemTime(new Date('2026-03-26T02:00:00Z'));
+
+      const localToday = '2026-03-25'; // local date at UTC-5 for the pinned time
+
+      // Create a daily habit with a createdAt well in the past (30+ days back)
+      const createdAt = '2026-02-20T00:00:00.000Z'; // ~33 days before local today
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt,
+      });
+
+      // Complete the habit for the local date '2026-03-25'
+      await appendHabitCompleted(eventStore, habitId, localToday);
+
+      const habit = await projection.getHabitById(habitId);
+      const history = habit!.history;
+
+      // Assertion 1: the last (most-recent) entry has date === local today, NOT UTC tomorrow
+      const lastEntry = history[history.length - 1]!;
+      expect(lastEntry.date).toBe(localToday);
+
+      // Assertion 2: no entry with date > local today exists
+      const futureDates = history.filter(h => h.date > localToday);
+      expect(futureDates).toHaveLength(0);
+
+      // Assertion 3: the entry for local today has status 'completed'
+      const todayEntry = history.find(h => h.date === localToday);
+      expect(todayEntry).toBeDefined();
+      expect(todayEntry!.status).toBe('completed');
     });
   });
 
@@ -546,6 +601,132 @@ describe('HabitProjection', () => {
       for (const day of afterOrOnCreation) {
         expect(day.status).not.toBe('not-scheduled');
       }
+    });
+  });
+
+  // ── Fix 2: asOf option — history grid "as-of" threading ──────────────────
+
+  describe('asOf option: history grid treats viewed date as "today"', () => {
+    it('getHabitsForDate with asOf=yesterday: today slot shows future, not completed', async () => {
+      // Arrange: habit created 30 days ago, completed today
+      const createdAt = makeDate(-30) + 'T00:00:00.000Z';
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt,
+        order: 'a0',
+      });
+      // Complete for real today
+      await appendHabitCompleted(eventStore, habitId, today);
+
+      // Act: query habits for yesterday's date, with asOf=yesterday
+      // The history should be computed relative to yesterday, so today's slot = future
+      const habits = await projection.getHabitsForDate(yesterday, { asOf: yesterday });
+
+      expect(habits).toHaveLength(1);
+      const habit = habits[0]!;
+
+      // Today's date should appear as 'future' (it's after asOf=yesterday)
+      const todayEntry = habit.history.find(h => h.date === today);
+      // todayEntry might not exist if it's outside the 30-day window; but since asOf=yesterday,
+      // the 30-day window is [yesterday-29 .. yesterday], so today is outside → no entry expected.
+      // The key assertion: the completion for today must NOT appear as 'completed'.
+      if (todayEntry) {
+        expect(todayEntry.status).toBe('future');
+      } else {
+        // today is outside the window when asOf=yesterday → OK, no future leak
+        expect(todayEntry).toBeUndefined();
+      }
+
+      // And yesterday itself should be 'missed' (not completed for yesterday)
+      const yesterdayEntry = habit.history.find(h => h.date === yesterday);
+      expect(yesterdayEntry).toBeDefined();
+      expect(yesterdayEntry!.status).toBe('missed');
+    });
+
+    it('getActiveHabits with asOf=yesterday: today slot shows future, not completed', async () => {
+      // Arrange: habit created 30 days ago, completed today
+      const createdAt = makeDate(-30) + 'T00:00:00.000Z';
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt,
+        order: 'a0',
+      });
+      await appendHabitCompleted(eventStore, habitId, today);
+
+      // Act: query active habits with asOf=yesterday
+      const habits = await projection.getActiveHabits({ asOf: yesterday });
+
+      expect(habits).toHaveLength(1);
+      const habit = habits[0]!;
+
+      // isCompletedToday should reflect asOf (yesterday), not real today
+      // Since the habit was not completed for yesterday, isCompletedToday must be false
+      expect(habit.isCompletedToday).toBe(false);
+      expect(habit.isScheduledToday).toBe(true); // daily → scheduled on any day
+
+      // The last history entry should be yesterday (asOf), not today
+      const lastEntry = habit.history[habit.history.length - 1]!;
+      expect(lastEntry.date).toBe(yesterday);
+    });
+
+    it('getAllHabits with asOf=yesterday: isCompletedToday reflects yesterday', async () => {
+      // Arrange: habit completed for yesterday
+      const createdAt = makeDate(-30) + 'T00:00:00.000Z';
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt,
+        order: 'a0',
+      });
+      await appendHabitCompleted(eventStore, habitId, yesterday);
+
+      // Act: query all habits with asOf=yesterday
+      const habits = await projection.getAllHabits({ asOf: yesterday });
+
+      expect(habits).toHaveLength(1);
+      const habit = habits[0]!;
+
+      // Since completed for yesterday and asOf=yesterday, isCompletedToday must be true
+      expect(habit.isCompletedToday).toBe(true);
+    });
+
+    it('getHabitById with asOf=yesterday: history window ends at yesterday', async () => {
+      // Arrange
+      const createdAt = makeDate(-30) + 'T00:00:00.000Z';
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt,
+      });
+      await appendHabitCompleted(eventStore, habitId, today);
+
+      // Act
+      const habit = await projection.getHabitById(habitId, { asOf: yesterday });
+
+      expect(habit).toBeDefined();
+      // Last history entry should be yesterday when asOf=yesterday
+      const lastEntry = habit!.history[habit!.history.length - 1]!;
+      expect(lastEntry.date).toBe(yesterday);
+    });
+
+    it('backwards-compatible: no asOf defaults to todayKey() behaviour', async () => {
+      // Existing calls without asOf must behave exactly as before
+      const createdAt = makeDate(-30) + 'T00:00:00.000Z';
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt,
+      });
+      await appendHabitCompleted(eventStore, habitId, today);
+
+      const [byActive, byAll, byId, byDate] = await Promise.all([
+        projection.getActiveHabits(),
+        projection.getAllHabits(),
+        projection.getHabitById(habitId),
+        projection.getHabitsForDate(today),
+      ]);
+
+      expect(byActive[0]!.isCompletedToday).toBe(true);
+      expect(byAll[0]!.isCompletedToday).toBe(true);
+      expect(byId!.isCompletedToday).toBe(true);
+      expect(byDate[0]!.isCompletedToday).toBe(true);
     });
   });
 });
