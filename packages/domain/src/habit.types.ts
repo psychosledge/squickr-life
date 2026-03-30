@@ -5,9 +5,11 @@ import type { DomainEvent } from './domain-event';
 // ============================================================================
 
 export type HabitFrequency =
-  | { type: 'daily' }
-  | { type: 'weekly'; targetDays: Array<0 | 1 | 2 | 3 | 4 | 5 | 6> }
-  | { type: 'every-n-days'; n: number }; // n ∈ [2..30]
+  // `mode` has no functional effect for daily (1-day interval means relative ≡ fixed behaviour).
+  // It is structurally present for type consistency but the UI never sets it on daily habits.
+  | { type: 'daily'; mode?: 'fixed' | 'relative' }
+  | { type: 'weekly'; targetDays: Array<0 | 1 | 2 | 3 | 4 | 5 | 6>; mode?: 'fixed' | 'relative' }
+  | { type: 'every-n-days'; n: number; mode?: 'fixed' | 'relative' }; // n ∈ [2..30]
 
 // ============================================================================
 // Habit Read Models

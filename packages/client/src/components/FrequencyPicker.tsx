@@ -21,6 +21,7 @@ export const DAY_FULL_LABELS = [
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type FrequencyType = 'daily' | 'weekly' | 'every-n-days';
+export type ScheduleMode = 'fixed' | 'relative';
 
 export interface FrequencyPickerProps {
   frequencyType: FrequencyType;
@@ -29,6 +30,9 @@ export interface FrequencyPickerProps {
   onTargetDaysChange: (days: number[]) => void;
   nDays: number; // 2..30, used for 'every-n-days'
   onNDaysChange: (n: number) => void;
+  /** Schedule mode — only relevant for 'every-n-days' */
+  scheduleMode?: ScheduleMode;
+  onScheduleModeChange?: (mode: ScheduleMode) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -40,6 +44,8 @@ export function FrequencyPicker({
   onTargetDaysChange,
   nDays,
   onNDaysChange,
+  scheduleMode = 'fixed',
+  onScheduleModeChange,
 }: FrequencyPickerProps) {
   return (
     <>
@@ -131,6 +137,42 @@ export function FrequencyPicker({
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+        </div>
+      )}
+
+      {/* Schedule mode toggle — only for every-n-days */}
+      {frequencyType === 'every-n-days' && (
+        <div className="mb-4">
+          <div
+            role="group"
+            aria-label="Schedule mode"
+            className="flex gap-2"
+          >
+            <button
+              type="button"
+              aria-pressed={scheduleMode === 'fixed'}
+              onClick={() => onScheduleModeChange?.('fixed')}
+              className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+                ${scheduleMode === 'fixed'
+                  ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'}`}
+            >
+              Fixed
+            </button>
+            <button
+              type="button"
+              aria-pressed={scheduleMode === 'relative'}
+              onClick={() => onScheduleModeChange?.('relative')}
+              className={`flex-1 px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1
+                ${scheduleMode === 'relative'
+                  ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'}`}
+            >
+              Relative
+            </button>
+          </div>
         </div>
       )}
     </>

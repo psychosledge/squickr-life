@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.2] - 2026-03-29
+
+### Fixed
+- **FCM registration — same-tab reactivity:** `registerFcmToken` previously called `localStorage.setItem()` directly, which does not fire the native `storage` event in the same tab. Added `setLocalStorageKey` / `removeLocalStorageKey` helpers to `fcm.ts` that write to localStorage and immediately dispatch a synthetic `StorageEvent` via `window.dispatchEvent`. `useFcmRegistrationStatus` now listens on `window`'s `storage` event so the registration status chip in SettingsModal updates live when registration completes in the same tab.
+- **FCM status hook — export `deriveStatus`:** Exported the `deriveStatus` helper from `useFcmRegistrationStatus.ts` so it can be imported directly in unit tests without re-implementing the logic.
+- **HabitDetailView — `frequencyEqual` `mode` comparison:** The equality check used to guard the "Save Changes" button was missing a `mode` comparison for `weekly` and `every-n-days` frequencies. Changing from fixed to relative (or vice versa) without touching the other fields would silently produce no save. Fixed by hoisting `mode` comparison before the type-specific branch.
+- **HabitDetailView — `buildEditFrequency` missing `mode` for weekly:** Building the editable form state from a `weekly` habit omitted the `mode` field, causing relative-weekly habits to open the settings panel with `mode` defaulting to `'fixed'`. Now includes `mode` from the stored frequency.
+- **HabitDetailView — `editScheduleMode` initialisation for weekly habits:** The "Settings" panel was only reading `mode` from `every-n-days` habits when the panel opened; `weekly` habits always fell through to `'fixed'`. Fixed to read `mode` from both `weekly` and `every-n-days` habits (only `daily` stays hardcoded to `'fixed'` since `mode` is a no-op there).
+- **HabitDetailView — spurious `updateHabitFrequencyHandler` calls:** The save handler was calling `updateHabitFrequencyHandler` even when only the notification time changed and the frequency was identical. Added a `frequencyEqual` guard so the frequency command is only dispatched when the frequency actually changed.
+- **HabitDetailView — `formatFrequency` relative indicator:** The stats row frequency label did not show any indication when a habit uses relative scheduling. Added a `· Relative` suffix for `every-n-days` and `weekly` habits whose `mode` is `'relative'`.
+- **CI / build — missing env vars:** `VITE_FIREBASE_VAPID_KEY` and `VITE_APP_VERSION` were not passed to Vite during CI (`ci.yml`) and production deploys (`deploy.yml`), causing the build to embed `undefined` for these values. Both workflows now inject the values from GitHub Actions secrets/variables.
+- **`.gitignore` — env files:** Added `.env.production`, `.env.staging`, and `.env.development` to `.gitignore` to prevent accidental commits of files containing VAPID keys or other environment-specific secrets.
+- **`habit.types.ts` — `mode` documentation:** Added an explanatory comment clarifying that `mode` on `daily` frequency is a no-op (daily habits have no concept of relative scheduling).
+
+### Tests
+- **897 domain tests, 1,494 client tests passing** (client: +20 tests — `HabitDetailView` ×5 new cases covering notification-only change guard, `· Relative` suffix, and weekly/relative mode preservation; `fcm` ×1 heartbeat `updateDoc` payload shape assertion; `useFcmRegistrationStatus` ×2 live storage-event reactivity cases).
+
 ## [1.13.3] - 2026-03-25
 
 ### Fixed

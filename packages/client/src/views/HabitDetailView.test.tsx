@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { HabitDetailView } from './HabitDetailView';
@@ -446,6 +446,245 @@ describe('HabitDetailView', () => {
       await waitFor(() => {
         expect(screen.getByText(/archive failed/i)).toBeInTheDocument();
       });
+    });
+  });
+
+  // ─── Schedule Mode ──────────────────────────────────────────────────────────
+
+  describe('Schedule mode in Settings section', () => {
+    it('shows schedule mode toggle when frequency is every-n-days', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(
+        makeHabit({ frequency: { type: 'every-n-days', n: 3 } }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      expect(screen.getByRole('group', { name: /schedule mode/i })).toBeInTheDocument();
+    });
+
+    it('schedule mode defaults to fixed when frequency has no mode', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(
+        makeHabit({ frequency: { type: 'every-n-days', n: 3 } }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      expect(screen.getByRole('button', { name: /fixed/i })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('schedule mode reflects relative when habit frequency has mode=relative', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(
+        makeHabit({ frequency: { type: 'every-n-days', n: 3, mode: 'relative' } }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      expect(screen.getByRole('button', { name: /relative/i })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('changing schedule mode to relative enables Save Changes button', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(
+        makeHabit({ frequency: { type: 'every-n-days', n: 3 } }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      // Initially save disabled (no changes)
+      expect(screen.getByRole('button', { name: /save changes/i })).toBeDisabled();
+
+      // Switch to relative
+      await user.click(screen.getByRole('button', { name: /relative/i }));
+
+      expect(screen.getByRole('button', { name: /save changes/i })).not.toBeDisabled();
+    });
+
+    it('saving with relative mode calls updateHabitFrequencyHandler with mode=relative', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(
+        makeHabit({ frequency: { type: 'every-n-days', n: 3 } }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /relative/i }));
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(appContext.updateHabitFrequencyHandler.handle).toHaveBeenCalledWith(
+          expect.objectContaining({
+            habitId: 'habit-1',
+            frequency: expect.objectContaining({ type: 'every-n-days', mode: 'relative' }),
+          }),
+        );
+      });
+    });
+  });
+
+  // ─── Notification Time ──────────────────────────────────────────────────────
+
+  describe('Notification time in Settings section', () => {
+    it('shows notification time field when Settings is open', async () => {
+      const user = userEvent.setup();
+      renderView();
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      expect(screen.getByLabelText(/notification time/i)).toBeInTheDocument();
+    });
+
+    it('notification time field shows existing habit notificationTime', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(
+        makeHabit({ notificationTime: '08:30' }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      const input = screen.getByLabelText(/notification time/i) as HTMLInputElement;
+      expect(input.value).toBe('08:30');
+    });
+
+    it('changing notification time and saving calls setHabitNotificationTimeHandler', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(makeHabit());
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      const input = screen.getByLabelText(/notification time/i);
+      fireEvent.change(input, { target: { value: '09:00' } });
+
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(appContext.setHabitNotificationTimeHandler.handle).toHaveBeenCalledWith({
+          habitId: 'habit-1',
+          notificationTime: '09:00',
+        });
+      });
+    });
+
+    it('clearing notification time and saving calls clearHabitNotificationTimeHandler', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(
+        makeHabit({ notificationTime: '08:30' }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      // Clear the notification time
+      const input = screen.getByLabelText(/notification time/i);
+      fireEvent.change(input, { target: { value: '' } });
+
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(appContext.clearHabitNotificationTimeHandler.handle).toHaveBeenCalledWith({
+          habitId: 'habit-1',
+        });
+      });
+    });
+
+    it('changing ONLY notification time does NOT call updateHabitFrequencyHandler', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(makeHabit());
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      // Change only notification time, leave frequency untouched
+      const input = screen.getByLabelText(/notification time/i);
+      fireEvent.change(input, { target: { value: '07:00' } });
+
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(appContext.setHabitNotificationTimeHandler.handle).toHaveBeenCalledWith({
+          habitId: 'habit-1',
+          notificationTime: '07:00',
+        });
+      });
+
+      // Frequency handler must NOT have been called
+      expect(appContext.updateHabitFrequencyHandler.handle).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── formatFrequency relative indicator ─────────────────────────────────────
+
+  describe('formatFrequency relative mode indicator', () => {
+    it('shows "· Relative" suffix for every-n-days relative habit in stats row', async () => {
+      const appContext = buildMockAppContext(
+        makeHabit({ frequency: { type: 'every-n-days', n: 3, mode: 'relative' } }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => {
+        expect(screen.getByText(/every 3 days · relative/i)).toBeInTheDocument();
+      });
+    });
+
+    it('shows "· Relative" suffix for weekly relative habit in stats row', async () => {
+      const appContext = buildMockAppContext(
+        makeHabit({ frequency: { type: 'weekly', targetDays: [1], mode: 'relative' } }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => {
+        expect(screen.getByText(/weekly.*relative/i)).toBeInTheDocument();
+      });
+    });
+
+    it('does NOT show "· Relative" for fixed every-n-days habit', async () => {
+      const appContext = buildMockAppContext(
+        makeHabit({ frequency: { type: 'every-n-days', n: 3 } }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByText(/every 3 days/i));
+      expect(screen.queryByText(/relative/i)).not.toBeInTheDocument();
+    });
+
+    it('weekly/relative mode is preserved when saving settings', async () => {
+      const user = userEvent.setup();
+      const appContext = buildMockAppContext(
+        makeHabit({ frequency: { type: 'weekly', targetDays: [1], mode: 'relative' } }),
+      );
+      renderView('habit-1', appContext);
+
+      await waitFor(() => screen.getByRole('button', { name: /settings/i }));
+      await user.click(screen.getByRole('button', { name: /settings/i }));
+
+      // Open settings and save without changes to frequency — but notification time changes
+      const input = screen.getByLabelText(/notification time/i);
+      fireEvent.change(input, { target: { value: '08:00' } });
+      await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => {
+        expect(appContext.setHabitNotificationTimeHandler.handle).toHaveBeenCalled();
+      });
+      // Frequency handler NOT called since only notification time changed
+      expect(appContext.updateHabitFrequencyHandler.handle).not.toHaveBeenCalled();
     });
   });
 });

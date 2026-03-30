@@ -22,6 +22,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
   const [frequencyType, setFrequencyType] = useState<FrequencyType>('daily');
   const [targetDays, setTargetDays] = useState<number[]>([new Date().getDay()]);
   const [nDays, setNDays] = useState(2);
+  const [scheduleMode, setScheduleMode] = useState<'fixed' | 'relative'>('fixed');
   const [notificationTime, setNotificationTime] = useState('');
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +39,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
     setFrequencyType('daily');
     setTargetDays([new Date().getDay()]);
     setNDays(2);
+    setScheduleMode('fixed');
     setNotificationTime('');
     setError('');
     onClose();
@@ -66,7 +68,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
       case 'weekly':
         return { type: 'weekly', targetDays: targetDays as Array<0|1|2|3|4|5|6> };
       case 'every-n-days':
-        return { type: 'every-n-days', n: nDays };
+        return { type: 'every-n-days', n: nDays, mode: scheduleMode };
     }
   };
 
@@ -89,6 +91,7 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
       setFrequencyType('daily');
       setTargetDays([new Date().getDay()]);
       setNDays(2);
+      setScheduleMode('fixed');
       setNotificationTime('');
       setError('');
       onClose();
@@ -164,6 +167,8 @@ export function CreateHabitModal({ isOpen, onClose, onSubmit }: CreateHabitModal
             onTargetDaysChange={setTargetDays}
             nDays={nDays}
             onNDaysChange={setNDays}
+            scheduleMode={scheduleMode}
+            onScheduleModeChange={setScheduleMode}
           />
 
           {/* Notification Time (optional) */}

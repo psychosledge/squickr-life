@@ -734,3 +734,143 @@ describe('HabitProjection', () => {
     });
   });
 });
+
+// ============================================================================
+// getHabitsForDate: relative habits
+// ============================================================================
+
+describe('getHabitsForDate: relative habits', () => {
+  let eventStore: IEventStore;
+  let projection: HabitProjection;
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    projection = new HabitProjection(eventStore);
+  });
+
+  it('returns relative daily habit when due today (never completed, created yesterday)', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily', mode: 'relative' },
+      createdAt: `${yesterday}T00:00:00.000Z`,
+    });
+    const habits = await projection.getHabitsForDate(today, { asOf: today });
+    expect(habits.some(h => h.id === habitId)).toBe(true);
+  });
+
+  it('returns relative every-n-days habit when overdue (completed 4 days ago, n=3)', async () => {
+    const fourDaysAgo = makeDate(-4);
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
+      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+    });
+    await appendHabitCompleted(eventStore, habitId, fourDaysAgo);
+    // Last completed 4 days ago, interval 3 → next due 1 day ago → overdue → should appear today
+    const habits = await projection.getHabitsForDate(today, { asOf: today });
+    expect(habits.some(h => h.id === habitId)).toBe(true);
+  });
+
+  it('does NOT return relative every-n-days habit when not yet due (completed yesterday, n=3)', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
+      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+    });
+    await appendHabitCompleted(eventStore, habitId, yesterday);
+    // Last completed yesterday, interval 3 → next due in 2 days → NOT due today
+    const habits = await projection.getHabitsForDate(today, { asOf: today });
+    expect(habits.some(h => h.id === habitId)).toBe(false);
+  });
+
+  it('does NOT return relative habit for a historical date when there is no completion on that date', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily', mode: 'relative' },
+      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+    });
+    const habits = await projection.getHabitsForDate(yesterday, { asOf: today });
+    expect(habits.some(h => h.id === habitId)).toBe(false);
+  });
+
+  it('DOES return relative habit for a historical date when there IS a completion on that date', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily', mode: 'relative' },
+      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+    });
+    await appendHabitCompleted(eventStore, habitId, yesterday);
+    const habits = await projection.getHabitsForDate(yesterday, { asOf: today });
+    expect(habits.some(h => h.id === habitId)).toBe(true);
+  });
+
+  it('archived relative habit is excluded from getHabitsForDate', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily', mode: 'relative' },
+      createdAt: `${yesterday}T00:00:00.000Z`,
+    });
+    await appendHabitArchived(eventStore, habitId);
+    const habits = await projection.getHabitsForDate(today, { asOf: today });
+    expect(habits.some(h => h.id === habitId)).toBe(false);
+  });
+
+  it('isScheduledToday is true for relative habit when overdue', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
+      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+    });
+    // Completed 4 days ago → next due 1 day ago → overdue
+    await appendHabitCompleted(eventStore, habitId, makeDate(-4));
+    const habit = await projection.getHabitById(habitId, { asOf: today });
+    expect(habit!.isScheduledToday).toBe(true);
+  });
+
+  it('isScheduledToday is false for relative habit when not yet due (completed today already)', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
+      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+    });
+    // Completed today → next due in 3 days → not due today anymore
+    await appendHabitCompleted(eventStore, habitId, today);
+    const habit = await projection.getHabitById(habitId, { asOf: today });
+    expect(habit!.isScheduledToday).toBe(false);
+  });
+
+  it('history for relative habit shows completed on completion dates, not-scheduled on all other past days', async () => {
+    const createdAt = `${makeDate(-5)}T00:00:00.000Z`;
+    const completionDate = makeDate(-3);
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily', mode: 'relative' },
+      createdAt,
+    });
+    await appendHabitCompleted(eventStore, habitId, completionDate);
+    const habit = await projection.getHabitById(habitId, { asOf: today });
+    const history = habit!.history;
+
+    // Completion date should be 'completed'
+    const completionEntry = history.find(h => h.date === completionDate);
+    expect(completionEntry?.status).toBe('completed');
+
+    // Past days (that are not today and not completion date) should be 'not-scheduled'
+    const pastNonCompletion = history.filter(
+      h => h.date < today && h.date >= makeDate(-5) && h.date !== completionDate
+    );
+    for (const entry of pastNonCompletion) {
+      expect(entry.status).toBe('not-scheduled');
+    }
+  });
+
+  it('relative weekly habit uses 7-day interval not targetDays (complete Thursday → due following Thursday)', async () => {
+    // Thursday = day 4
+    // Use a known Thursday: 2026-01-01 is a Thursday
+    const thursday = '2026-01-01';
+    const nextThursday = '2026-01-08';
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'weekly', targetDays: [4], mode: 'relative' },
+      createdAt: `${thursday}T00:00:00.000Z`,
+    });
+    await appendHabitCompleted(eventStore, habitId, thursday);
+    // Should be due on next Thursday
+    const habits = await projection.getHabitsForDate(nextThursday, { asOf: nextThursday });
+    expect(habits.some(h => h.id === habitId)).toBe(true);
+    // Should NOT be due on the day before next Thursday
+    const wednesday = '2026-01-07';
+    const habitsWed = await projection.getHabitsForDate(wednesday, { asOf: wednesday });
+    expect(habitsWed.some(h => h.id === habitId)).toBe(false);
+  });
+});

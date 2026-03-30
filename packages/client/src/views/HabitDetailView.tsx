@@ -16,24 +16,24 @@ import type { HabitFrequency, HabitReadModel } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
 import { HabitHistoryGrid } from '../components/HabitHistoryGrid';
 import { FrequencyPicker } from '../components/FrequencyPicker';
-import type { FrequencyType } from '../components/FrequencyPicker';
+import type { FrequencyType, ScheduleMode } from '../components/FrequencyPicker';
 import { ROUTES } from '../routes';
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatFrequency(habit: HabitReadModel): string {
   const freq = habit.frequency;
+  const relativeSuffix = freq.mode === 'relative' ? ' · Relative' : '';
   if (freq.type === 'daily') return 'Daily';
   if (freq.type === 'weekly') {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const names = freq.targetDays.map((d) => days[d] ?? '').filter(Boolean);
-    return `Weekly (${names.join(', ')})`;
+    return `Weekly (${names.join(', ')})${relativeSuffix}`;
   }
-  return `Every ${freq.n} days`;
+  return `Every ${freq.n} days${relativeSuffix}`;
 }
 
 function frequencyEqual(a: HabitFrequency, b: HabitFrequency): boolean {
   if (a.type !== b.type) return false;
+  if ((a.mode ?? 'fixed') !== (b.mode ?? 'fixed')) return false;
   if (a.type === 'weekly' && b.type === 'weekly') {
     return [...a.targetDays].sort().join() === [...b.targetDays].sort().join();
   }
@@ -53,6 +53,8 @@ export function HabitDetailView() {
     updateHabitTitleHandler,
     updateHabitFrequencyHandler,
     archiveHabitHandler,
+    setHabitNotificationTimeHandler,
+    clearHabitNotificationTimeHandler,
   } = useApp();
 
   const [habit, setHabit] = useState<HabitReadModel | null | undefined>(undefined); // undefined = loading
@@ -67,6 +69,8 @@ export function HabitDetailView() {
   const [editFreqType, setEditFreqType] = useState<FrequencyType>('daily');
   const [editTargetDays, setEditTargetDays] = useState<number[]>([new Date().getDay()]);
   const [editNDays, setEditNDays] = useState(2);
+  const [editScheduleMode, setEditScheduleMode] = useState<ScheduleMode>('fixed');
+  const [editNotificationTime, setEditNotificationTime] = useState('');
   const [isFreqSaving, setIsFreqSaving] = useState(false);
   const [freqSaveError, setFreqSaveError] = useState('');
 
@@ -101,6 +105,10 @@ export function HabitDetailView() {
       habit.frequency.type === 'weekly' ? [...habit.frequency.targetDays] : [new Date().getDay()],
     );
     setEditNDays(habit.frequency.type === 'every-n-days' ? habit.frequency.n : 2);
+    setEditScheduleMode(
+      habit.frequency.type === 'daily' ? 'fixed' : (habit.frequency.mode ?? 'fixed'),
+    );
+    setEditNotificationTime(habit.notificationTime ?? '');
   }, [isSettingsOpen, habit?.id]);
 
   // ── Loading / not found ──
@@ -170,22 +178,40 @@ export function HabitDetailView() {
       case 'daily':
         return { type: 'daily' };
       case 'weekly':
-        return { type: 'weekly', targetDays: editTargetDays as Array<0 | 1 | 2 | 3 | 4 | 5 | 6> };
+        return { type: 'weekly', targetDays: editTargetDays as Array<0 | 1 | 2 | 3 | 4 | 5 | 6>, mode: editScheduleMode };
       case 'every-n-days':
-        return { type: 'every-n-days', n: editNDays };
+        return { type: 'every-n-days', n: editNDays, mode: editScheduleMode };
     }
   };
 
-  const isFreqUnchanged = frequencyEqual(habit.frequency, buildEditFrequency());
+  const isNotificationTimeUnchanged = editNotificationTime === (habit.notificationTime ?? '');
+  const isFreqBodyUnchanged = frequencyEqual(habit.frequency, buildEditFrequency());
+  const isFreqUnchanged = isFreqBodyUnchanged && isNotificationTimeUnchanged;
 
   const saveFrequency = async () => {
     setIsFreqSaving(true);
     setFreqSaveError('');
     try {
-      await updateHabitFrequencyHandler.handle({
-        habitId: habit.id,
-        frequency: buildEditFrequency(),
-      });
+      // Only dispatch frequency event when frequency actually changed
+      if (!isFreqBodyUnchanged) {
+        await updateHabitFrequencyHandler.handle({
+          habitId: habit.id,
+          frequency: buildEditFrequency(),
+        });
+      }
+
+      // Handle notification time changes
+      if (!isNotificationTimeUnchanged) {
+        if (editNotificationTime) {
+          await setHabitNotificationTimeHandler.handle({
+            habitId: habit.id,
+            notificationTime: editNotificationTime,
+          });
+        } else {
+          await clearHabitNotificationTimeHandler.handle({ habitId: habit.id });
+        }
+      }
+
       setIsSettingsOpen(false);
     } catch (err) {
       setFreqSaveError(err instanceof Error ? err.message : 'Failed to update frequency');
@@ -331,6 +357,26 @@ export function HabitDetailView() {
                   onTargetDaysChange={setEditTargetDays}
                   nDays={editNDays}
                   onNDaysChange={setEditNDays}
+                  scheduleMode={editScheduleMode}
+                  onScheduleModeChange={setEditScheduleMode}
+                />
+              </div>
+
+              <div className="mt-4">
+                <label
+                  htmlFor="habit-notification-time"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  Notification time
+                </label>
+                <input
+                  id="habit-notification-time"
+                  type="time"
+                  value={editNotificationTime}
+                  onChange={(e) => setEditNotificationTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                             bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 

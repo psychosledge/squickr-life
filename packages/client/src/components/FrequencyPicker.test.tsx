@@ -10,6 +10,8 @@ const defaultProps = {
   onTargetDaysChange: vi.fn(),
   nDays: 2,
   onNDaysChange: vi.fn(),
+  scheduleMode: 'fixed' as const,
+  onScheduleModeChange: vi.fn(),
 };
 
 describe('FrequencyPicker', () => {
@@ -218,5 +220,73 @@ describe('FrequencyPicker', () => {
     expect(screen.getByRole('button', { name: 'Sunday' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button', { name: 'Monday' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Wednesday' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  // ── Schedule mode toggle tests ───────────────────────────────────────────
+
+  describe('scheduleMode toggle', () => {
+    it('renders schedule mode toggle for every-n-days frequency', () => {
+      render(<FrequencyPicker {...defaultProps} frequencyType="every-n-days" scheduleMode="fixed" />);
+
+      expect(screen.getByRole('group', { name: /schedule mode/i })).toBeInTheDocument();
+    });
+
+    it('does NOT render schedule mode toggle for daily frequency', () => {
+      render(<FrequencyPicker {...defaultProps} frequencyType="daily" scheduleMode="fixed" />);
+
+      expect(screen.queryByRole('group', { name: /schedule mode/i })).not.toBeInTheDocument();
+    });
+
+    it('does NOT render schedule mode toggle for weekly frequency', () => {
+      render(<FrequencyPicker {...defaultProps} frequencyType="weekly" scheduleMode="fixed" />);
+
+      expect(screen.queryByRole('group', { name: /schedule mode/i })).not.toBeInTheDocument();
+    });
+
+    it('shows "Fixed" button pressed when scheduleMode is fixed', () => {
+      render(<FrequencyPicker {...defaultProps} frequencyType="every-n-days" scheduleMode="fixed" />);
+
+      expect(screen.getByRole('button', { name: /fixed/i })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: /relative/i })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('shows "Relative" button pressed when scheduleMode is relative', () => {
+      render(<FrequencyPicker {...defaultProps} frequencyType="every-n-days" scheduleMode="relative" />);
+
+      expect(screen.getByRole('button', { name: /fixed/i })).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByRole('button', { name: /relative/i })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('calls onScheduleModeChange with "relative" when Relative button clicked', async () => {
+      const user = userEvent.setup();
+      const onScheduleModeChange = vi.fn();
+      render(
+        <FrequencyPicker
+          {...defaultProps}
+          frequencyType="every-n-days"
+          scheduleMode="fixed"
+          onScheduleModeChange={onScheduleModeChange}
+        />,
+      );
+
+      await user.click(screen.getByRole('button', { name: /relative/i }));
+      expect(onScheduleModeChange).toHaveBeenCalledWith('relative');
+    });
+
+    it('calls onScheduleModeChange with "fixed" when Fixed button clicked', async () => {
+      const user = userEvent.setup();
+      const onScheduleModeChange = vi.fn();
+      render(
+        <FrequencyPicker
+          {...defaultProps}
+          frequencyType="every-n-days"
+          scheduleMode="relative"
+          onScheduleModeChange={onScheduleModeChange}
+        />,
+      );
+
+      await user.click(screen.getByRole('button', { name: /fixed/i }));
+      expect(onScheduleModeChange).toHaveBeenCalledWith('fixed');
+    });
   });
 });

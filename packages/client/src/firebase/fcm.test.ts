@@ -26,6 +26,7 @@ vi.mock('firebase/messaging', () => ({
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn(),
   setDoc: vi.fn(),
+  updateDoc: vi.fn(),
   serverTimestamp: vi.fn(() => ({ _isServerTimestamp: true })),
   // keep the existing global mock fields for safety
   initializeFirestore: vi.fn(() => ({})),
@@ -52,11 +53,9 @@ Object.defineProperty(globalThis, 'navigator', {
 });
 
 // ── Import module under test (after mocks are hoisted) ─────────────────────
-import { registerFcmToken } from './fcm';
+import { registerFcmToken, FCM_REQUESTED_KEY, FCM_TOKEN_STORED_KEY } from './fcm';
 import { isSupported, getMessaging, getToken } from 'firebase/messaging';
-import { doc, setDoc } from 'firebase/firestore';
-
-const FCM_REQUESTED_KEY = 'fcm-permission-requested';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -94,14 +93,14 @@ describe('registerFcmToken', () => {
     vi.restoreAllMocks();
   });
 
-  // ── Test 1 ──────────────────────────────────────────────────────────────
-  it('does NOT call Notification.requestPermission if localStorage already has the gate key', async () => {
+  // ── Test 1 (rewritten) ─────────────────────────────────────────────────
+  it('does NOT call Notification.requestPermission when FCM_REQUESTED_KEY already set (retry path)', async () => {
     localStorage.setItem(FCM_REQUESTED_KEY, '1');
+    setupGranted();
     const spy = vi.spyOn(Notification, 'requestPermission');
-
     await registerFcmToken('user1');
-
     expect(spy).not.toHaveBeenCalled();
+    expect(setDoc).toHaveBeenCalledTimes(1);
   });
 
   // ── Test 2 ──────────────────────────────────────────────────────────────
@@ -227,5 +226,67 @@ describe('registerFcmToken', () => {
       expect.anything(),
       expect.objectContaining({ serviceWorkerRegistration: mockSwRegistration }),
     );
+  });
+
+  // ── New tests ────────────────────────────────────────────────────────────
+
+  it('takes heartbeat path when both gate keys are present — calls updateDoc not setDoc', async () => {
+    localStorage.setItem(FCM_REQUESTED_KEY, '1');
+    localStorage.setItem(FCM_TOKEN_STORED_KEY, '1');
+    (isSupported as Mock).mockResolvedValue(true);
+    (getMessaging as Mock).mockReturnValue({ name: 'messaging' });
+    (getToken as Mock).mockResolvedValue('existing-token');
+    (updateDoc as Mock).mockResolvedValue(undefined);
+    (doc as Mock).mockReturnValue({ path: 'users/user1/fcmTokens/hashed' });
+    await registerFcmToken('user1');
+    expect(setDoc).not.toHaveBeenCalled();
+    expect(updateDoc).toHaveBeenCalledTimes(1);
+
+    // Verify the heartbeat payload shape includes all required fields
+    const payload = (updateDoc as Mock).mock.calls[0][1];
+    expect(payload).toMatchObject({
+      lastSeenAt: expect.anything(),
+      appVersion: expect.any(String),
+      timezone: expect.any(String),
+    });
+  });  it('clears FCM_TOKEN_STORED_KEY on heartbeat when getToken returns null', async () => {
+    localStorage.setItem(FCM_REQUESTED_KEY, '1');
+    localStorage.setItem(FCM_TOKEN_STORED_KEY, '1');
+    (isSupported as Mock).mockResolvedValue(true);
+    (getMessaging as Mock).mockReturnValue({ name: 'messaging' });
+    (getToken as Mock).mockResolvedValue(null);
+    await registerFcmToken('user1');
+    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBeNull();
+    expect(setDoc).not.toHaveBeenCalled();
+  });
+
+  it('sets FCM_TOKEN_STORED_KEY after successful Firestore write', async () => {
+    setupGranted();
+    await registerFcmToken('user1');
+    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBe('1');
+  });
+
+  it('does NOT set FCM_TOKEN_STORED_KEY if getToken returns null', async () => {
+    vi.spyOn(Notification, 'requestPermission').mockResolvedValue('granted');
+    (isSupported as Mock).mockResolvedValue(true);
+    (getMessaging as Mock).mockReturnValue({ name: 'messaging' });
+    (getToken as Mock).mockResolvedValue(null);
+    await registerFcmToken('user1');
+    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBeNull();
+  });
+
+  it('does NOT set FCM_TOKEN_STORED_KEY if setDoc throws', async () => {
+    setupGranted();
+    (setDoc as Mock).mockRejectedValue(new Error('write failed'));
+    await registerFcmToken('user1');
+    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBeNull();
+  });
+
+  it('retries registration without re-prompting when only FCM_REQUESTED_KEY is set', async () => {
+    localStorage.setItem(FCM_REQUESTED_KEY, '1');
+    setupGranted();
+    await registerFcmToken('user1');
+    expect(setDoc).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBe('1');
   });
 });

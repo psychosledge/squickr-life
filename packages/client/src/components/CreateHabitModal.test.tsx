@@ -174,7 +174,7 @@ describe('CreateHabitModal', () => {
 
     const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
     expect(cmd.title).toBe('Water plants');
-    expect(cmd.frequency).toEqual({ type: 'every-n-days', n: 2 });
+    expect(cmd.frequency).toEqual({ type: 'every-n-days', n: 2, mode: 'fixed' });
   });
 
   it('notification time: field is enabled', () => {
@@ -461,7 +461,7 @@ describe('CreateHabitModal', () => {
     });
 
     const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
-    expect(cmd.frequency).toEqual({ type: 'every-n-days', n: 7 });
+    expect(cmd.frequency).toEqual({ type: 'every-n-days', n: 7, mode: 'fixed' });
   });
 
   it('notification time: setting a value includes notificationTime in command', async () => {
@@ -611,5 +611,70 @@ describe('CreateHabitModal', () => {
 
     const reopenedNotifInput = screen.getByLabelText(/Notification Time/i) as HTMLInputElement;
     expect(reopenedNotifInput.value).toBe('');
+  });
+
+  // ── scheduleMode tests ───────────────────────────────────────────────────
+
+  it('scheduleMode: defaults to fixed — submitted frequency has no mode set', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CreateHabitModal isOpen={true} onClose={vi.fn()} onSubmit={onSubmit} />,
+    );
+
+    await user.type(screen.getByLabelText('Habit Name'), 'Water plants');
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'every-n-days');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+
+    const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
+    // mode is 'fixed' by default — not included in frequency (undefined or 'fixed')
+    expect((cmd.frequency as { mode?: string }).mode ?? 'fixed').toBe('fixed');
+  });
+
+  it('scheduleMode: selecting Relative passes mode=relative in frequency', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CreateHabitModal isOpen={true} onClose={vi.fn()} onSubmit={onSubmit} />,
+    );
+
+    await user.type(screen.getByLabelText('Habit Name'), 'Water plants');
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'every-n-days');
+
+    // Click the Relative schedule mode button
+    await user.click(screen.getByRole('button', { name: /relative/i }));
+
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+
+    const cmd: CreateHabitCommand = onSubmit.mock.calls[0][0];
+    expect((cmd.frequency as { mode?: string }).mode).toBe('relative');
+  });
+
+  it('scheduleMode: resets to fixed on cancel + reopen', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <CreateHabitModal isOpen={true} onClose={onClose} onSubmit={vi.fn()} />,
+    );
+
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'every-n-days');
+    await user.click(screen.getByRole('button', { name: /relative/i }));
+
+    // Relative button should be pressed
+    expect(screen.getByRole('button', { name: /relative/i })).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    rerender(<CreateHabitModal isOpen={true} onClose={onClose} onSubmit={vi.fn()} />);
+
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'every-n-days');
+
+    // Should be back to fixed after reset
+    expect(screen.getByRole('button', { name: /fixed/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /relative/i })).toHaveAttribute('aria-pressed', 'false');
   });
 });

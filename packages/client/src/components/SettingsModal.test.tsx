@@ -20,8 +20,13 @@ vi.mock('../context/AppContext', () => ({
   useApp: vi.fn(),
 }));
 
+vi.mock('../hooks/useFcmRegistrationStatus', () => ({
+  useFcmRegistrationStatus: vi.fn(),
+}));
+
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useApp } from '../context/AppContext';
+import { useFcmRegistrationStatus } from '../hooks/useFcmRegistrationStatus';
 
 describe('SettingsModal', () => {
   let mockEventStore: IEventStore;
@@ -60,6 +65,9 @@ describe('SettingsModal', () => {
       autoFavoriteRecentMonthlyLogs: false,
       autoFavoriteCalendarWithActiveTasks: false,
     });
+
+    // Mock useFcmRegistrationStatus hook with default
+    vi.mocked(useFcmRegistrationStatus).mockReturnValue('unregistered');
   });
 
   it('should not render when closed', () => {
@@ -354,52 +362,43 @@ describe('SettingsModal', () => {
     });
   });
 
-  // ── Tab navigation tests ───────────────────────────────────────────────────
+  // ── FCM status row tests ──────────────────────────────────────────────────
 
-  describe('tab navigation', () => {
-    it('renders "Preferences" tab button', () => {
+  describe('FCM status row', () => {
+    it('shows "Push Notifications" label', () => {
       render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
 
-      expect(screen.getByRole('tab', { name: /preferences/i })).toBeInTheDocument();
+      expect(screen.getByText('Push Notifications')).toBeInTheDocument();
     });
 
-    it('renders "Notifications" tab button', () => {
+    it('shows "Not registered" chip when status is unregistered', () => {
+      vi.mocked(useFcmRegistrationStatus).mockReturnValue('unregistered');
       render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
 
-      expect(screen.getByRole('tab', { name: /notifications/i })).toBeInTheDocument();
+      expect(screen.getByText('Not registered')).toBeInTheDocument();
     });
 
-    it('shows preferences content by default', () => {
+    it('shows "Pending" chip when status is pending', () => {
+      vi.mocked(useFcmRegistrationStatus).mockReturnValue('pending');
       render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
 
-      expect(screen.getByText('User Preferences')).toBeInTheDocument();
-      expect(screen.getByLabelText('Default Completed Task Behavior')).toBeInTheDocument();
+      expect(screen.getByText('Pending')).toBeInTheDocument();
     });
 
-    it('clicking "Notifications" tab shows NotificationsTab content', async () => {
-      const user = userEvent.setup();
-
+    it('shows "Registered" chip when status is registered', () => {
+      vi.mocked(useFcmRegistrationStatus).mockReturnValue('registered');
       render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
 
-      await user.click(screen.getByRole('tab', { name: /notifications/i }));
-
-      // NotificationsTab renders — we should see the notifications content
-      // (either "No habits yet" or the habits list)
-      expect(screen.queryByLabelText('Default Completed Task Behavior')).not.toBeInTheDocument();
+      expect(screen.getByText('Registered')).toBeInTheDocument();
     });
 
-    it('clicking "Preferences" tab after switching to Notifications switches back', async () => {
-      const user = userEvent.setup();
-
+    it('chip has accessible aria-label reflecting status', () => {
+      vi.mocked(useFcmRegistrationStatus).mockReturnValue('registered');
       render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
 
-      // Go to Notifications
-      await user.click(screen.getByRole('tab', { name: /notifications/i }));
-
-      // Go back to Preferences
-      await user.click(screen.getByRole('tab', { name: /preferences/i }));
-
-      expect(screen.getByLabelText('Default Completed Task Behavior')).toBeInTheDocument();
+      expect(
+        screen.getByLabelText('Push notification status: registered'),
+      ).toBeInTheDocument();
     });
   });
 });

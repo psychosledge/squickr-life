@@ -71,6 +71,26 @@ function daysDiff(a: string, b: string): number {
   return (dateKeyToMs(b) - dateKeyToMs(a)) / 86_400_000;
 }
 
+function computeNextDueDateRelative(state: HabitState): string | null {
+  const completedDates = [...state.completions.keys()].filter(d => !state.reverted.has(d));
+
+  if (completedDates.length === 0) {
+    return state.createdAt.slice(0, 10);
+  }
+
+  const lastCompletion = completedDates.sort().at(-1)!;
+  const freq = state.frequency;
+
+  let intervalDays: number;
+  switch (freq.type) {
+    case 'daily': intervalDays = 1; break;
+    case 'weekly': intervalDays = 7; break;
+    case 'every-n-days': intervalDays = freq.n; break;
+  }
+
+  return msToDateKey(dateKeyToMs(lastCompletion) + intervalDays * 86_400_000);
+}
+
 /** Monday of the ISO week that contains `dateKey`, using UTC-midnight local day.
  *  This must match the targetDays derivation (`new Date(dateKey).getDay()`). */
 function weekStart(dateKey: string): string {
@@ -85,6 +105,8 @@ function weekStart(dateKey: string): string {
 // ============================================================================
 
 function isScheduledOn(freq: HabitFrequency, dateKey: string, createdAt: string): boolean {
+  if (freq.mode === 'relative') return false;
+
   switch (freq.type) {
     case 'daily':
       return true;
@@ -110,38 +132,42 @@ function buildHistory(
 ): HabitDayStatus[] {
   const todayMs = dateKeyToMs(today);
   const history: HabitDayStatus[] = [];
+  const isRelative = state.frequency.mode === 'relative';
 
   for (let i = 29; i >= 0; i--) {
     const dateMs = todayMs - i * 86_400_000;
     const dateKey = msToDateKey(dateMs);
-    const isPast = i > 0; // index 0 = today
-    const isFuture = false; // we only look back 29 days
 
-    let status: HabitDayStatus['status'];
-
-    const hasCompletion = state.completions.has(dateKey) && !state.reverted.has(dateKey);
-
-    // NEW: Days before the habit was created are not-scheduled
     const createdKey = state.createdAt.slice(0, 10);
     if (dateKey < createdKey) {
       history.push({ date: dateKey, status: 'not-scheduled' });
       continue;
     }
 
+    const hasCompletion = state.completions.has(dateKey) && !state.reverted.has(dateKey);
+
     if (hasCompletion) {
-      status = 'completed';
-    } else if (isFuture) {
-      status = 'future';
-    } else if (!isScheduledOn(state.frequency, dateKey, state.createdAt)) {
-      status = 'not-scheduled';
-    } else if (isPast || dateKey === today) {
-      // Today is either 'missed' (if not completed) or has already been handled above
-      status = 'missed';
-    } else {
-      status = 'future';
+      history.push({ date: dateKey, status: 'completed' });
+      continue;
     }
 
-    history.push({ date: dateKey, status });
+    if (isRelative) {
+      const isPastDay = i > 0;
+      if (isPastDay) {
+        history.push({ date: dateKey, status: 'not-scheduled' });
+      } else {
+        const nextDue = computeNextDueDateRelative(state);
+        const isDueToday = nextDue !== null && nextDue <= today;
+        history.push({ date: dateKey, status: isDueToday ? 'missed' : 'not-scheduled' });
+      }
+      continue;
+    }
+
+    if (!isScheduledOn(state.frequency, dateKey, state.createdAt)) {
+      history.push({ date: dateKey, status: 'not-scheduled' });
+    } else {
+      history.push({ date: dateKey, status: 'missed' });
+    }
   }
 
   return history;
@@ -472,7 +498,12 @@ function buildReadModel(state: HabitState, today: string): HabitReadModel {
   const currentStreak = computeCurrentStreak(state, today);
   const longestStreak = Math.max(computeLongestStreak(state, today), currentStreak);
 
-  const isScheduledToday = isScheduledOn(state.frequency, today, state.createdAt);
+  const isScheduledToday = state.frequency.mode === 'relative'
+    ? (() => {
+        const nextDue = computeNextDueDateRelative(state);
+        return nextDue !== null && nextDue <= today;
+      })()
+    : isScheduledOn(state.frequency, today, state.createdAt);
   const isCompletedToday =
     state.completions.has(today) && !state.reverted.has(today);
 
@@ -548,9 +579,19 @@ export class HabitProjection {
   async getHabitsForDate(date: string, options?: { asOf?: string }): Promise<HabitReadModel[]> {
     const today = options?.asOf ?? todayKey();
     const states = await this.loadStates();
+
     return [...states.values()]
       .filter(s => !s.archivedAt)
-      .filter(s => isScheduledOn(s.frequency, date, s.createdAt))
+      .filter(s => {
+        if (s.frequency.mode === 'relative') {
+          if (date !== today) {
+            return s.completions.has(date) && !s.reverted.has(date);
+          }
+          const nextDue = computeNextDueDateRelative(s);
+          return nextDue !== null && nextDue <= today;
+        }
+        return isScheduledOn(s.frequency, date, s.createdAt);
+      })
       .sort((a, b) => a.order.localeCompare(b.order))
       .map(s => buildReadModel(s, today));
   }
