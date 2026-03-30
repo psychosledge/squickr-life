@@ -1,0 +1,19 @@
+Use the sam subagent to implement the following using TDD (Red-Green-Refactor):
+
+$ARGUMENTS
+
+Requirements:
+1. Write tests FIRST
+2. Run tests to verify they fail (RED)
+3. Implement minimal code to pass (GREEN)
+4. Refactor while keeping tests green
+5. Ensure all tests pass
+6. Report back with summary
+
+Project structure:
+- Domain: packages/domain/src/
+- Infrastructure: packages/infrastructure/src/
+- Tests: packages/domain/tests/ or packages/infrastructure/tests/
+- UI: packages/client/src/components/
+
+Follow event sourcing patterns: Commands → Events → Projections
