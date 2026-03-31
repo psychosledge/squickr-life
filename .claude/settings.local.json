@@ -1,13 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(gh run:*)",
-      "Bash(pnpm test:*)",
-      "Bash(pnpm --filter client test run)",
-      "Bash(npx vitest:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(grep \"version\" packages/domain/package.json)"
+      "Bash(git:*)",
+      "Bash(pnpm:*)",
+      "Bash(gh:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)"
     ]
   }
 }
