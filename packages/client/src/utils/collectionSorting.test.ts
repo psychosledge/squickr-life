@@ -402,19 +402,16 @@ describe('sortCollectionsHierarchically', () => {
       const currentMonth = now.getMonth() + 1; // 0-based
       const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
       
-      // Get last month
-      const lastMonthDate = new Date(now);
-      lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+      // Get last month (anchor to day 1 to avoid month-end overflow)
+      const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lastMonthStr = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}`;
-      
-      // Get next month
-      const nextMonthDate = new Date(now);
-      nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+
+      // Get next month (anchor to day 1 to avoid month-end overflow)
+      const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
       const nextMonthStr = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
-      
-      // Get old month (not auto-favorited)
-      const oldMonthDate = new Date(now);
-      oldMonthDate.setMonth(oldMonthDate.getMonth() - 5);
+
+      // Get old month (anchor to day 1 to avoid month-end overflow)
+      const oldMonthDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
       const oldMonthStr = `${oldMonthDate.getFullYear()}-${String(oldMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
       const collections: Collection[] = [
@@ -532,9 +529,8 @@ describe('sortCollectionsHierarchically', () => {
       const currentMonth = now.getMonth() + 1;
       const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
       
-      // Get old month (not auto-favorited, but manually favorited)
-      const oldMonthDate = new Date(now);
-      oldMonthDate.setMonth(oldMonthDate.getMonth() - 5);
+      // Get old month (anchor to day 1 to avoid month-end overflow)
+      const oldMonthDate = new Date(now.getFullYear(), now.getMonth() - 5, 1);
       const oldMonthStr = `${oldMonthDate.getFullYear()}-${String(oldMonthDate.getMonth() + 1).padStart(2, '0')}`;
 
       const collections: Collection[] = [

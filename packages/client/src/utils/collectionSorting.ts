@@ -228,7 +228,7 @@ export function sortCollectionsHierarchically(
   
   // Build calendar hierarchy (interwoven monthly and daily logs)
   // Split into: older (before yesterday), and future (after tomorrow)
-  const yesterday = now.toISOString().split('T')[0]!;
+  const todayUTC = now.toISOString().split('T')[0]!;
   const yesterdayDate = new Date(now.getTime() - 86400000);
   const yesterdayYearMonth = yesterdayDate.toISOString().substring(0, 7);
   const tomorrowDate = new Date(now.getTime() + 86400000);
@@ -287,8 +287,8 @@ export function sortCollectionsHierarchically(
       futureCalendarLogs.push(...dailies);
     } else {
       // Month contains yesterday/today/tomorrow - need to split dailies
-      const olderDailies = dailies.filter(d => (d.date || '') < yesterday);
-      const futureDailies = dailies.filter(d => (d.date || '') >= yesterday);
+      const olderDailies = dailies.filter(d => (d.date || '') < todayUTC);
+      const futureDailies = dailies.filter(d => (d.date || '') >= todayUTC);
       
       // Monthly log comes BEFORE the dailies of that month
       // Put monthly in older section if there are any older dailies
