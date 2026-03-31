@@ -26,7 +26,9 @@ Apply semver bump to the current version:
 
 ## Step 4 — Update all package.json files
 
-Update the `"version"` field in all three packages to the new version:
+Use the Read tool to read each file, then the Edit tool to update the `"version"` field to the new version. Do not use shell commands for this step.
+
+Files to update:
 - `packages/domain/package.json`
 - `packages/client/package.json`
 - `packages/infrastructure/package.json`
