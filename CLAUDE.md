@@ -10,6 +10,8 @@ Event-sourced bullet journal PWA. See `docs/README.md` for full documentation.
 | **sam** | Feature implementation (TDD) | `/implement <feature>` |
 | **casey** | Code review, test coverage | `/review` |
 
+> `/design` and `/implement` use built-in skills. `/review` is a project command with live git context.
+
 **Development loop:** `/design` → user approves → `/implement` → `/review` → user tests → commit
 
 ## Tech Stack
@@ -46,6 +48,15 @@ pnpm test run              # run all domain tests
 cd packages/domain && pnpm test run
 cd packages/client && pnpm dev
 ```
+
+## Design Outputs
+
+When designing features or architecture, alex should provide:
+
+- Event model (if applicable)
+- SOLID principle analysis
+- Tradeoffs and alternatives considered
+- ADR format for architectural decisions (reference `docs/architecture-decisions.md`)
 
 ## Key Files
 
