@@ -3,7 +3,7 @@ Ship a new release: run all tests, bump versions, tag, and push.
 ## Step 1 — Run all tests
 
 ```bash
-pnpm test run
+pnpm test
 ```
 
 If any tests fail, **stop immediately** and report the failures. Do not proceed.
