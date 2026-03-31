@@ -1,7 +1,5 @@
 /**
  * CollectionDetailView Tests
- * 
- * Phase 2C: Collection Detail View - Main view component
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -62,6 +60,65 @@ const mockEntries: Entry[] = [
   },
 ];
 
+// ─── Shared factory ──────────────────────────────────────────────────────────
+// Builds a complete AppContext mock with sensible defaults.  Pass `overrides`
+// to replace specific projections or handlers for a particular describe block.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildMockAppContext(overrides: Partial<any> = {}): any {
+  return {
+    eventStore: {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    },
+    entryProjection: {
+      getEntriesByCollection: vi.fn().mockResolvedValue([]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+    },
+    taskProjection: {} as any,
+    collectionProjection: {
+      getCollections: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    },
+    createCollectionHandler: {} as any,
+    migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+    userPreferences: DEFAULT_USER_PREFERENCES,
+    isAppReady: true,
+    ...overrides,
+  };
+}
+
 describe('CollectionDetailView', () => {
   let mockCollectionProjection: any;
   let mockEntryProjection: any;
@@ -113,42 +170,15 @@ describe('CollectionDetailView', () => {
   });
 
   function renderView(collectionId = 'col-1') {
-    const mockAppContext = {
+    const appContext = buildMockAppContext({
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
-      createCollectionHandler: {} as any,
-      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
-      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      userPreferences: DEFAULT_USER_PREFERENCES,
-      isAppReady: true,
-      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-    };
+    });
 
     return render(
       <MemoryRouter initialEntries={[`/collection/${collectionId}`]}>
-        <AppProvider value={mockAppContext}>
+        <AppProvider value={appContext}>
           <Routes>
             <Route path="/collection/:id" element={<CollectionDetailView />} />
           </Routes>
@@ -328,42 +358,16 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
   });
 
   function renderUncategorizedView() {
-    const mockAppContext = {
+    const appContext = buildMockAppContext({
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
       taskProjection: mockTaskProjection,
       collectionProjection: mockCollectionProjection,
-      createCollectionHandler: {} as any,
-      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
-      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      userPreferences: DEFAULT_USER_PREFERENCES,
-      isAppReady: true,
-      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-    };
+    });
 
     return render(
       <MemoryRouter initialEntries={[`/collection/${UNCATEGORIZED_COLLECTION_ID}`]}>
-        <AppProvider value={mockAppContext}>
+        <AppProvider value={appContext}>
           <Routes>
             <Route path="/collection/:id" element={<CollectionDetailView />} />
           </Routes>
@@ -541,42 +545,15 @@ describe('CollectionDetailView - Collapse Completed Tasks Feature', () => {
   function renderViewWithSettings(collection = mockCollectionWithSettings) {
     mockCollectionProjection.getCollections.mockResolvedValue([collection]);
 
-    const mockAppContext = {
+    const appContext = buildMockAppContext({
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
-      createCollectionHandler: {} as any,
-      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any, // Phase 4
-      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      userPreferences: DEFAULT_USER_PREFERENCES,
-      isAppReady: true,
-    };
+    });
 
     return render(
       <MemoryRouter initialEntries={['/collection/col-1']}>
-        <AppProvider value={mockAppContext}>
+        <AppProvider value={appContext}>
           <Routes>
             <Route path="/collection/:id" element={<CollectionDetailView />} />
           </Routes>
@@ -899,42 +876,15 @@ describe('CollectionDetailView - Auto-Fav Labels (Issue #3)', () => {
   function renderViewWithDate(collection: Collection) {
     mockCollectionProjection.getCollections.mockResolvedValue([collection]);
 
-    const mockAppContext = {
+    const appContext = buildMockAppContext({
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
-      createCollectionHandler: {} as any,
-      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      userPreferences: DEFAULT_USER_PREFERENCES,
-      isAppReady: true,
-    };
+    });
 
     return render(
       <MemoryRouter initialEntries={[`/collection/${collection.id}`]}>
-        <AppProvider value={mockAppContext}>
+        <AppProvider value={appContext}>
           <Routes>
             <Route path="/collection/:id" element={<CollectionDetailView />} />
           </Routes>
@@ -1116,42 +1066,15 @@ describe('CollectionDetailView - Temporal Route Navigation Fix', () => {
   });
 
   function renderTemporalView(temporalDate: 'this-month' | 'last-month' | 'next-month') {
-    const mockAppContext = {
+    const appContext = buildMockAppContext({
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
-      createCollectionHandler: {} as any,
-      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      userPreferences: DEFAULT_USER_PREFERENCES,
-      isAppReady: true,
-    };
+    });
 
     return render(
       <MemoryRouter initialEntries={[`/${temporalDate}`]}>
-        <AppProvider value={mockAppContext}>
+        <AppProvider value={appContext}>
           <Routes>
             <Route path="/this-month" element={<CollectionDetailView date="this-month" />} />
             <Route path="/last-month" element={<CollectionDetailView date="last-month" />} />
@@ -1234,46 +1157,16 @@ describe('CollectionDetailView - Error Toast', () => {
     };
   });
 
-  function buildAppContext(overrides: Partial<any> = {}) {
-    return {
+  function renderView(collectionId = 'col-1', appContextOverrides: Partial<any> = {}) {
+    const appContext = buildMockAppContext({
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
-      createCollectionHandler: {} as any,
-      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeNoteFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveNoteToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeEventFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveEventToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      createHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitTitleHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      updateHabitFrequencyHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      completeHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      revertHabitCompletionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      archiveHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      reorderHabitHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      userPreferences: DEFAULT_USER_PREFERENCES,
-      isAppReady: true,
-      ...overrides,
-    };
-  }
-
-  function renderView(collectionId = 'col-1', appContextOverrides: Partial<any> = {}) {
+      ...appContextOverrides,
+    });
     return render(
       <MemoryRouter initialEntries={[`/collection/${collectionId}`]}>
-        <AppProvider value={buildAppContext(appContextOverrides)}>
+        <AppProvider value={appContext}>
           <Routes>
             <Route path="/collection/:id" element={<CollectionDetailView />} />
           </Routes>
@@ -1568,26 +1461,15 @@ describe('CollectionDetailView - Completed sub-task stays with parent (Fix 3)', 
   });
 
   function renderView() {
-    const mockAppContext = {
+    const appContext = buildMockAppContext({
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
-      createCollectionHandler: {} as any,
-      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-    };
+    });
 
     return render(
       <MemoryRouter initialEntries={['/collection/col-1']}>
-        <AppProvider value={mockAppContext}>
+        <AppProvider value={appContext}>
           <Routes>
             <Route path="/collection/:id" element={<CollectionDetailView />} />
           </Routes>
@@ -1692,26 +1574,15 @@ describe('CollectionDetailView - Ghost entries excluded from selection (Fix 4)',
   });
 
   function renderView() {
-    const mockAppContext = {
+    const appContext = buildMockAppContext({
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
-      createCollectionHandler: {} as any,
-      migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      bulkMigrateEntriesHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreNoteHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      restoreEventHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-    };
+    });
 
     return render(
       <MemoryRouter initialEntries={['/collection/col-a']}>
-        <AppProvider value={mockAppContext}>
+        <AppProvider value={appContext}>
           <Routes>
             <Route path="/collection/:id" element={<CollectionDetailView />} />
           </Routes>
@@ -2071,5 +1942,242 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
 
     // No error toast should appear
     expect(screen.queryByText(/today.*daily log/i)).not.toBeInTheDocument();
+  });
+});
+
+// ─── Issue #7a: handleMigrateAllToToday early-return error path ───────────────
+describe('CollectionDetailView - handleMigrateAllToToday error when created collection not found', () => {
+  const todayDateKey = getLocalDateKey();
+
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  const oldDateKey = getLocalDateKey(twoDaysAgo);
+
+  const oldDailyCollection: Collection = {
+    id: 'old-daily-col',
+    name: 'Old Daily Log',
+    type: 'daily',
+    date: oldDateKey,
+    order: 'a0',
+    createdAt: twoDaysAgo.toISOString(),
+  };
+
+  const openTask: Entry = {
+    id: 'task-open',
+    type: 'task',
+    content: 'Open task',
+    status: 'open',
+    createdAt: twoDaysAgo.toISOString(),
+    order: 'a0',
+    collectionId: 'old-daily-col',
+    collections: [],
+  };
+
+  it('should show an error toast when the newly created collection cannot be found after creation', async () => {
+    const user = userEvent.setup();
+
+    // createCollectionHandler returns a new ID but getCollections never reflects the new collection
+    const mockCreateCollection = vi.fn().mockResolvedValue('ghost-id');
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([openTask]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([openTask]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
+    };
+    const mockCollectionProjection = {
+      // Always returns only the old collection — the newly created one is never found
+      getCollections: vi.fn().mockResolvedValue([oldDailyCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    const appContext = buildMockAppContext({
+      entryProjection: mockEntryProjection,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: { handle: mockCreateCollection } as any,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/collection/old-daily-col']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Open task')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/Migrate all open tasks → Today/i);
+    await user.click(migrateItem);
+
+    // The early-return error branch sets errorMessage to the "Failed to create" message
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/Failed to create today/i);
+    });
+  });
+});
+
+// ─── Issue #7b: move-to-bottom renders completed entries without collapse button ─
+describe('CollectionDetailView - move-to-bottom mode renders completed section', () => {
+  const collectionWithMoveToBottom: Collection = {
+    id: 'col-mtb',
+    name: 'Move To Bottom Collection',
+    type: 'log',
+    order: 'a0',
+    createdAt: '2026-01-27T10:00:00Z',
+    settings: { completedTaskBehavior: 'move-to-bottom' } as any,
+  };
+
+  const entries: Entry[] = [
+    {
+      id: 'active-1',
+      type: 'task',
+      content: 'Active task',
+      status: 'open',
+      createdAt: '2026-01-27T10:00:00Z',
+      order: 'a0',
+      collectionId: 'col-mtb',
+      collections: [],
+    },
+    {
+      id: 'done-1',
+      type: 'task',
+      content: 'Completed task',
+      status: 'completed',
+      completedAt: '2026-01-27T11:00:00Z',
+      createdAt: '2026-01-27T10:01:00Z',
+      order: 'a1',
+      collectionId: 'col-mtb',
+      collections: [],
+    },
+  ];
+
+  it('should render completed entries below a separator without a collapse button', async () => {
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue(entries),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue(entries),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
+    };
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([collectionWithMoveToBottom]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    const appContext = buildMockAppContext({
+      entryProjection: mockEntryProjection,
+      collectionProjection: mockCollectionProjection,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/collection/col-mtb']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Active task')).toBeInTheDocument();
+    });
+
+    // Completed task is visible directly — no need to expand anything
+    expect(screen.getByText('Completed task')).toBeInTheDocument();
+
+    // There should be NO "N completed tasks" collapsible toggle button
+    expect(screen.queryByRole('button', { name: /\d+ completed task/i })).not.toBeInTheDocument();
+  });
+});
+
+// ─── Issue #7c: Habits section renders for daily collections ─────────────────
+describe('CollectionDetailView - Habits section for daily collections', () => {
+  // Use a past date so display is always "Weekday, Month D, YYYY" (not "Today …")
+  const dailyCollection: Collection = {
+    id: 'col-daily',
+    name: 'Thursday, January 15',
+    type: 'daily',
+    date: '2026-01-15',
+    order: 'a0',
+    createdAt: '2026-01-15T00:00:00Z',
+  };
+
+  it('should render the habits section for a daily collection', async () => {
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([dailyCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    const appContext = buildMockAppContext({ collectionProjection: mockCollectionProjection });
+
+    render(
+      <MemoryRouter initialEntries={['/collection/col-daily']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      // Collection header is rendered once loaded
+      expect(screen.getByText('Thursday, January 15, 2026')).toBeInTheDocument();
+    });
+
+    // HabitsSection renders with aria-label="Habits"
+    expect(screen.getByRole('region', { name: /habits/i })).toBeInTheDocument();
+  });
+
+  it('should NOT render the habits section for a non-daily collection', async () => {
+    const logCollection: Collection = {
+      id: 'col-log',
+      name: 'My Log',
+      type: 'log',
+      order: 'a0',
+      createdAt: '2026-03-31T00:00:00Z',
+    };
+
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([logCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    const appContext = buildMockAppContext({ collectionProjection: mockCollectionProjection });
+
+    render(
+      <MemoryRouter initialEntries={['/collection/col-log']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('My Log')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('region', { name: /habits/i })).not.toBeInTheDocument();
   });
 });

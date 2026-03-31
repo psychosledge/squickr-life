@@ -14,6 +14,8 @@ Event-sourced bullet journal PWA. See `docs/README.md` for full documentation.
 
 **Development loop:** `/design` → user approves → `/implement` → `/review` → user tests → commit
 
+> Follow this loop for **all** changes, including small ones. Do not skip steps for "simple" tasks.
+
 ## Tech Stack
 
 - React 18 + TypeScript + Vite + Tailwind

@@ -5,7 +5,9 @@
       "Bash(pnpm:*)",
       "Bash(gh:*)",
       "Bash(cat:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

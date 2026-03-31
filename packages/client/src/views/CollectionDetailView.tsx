@@ -1,17 +1,14 @@
 /**
  * Collection Detail View
- * 
+ *
  * Displays entries within a specific collection with ability to:
  * - Add new entries to the collection
  * - Edit/delete existing entries
  * - Move entries to other collections
  * - Reorder entries within the collection
- * 
- * Phase 2C: Full implementation with entry list
- * Phase 2 Refactor: Extracted handlers, modals, and operations into dedicated hooks
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Collection, Entry } from '@squickr/domain';
 import { getLocalDateKey } from '@squickr/domain';
@@ -45,11 +42,94 @@ import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { DEBOUNCE } from '../utils/constants';
 import { getDateKeyForTemporal, getMonthKeyForTemporal } from '../utils/temporalUtils';
 import { getCollectionDisplayName } from '../utils/formatters';
+import { getCompletedTaskBehavior } from '../utils/collectionSettings';
 
 /** Extended entry type with ghost rendering metadata from the projection */
 type EntryWithGhost = Entry & { renderAsGhost?: boolean };
 /** Narrowed task entry type for accessing task-specific fields */
 type TaskEntry = Extract<Entry, { type: 'task' }>;
+
+/** Shared entry-list operations threaded through every EntryList section */
+interface EntryListHandlers {
+  handleCompleteTask: (taskId: string) => void;
+  handleReopenTask: (taskId: string) => void;
+  handleUpdateTaskTitle: (taskId: string, newTitle: string) => void;
+  handleUpdateNoteContent: (noteId: string, newContent: string) => void;
+  handleUpdateEventContent: (eventId: string, newContent: string) => void;
+  handleUpdateEventDate: (eventId: string, newDate: string | null) => void;
+  handleDelete: (entryId: string) => void;
+  handleRestore: (entryId: string, entryType: 'task' | 'note' | 'event') => Promise<void>;
+  handleReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => void;
+  handleMigrateWithMode: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
+  handleNavigateToMigrated: (collectionId: string | null) => void;
+  handleCreateCollection: (name: string) => Promise<string>;
+  handleRemoveFromCollection: (taskId: string, collectionId: string) => Promise<void>;
+}
+
+/** Shared projection methods used to fetch sub-task and completion data */
+interface EntryListProjection {
+  getParentCompletionStatus: (taskId: string) => Promise<{ total: number; completed: number; allComplete: boolean }>;
+  getSubTasks: (parentEntryId: string) => Promise<import('@squickr/domain').Task[]>;
+  getSubTasksForMultipleParents: (parentIds: string[]) => Promise<Map<string, import('@squickr/domain').Task[]>>;
+  getParentTitlesForSubTasks: (subTaskIds: string[]) => Promise<Map<string, string>>;
+}
+
+/** Selection mode state used by every EntryList section */
+interface EntryListSelection {
+  isSelectionMode: boolean;
+  selectedEntryIds: Set<string>;
+  toggleSelection: (entryId: string) => void;
+}
+
+/** Consolidated props for a single EntryList section in CollectionDetailView */
+interface CollectionEntrySectionProps {
+  entries: Entry[];
+  operations: EntryListHandlers;
+  allCollections: Collection[];
+  resolvedCollectionId: string;
+  selection: EntryListSelection;
+  entryProjection: EntryListProjection;
+  onAddSubTask: (entry: Entry) => void;
+}
+
+function CollectionEntrySection({
+  entries,
+  operations,
+  allCollections,
+  resolvedCollectionId,
+  selection,
+  entryProjection,
+  onAddSubTask,
+}: CollectionEntrySectionProps) {
+  return (
+    <EntryList
+      entries={entries}
+      onCompleteTask={operations.handleCompleteTask}
+      onReopenTask={operations.handleReopenTask}
+      onUpdateTaskTitle={operations.handleUpdateTaskTitle}
+      onUpdateNoteContent={operations.handleUpdateNoteContent}
+      onUpdateEventContent={operations.handleUpdateEventContent}
+      onUpdateEventDate={operations.handleUpdateEventDate}
+      onDelete={operations.handleDelete}
+      onRestore={operations.handleRestore}
+      onReorder={operations.handleReorder}
+      onMigrate={operations.handleMigrateWithMode}
+      collections={allCollections}
+      currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
+      onNavigateToMigrated={operations.handleNavigateToMigrated}
+      onCreateCollection={operations.handleCreateCollection}
+      onAddSubTask={onAddSubTask}
+      onRemoveFromCollection={operations.handleRemoveFromCollection}
+      isSelectionMode={selection.isSelectionMode}
+      selectedEntryIds={selection.selectedEntryIds}
+      onToggleSelection={selection.toggleSelection}
+      getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
+      getSubTasks={(parentEntryId) => entryProjection.getSubTasks(parentEntryId)}
+      getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
+      getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
+    />
+  );
+}
 
 export function CollectionDetailView({ 
   collectionId: propCollectionId,
@@ -75,10 +155,10 @@ export function CollectionDetailView({
     moveNoteToCollectionHandler,
     addEventToCollectionHandler,
     moveEventToCollectionHandler,
-    bulkMigrateEntriesHandler, // Phase 4: Batch migration
-    restoreTaskHandler,  // Item 3: Recoverable deleted entries
-    restoreNoteHandler,  // Item 3: Recoverable deleted entries
-    restoreEventHandler, // Item 3: Recoverable deleted entries
+    bulkMigrateEntriesHandler,
+    restoreTaskHandler,
+    restoreNoteHandler,
+    restoreEventHandler,
   } = useApp();
   const userPreferences = useUserPreferences();
 
@@ -119,7 +199,7 @@ export function CollectionDetailView({
 
   // Migration modal state for bulk migration
   const [isBulkMigrateModalOpen, setIsBulkMigrateModalOpen] = useState(false);
-  const [isBulkMigrating, setIsBulkMigrating] = useState(false); // Phase 4: Loading state
+  const [isBulkMigrating, setIsBulkMigrating] = useState(false);
 
   // Sub-task modal state
   const [isSubTaskModalOpen, setIsSubTaskModalOpen] = useState(false);
@@ -144,18 +224,18 @@ export function CollectionDetailView({
       collection,
       migrateTaskHandler,
       createCollectionHandler,
-      entryProjection, // Phase 4: Pass entryProjection for sub-task queries
-      addTaskToCollectionHandler, // Phase 3: Multi-collection add
-      moveTaskToCollectionHandler, // Phase 3: Multi-collection move
-      addNoteToCollectionHandler, // Phase 2: Multi-collection note add
-      moveNoteToCollectionHandler, // Phase 2: Multi-collection note move
-      addEventToCollectionHandler, // Phase 2: Multi-collection event add
-      moveEventToCollectionHandler, // Phase 2: Multi-collection event move
-      bulkMigrateEntriesHandler, // Phase 4: Batch migration
-      restoreTaskHandler,  // Item 3: Recoverable deleted entries
-      restoreNoteHandler,  // Item 3: Recoverable deleted entries
-      restoreEventHandler, // Item 3: Recoverable deleted entries
-      removeTaskFromCollectionHandler, // Bug #7: Remove from collection
+      entryProjection,
+      addTaskToCollectionHandler,
+      moveTaskToCollectionHandler,
+      addNoteToCollectionHandler,
+      moveNoteToCollectionHandler,
+      addEventToCollectionHandler,
+      moveEventToCollectionHandler,
+      bulkMigrateEntriesHandler,
+      restoreTaskHandler,
+      restoreNoteHandler,
+      restoreEventHandler,
+      removeTaskFromCollectionHandler,
     },
     {
       collectionId: resolvedCollectionId,
@@ -163,11 +243,9 @@ export function CollectionDetailView({
       onCloseDeleteModal: modals.closeDeleteModal,
       onOpenDeleteModal: modals.openDeleteModal,
       onOpenSettingsModal: modals.openSettingsModal,
-      // Phase 4: Completion cascade confirmation dialog
       onShowConfirmCompleteParent: (taskId, incompleteCount, onConfirm) => {
         modals.openConfirmCompleteParent(taskId, incompleteCount, onConfirm);
       },
-      // Phase 5: Deletion cascade confirmation dialog - FINAL PHASE!
       onShowConfirmDeleteParent: (taskId, childCount, onConfirm) => {
         modals.openConfirmDeleteParent(taskId, childCount, onConfirm);
       },
@@ -175,7 +253,7 @@ export function CollectionDetailView({
   );
 
   // Load collection and entries
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!collectionId && !temporalDate) return;
 
     setIsLoading(true);
@@ -244,9 +322,8 @@ export function CollectionDetailView({
       // Fetch entries (use collectionId if available, else use found collection's id)
       const idForEntries = collectionId || foundCollection?.id;
       if (idForEntries) {
-        // Phase 2: Use getEntriesForCollectionView to get entries with ghost metadata
         const collectionEntries = await entryProjection.getEntriesForCollectionView(idForEntries);
-        // Item 3: Also load soft-deleted entries for this collection (shown in collapsed section)
+        // Soft-deleted entries are shown separately in a collapsible section
         const deletedEntries = await entryProjection.getDeletedEntries(idForEntries);
         setEntries([...collectionEntries, ...deletedEntries]);
       }
@@ -255,7 +332,7 @@ export function CollectionDetailView({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [collectionId, temporalDate, collectionProjection, entryProjection]);
 
   // Subscribe to projection changes (reactive updates with debouncing to prevent memory leaks)
   useEffect(() => {
@@ -281,7 +358,7 @@ export function CollectionDetailView({
       unsubscribeCollection();
       unsubscribeEntry();
     };
-  }, [collectionId, temporalDate, collectionProjection, entryProjection]);
+  }, [loadData, collectionProjection, entryProjection]);
 
   // Clear selection when navigating to different collection
   useEffect(() => {
@@ -301,8 +378,7 @@ export function CollectionDetailView({
   };
 
   const handleSelectActive = () => {
-    // BUG FIX #2: Only select incomplete (open) tasks, not all non-migrated entries
-    // Also exclude ghost entries (renderAsGhost: true) and deleted entries — they are not actionable
+    // Only select incomplete (open) tasks — exclude ghost entries and deleted entries which are not actionable
     const activeEntries = entries
       .filter(e =>
         e.type === 'task' &&
@@ -462,19 +538,8 @@ export function CollectionDetailView({
     );
   }
 
-  // Success state - show collection and entries
-  // Determine effective completed task behavior (with migration from boolean)
-  const settings = collection.settings;
-  
-  // Migration: convert old collapseCompleted boolean to new behavior enum
-  // If undefined, use global default preference
-  const completedTaskBehavior = settings?.completedTaskBehavior !== undefined 
-    ? settings.completedTaskBehavior 
-    : settings?.collapseCompleted === true 
-      ? 'collapse' 
-      : settings?.collapseCompleted === false 
-        ? 'keep-in-place' 
-        : userPreferences.defaultCompletedTaskBehavior; // Use global default
+  // Determine effective completed task behavior (new enum, legacy boolean migration, global default)
+  const completedTaskBehavior = getCompletedTaskBehavior(collection.settings, userPreferences);
   
   // Partition entries based on behavior mode
   const shouldPartition = completedTaskBehavior === 'move-to-bottom' || completedTaskBehavior === 'collapse';
@@ -490,7 +555,7 @@ export function CollectionDetailView({
     !!(e as TaskEntry).parentEntryId &&
     parentIdsInCollection.has((e as TaskEntry).parentEntryId!);
 
-  // Item 3: Always separate deleted entries into their own bucket (independent of completedTaskBehavior)
+  // Deleted entries are always shown in their own collapsible bucket, independent of completedTaskBehavior
   const deletedEntries = entries.filter(e => e.deletedAt);
 
   const activeTasks = shouldPartition
@@ -553,31 +618,14 @@ export function CollectionDetailView({
         )}
 
         {/* Active entries (or all entries if not collapsed) */}
-        <EntryList
+        <CollectionEntrySection
           entries={activeTasks}
-          onCompleteTask={operations.handleCompleteTask}
-          onReopenTask={operations.handleReopenTask}
-          onUpdateTaskTitle={operations.handleUpdateTaskTitle}
-          onUpdateNoteContent={operations.handleUpdateNoteContent}
-          onUpdateEventContent={operations.handleUpdateEventContent}
-          onUpdateEventDate={operations.handleUpdateEventDate}
-          onDelete={operations.handleDelete}
-          onRestore={operations.handleRestore}
-          onReorder={operations.handleReorder}
-          onMigrate={operations.handleMigrateWithMode}
-          collections={allCollections}
-          currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
-          onNavigateToMigrated={operations.handleNavigateToMigrated}
-          onCreateCollection={operations.handleCreateCollection}
+          operations={operations}
+          allCollections={allCollections}
+          resolvedCollectionId={resolvedCollectionId}
+          selection={selection}
+          entryProjection={entryProjection}
           onAddSubTask={handleOpenSubTaskModal}
-          onRemoveFromCollection={operations.handleRemoveFromCollection}
-          isSelectionMode={selection.isSelectionMode}
-          selectedEntryIds={selection.selectedEntryIds}
-          onToggleSelection={selection.toggleSelection}
-          getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
-          getSubTasks={(parentEntryId) => entryProjection.getSubTasks(parentEntryId)}
-          getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
-          getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
         />
 
         {/* Completed tasks section - Mode 2: Move to bottom */}
@@ -586,31 +634,14 @@ export function CollectionDetailView({
             {/* Separator */}
             <div className="border-t border-gray-200 dark:border-gray-700" />
             
-            <EntryList
+            <CollectionEntrySection
               entries={completedTasks}
-              onCompleteTask={operations.handleCompleteTask}
-              onReopenTask={operations.handleReopenTask}
-              onUpdateTaskTitle={operations.handleUpdateTaskTitle}
-              onUpdateNoteContent={operations.handleUpdateNoteContent}
-              onUpdateEventContent={operations.handleUpdateEventContent}
-              onUpdateEventDate={operations.handleUpdateEventDate}
-              onDelete={operations.handleDelete}
-              onRestore={operations.handleRestore}
-              onReorder={operations.handleReorder}
-              onMigrate={operations.handleMigrateWithMode}
-              collections={allCollections}
-              currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
-              onNavigateToMigrated={operations.handleNavigateToMigrated}
-               onCreateCollection={operations.handleCreateCollection}
+              operations={operations}
+              allCollections={allCollections}
+              resolvedCollectionId={resolvedCollectionId}
+              selection={selection}
+              entryProjection={entryProjection}
               onAddSubTask={handleOpenSubTaskModal}
-              onRemoveFromCollection={operations.handleRemoveFromCollection}
-              isSelectionMode={selection.isSelectionMode}
-              selectedEntryIds={selection.selectedEntryIds}
-              onToggleSelection={selection.toggleSelection}
-              getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
-              getSubTasks={(parentEntryId) => entryProjection.getSubTasks(parentEntryId)}
-              getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
-              getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
             />
           </div>
         )}
@@ -645,38 +676,21 @@ export function CollectionDetailView({
             
             {modals.isCompletedExpanded && (
               <div className="mt-4">
-              <EntryList
-                entries={completedTasks}
-                onCompleteTask={operations.handleCompleteTask}
-                onReopenTask={operations.handleReopenTask}
-                onUpdateTaskTitle={operations.handleUpdateTaskTitle}
-                onUpdateNoteContent={operations.handleUpdateNoteContent}
-                onUpdateEventContent={operations.handleUpdateEventContent}
-                onUpdateEventDate={operations.handleUpdateEventDate}
-                onDelete={operations.handleDelete}
-                onRestore={operations.handleRestore}
-                onReorder={operations.handleReorder}
-                onMigrate={operations.handleMigrateWithMode}
-                collections={allCollections}
-                currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
-                onNavigateToMigrated={operations.handleNavigateToMigrated}
-                onCreateCollection={operations.handleCreateCollection}
-                onAddSubTask={handleOpenSubTaskModal}
-                onRemoveFromCollection={operations.handleRemoveFromCollection}
-                isSelectionMode={selection.isSelectionMode}
-                selectedEntryIds={selection.selectedEntryIds}
-                onToggleSelection={selection.toggleSelection}
-                getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
-                getSubTasks={(parentEntryId) => entryProjection.getSubTasks(parentEntryId)}
-                getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
-                getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
-              />
-            </div>
-          )}
-        </div>
+                <CollectionEntrySection
+                  entries={completedTasks}
+                  operations={operations}
+                  allCollections={allCollections}
+                  resolvedCollectionId={resolvedCollectionId}
+                  selection={selection}
+                  entryProjection={entryProjection}
+                  onAddSubTask={handleOpenSubTaskModal}
+                />
+              </div>
+            )}
+          </div>
         )}
 
-        {/* Item 3: Deleted entries section - always collapsible, independent of completedTaskBehavior */}
+        {/* Deleted entries section — always collapsible, independent of completedTaskBehavior */}
         {deletedEntries.length > 0 && (
           <div className="mt-4 max-w-2xl mx-auto">
             <button
@@ -706,31 +720,14 @@ export function CollectionDetailView({
 
             {modals.isDeletedExpanded && (
               <div className="mt-4">
-                <EntryList
+                <CollectionEntrySection
                   entries={deletedEntries}
-                  onCompleteTask={operations.handleCompleteTask}
-                  onReopenTask={operations.handleReopenTask}
-                  onUpdateTaskTitle={operations.handleUpdateTaskTitle}
-                  onUpdateNoteContent={operations.handleUpdateNoteContent}
-                  onUpdateEventContent={operations.handleUpdateEventContent}
-                  onUpdateEventDate={operations.handleUpdateEventDate}
-                  onDelete={operations.handleDelete}
-                  onRestore={operations.handleRestore}
-                  onReorder={operations.handleReorder}
-                  onMigrate={operations.handleMigrateWithMode}
-                  collections={allCollections}
-                  currentCollectionId={resolvedCollectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : resolvedCollectionId}
-                  onNavigateToMigrated={operations.handleNavigateToMigrated}
-                  onCreateCollection={operations.handleCreateCollection}
+                  operations={operations}
+                  allCollections={allCollections}
+                  resolvedCollectionId={resolvedCollectionId}
+                  selection={selection}
+                  entryProjection={entryProjection}
                   onAddSubTask={handleOpenSubTaskModal}
-                  onRemoveFromCollection={operations.handleRemoveFromCollection}
-                  isSelectionMode={selection.isSelectionMode}
-                  selectedEntryIds={selection.selectedEntryIds}
-                  onToggleSelection={selection.toggleSelection}
-                  getCompletionStatus={(taskId) => entryProjection.getParentCompletionStatus(taskId)}
-                  getSubTasks={(parentEntryId) => entryProjection.getSubTasks(parentEntryId)}
-                  getSubTasksForMultipleParents={(parentIds) => entryProjection.getSubTasksForMultipleParents(parentIds)}
-                  getParentTitlesForSubTasks={(subTaskIds) => entryProjection.getParentTitlesForSubTasks(subTaskIds)}
                 />
               </div>
             )}
@@ -783,7 +780,7 @@ export function CollectionDetailView({
         onSubmit={handleCreateSubTask}
       />
 
-      {/* Confirm complete parent modal (Phase 4: Completion Cascade) */}
+      {/* Confirm complete parent modal */}
       {modals.confirmCompleteParentData && (
         <ConfirmCompleteParentModal
           isOpen={modals.isConfirmCompleteParentOpen}
@@ -793,7 +790,7 @@ export function CollectionDetailView({
         />
       )}
 
-      {/* Confirm delete parent modal (Phase 5: Deletion Cascade - FINAL PHASE!) */}
+      {/* Confirm delete parent modal */}
       {modals.confirmDeleteParentData && (
         <ConfirmDeleteParentModal
           isOpen={modals.isConfirmDeleteParentOpen}
@@ -814,7 +811,7 @@ export function CollectionDetailView({
           onMigrate={operations.handleMigrateWithMode}
           onBulkMigrate={handleBulkMigrateSubmit}
           onCreateCollection={operations.handleCreateCollection}
-          isBulkMigrating={isBulkMigrating} // Phase 4: Loading state
+          isBulkMigrating={isBulkMigrating}
         />
       )}
 
