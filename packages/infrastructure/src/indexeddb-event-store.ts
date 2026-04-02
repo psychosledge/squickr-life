@@ -42,6 +42,16 @@ export class IndexedDBEventStore implements IEventStore {
 
       request.onsuccess = () => {
         this.db = request.result;
+        // Handle external database deletion (e.g. "Clear site data" in DevTools).
+        // When another context requests a version change or deletion while we hold
+        // an open connection, the browser fires onversionchange. Without a handler
+        // the connection is force-closed and every subsequent transaction throws
+        // InvalidStateError. Reloading gives us a clean, re-initialised connection.
+        this.db.onversionchange = () => {
+          this.db?.close();
+          this.db = null;
+          window.location.reload();
+        };
         resolve();
       };
 

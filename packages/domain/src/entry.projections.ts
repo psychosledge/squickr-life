@@ -163,6 +163,7 @@ export class EntryListProjection {
       // individual append() calls — is absorbed correctly. The set is drained lazily
       // as events arrive, so GC cost is identical to a single-ID set.
       this.absorbedEventIds = new Set(allEvents.map(e => e.id));
+      this.notifySubscribers();
     } else {
       // Apply only the delta events on top of the snapshot state
       this.cachedEntries = this.applicator.applyEventsOnto([...snapshot.state], deltaEvents);
@@ -173,6 +174,7 @@ export class EntryListProjection {
       // localIds). Including delta IDs ensures those re-deliveries are silently absorbed
       // rather than causing a spurious cache invalidation and UI re-render.
       this.absorbedEventIds = new Set(allEvents.map(e => e.id));
+      this.notifySubscribers();
     }
   }
 

@@ -50,6 +50,14 @@ export class IndexedDBSnapshotStore implements ISnapshotStore {
 
       request.onsuccess = () => {
         this.db = request.result;
+        // Mirror the onversionchange handler from IndexedDBEventStore: reload the
+        // page when the snapshot database is externally deleted or version-changed
+        // so the app starts fresh instead of throwing InvalidStateError everywhere.
+        this.db.onversionchange = () => {
+          this.db?.close();
+          this.db = null;
+          window.location.reload();
+        };
         resolve();
       };
 

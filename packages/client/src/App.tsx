@@ -356,14 +356,11 @@ function AppContent() {
     };
   }, []);
 
-  // If isLoading completes and there's no user, no remote check will happen —
-  // advance directly to 'ready' so isAppReady can become true.
-  useEffect(() => {
-    if (isLoading || authLoading) return;
-    if (!user) {
-      setColdStartPhase('ready');
-    }
-  }, [user, isLoading, authLoading]);
+  // When there is no user, SignInView is rendered via the `if (!user)` guard in
+  // the render path — isAppReady plays no role.  We intentionally leave
+  // coldStartPhase as 'checking' so that when the user later signs in,
+  // isAppReady starts as false and cannot trigger the tutorial prematurely
+  // before startSync() has run (ADR-024 bug fix).
 
   // Start/stop background sync when user signs in/out
   useEffect(() => {
@@ -374,7 +371,13 @@ function AppContent() {
       return;
     }
     
-    // User signed in - start background sync
+    // User signed in - start background sync.
+    // Reset to 'checking' synchronously: the no-user guard may have left
+    // coldStartPhase as 'ready' (and therefore isAppReady=true) while
+    // SignInView was shown. If we don't reset here, CollectionIndexView's
+    // tutorial effect fires before startSync() can set the session flag.
+    setColdStartPhase('checking');
+
     const remoteEventStore = new FirestoreEventStore(firestore, user.uid);
     const remoteSnapshotStore = new FirestoreSnapshotStore(firestore, user.uid);
 
@@ -392,6 +395,13 @@ function AppContent() {
       // This is the single check that decides whether to fetch a remote snapshot.
       const isEmptyLocalStore = entryProjection.wasLocalStoreEmptyAtHydration();
       logger.info('[App] Cold-start: isEmptyLocalStore =', isEmptyLocalStore);
+
+      // Set the tutorial-suppression flag synchronously — before any await — so it
+      // is guaranteed to be in sessionStorage before isAppReady can become true,
+      // regardless of which cold-start path executes (ADR-024).
+      if (isEmptyLocalStore) {
+        sessionStorage.setItem('squickr_cold_start_restored', 'true');
+      }
 
       if (!isEmptyLocalStore) {
         // ── Fast path: local store has data — skip Firestore round-trip ──────
@@ -439,9 +449,6 @@ function AppContent() {
       if (cancelled) return;
 
       // ── Both restore and timeout/null paths converge here ──────────────────
-      // Write the tutorial-suppression flag before advancing to 'syncing' so
-      // that CollectionIndexView's tutorial effect sees it on the same render.
-      sessionStorage.setItem('squickr_cold_start_restored', 'true');
       setColdStartPhase('syncing');
 
       const manager = new SyncManager(eventStore, remoteEventStore);

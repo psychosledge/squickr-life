@@ -106,7 +106,7 @@ export function CollectionIndexView() {
       unsubscribeCollection();
       unsubscribeEntry();
     };
-  }, [loadData, collectionProjection, entryProjection]);
+  }, [loadData, collectionProjection, entryProjection, isAppReady]);
 
   // Auto-trigger tutorial for new users with zero real collections.
   // Gate behind isAppReady so we never fire during initial Firestore sync on a

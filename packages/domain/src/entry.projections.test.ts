@@ -2371,6 +2371,66 @@ describe('EntryListProjection', () => {
       vi.restoreAllMocks();
     });
 
+    it('notifies subscribers when cache is seeded from a fully-current snapshot (ADR-024 Fix 1)', async () => {
+      // Arrange: create a task and build a fully-current snapshot
+      await taskHandler.handle({ content: 'Task 1' });
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Fresh projection — subscribe BEFORE hydrate to observe the notification
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+      const subscriberSpy = vi.fn();
+      freshProjection.subscribe(subscriberSpy);
+
+      // Act
+      await freshProjection.hydrate();
+
+      // Assert: subscriber was called because cachedEntries was populated
+      expect(subscriberSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('notifies subscribers when cache is seeded from snapshot + delta events (ADR-024 Fix 1)', async () => {
+      // Arrange: create a task and build a snapshot
+      const taskId = await taskHandler.handle({ content: 'Task 1' });
+
+      const snapshotStore = new InMemorySnapshotStore();
+      const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+      const snapshot = await seedProjection.createSnapshot();
+      await snapshotStore.save('entry-list-projection', snapshot!);
+
+      // Add a delta event after the snapshot
+      const completeHandler = new CompleteTaskHandler(eventStore, projection);
+      await completeHandler.handle({ taskId });
+
+      // Fresh projection — subscribe BEFORE hydrate
+      const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+      const subscriberSpy = vi.fn();
+      freshProjection.subscribe(subscriberSpy);
+
+      // Act
+      await freshProjection.hydrate();
+
+      // Assert: subscriber was called because cachedEntries was populated with delta applied
+      expect(subscriberSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT notify subscribers when hydrate() takes an early-return path (no cache set)', async () => {
+      // Arrange: no snapshot → early-return path, cache stays null
+      const snapshotStore = new InMemorySnapshotStore();
+      const proj = new EntryListProjection(eventStore, snapshotStore);
+      const subscriberSpy = vi.fn();
+      proj.subscribe(subscriberSpy);
+
+      // Act
+      await proj.hydrate(); // no snapshot saved → early return
+
+      // Assert: subscriber was NOT called (cache was never set)
+      expect(subscriberSpy).not.toHaveBeenCalled();
+    });
+
   }); // end hydrate()
 
   // ============================================================================
