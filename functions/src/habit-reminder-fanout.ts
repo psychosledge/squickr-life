@@ -98,7 +98,13 @@ export async function processUserHabitNotifications(
     return;
   }
 
-  if (habits.length === 0 || tokenDocs.length === 0) {
+  if (habits.length === 0) {
+    console.log(`processUserHabitNotifications: no active habits with notificationTime for user ${userId}`);
+    return;
+  }
+
+  if (tokenDocs.length === 0) {
+    console.log(`processUserHabitNotifications: no token docs for user ${userId}`);
     return;
   }
 
@@ -114,21 +120,26 @@ export async function processUserHabitNotifications(
   const currentTime = getCurrentLocalTime(primaryTimezone);
   const currentDate = getCurrentLocalDate(primaryTimezone);
 
+  console.log(`processUserHabitNotifications: user ${userId} has ${habits.length} habit(s) with notifications, localTime=${currentTime}, localDate=${currentDate}, tz=${primaryTimezone}`);
+
   // Process each habit independently
   for (const habit of habits) {
     try {
       // Check 1: Time window
       if (!isWithinTimeWindow(currentTime, habit.notificationTime)) {
+        console.log(`processUserHabitNotifications: habit ${habit.habitId} ("${habit.title}") skipped — time window (current=${currentTime}, target=${habit.notificationTime})`);
         continue;
       }
 
       // Check 2: Scheduled for today
       if (!isHabitScheduledForDate(habit, currentDate)) {
+        console.log(`processUserHabitNotifications: habit ${habit.habitId} ("${habit.title}") skipped — not scheduled for ${currentDate}`);
         continue;
       }
 
       // Check 3: Not already completed today
       if (isHabitCompletedForDate(habit, currentDate)) {
+        console.log(`processUserHabitNotifications: habit ${habit.habitId} ("${habit.title}") skipped — already completed for ${currentDate}`);
         continue;
       }
 
@@ -140,6 +151,7 @@ export async function processUserHabitNotifications(
       const logSnap = await logRef.get();
 
       if (logSnap.exists) {
+        console.log(`processUserHabitNotifications: habit ${habit.habitId} ("${habit.title}") skipped — idempotency log exists for ${currentDate}`);
         continue;
       }
 
@@ -184,7 +196,8 @@ export async function processUserHabitNotifications(
         };
 
         try {
-          await messaging.send(message);
+          const messageId = await messaging.send(message);
+          console.log(`processUserHabitNotifications: sent notification for habit ${habit.habitId} ("${habit.title}") to token ${tokenDocId} — messageId=${messageId}`);
         } catch (sendErr) {
           // Check if the token is invalid/unregistered — delete it
           const errorCode = (sendErr as { errorInfo?: { code?: string } })

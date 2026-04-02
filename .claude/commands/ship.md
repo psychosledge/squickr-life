@@ -10,7 +10,7 @@ If any tests fail, **stop immediately** and report the failures. Do not proceed.
 
 ## Step 2 — Determine bump type
 
-Read the current version from `packages/domain/package.json`.
+Read the current version from `package.json` (root).
 
 If the user specified a bump type (patch / minor / major) in $ARGUMENTS, use that.
 Otherwise, ask the user: "Current version is X.Y.Z — bump patch, minor, or major?"
@@ -29,6 +29,7 @@ Apply semver bump to the current version:
 Use the Read tool to read each file, then the Edit tool to update the `"version"` field to the new version. Do not use shell commands for this step.
 
 Files to update:
+- `package.json` (root — this is what Vite reads for `__APP_VERSION__`)
 - `packages/domain/package.json`
 - `packages/client/package.json`
 - `packages/infrastructure/package.json`
@@ -36,7 +37,7 @@ Files to update:
 ## Step 5 — Commit, tag, and push
 
 ```bash
-git add packages/domain/package.json packages/client/package.json packages/infrastructure/package.json
+git add package.json packages/domain/package.json packages/client/package.json packages/infrastructure/package.json
 git commit -m "chore: bump version to <NEW_VERSION>"
 git tag v<NEW_VERSION>
 git push origin master --tags
