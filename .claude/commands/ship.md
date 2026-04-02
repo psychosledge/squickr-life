@@ -24,6 +24,24 @@ Apply semver bump to the current version:
 - minor: Y+1, Z=0
 - major: X+1, Y=0, Z=0
 
+## Step 3.5 — Commit any pending code changes
+
+Before bumping versions, check for uncommitted changes that are not the package.json files:
+
+```bash
+git status
+```
+
+If any tracked files are modified (other than the 4 package.json files that will be updated in Step 4), stage and commit them now:
+
+```bash
+git add -A
+git diff --cached --name-only
+git commit -m "feat/fix: <brief description of changes>"
+```
+
+Use a conventional-commits prefix (`feat:`, `fix:`, `refactor:`, `chore:`, etc.) and write a message that summarises the code changes, not the version bump. If there are no pending changes, skip this step.
+
 ## Step 4 — Update all package.json files
 
 Use the Read tool to read each file, then the Edit tool to update the `"version"` field to the new version. Do not use shell commands for this step.
