@@ -1,6 +1,6 @@
 {
   "name": "@squickr/domain",
-  "version": "1.14.4",
+  "version": "1.14.5",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
