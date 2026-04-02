@@ -21,6 +21,7 @@ import { app, firestore } from './config';
 
 export const FCM_REQUESTED_KEY = 'fcm-permission-requested';
 export const FCM_TOKEN_STORED_KEY = 'fcm-token-stored';
+export const FCM_DEVICE_ID_KEY = 'fcm-device-id';
 
 /**
  * Sets a localStorage key and dispatches a synthetic `storage` event so that
@@ -39,6 +40,19 @@ function removeLocalStorageKey(key: string): void {
   window.dispatchEvent(new StorageEvent('storage', { key }));
 }
 
+/**
+ * ADR-023: Returns the stored device ID, generating and persisting a new UUID
+ * on first call. Stable across token rotations as long as localStorage is not
+ * cleared. Exported for testability.
+ */
+export function getOrCreateDeviceId(): string {
+  const existing = localStorage.getItem(FCM_DEVICE_ID_KEY);
+  if (existing) return existing;
+  const id = crypto.randomUUID();
+  localStorage.setItem(FCM_DEVICE_ID_KEY, id);
+  return id;
+}
+
 export async function sha256hex(str: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf))
@@ -53,21 +67,57 @@ async function refreshFcmTokenLastSeen(userId: string): Promise<void> {
 
     const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
     const messaging = getMessaging(app);
-    const token = await getToken(messaging, {
+    const newToken = await getToken(messaging, {
       vapidKey: import.meta.env['VITE_FIREBASE_VAPID_KEY'],
       serviceWorkerRegistration: swRegistration,
     });
 
-    if (!token) {
+    if (!newToken) {
       removeLocalStorageKey(FCM_TOKEN_STORED_KEY);
       return;
     }
 
-    const { doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
-    const tokenId = await sha256hex(token);
+    const storedToken = localStorage.getItem(FCM_TOKEN_STORED_KEY);
+    const tokenRotated = storedToken !== null && storedToken !== newToken;
+
+    const { doc, setDoc, deleteDoc, updateDoc, serverTimestamp } =
+      await import('firebase/firestore');
+
+    if (tokenRotated) {
+      // Delete the old document (best-effort — if it fails we continue)
+      try {
+        const oldTokenId = await sha256hex(storedToken);
+        await deleteDoc(doc(firestore, `users/${userId}/fcmTokens/${oldTokenId}`));
+      } catch {
+        // Silent fail — old doc will age out via 60-day prune
+      }
+
+      // Write the new document
+      const newTokenId = await sha256hex(newToken);
+      await setDoc(
+        doc(firestore, `users/${userId}/fcmTokens/${newTokenId}`),
+        {
+          token: newToken,
+          deviceId: getOrCreateDeviceId(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          lastSeenAt: serverTimestamp(),
+          appVersion: import.meta.env['VITE_APP_VERSION'] ?? 'unknown',
+          createdAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      // Update localStorage to reflect the new token
+      setLocalStorageKey(FCM_TOKEN_STORED_KEY, newToken);
+      return;
+    }
+
+    // Token unchanged — update heartbeat fields only
+    const tokenId = await sha256hex(newToken);
     await updateDoc(
       doc(firestore, `users/${userId}/fcmTokens/${tokenId}`),
       {
+        deviceId: getOrCreateDeviceId(),
         lastSeenAt: serverTimestamp(),
         appVersion: import.meta.env['VITE_APP_VERSION'] ?? 'unknown',
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -122,6 +172,7 @@ export async function registerFcmToken(userId: string): Promise<void> {
       doc(firestore, `users/${userId}/fcmTokens/${tokenId}`),
       {
         token,
+        deviceId: getOrCreateDeviceId(),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         lastSeenAt: serverTimestamp(),
         appVersion: import.meta.env['VITE_APP_VERSION'] ?? 'unknown',
@@ -130,7 +181,9 @@ export async function registerFcmToken(userId: string): Promise<void> {
       { merge: true },
     );
 
-    setLocalStorageKey(FCM_TOKEN_STORED_KEY, '1');
+    // ADR-023: store the raw token (not '1') so rotation detection can compare
+    // against it on the next heartbeat call.
+    setLocalStorageKey(FCM_TOKEN_STORED_KEY, token);
   } catch {
     // Silent fail
   }

@@ -27,6 +27,7 @@ vi.mock('firebase/firestore', () => ({
   doc: vi.fn(),
   setDoc: vi.fn(),
   updateDoc: vi.fn(),
+  deleteDoc: vi.fn(),
   serverTimestamp: vi.fn(() => ({ _isServerTimestamp: true })),
   // keep the existing global mock fields for safety
   initializeFirestore: vi.fn(() => ({})),
@@ -53,9 +54,9 @@ Object.defineProperty(globalThis, 'navigator', {
 });
 
 // ── Import module under test (after mocks are hoisted) ─────────────────────
-import { registerFcmToken, FCM_REQUESTED_KEY, FCM_TOKEN_STORED_KEY } from './fcm';
+import { registerFcmToken, FCM_REQUESTED_KEY, FCM_TOKEN_STORED_KEY, FCM_DEVICE_ID_KEY, getOrCreateDeviceId } from './fcm';
 import { isSupported, getMessaging, getToken } from 'firebase/messaging';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -232,7 +233,8 @@ describe('registerFcmToken', () => {
 
   it('takes heartbeat path when both gate keys are present — calls updateDoc not setDoc', async () => {
     localStorage.setItem(FCM_REQUESTED_KEY, '1');
-    localStorage.setItem(FCM_TOKEN_STORED_KEY, '1');
+    // Seed with the same token getToken will return so no rotation is detected
+    localStorage.setItem(FCM_TOKEN_STORED_KEY, 'existing-token');
     (isSupported as Mock).mockResolvedValue(true);
     (getMessaging as Mock).mockReturnValue({ name: 'messaging' });
     (getToken as Mock).mockResolvedValue('existing-token');
@@ -249,9 +251,11 @@ describe('registerFcmToken', () => {
       appVersion: expect.any(String),
       timezone: expect.any(String),
     });
-  });  it('clears FCM_TOKEN_STORED_KEY on heartbeat when getToken returns null', async () => {
+  });
+
+  it('clears FCM_TOKEN_STORED_KEY on heartbeat when getToken returns null', async () => {
     localStorage.setItem(FCM_REQUESTED_KEY, '1');
-    localStorage.setItem(FCM_TOKEN_STORED_KEY, '1');
+    localStorage.setItem(FCM_TOKEN_STORED_KEY, 'some-stored-token');
     (isSupported as Mock).mockResolvedValue(true);
     (getMessaging as Mock).mockReturnValue({ name: 'messaging' });
     (getToken as Mock).mockResolvedValue(null);
@@ -260,10 +264,10 @@ describe('registerFcmToken', () => {
     expect(setDoc).not.toHaveBeenCalled();
   });
 
-  it('sets FCM_TOKEN_STORED_KEY after successful Firestore write', async () => {
+  it('sets FCM_TOKEN_STORED_KEY to the raw token string after successful Firestore write', async () => {
     setupGranted();
     await registerFcmToken('user1');
-    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBe('1');
+    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBe('fake-fcm-token-abc123');
   });
 
   it('does NOT set FCM_TOKEN_STORED_KEY if getToken returns null', async () => {
@@ -287,6 +291,164 @@ describe('registerFcmToken', () => {
     setupGranted();
     await registerFcmToken('user1');
     expect(setDoc).toHaveBeenCalledTimes(1);
-    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBe('1');
+    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBe('fake-fcm-token-abc123');
+  });
+});
+
+// ── ADR-023: Device identity and token rotation tests ────────────────────────
+
+describe('getOrCreateDeviceId (ADR-023)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('generates a new UUID and persists it when FCM_DEVICE_ID_KEY is absent', () => {
+    expect(localStorage.getItem(FCM_DEVICE_ID_KEY)).toBeNull();
+    const id = getOrCreateDeviceId();
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    expect(localStorage.getItem(FCM_DEVICE_ID_KEY)).toBe(id);
+  });
+
+  it('returns the same UUID on repeated calls within a session', () => {
+    const id1 = getOrCreateDeviceId();
+    const id2 = getOrCreateDeviceId();
+    const id3 = getOrCreateDeviceId();
+    expect(id1).toBe(id2);
+    expect(id2).toBe(id3);
+  });
+});
+
+describe('registerFcmToken — ADR-023 additions', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    mockRegister.mockResolvedValue(mockSwRegistration);
+    if (!('Notification' in globalThis)) {
+      Object.defineProperty(globalThis, 'Notification', {
+        writable: true,
+        configurable: true,
+        value: { requestPermission: vi.fn() },
+      });
+    }
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('writes the raw token string (not "1") to FCM_TOKEN_STORED_KEY', async () => {
+    setupGranted();
+    await registerFcmToken('user1');
+    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBe('fake-fcm-token-abc123');
+  });
+
+  it('writes deviceId to the Firestore document', async () => {
+    setupGranted();
+    await registerFcmToken('user1');
+
+    const payload = (setDoc as Mock).mock.calls[0][1];
+    expect(payload).toMatchObject({
+      deviceId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+    });
+  });
+});
+
+describe('refreshFcmTokenLastSeen — token rotation detection (ADR-023)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    mockRegister.mockResolvedValue(mockSwRegistration);
+    (doc as Mock).mockReturnValue({ path: 'users/user1/fcmTokens/hashed' });
+    (setDoc as Mock).mockResolvedValue(undefined);
+    (updateDoc as Mock).mockResolvedValue(undefined);
+    (deleteDoc as Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('calls deleteDoc on sha256(oldToken) and setDoc on sha256(newToken) when token has rotated', async () => {
+    const oldToken = 'old-fcm-token';
+    const newToken = 'new-fcm-token';
+
+    localStorage.setItem(FCM_REQUESTED_KEY, '1');
+    localStorage.setItem(FCM_TOKEN_STORED_KEY, oldToken);
+    (isSupported as Mock).mockResolvedValue(true);
+    (getMessaging as Mock).mockReturnValue({ name: 'messaging' });
+    (getToken as Mock).mockResolvedValue(newToken);
+
+    await registerFcmToken('user1');
+
+    // deleteDoc should have been called (for old token)
+    expect(deleteDoc).toHaveBeenCalledTimes(1);
+    // setDoc should have been called (for new token)
+    expect(setDoc).toHaveBeenCalledTimes(1);
+    // Verify the setDoc payload includes deviceId
+    const rotationPayload = (setDoc as Mock).mock.calls[0][1];
+    expect(rotationPayload).toMatchObject({
+      deviceId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+    });
+    // updateDoc should NOT have been called
+    expect(updateDoc).not.toHaveBeenCalled();
+    // localStorage should now store the new token
+    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBe(newToken);
+  });
+
+  it('calls only updateDoc (no delete, no setDoc) when token is unchanged', async () => {
+    const token = 'stable-fcm-token';
+
+    localStorage.setItem(FCM_REQUESTED_KEY, '1');
+    localStorage.setItem(FCM_TOKEN_STORED_KEY, token);
+    (isSupported as Mock).mockResolvedValue(true);
+    (getMessaging as Mock).mockReturnValue({ name: 'messaging' });
+    (getToken as Mock).mockResolvedValue(token);
+
+    await registerFcmToken('user1');
+
+    expect(deleteDoc).not.toHaveBeenCalled();
+    expect(setDoc).not.toHaveBeenCalled();
+    expect(updateDoc).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips deleteDoc when storedToken is null (first registration or cleared state)', async () => {
+    // storedToken is null — only FCM_REQUESTED_KEY is set (retry registration path)
+    localStorage.setItem(FCM_REQUESTED_KEY, '1');
+    // FCM_TOKEN_STORED_KEY is NOT set
+    vi.spyOn(Notification, 'requestPermission').mockResolvedValue('granted');
+    (isSupported as Mock).mockResolvedValue(true);
+    (getMessaging as Mock).mockReturnValue({ name: 'messaging' });
+    (getToken as Mock).mockResolvedValue('brand-new-token');
+
+    await registerFcmToken('user1');
+
+    // Should NOT call deleteDoc (no old token to clean up)
+    expect(deleteDoc).not.toHaveBeenCalled();
+    // Should call setDoc for new registration
+    expect(setDoc).toHaveBeenCalledTimes(1);
+  });
+
+  it('continues to setDoc even if deleteDoc throws', async () => {
+    const oldToken = 'old-token-that-throws';
+    const newToken = 'new-token-after-error';
+
+    localStorage.setItem(FCM_REQUESTED_KEY, '1');
+    localStorage.setItem(FCM_TOKEN_STORED_KEY, oldToken);
+    (isSupported as Mock).mockResolvedValue(true);
+    (getMessaging as Mock).mockReturnValue({ name: 'messaging' });
+    (getToken as Mock).mockResolvedValue(newToken);
+    (deleteDoc as Mock).mockRejectedValue(new Error('Firestore delete failed'));
+
+    await registerFcmToken('user1');
+
+    // setDoc should still have been called despite deleteDoc throwing
+    expect(setDoc).toHaveBeenCalledTimes(1);
+    // localStorage should be updated to new token
+    expect(localStorage.getItem(FCM_TOKEN_STORED_KEY)).toBe(newToken);
   });
 });

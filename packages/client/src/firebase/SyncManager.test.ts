@@ -514,6 +514,122 @@ describe('SyncManager', () => {
     });
   });
 
+  describe('event store subscriber wiring (ADR-023)', () => {
+    it('schedules syncNow within syncDebounceMs after an append notification', async () => {
+      syncManager = new SyncManager(localStore, remoteStore);
+      syncManager.start();
+
+      // Capture the subscriber callback registered on localStore
+      const subscribeCalls = vi.mocked(localStore.subscribe).mock.calls;
+      expect(subscribeCalls.length).toBeGreaterThanOrEqual(1);
+      const subscriber = subscribeCalls[subscribeCalls.length - 1][0];
+
+      // Let the initial syncNow complete and clear the call count
+      await vi.advanceTimersByTimeAsync(6000);
+      vi.mocked(localStore.getAll).mockClear();
+
+      // Simulate an append notification from the event store
+      subscriber();
+
+      // Timer not yet elapsed — syncNow should NOT have been called yet
+      expect(localStore.getAll).not.toHaveBeenCalled();
+
+      // Advance past the debounce window
+      await vi.advanceTimersByTimeAsync(6000);
+
+      expect(localStore.getAll).toHaveBeenCalled();
+    });
+
+    it('burst appends within the debounce window produce exactly one syncNow call', async () => {
+      syncManager = new SyncManager(localStore, remoteStore);
+      syncManager.start();
+
+      const subscribeCalls = vi.mocked(localStore.subscribe).mock.calls;
+      const subscriber = subscribeCalls[subscribeCalls.length - 1][0];
+
+      // Let initial sync settle
+      await vi.advanceTimersByTimeAsync(6000);
+      vi.mocked(localStore.getAll).mockClear();
+
+      // Fire subscriber 5 times in rapid succession (burst)
+      subscriber();
+      subscriber();
+      subscriber();
+      subscriber();
+      subscriber();
+
+      // Advance past debounce — should have triggered exactly one syncNow
+      await vi.advanceTimersByTimeAsync(6000);
+
+      expect(localStore.getAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('after stop(), appends on the local store no longer trigger syncNow', async () => {
+      syncManager = new SyncManager(localStore, remoteStore);
+      syncManager.start();
+
+      const subscribeCalls = vi.mocked(localStore.subscribe).mock.calls;
+      const subscriber = subscribeCalls[subscribeCalls.length - 1][0];
+
+      // Let initial sync settle
+      await vi.advanceTimersByTimeAsync(6000);
+
+      syncManager.stop();
+      vi.mocked(localStore.getAll).mockClear();
+
+      // Simulate appends after stop
+      subscriber();
+      subscriber();
+
+      // Advance well past debounce
+      await vi.advanceTimersByTimeAsync(10000);
+
+      // localStore.getAll should NOT have been called again
+      expect(localStore.getAll).not.toHaveBeenCalled();
+    });
+
+    it('a download-path appendBatch produces at most one follow-on syncNow after the debounce window', async () => {
+      // Arrange: remote has events to download
+      const remoteEvents = [
+        { id: 'evt-1', type: 'task-created', aggregateId: 'task-1', timestamp: '2026-01-30T10:00:00Z', version: 1 },
+        { id: 'evt-2', type: 'task-created', aggregateId: 'task-2', timestamp: '2026-01-30T11:00:00Z', version: 1 },
+      ];
+
+      // The subscriber on localStore captures the callback
+      let capturedSubscriber: (() => void) | null = null;
+      vi.mocked(localStore.subscribe).mockImplementation((cb) => {
+        capturedSubscriber = cb;
+        return () => { capturedSubscriber = null; };
+      });
+
+      // appendBatch calls the subscriber twice (once per event in batch)
+      vi.mocked(localStore.appendBatch).mockImplementation(async () => {
+        capturedSubscriber?.();
+        capturedSubscriber?.();
+      });
+
+      vi.mocked(localStore.getAll).mockResolvedValue([]);
+      vi.mocked(remoteStore.getAll).mockResolvedValue(remoteEvents);
+
+      syncManager = new SyncManager(localStore, remoteStore);
+      syncManager.start();
+
+      // Let initial sync run (downloads the remote events)
+      await vi.advanceTimersByTimeAsync(0);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      vi.mocked(localStore.getAll).mockClear();
+
+      // After download, subscriber fires twice. Advance past debounce window.
+      await vi.advanceTimersByTimeAsync(6000);
+
+      // Should be at most 1 follow-on syncNow (debounce collapsed the two notifications)
+      expect(localStore.getAll).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('memory leak prevention', () => {
     it('should clean up all resources on stop', () => {
       const clearIntervalSpy = vi.spyOn(global, 'clearInterval');

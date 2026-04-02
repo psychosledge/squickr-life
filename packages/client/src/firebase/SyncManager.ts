@@ -26,7 +26,11 @@ export class SyncManager {
   private lastSyncTime: number = 0;
   private syncDebounceMs = DEBOUNCE.SYNC_OPERATION;
   private hasCompletedInitialSync = false;
-  
+
+  // ADR-023: event store subscriber wiring
+  private unsubscribeFromLocalStore?: () => void;
+  private debounceTimer: number | null = null;
+
   // Event handler references (for cleanup)
   private handleVisibilityChange?: () => void;
   private handleOnline?: () => void;
@@ -52,6 +56,14 @@ export class SyncManager {
   start(): void {
     this.startInterval();
     this.setupEventListeners();
+
+    // ADR-023: subscribe to the local event store so every append triggers a
+    // debounced syncNow(). This eliminates the sync lag between IndexedDB and
+    // Firestore without any UI component changes.
+    this.unsubscribeFromLocalStore = this.localStore.subscribe(() => {
+      this.debouncedSyncNow();
+    });
+
     this.syncNow(); // Initial sync on start
   }
   
@@ -63,6 +75,14 @@ export class SyncManager {
   stop(): void {
     this.stopInterval();
     this.cleanupEventListeners();
+
+    // ADR-023: unsubscribe from event store and clear any pending debounce timer
+    this.unsubscribeFromLocalStore?.();
+    this.unsubscribeFromLocalStore = undefined;
+    if (this.debounceTimer !== null) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
   }
   
   /**
@@ -128,6 +148,28 @@ export class SyncManager {
     }
   }
   
+  /**
+   * ADR-023: Debounced syncNow() for event store subscriber notifications.
+   * Collapses burst writes (e.g. appendBatch of 30 events) into a single
+   * syncNow() call. This timer is separate from the lastSyncTime guard in
+   * syncNow() — the two are complementary.
+   *
+   * No-ops if the subscriber is no longer active (i.e. after stop() has been
+   * called), which prevents stale subscriber references from triggering uploads.
+   */
+  private debouncedSyncNow(): void {
+    // Guard: if stop() has been called, do not schedule a sync
+    if (this.unsubscribeFromLocalStore === undefined) return;
+
+    if (this.debounceTimer !== null) {
+      clearTimeout(this.debounceTimer);
+    }
+    this.debounceTimer = window.setTimeout(() => {
+      this.debounceTimer = null;
+      void this.syncNow();
+    }, this.syncDebounceMs);
+  }
+
   /**
    * Start periodic sync interval (every 5 minutes)
    */
