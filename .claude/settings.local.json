@@ -9,7 +9,8 @@
       "Bash(npx vitest:*)",
       "Bash(npx tsc:*)",
       "Bash(firebase functions:log --only habitReminderFanOut --lines 50)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

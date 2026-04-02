@@ -40,6 +40,20 @@ export class EntryListProjection {
   private readonly snapshotStore?: ISnapshotStore;
   private absorbedEventIds: Set<string> | null = null;
 
+  /**
+   * Set once in hydrate() to record whether the local event store was empty at
+   * hydration time. This is the canonical signal for the ADR-024 cold-start
+   * sequencer to decide whether a remote snapshot fetch is needed.
+   *
+   * WARNING: This field is only valid in the window between hydrate() completing
+   * and the sequencer reading it (immediately after initializeApp() in App.tsx).
+   * Call wasLocalStoreEmptyAtHydration() exactly once and cache the result.
+   * If called before hydrate() it returns false (safe default — treats store as
+   * non-empty, preventing an unnecessary remote fetch but never incorrectly
+   * suppressing one).
+   */
+  private localStoreWasEmptyAtHydration: boolean = false;
+
   // ── Private facade objects (implementation details — never exported) ──────
   private readonly collectionView = new CollectionViewProjection(this);
   private readonly subTask = new SubTaskProjection(this);
@@ -106,12 +120,18 @@ export class EntryListProjection {
     const snapshot = await this.snapshotStore.load('entry-list-projection');
 
     if (!snapshot || snapshot.version !== SNAPSHOT_SCHEMA_VERSION) {
-      // No snapshot or stale schema — cache stays null, full replay on first getEntries()
+      // No snapshot or stale schema — cache stays null, full replay on first getEntries().
+      // ADR-024: still need to record the emptiness flag so the cold-start sequencer
+      // can gate the remote fetch correctly even when no local snapshot exists.
+      const events = await this.eventStore.getAll();
+      this.localStoreWasEmptyAtHydration = events.length === 0;
       return;
     }
 
-    // Load all events to determine the delta
+    // Load all events to determine the delta and record the emptiness flag.
     const allEvents = await this.eventStore.getAll();
+    // ADR-024: record emptiness before applying any events.
+    this.localStoreWasEmptyAtHydration = allEvents.length === 0;
 
     if (allEvents.length === 0) {
       // No events at all. One legitimate scenario: first cold-start on a new device where
@@ -154,6 +174,20 @@ export class EntryListProjection {
       // rather than causing a spurious cache invalidation and UI re-render.
       this.absorbedEventIds = new Set(allEvents.map(e => e.id));
     }
+  }
+
+  /**
+   * Returns true if the local event store contained zero events when hydrate()
+   * last ran.
+   *
+   * Used by the ADR-024 cold-start sequencer in App.tsx to decide whether to
+   * fetch a remote snapshot. Call this exactly once, immediately after
+   * initializeApp() completes, and cache the result in a local constant.
+   *
+   * Returns false (safe default) if hydrate() has not yet been called.
+   */
+  wasLocalStoreEmptyAtHydration(): boolean {
+    return this.localStoreWasEmptyAtHydration;
   }
 
   /**

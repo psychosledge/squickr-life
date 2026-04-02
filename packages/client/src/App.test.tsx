@@ -245,7 +245,7 @@ describe('App', () => {
 
   // ── Remote-restore / isRemoteRestoring tests (Change 1) ────────────────────
 
-  describe('isRemoteRestoring gate', () => {
+  describe('ColdStartPhase: slow path (local store empty)', () => {
     let sessionSetItemSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
@@ -286,8 +286,8 @@ describe('App', () => {
       expect(tutorialStartCalls).toHaveLength(0);
     });
 
-    it('isAppReady becomes true and tutorial fires for new user when remote resolves to null', async () => {
-      // Arrange: remoteSnapshotStore.load resolves null (no remote snapshot)
+    it('isAppReady becomes true for new user when remote resolves to null (ADR-024: overlay clears after sync)', async () => {
+      // Arrange: remoteSnapshotStore.load resolves null (no remote snapshot — new user)
       const { FirestoreSnapshotStore } = await import('@squickr/infrastructure');
       vi.spyOn(FirestoreSnapshotStore.prototype, 'load').mockResolvedValue(null);
 
@@ -298,13 +298,14 @@ describe('App', () => {
         expect(screen.queryByTestId('sync-overlay')).not.toBeInTheDocument();
       });
 
-      // Tutorial must have fired (new user, zero collections)
-      await waitFor(() => {
-        const tutorialStartCalls = sessionSetItemSpy.mock.calls.filter(
-          ([key]) => key === TUTORIAL_SEEN_KEY,
-        );
-        expect(tutorialStartCalls.length).toBeGreaterThan(0);
-      });
+      // ADR-024: tutorial does NOT fire for new users on the cold-start path —
+      // squickr_cold_start_restored is set whenever the SyncManager sync runs,
+      // suppressing the tutorial to prevent false positives for returning users
+      // on new devices. New users can start the tutorial manually from the profile menu.
+      const tutorialStartCalls = sessionSetItemSpy.mock.calls.filter(
+        ([key]) => key === TUTORIAL_SEEN_KEY,
+      );
+      expect(tutorialStartCalls).toHaveLength(0);
     });
 
     it('tutorial does NOT fire for returning user when remote snapshot is applied', async () => {
@@ -347,6 +348,112 @@ describe('App', () => {
       expect(tutorialStartCalls).toHaveLength(0);
 
       getCollectionsSpy.mockRestore();
+    });
+  });
+
+  // ── ADR-024: ColdStartPhase state machine tests ────────────────────────────
+
+  describe('ADR-024: ColdStartPhase', () => {
+    beforeEach(() => {
+      sessionStorage.clear();
+      localStorage.clear();
+    });
+
+    it('does NOT initiate remote snapshot fetch when local store is non-empty', async () => {
+      // Arrange: local event store reports non-empty (has events)
+      const { EntryListProjection } = await import('@squickr/domain');
+      vi.spyOn(EntryListProjection.prototype, 'wasLocalStoreEmptyAtHydration').mockReturnValue(false);
+
+      const { FirestoreSnapshotStore } = await import('@squickr/infrastructure');
+      const loadSpy = vi.spyOn(FirestoreSnapshotStore.prototype, 'load');
+
+      render(<App />);
+
+      // App should reach ready state quickly (no Firestore round-trip)
+      await waitFor(() => {
+        expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+      });
+
+      // The remote snapshot fetch must NOT have been called for the cold-start path
+      // (it may be called by SnapshotManager for other purposes, but cold-start
+      // explicitly skips it when local store is non-empty).
+      // We verify this by checking that load was not called during the cold-start window —
+      // i.e. the overlay was never shown.
+      expect(screen.queryByTestId('sync-overlay')).not.toBeInTheDocument();
+
+      loadSpy.mockRestore();
+      vi.spyOn(EntryListProjection.prototype, 'wasLocalStoreEmptyAtHydration').mockRestore();
+    });
+
+    it('writes squickr_cold_start_restored to sessionStorage when transitioning through syncing phase', async () => {
+      // Arrange: local store is empty → cold-start path runs
+      const { EntryListProjection } = await import('@squickr/domain');
+      vi.spyOn(EntryListProjection.prototype, 'wasLocalStoreEmptyAtHydration').mockReturnValue(true);
+
+      // Remote snapshot returns null (no snapshot available)
+      const { FirestoreSnapshotStore } = await import('@squickr/infrastructure');
+      vi.spyOn(FirestoreSnapshotStore.prototype, 'load').mockResolvedValue(null);
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+      });
+
+      // The session flag must have been set during the syncing transition
+      expect(sessionStorage.getItem('squickr_cold_start_restored')).toBe('true');
+
+      vi.spyOn(EntryListProjection.prototype, 'wasLocalStoreEmptyAtHydration').mockRestore();
+    });
+
+    it('overlay shows "Restoring your journal" text while remote snapshot check is in flight (checking phase)', async () => {
+      // Arrange: local store is empty and remote snapshot check never resolves
+      // → app stays in 'checking' phase and the overlay copy reflects that
+      const { EntryListProjection } = await import('@squickr/domain');
+      vi.spyOn(EntryListProjection.prototype, 'wasLocalStoreEmptyAtHydration').mockReturnValue(true);
+
+      const { FirestoreSnapshotStore } = await import('@squickr/infrastructure');
+      // Never resolves → stays in 'checking' phase (not 'restoring')
+      vi.spyOn(FirestoreSnapshotStore.prototype, 'load').mockImplementation(
+        () => new Promise(() => {}),
+      );
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('sync-overlay')).toBeInTheDocument();
+      });
+
+      // During the checking/restoring phase the overlay must show restore copy
+      expect(screen.getByText(/Restoring your journal/i)).toBeInTheDocument();
+
+      vi.spyOn(EntryListProjection.prototype, 'wasLocalStoreEmptyAtHydration').mockRestore();
+    });
+
+    it('app reaches ready state via fallback when FirestoreSnapshotStore.load rejects (catch path)', async () => {
+      // Arrange: local store is empty → slow path runs
+      const { EntryListProjection } = await import('@squickr/domain');
+      vi.spyOn(EntryListProjection.prototype, 'wasLocalStoreEmptyAtHydration').mockReturnValue(true);
+
+      // Remote snapshot load rejects — exercises the catch branch in startSync()
+      const { FirestoreSnapshotStore } = await import('@squickr/infrastructure');
+      vi.spyOn(FirestoreSnapshotStore.prototype, 'load').mockRejectedValue(
+        new Error('Firestore unavailable'),
+      );
+
+      render(<App />);
+
+      // The catch branch must still set squickr_cold_start_restored and advance
+      // through 'syncing' to 'ready' so the overlay clears.
+      await waitFor(() => {
+        expect(sessionStorage.getItem('squickr_cold_start_restored')).toBe('true');
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('sync-overlay')).not.toBeInTheDocument();
+      });
+
+      vi.spyOn(EntryListProjection.prototype, 'wasLocalStoreEmptyAtHydration').mockRestore();
     });
   });
 

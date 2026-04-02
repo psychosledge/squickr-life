@@ -112,6 +112,11 @@ export function CollectionIndexView() {
   // Gate behind isAppReady so we never fire during initial Firestore sync on a
   // new device — collections.length === 0 is temporarily true while 900+ events
   // are downloading.
+  //
+  // ADR-024: additionally gate on the cold-start restoration flag. If a sync was
+  // in progress this session (returning user on a new device), never fire the
+  // tutorial even if collections are still empty — the sync may not have
+  // completed yet.
   const { startTutorial } = tutorial;
   useEffect(() => {
     if (!isAppReady) return;
@@ -123,11 +128,16 @@ export function CollectionIndexView() {
       sessionStorage.getItem(TUTORIAL_SEEN_KEY) === 'true';
     const hasCompletedTutorial =
       localStorage.getItem(TUTORIAL_COMPLETED_KEY) === 'true';
+    // ADR-024: set by App.tsx whenever coldStartPhase transitions through 'syncing'.
+    // Prevents tutorial from firing for returning users on new/empty devices.
+    const wasRestoredThisSession =
+      sessionStorage.getItem('squickr_cold_start_restored') === 'true';
 
     if (
       realCollections.length === 0 &&
       !hasSeenThisSession &&
-      !hasCompletedTutorial
+      !hasCompletedTutorial &&
+      !wasRestoredThisSession
     ) {
       startTutorial();
     }

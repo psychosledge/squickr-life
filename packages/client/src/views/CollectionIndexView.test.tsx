@@ -938,4 +938,119 @@ describe('CollectionIndexView - data-tutorial-id anchor on h1', () => {
   });
 });
 
+// ── ADR-024: Tutorial suppression guard ──────────────────────────────────────
+
+describe('CollectionIndexView - ADR-024: Tutorial suppression guard', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+  let mockEventStore: any;
+  let mockCreateCollectionHandler: any;
+
+  beforeEach(() => {
+    mockStartTutorial.mockClear();
+    sessionStorage.clear();
+    localStorage.clear();
+
+    mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([]),
+      getDeletedCollections: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEntryProjection = {
+      getActiveTaskCountsByCollection: vi.fn(() => Promise.resolve(new Map())),
+      getEntries: vi.fn(() => Promise.resolve([])),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockEventStore = {
+      append: vi.fn(),
+      getEvents: vi.fn().mockResolvedValue([]),
+      getAll: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    mockCreateCollectionHandler = {
+      handle: vi.fn().mockResolvedValue(undefined),
+    };
+  });
+
+  function renderView(isAppReady = true) {
+    const mockAppContext = {
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      taskProjection: {} as any,
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: mockCreateCollectionHandler,
+      restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
+      migrateTaskHandler: {} as any,
+      addTaskToCollectionHandler: {} as any,
+      removeTaskFromCollectionHandler: {} as any,
+      moveTaskToCollectionHandler: {} as any,
+      addNoteToCollectionHandler: {} as any,
+      removeNoteFromCollectionHandler: {} as any,
+      moveNoteToCollectionHandler: {} as any,
+      addEventToCollectionHandler: {} as any,
+      removeEventFromCollectionHandler: {} as any,
+      moveEventToCollectionHandler: {} as any,
+      restoreTaskHandler: {} as any,
+      restoreNoteHandler: {} as any,
+      restoreEventHandler: {} as any,
+      bulkMigrateEntriesHandler: {} as any,
+      userPreferences: DEFAULT_USER_PREFERENCES,
+      isAppReady,
+      createHabitHandler: {} as any,
+      updateHabitTitleHandler: {} as any,
+      updateHabitFrequencyHandler: {} as any,
+      completeHabitHandler: {} as any,
+      revertHabitCompletionHandler: {} as any,
+      archiveHabitHandler: {} as any,
+      restoreHabitHandler: {} as any,
+      reorderHabitHandler: {} as any,
+    };
+
+    return render(
+      <AuthProvider>
+        <BrowserRouter>
+          <AppProvider value={mockAppContext}>
+            <TutorialProvider>
+              <CollectionIndexView />
+            </TutorialProvider>
+          </AppProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    );
+  }
+
+  it('tutorial does NOT fire when squickr_cold_start_restored is set, even with zero collections and isAppReady=true', async () => {
+    // Arrange: set the cold-start restoration flag (as App.tsx does when a sync ran)
+    sessionStorage.setItem('squickr_cold_start_restored', 'true');
+
+    renderView(true);
+
+    await waitFor(() => {
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    });
+
+    // startTutorial must NOT have been called — cold-start guard fires
+    expect(mockStartTutorial).not.toHaveBeenCalled();
+  });
+
+  it('tutorial fires when squickr_cold_start_restored is absent AND all other conditions met (regression guard)', async () => {
+    // Arrange: no cold-start flag, no tutorial seen, no tutorial completed, zero collections
+    // (squickr_cold_start_restored is absent — clean state)
+
+    renderView(true);
+
+    await waitFor(() => {
+      expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+    });
+
+    // Wait for the tutorial effect to run at least once
+    await waitFor(() => {
+      expect(mockStartTutorial).toHaveBeenCalled();
+    });
+  });
+});
+
 

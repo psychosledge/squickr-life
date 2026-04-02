@@ -115,6 +115,9 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
     setHasCompletedTutorial(false);
     localStorage.removeItem(TUTORIAL_COMPLETED_KEY);
     sessionStorage.removeItem(TUTORIAL_SEEN_KEY);
+    // ADR-024: clear the cold-start restoration flag so developers using the
+    // tutorial reset see a clean state (tutorial can fire again from scratch).
+    sessionStorage.removeItem('squickr_cold_start_restored');
   }, []);
 
   const value: TutorialContextValue = {

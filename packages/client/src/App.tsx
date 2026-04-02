@@ -59,6 +59,13 @@ import { registerFcmToken } from './firebase/fcm';
 import { ROUTES } from './routes';
 import { logger } from './utils/logger';
 
+// ─── ADR-024: Cold-start phase type ───────────────────────────────────────────
+// 'checking'  — auth resolved, determining whether remote restore is needed
+// 'restoring' — fetching / seeding remote snapshot into local store
+// 'syncing'   — SyncManager initial sync in progress (overlay shown)
+// 'ready'     — app ready for user interaction
+export type ColdStartPhase = 'checking' | 'restoring' | 'syncing' | 'ready';
+
 // ─── Tutorial Step Definitions ────────────────────────────────────────────────
 // Real DOM anchors use data-tutorial-id attributes added in Commit 3.
 // Steps 4–6 use Option A: tutorial pauses after Step 3 until user enters a
@@ -310,13 +317,12 @@ function AppContent() {
   
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Blocks isAppReady until the remote snapshot check (startSync cold-start path) resolves.
-  // Starts as true (conservative: assume a remote check will happen until proven otherwise).
-  const [isRemoteRestoring, setIsRemoteRestoring] = useState(true);
-  
-  // Sync overlay state — tracks whether the initial Firestore sync is in progress
-  const [isSyncing, setIsSyncing] = useState(false);
+
+  // ── ADR-024: Cold-start phase state machine ─────────────────────────────────
+  // Replaces the previous isRemoteRestoring + isSyncing boolean pair.
+  // Type is declared at module scope (exported) so tests can reference it.
+  const [coldStartPhase, setColdStartPhase] = useState<ColdStartPhase>('checking');
+
   const [syncError, setSyncError] = useState<string | null>(null);
   
   // Track if app is initialized (prevents double-init in React StrictMode)
@@ -351,13 +357,13 @@ function AppContent() {
   }, []);
 
   // If isLoading completes and there's no user, no remote check will happen —
-  // clear the isRemoteRestoring gate immediately so isAppReady can become true.
+  // advance directly to 'ready' so isAppReady can become true.
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || authLoading) return;
     if (!user) {
-      setIsRemoteRestoring(false);
+      setColdStartPhase('ready');
     }
-  }, [user, isLoading]);
+  }, [user, isLoading, authLoading]);
 
   // Start/stop background sync when user signs in/out
   useEffect(() => {
@@ -381,71 +387,92 @@ function AppContent() {
     let cancelled = false;
 
     const startSync = async () => {
-      // ── Cold-start: attempt to restore projection from remote snapshot ──
-      // Uses a 5-second timeout to fail fast back to normal behaviour on slow networks.
-      logger.info('[App] Cold-start: attempting remote snapshot restore…');
+      // ── ADR-024: Cold-start sequencer ──────────────────────────────────────
+      // Read the emptiness flag captured by initializeApp()'s hydrate() call.
+      // This is the single check that decides whether to fetch a remote snapshot.
+      const isEmptyLocalStore = entryProjection.wasLocalStoreEmptyAtHydration();
+      logger.info('[App] Cold-start: isEmptyLocalStore =', isEmptyLocalStore);
+
+      if (!isEmptyLocalStore) {
+        // ── Fast path: local store has data — skip Firestore round-trip ──────
+        // Advance to 'ready' synchronously before starting background sync so
+        // there is no render cycle where the app is "checking" but not ready.
+        if (!cancelled) setColdStartPhase('ready');
+        const manager = new SyncManager(eventStore, remoteEventStore);
+        manager.onSyncStateChange = (_syncing: boolean, error?: string) => {
+          if (error) setSyncError(error);
+        };
+        manager.start();
+        syncManagerRef.current = manager;
+        logger.info('[App] Cold-start fast path: background sync started (local store non-empty)');
+        return;
+      }
+
+      // ── Slow path: local store is empty — attempt remote snapshot restore ──
+      // Uses a 10-second timeout (ADR-024: increased from 5s — see Rationale).
+      logger.info('[App] Cold-start: local store empty — attempting remote snapshot restore…');
       try {
         const remoteSnapshot = await Promise.race([
           remoteSnapshotStore.load('entry-list-projection'),
-          new Promise<null>(resolve => setTimeout(() => resolve(null), 5_000)),
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 10_000)),
         ]);
 
         logger.info('[App] Cold-start: remote snapshot result =', remoteSnapshot ? `found (savedAt=${remoteSnapshot.savedAt}, lastEventId=${remoteSnapshot.lastEventId})` : 'null (not found or timed out)');
 
-        if (!cancelled && remoteSnapshot) {
-          const localSnapshot = await snapshotStore.load('entry-list-projection');
-          const remoteIsNewer =
-            !localSnapshot ||
-            new Date(remoteSnapshot.savedAt) > new Date(localSnapshot.savedAt);
-
-          logger.info('[App] Cold-start: localSnapshot =', localSnapshot ? `found (savedAt=${localSnapshot.savedAt})` : 'null', '| remoteIsNewer =', remoteIsNewer);
-
-          if (remoteIsNewer) {
-            await snapshotStore.save('entry-list-projection', remoteSnapshot);
-            await entryProjection.hydrate();
-            restoredFromRemoteRef.current = true;
-            logger.info('[App] Cold-start: restored from remote snapshot — overlay will be skipped');
-          } else {
-            logger.info('[App] Cold-start: local snapshot is newer or equal — skipping remote restore');
-          }
-        } else if (cancelled) {
+        if (cancelled) {
           logger.info('[App] Cold-start: cancelled before snapshot check');
+          return;
+        }
+
+        if (remoteSnapshot) {
+          // Remote snapshot found — seed local store and re-hydrate
+          if (!cancelled) setColdStartPhase('restoring');
+          await snapshotStore.save('entry-list-projection', remoteSnapshot);
+          await entryProjection.hydrate();
+          restoredFromRemoteRef.current = true;
+          logger.info('[App] Cold-start: restored from remote snapshot — overlay will be skipped');
         }
       } catch (err) {
         logger.warn('[App] Remote snapshot restore failed, falling back to normal sync:', err);
-      } finally {
-        if (!cancelled) setIsRemoteRestoring(false);
       }
 
       if (cancelled) return;
+
+      // ── Both restore and timeout/null paths converge here ──────────────────
+      // Write the tutorial-suppression flag before advancing to 'syncing' so
+      // that CollectionIndexView's tutorial effect sees it on the same render.
+      sessionStorage.setItem('squickr_cold_start_restored', 'true');
+      setColdStartPhase('syncing');
 
       const manager = new SyncManager(eventStore, remoteEventStore);
 
       if (restoredFromRemoteRef.current) {
         // Remote snapshot already hydrated the projection — skip the blocking overlay.
-        // Run sync in background without setting isSyncing so UI is immediately usable.
+        // Run sync in background without blocking isAppReady further.
         manager.onSyncStateChange = (_syncing: boolean, error?: string) => {
           if (error) setSyncError(error);
+          if (!_syncing) setColdStartPhase('ready');
         };
       } else {
-        // Normal path: show overlay until initial sync completes.
-        setIsSyncing(true);
+        // Normal path (null snapshot / timeout): show overlay until initial sync completes.
         let initialSnapshotSaved = false;
         manager.onSyncStateChange = (syncing: boolean, error?: string) => {
-          setIsSyncing(syncing);
           setSyncError(error ?? null);
-          // After initial sync completes, proactively save a snapshot so Firestore
-          // has one available for future cold-starts on new devices / incognito.
-          if (!syncing && !initialSnapshotSaved) {
-            initialSnapshotSaved = true;
-            void snapshotManagerRef.current?.saveSnapshot('post-initial-sync');
+          if (!syncing) {
+            setColdStartPhase('ready');
+            // After initial sync completes, proactively save a snapshot so Firestore
+            // has one available for future cold-starts on new devices / incognito.
+            if (!initialSnapshotSaved) {
+              initialSnapshotSaved = true;
+              void snapshotManagerRef.current?.saveSnapshot('post-initial-sync');
+            }
           }
         };
       }
 
       manager.start();
       syncManagerRef.current = manager;
-      
+
       logger.info('[App] Background sync started');
     };
 
@@ -453,6 +480,7 @@ function AppContent() {
     
     return () => {
       cancelled = true;
+      restoredFromRemoteRef.current = false;
       syncManagerRef.current?.stop();
       syncManagerRef.current = null;
       logger.info('[App] Background sync stopped');
@@ -487,17 +515,14 @@ function AppContent() {
     }
   };
 
-  // The app is "ready" once IndexedDB has loaded AND the remote snapshot check has
-  // completed (or was skipped because there's no user) AND the initial Firestore sync
-  // has completed (or never started because there's no user yet) AND there is no
-  // unacknowledged sync error. Background syncs after the first do not block
-  // (initialSyncComplete stays true). When a timeout occurs, syncError is set and
-  // the overlay stays visible until the user dismisses it with "Show local data".
-  const syncManager = syncManagerRef.current;
+  // The app is "ready" once IndexedDB has loaded AND the cold-start phase has
+  // reached 'ready' AND there is no unacknowledged sync error.
+  // Background syncs after the first do not block (coldStartPhase stays 'ready').
+  // When a sync error occurs, the overlay stays visible until the user dismisses
+  // it with "Show local data".
   const isAppReady =
     !isLoading &&
-    !isRemoteRestoring &&
-    (!isSyncing || (syncManager?.initialSyncComplete ?? true)) &&
+    coldStartPhase === 'ready' &&
     syncError === null;
 
   // Register FCM token once the app is ready and the user is signed in.
@@ -570,8 +595,8 @@ function AppContent() {
       <DebugProvider>
         <TutorialJoyride />
 
-        {/* ── Sync overlay ─────────────────────────────────────────────────────
-            Shown while the initial Firestore sync is in progress.
+        {/* ── Cold-start overlay ───────────────────────────────────────────────
+            Shown while the cold-start sequencer is in progress.
             Prevents the empty-state flash and premature tutorial trigger
             on new devices downloading 900+ events for the first time.       */}
         {!isAppReady && (
@@ -605,7 +630,9 @@ function AppContent() {
                   aria-hidden="true"
                 />
                 <p className="text-gray-600 dark:text-gray-400">
-                  Syncing your journal…
+                  {coldStartPhase === 'checking' || coldStartPhase === 'restoring'
+                    ? 'Restoring your journal…'
+                    : 'Syncing your journal…'}
                 </p>
               </>
             )}

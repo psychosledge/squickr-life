@@ -2215,14 +2215,17 @@ describe('EntryListProjection', () => {
 
       const proj = new EntryListProjection(eventStore, snapshotStore);
 
-      // Spy before hydrate() to verify the guard fires early (before any getAll() call)
+      // Spy before hydrate() to verify call counts
       const spy = vi.spyOn(eventStore, 'getAll');
 
-      await proj.hydrate(); // should be no-op due to version mismatch — must NOT call getAll()
-      expect(spy).toHaveBeenCalledTimes(0); // early return: stale version guard fired
+      // ADR-024: hydrate() always calls getAll() to record the localStoreWasEmptyAtHydration
+      // flag, even on the stale-version early-return path. The snapshot state is not applied
+      // (cache stays null) but the emptiness flag is captured for the cold-start sequencer.
+      await proj.hydrate();
+      expect(spy).toHaveBeenCalledTimes(1); // called once for the emptiness flag
 
-      await proj.getEntries(); // triggers full replay — MUST call getAll()
-      expect(spy).toHaveBeenCalledTimes(1); // full replay happened
+      await proj.getEntries(); // triggers full replay — calls getAll() again
+      expect(spy).toHaveBeenCalledTimes(2); // full replay happened
 
       vi.restoreAllMocks();
     });
@@ -2772,6 +2775,93 @@ describe('EntryListProjection — HabitProjection facade', () => {
     const today = new Date().toISOString().slice(0, 10);
     const habits = await projection.getHabitsForDate(today);
     expect(habits).toHaveLength(1);
+  });
+});
+
+// ─── ADR-024: wasLocalStoreEmptyAtHydration() ─────────────────────────────────
+
+describe('EntryListProjection.wasLocalStoreEmptyAtHydration()', () => {
+  let eventStore: IEventStore;
+  let snapshotStore: InMemorySnapshotStore;
+
+  // Re-declare InMemorySnapshotStore locally so it's in scope for these tests.
+  class InMemorySnapshotStore implements ISnapshotStore {
+    private readonly store = new Map<string, ProjectionSnapshot>();
+    async save(key: string, snapshot: ProjectionSnapshot): Promise<void> {
+      this.store.set(key, snapshot);
+    }
+    async load(key: string): Promise<ProjectionSnapshot | null> {
+      return this.store.get(key) ?? null;
+    }
+    async clear(key: string): Promise<void> {
+      this.store.delete(key);
+    }
+  }
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    snapshotStore = new InMemorySnapshotStore();
+  });
+
+  it('returns true when local event store was empty at hydration time', async () => {
+    // Arrange: no events in store
+    const projection = new EntryListProjection(eventStore, snapshotStore);
+
+    // Act
+    await projection.hydrate();
+
+    // Assert: empty store → true
+    expect(projection.wasLocalStoreEmptyAtHydration()).toBe(true);
+  });
+
+  it('returns false when local event store had events at hydration time', async () => {
+    // Arrange: at least one event exists before hydration
+    await eventStore.append({
+      id: 'evt-1',
+      type: 'TaskCreated',
+      aggregateId: 'task-1',
+      timestamp: new Date().toISOString(),
+      version: 1,
+      payload: { taskId: 'task-1', content: 'Test task', status: 'open', order: 'a0' },
+    });
+    const projection = new EntryListProjection(eventStore, snapshotStore);
+
+    // Act
+    await projection.hydrate();
+
+    // Assert: non-empty store → false
+    expect(projection.wasLocalStoreEmptyAtHydration()).toBe(false);
+  });
+
+  it('returns false after re-hydration when events are present on second call', async () => {
+    // Arrange: first hydration on an empty store
+    const projection = new EntryListProjection(eventStore, snapshotStore);
+    await projection.hydrate();
+    expect(projection.wasLocalStoreEmptyAtHydration()).toBe(true); // baseline
+
+    // Simulate cold-start path: seed an event, then hydrate again
+    await eventStore.append({
+      id: 'evt-remote-1',
+      type: 'TaskCreated',
+      aggregateId: 'task-1',
+      timestamp: new Date().toISOString(),
+      version: 1,
+      payload: { taskId: 'task-1', content: 'Remote task', status: 'open', order: 'a0' },
+    });
+    await projection.hydrate();
+
+    // Assert: second hydration sees events → returns false
+    expect(projection.wasLocalStoreEmptyAtHydration()).toBe(false);
+  });
+
+  it('returns false (default) before hydrate() has been called', () => {
+    // Arrange: projection constructed but hydrate() not yet called
+    const projection = new EntryListProjection(eventStore, snapshotStore);
+
+    // Assert: safe default is false (treats as non-empty, won't skip needed remote fetch)
+    // Note: ADR-024 documents that calling this before hydrate() is a misuse;
+    // the safe default here avoids false-positive "new device" detection.
+    expect(projection.wasLocalStoreEmptyAtHydration()).toBe(false);
   });
 });
 
