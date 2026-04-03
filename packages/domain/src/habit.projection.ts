@@ -403,90 +403,115 @@ function computeLongestStreak(state: HabitState, today: string): number {
 }
 
 // ============================================================================
+// Event type guard and single-event application helper
+// ============================================================================
+
+/** Returns true for any event type owned by the Habit aggregate. */
+function isHabitEvent(event: DomainEvent): boolean {
+  return (
+    event.type === 'HabitCreated' ||
+    event.type === 'HabitTitleChanged' ||
+    event.type === 'HabitFrequencyChanged' ||
+    event.type === 'HabitCompleted' ||
+    event.type === 'HabitCompletionReverted' ||
+    event.type === 'HabitArchived' ||
+    event.type === 'HabitRestored' ||
+    event.type === 'HabitReordered' ||
+    event.type === 'HabitNotificationTimeSet' ||
+    event.type === 'HabitNotificationTimeCleared'
+  );
+}
+
+/**
+ * Apply a single habit event to an existing state map in-place.
+ * Used for incremental cache updates so snapshot-seeded state is preserved
+ * across delta-only syncs (ADR-025/026).
+ */
+function applyHabitEvent(states: Map<string, HabitState>, event: DomainEvent): void {
+  switch (event.type) {
+    case 'HabitCreated': {
+      const p = (event as import('./habit.types').HabitCreated).payload;
+      states.set(p.habitId, {
+        id: p.habitId,
+        title: p.title,
+        frequency: p.frequency,
+        createdAt: p.createdAt,
+        order: p.order,
+        notificationTime: p.notificationTime,
+        completions: new Map(),
+        reverted: new Set(),
+      });
+      break;
+    }
+    case 'HabitTitleChanged': {
+      const p = (event as import('./habit.types').HabitTitleChanged).payload;
+      const s = states.get(p.habitId);
+      if (s) s.title = p.title;
+      break;
+    }
+    case 'HabitFrequencyChanged': {
+      const p = (event as import('./habit.types').HabitFrequencyChanged).payload;
+      const s = states.get(p.habitId);
+      if (s) s.frequency = p.frequency;
+      break;
+    }
+    case 'HabitCompleted': {
+      const p = (event as import('./habit.types').HabitCompleted).payload;
+      const s = states.get(p.habitId);
+      if (s) {
+        s.completions.set(p.date, p.completedAt);
+        s.reverted.delete(p.date);
+      }
+      break;
+    }
+    case 'HabitCompletionReverted': {
+      const p = (event as import('./habit.types').HabitCompletionReverted).payload;
+      const s = states.get(p.habitId);
+      if (s) s.reverted.add(p.date);
+      break;
+    }
+    case 'HabitArchived': {
+      const p = (event as import('./habit.types').HabitArchived).payload;
+      const s = states.get(p.habitId);
+      if (s) s.archivedAt = p.archivedAt;
+      break;
+    }
+    case 'HabitRestored': {
+      const p = (event as import('./habit.types').HabitRestored).payload;
+      const s = states.get(p.habitId);
+      if (s) s.archivedAt = undefined;
+      break;
+    }
+    case 'HabitReordered': {
+      const p = (event as import('./habit.types').HabitReordered).payload;
+      const s = states.get(p.habitId);
+      if (s) s.order = p.order;
+      break;
+    }
+    case 'HabitNotificationTimeSet': {
+      const p = (event as import('./habit.types').HabitNotificationTimeSet).payload;
+      const s = states.get(p.habitId);
+      if (s) s.notificationTime = p.notificationTime;
+      break;
+    }
+    case 'HabitNotificationTimeCleared': {
+      const p = (event as import('./habit.types').HabitNotificationTimeCleared).payload;
+      const s = states.get(p.habitId);
+      if (s) s.notificationTime = undefined;
+      break;
+    }
+  }
+}
+
+// ============================================================================
 // Replay events into HabitState map
 // ============================================================================
 
 function replayEvents(events: DomainEvent[]): Map<string, HabitState> {
   const states = new Map<string, HabitState>();
-
   for (const event of events) {
-    switch (event.type) {
-      case 'HabitCreated': {
-        const p = (event as import('./habit.types').HabitCreated).payload;
-        states.set(p.habitId, {
-          id: p.habitId,
-          title: p.title,
-          frequency: p.frequency,
-          createdAt: p.createdAt,
-          order: p.order,
-          notificationTime: p.notificationTime,
-          completions: new Map(),
-          reverted: new Set(),
-        });
-        break;
-      }
-      case 'HabitTitleChanged': {
-        const p = (event as import('./habit.types').HabitTitleChanged).payload;
-        const s = states.get(p.habitId);
-        if (s) s.title = p.title;
-        break;
-      }
-      case 'HabitFrequencyChanged': {
-        const p = (event as import('./habit.types').HabitFrequencyChanged).payload;
-        const s = states.get(p.habitId);
-        if (s) s.frequency = p.frequency;
-        break;
-      }
-      case 'HabitCompleted': {
-        const p = (event as import('./habit.types').HabitCompleted).payload;
-        const s = states.get(p.habitId);
-        if (s) {
-          s.completions.set(p.date, p.completedAt);
-          // If previously reverted, un-revert it
-          s.reverted.delete(p.date);
-        }
-        break;
-      }
-      case 'HabitCompletionReverted': {
-        const p = (event as import('./habit.types').HabitCompletionReverted).payload;
-        const s = states.get(p.habitId);
-        if (s) s.reverted.add(p.date);
-        break;
-      }
-      case 'HabitArchived': {
-        const p = (event as import('./habit.types').HabitArchived).payload;
-        const s = states.get(p.habitId);
-        if (s) s.archivedAt = p.archivedAt;
-        break;
-      }
-      case 'HabitRestored': {
-        const p = (event as import('./habit.types').HabitRestored).payload;
-        const s = states.get(p.habitId);
-        if (s) s.archivedAt = undefined;
-        break;
-      }
-      case 'HabitReordered': {
-        const p = (event as import('./habit.types').HabitReordered).payload;
-        const s = states.get(p.habitId);
-        if (s) s.order = p.order;
-        break;
-      }
-      case 'HabitNotificationTimeSet': {
-        const p = (event as import('./habit.types').HabitNotificationTimeSet).payload;
-        const s = states.get(p.habitId);
-        if (s) s.notificationTime = p.notificationTime;
-        break;
-      }
-      case 'HabitNotificationTimeCleared': {
-        const p = (event as import('./habit.types').HabitNotificationTimeCleared).payload;
-        const s = states.get(p.habitId);
-        if (s) s.notificationTime = undefined;
-        break;
-      }
-      // Ignore unrelated events
-    }
+    applyHabitEvent(states, event);
   }
-
   return states;
 }
 
@@ -541,10 +566,16 @@ export class HabitProjection {
   private subscribers = new Set<() => void>();
 
   constructor(private readonly eventStore: IEventStore) {
-    // Invalidate the cache whenever a new event is appended so that the
-    // next query always reflects the latest event log.
-    this.eventStore.subscribe(() => {
-      this.stateCache = null;
+    // Apply habit events incrementally to preserve snapshot-seeded state (ADR-025/026).
+    // Non-habit events are ignored — they cannot affect habit state.
+    // When the cache is cold (null), habit events are silently dropped here; the next
+    // query will trigger a full replay from the event store via loadStates().
+    this.eventStore.subscribe((event: DomainEvent) => {
+      if (!isHabitEvent(event)) return;
+      if (this.stateCache !== null) {
+        applyHabitEvent(this.stateCache, event);
+      }
+      this.notifySubscribers();
     });
   }
 
@@ -682,11 +713,6 @@ export class HabitProjection {
    */
   subscribe(callback: () => void): () => void {
     this.subscribers.add(callback);
-    // Also forward event store changes so callers get notified on new events.
-    const unsubFromStore = this.eventStore.subscribe(() => callback());
-    return () => {
-      this.subscribers.delete(callback);
-      unsubFromStore();
-    };
+    return () => this.subscribers.delete(callback);
   }
 }

@@ -455,8 +455,8 @@ describe('UserPreferencesProjection — snapshot support (ADR-026)', () => {
       expect(notified).toBe(true);
     });
 
-    it('clears cache when a new event arrives after hydration', async () => {
-      // Arrange — hydrate then append an event
+    it('applies preference event incrementally after hydration — does not call getAll', async () => {
+      // Arrange — hydrate then append a preference event
       projection.hydrateFromSnapshot({
         ...DEFAULT_USER_PREFERENCES,
         defaultCompletedTaskBehavior: 'collapse' as const,
@@ -464,7 +464,7 @@ describe('UserPreferencesProjection — snapshot support (ADR-026)', () => {
 
       const getAllSpy = vi.spyOn(eventStore, 'getAll').mockResolvedValue([]);
 
-      // Append an event (triggers subscriber → clears cache)
+      // Append a UserPreferencesUpdated event — should be applied incrementally
       const metadata = generateEventMetadata();
       await eventStore.append({
         ...metadata,
@@ -476,11 +476,14 @@ describe('UserPreferencesProjection — snapshot support (ADR-026)', () => {
         },
       } as UserPreferencesUpdated);
 
-      // Act — next call should replay from event store
-      await projection.getUserPreferences();
+      // Act — next call should use incrementally updated cache, not replay
+      const prefs = await projection.getUserPreferences();
 
-      // Assert — getAll called because cache was invalidated
-      expect(getAllSpy).toHaveBeenCalled();
+      // Assert — getAll NOT called (incremental update preserved snapshot state)
+      expect(getAllSpy).not.toHaveBeenCalled();
+      // And the new preference is applied on top of the seeded state
+      expect(prefs.autoFavoriteRecentDailyLogs).toBe(true);
+      expect(prefs.defaultCompletedTaskBehavior).toBe('collapse');
     });
   });
 

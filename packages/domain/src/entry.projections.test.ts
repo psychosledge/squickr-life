@@ -2253,8 +2253,9 @@ describe('EntryListProjection', () => {
       vi.restoreAllMocks();
     });
 
-    it('falls back to full replay when snapshot lastEventId is not in event log', async () => {
-      // Arrange: snapshot references an event ID that does not exist in the log
+    it('seeds from snapshot + replays local events when lastEventId is not in the log (delta-only store)', async () => {
+      // Arrange: snapshot references an event ID not in the local log (delta-only device).
+      // hydrate() should use snapshot state as base and replay all local events on top.
       await taskHandler.handle({ content: 'Task' });
 
       const snapshotStore = new InMemorySnapshotStore();
@@ -2269,12 +2270,13 @@ describe('EntryListProjection', () => {
       await snapshotStore.save('entry-list-projection', orphanedSnapshot);
 
       const proj = new EntryListProjection(eventStore, snapshotStore);
-      await proj.hydrate(); // no-op: lastEventId not found
+      await proj.hydrate(); // seeds from snapshot state + replays all local events
 
+      // Cache is populated by hydrate() — getEntries() should NOT call getAll() again
       const spy = vi.spyOn(eventStore, 'getAll');
-      await proj.getEntries(); // triggers full replay
+      await proj.getEntries();
 
-      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).not.toHaveBeenCalled();
       vi.restoreAllMocks();
     });
 
@@ -2488,52 +2490,55 @@ describe('EntryListProjection', () => {
       expect(entries[0]).toMatchObject({ content: 'Snapshot Task' });
     });
 
-    it('subscriber invalidates snapshot seed on first event (seededFromEmptyEventStore flag)', async () => {
-      // Arrange: seed cache from a snapshot with an empty event store
+    it('ADR-025: new event on snapshot-seeded projection is applied incrementally, preserving seeded entries', async () => {
+      // Arrange: build a snapshot with one task from a populated event store.
       const seedEventStore = new InMemoryEventStore();
       const seedProjection = new EntryListProjection(seedEventStore);
       const seedTaskProjection = new TaskListProjection(seedEventStore);
       const seedHandler = new CreateTaskHandler(seedEventStore, seedTaskProjection, seedProjection);
-      await seedHandler.handle({ content: 'Old Snapshot Task' });
+      await seedHandler.handle({ content: 'Snapshot Task' });
       const snapshot = await seedProjection.createSnapshot();
 
       const snapshotStore = new InMemorySnapshotStore();
       await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
+      // Fresh device: local event store is empty, seeded from remote snapshot.
       const emptyEventStore = new InMemoryEventStore();
       const freshProjection = new EntryListProjection(emptyEventStore, snapshotStore);
-
-      // Seed from snapshot (event store is empty)
       await freshProjection.hydrate();
       expect(freshProjection.isCachePopulated()).toBe(true);
 
-      // Act: first real event arrives (simulates SyncManager downloading events).
-      // Use a TaskCreated event (PascalCase — the actual domain event type).
-      const realEvent = {
-        id: 'real-event-id',
+      // Act: user adds a new task — 1 event written to local IndexedDB.
+      // With delta-only sync (ADR-025) this is the ONLY event in the local store;
+      // the pre-snapshot history is NOT present locally.
+      const newTaskEvent = {
+        id: 'new-task-event-id',
         type: 'TaskCreated',
-        aggregateId: 'real-task',
+        aggregateId: 'new-task',
         timestamp: new Date().toISOString(),
         version: 1,
         payload: {
-          taskId: 'real-task',
-          content: 'Real Task From Events',
+          taskId: 'new-task',
+          content: 'New Task Added On New Device',
           status: 'open',
           order: 'z',
           collectionId: null,
           createdAt: new Date().toISOString(),
         },
       };
-      await emptyEventStore.append(realEvent as Parameters<typeof emptyEventStore.append>[0]);
+      await emptyEventStore.append(newTaskEvent as Parameters<typeof emptyEventStore.append>[0]);
 
-      // Assert: cache is now null (invalidated), forcing a full replay on next getEntries()
-      // This prevents double-applying snapshot events when events download.
-      expect(freshProjection.isCachePopulated()).toBe(false);
+      // Assert: cache remains populated (not invalidated).
+      // The incremental update path must have run, not the cache-clear path.
+      expect(freshProjection.isCachePopulated()).toBe(true);
 
-      // getEntries() triggers a full replay and returns correct state from real events
+      // getEntries() must return BOTH the snapshot task AND the new task.
+      // If it only returns the new task, the projection rebuilt from getAll()
+      // which only has 1 event — the pre-snapshot entries are lost (the bug).
       const entries = await freshProjection.getEntries('all');
-      expect(entries).toHaveLength(1);
-      expect(entries[0]).toMatchObject({ content: 'Real Task From Events' });
+      expect(entries).toHaveLength(2);
+      expect(entries.map(e => (e as { content?: string }).content)).toContain('Snapshot Task');
+      expect(entries.map(e => (e as { content?: string }).content)).toContain('New Task Added On New Device');
     });
 
   }); // end hydrate()

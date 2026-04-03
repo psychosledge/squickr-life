@@ -26,6 +26,7 @@ import {
   UserPreferencesProjection,
   DEFAULT_USER_PREFERENCES,
   UserPreferences,
+  SNAPSHOT_SCHEMA_VERSION,
   // Habit handlers (Phase 2)
   CreateHabitHandler,
   UpdateHabitTitleHandler,
@@ -548,6 +549,23 @@ function AppContent() {
       // Initialize snapshot store and hydrate projection from snapshot
       await snapshotStore.initialize();
       await entryProjection.hydrate();
+
+      // Seed collectionProjection and userPreferencesProjection from the local snapshot.
+      // This is the fast-path equivalent of what startSync() does on the cold-start slow
+      // path. Without this, projections rebuild from getAll() — which on a new device
+      // (delta-only local store) returns only recent events, losing all pre-snapshot data.
+      const localSnapshot = await snapshotStore.load('entry-list-projection');
+      if (
+        localSnapshot !== null &&
+        localSnapshot.version === SNAPSHOT_SCHEMA_VERSION &&
+        localSnapshot.habits !== undefined &&
+        localSnapshot.userPreferences !== undefined
+      ) {
+        if (localSnapshot.collections?.length) {
+          collectionProjection.seedFromSnapshot(localSnapshot.collections);
+        }
+        userPreferencesProjection.hydrateFromSnapshot(localSnapshot.userPreferences);
+      }
 
       // Load initial preferences (uses userPreferencesProjection created above)
       const prefs = await userPreferencesProjection.getUserPreferences();

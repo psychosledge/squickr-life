@@ -71,9 +71,32 @@ export class CollectionListProjection {
 
   constructor(private readonly eventStore: IEventStore) {
     // Subscribe to event store changes to enable reactive projections.
-    // Clear the cache on any event so getCollections() performs a fresh replay.
-    this.eventStore.subscribe(() => {
-      this.cachedCollections = null;
+    this.eventStore.subscribe((event: DomainEvent) => {
+      if (!this.isCollectionEvent(event)) {
+        // Non-collection events don't affect the collection list.
+        // No cache clear, no notification — avoids spurious re-renders.
+        return;
+      }
+      if (this.cachedCollections !== null) {
+        // CollectionRestored needs to un-delete a collection that was filtered
+        // out of cachedCollections when it was deleted. The incremental Map
+        // won't contain it, so fall back to a full rebuild via null.
+        if (event.type === 'CollectionRestored') {
+          this.cachedCollections = null;
+          this.notifySubscribers();
+          return;
+        }
+        // Apply incrementally to preserve seeded snapshot state.
+        // With delta-only sync (ADR-025) the local store may be incomplete;
+        // falling back to getAll() would lose pre-snapshot collections.
+        const map = new Map<string, Collection>(
+          this.cachedCollections.map(c => [c.id, c])
+        );
+        this.applyCollectionEvent(map, event);
+        this.cachedCollections = Array.from(map.values())
+          .filter(c => !c.deletedAt)
+          .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+      }
       this.notifySubscribers();
     });
   }

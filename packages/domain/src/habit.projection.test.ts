@@ -983,21 +983,23 @@ describe('HabitProjection — snapshot support (ADR-026)', () => {
   // ── cache invalidation ─────────────────────────────────────────────────────
 
   describe('cache invalidation', () => {
-    it('clears cache when eventStore subscriber fires', async () => {
-      // Arrange — hydrate so cache is populated
+    it('applies habit events incrementally — does not clear cache or trigger full replay', async () => {
+      // Arrange — hydrate so cache is populated (empty habits)
       projection.hydrateFromSnapshot([]);
 
-      // Spy on getAll to detect if a replay occurs
+      // Spy on getAll to verify no full replay occurs
       const getAllSpy = vi.spyOn(eventStore, 'getAll');
 
-      // Append a real event to trigger cache invalidation
+      // Append a HabitCreated event — should be applied incrementally to the cache
       await appendHabitCreated(eventStore);
 
-      // Act — query after event (should replay because cache was cleared)
-      await projection.getActiveHabits();
+      // Act — query after event
+      const habits = await projection.getActiveHabits();
 
-      // Assert — getAll was called (cache was cleared, full replay occurred)
-      expect(getAllSpy).toHaveBeenCalled();
+      // Assert — getAll NOT called (incremental update, no full replay)
+      expect(getAllSpy).not.toHaveBeenCalled();
+      // And the new habit is present
+      expect(habits).toHaveLength(1);
     });
   });
 

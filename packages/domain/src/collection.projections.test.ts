@@ -1082,7 +1082,7 @@ describe('CollectionListProjection', () => {
       vi.restoreAllMocks();
     });
 
-    it('event store subscriber clears collection cache on new event', async () => {
+    it('ADR-025: CollectionCreated event on snapshot-seeded cache is applied incrementally, preserving seeded collections', async () => {
       // Arrange: seed the cache
       const seedCollections: import('./collection.types').Collection[] = [
         {
@@ -1116,13 +1116,16 @@ describe('CollectionListProjection', () => {
       };
       await eventStore.append(newEvent);
 
-      // Assert: getCollections() now does a full replay (cache was invalidated)
+      // Assert (ADR-025 fix): getCollections() returns seeded collections PLUS the new one.
+      // The collection event is applied incrementally — the cache is NOT cleared.
+      // Rebuilding from getAll() would lose the pre-snapshot collections because
+      // the local store only has the one new event (delta-only sync).
       const spy2 = vi.spyOn(eventStore, 'getAll');
       const result = await projection.getCollections();
-      expect(spy2).toHaveBeenCalledTimes(1);
-      // Result should come from full replay: the real event, not the seeded data
-      expect(result).toHaveLength(1);
-      expect(result[0]!.name).toBe('Real Collection');
+      expect(spy2).not.toHaveBeenCalled(); // incremental path — no full replay needed
+      expect(result).toHaveLength(2); // 1 seeded + 1 new
+      expect(result.map(c => c.name)).toContain('Seeded');
+      expect(result.map(c => c.name)).toContain('Real Collection');
 
       vi.restoreAllMocks();
     });
@@ -1175,6 +1178,129 @@ describe('CollectionListProjection', () => {
 
       // Assert: subscriber was called once
       expect(subscriberSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('ADR-025: non-collection event does NOT clear cachedCollections when cache is seeded', async () => {
+      // Arrange: seed the cache from snapshot
+      const seededCollections: import('./collection.types').Collection[] = [
+        {
+          id: 'col-seed-1',
+          name: 'Seeded Collection',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ];
+      projection.seedFromSnapshot(seededCollections);
+
+      const subscriberSpy = vi.fn();
+      projection.subscribe(subscriberSpy);
+
+      // Act: append a non-collection event (TaskCreated)
+      const taskEvent = {
+        ...generateEventMetadata(),
+        type: 'TaskCreated',
+        aggregateId: 'task-1',
+        payload: {
+          taskId: 'task-1',
+          content: 'A new task',
+          status: 'open',
+          order: 'a0',
+          collectionId: null,
+          createdAt: new Date().toISOString(),
+        },
+      };
+      await eventStore.append(taskEvent as Parameters<typeof eventStore.append>[0]);
+
+      // Assert: subscriber was NOT called — non-collection events don't affect collections
+      expect(subscriberSpy).not.toHaveBeenCalled();
+
+      // And the cache was not cleared — getCollections() still returns seeded data
+      const spy = vi.spyOn(eventStore, 'getAll');
+      const result = await projection.getCollections();
+      expect(spy).not.toHaveBeenCalled();
+      expect(result).toHaveLength(1);
+      expect(result[0]!.name).toBe('Seeded Collection');
+
+      vi.restoreAllMocks();
+    });
+
+    it('ADR-025: CollectionDeleted event removes the collection from the cached list', async () => {
+      // Arrange: seed cache with two collections
+      const seededCollections: import('./collection.types').Collection[] = [
+        {
+          id: 'col-keep',
+          name: 'Keep This',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'col-delete',
+          name: 'Delete This',
+          type: 'custom',
+          order: 'a1',
+          createdAt: '2026-01-01T00:01:00.000Z',
+        },
+      ];
+      projection.seedFromSnapshot(seededCollections);
+
+      // Act: append a CollectionDeleted event for col-delete
+      const deletedEvent: CollectionDeleted = {
+        ...generateEventMetadata(),
+        type: 'CollectionDeleted',
+        aggregateId: 'col-delete',
+        payload: {
+          collectionId: 'col-delete',
+          deletedAt: '2026-01-02T00:00:00.000Z',
+        },
+      };
+      await eventStore.append(deletedEvent);
+
+      // Assert: only the non-deleted collection remains
+      const spy = vi.spyOn(eventStore, 'getAll');
+      const result = await projection.getCollections();
+      expect(spy).not.toHaveBeenCalled(); // incremental — no full replay
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe('col-keep');
+
+      vi.restoreAllMocks();
+    });
+
+    it('ADR-025: CollectionRenamed event updates the name in the cached list', async () => {
+      // Arrange: seed cache with one collection
+      const seededCollections: import('./collection.types').Collection[] = [
+        {
+          id: 'col-1',
+          name: 'Old Name',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ];
+      projection.seedFromSnapshot(seededCollections);
+
+      // Act: append a CollectionRenamed event
+      const renamedEvent: CollectionRenamed = {
+        ...generateEventMetadata(),
+        type: 'CollectionRenamed',
+        aggregateId: 'col-1',
+        payload: {
+          collectionId: 'col-1',
+          newName: 'New Name',
+          renamedAt: '2026-01-02T00:00:00.000Z',
+        },
+      };
+      await eventStore.append(renamedEvent);
+
+      // Assert: collection has the updated name, no full replay needed
+      const spy = vi.spyOn(eventStore, 'getAll');
+      const result = await projection.getCollections();
+      expect(spy).not.toHaveBeenCalled(); // incremental — no full replay
+      expect(result).toHaveLength(1);
+      expect(result[0]!.name).toBe('New Name');
+
+      vi.restoreAllMocks();
     });
   });
 

@@ -105,13 +105,13 @@ export class EntryListProjection {
       // a cold-start sync batch download.
       if (this.cachedEntries !== null) {
         if (this.seededFromEmptyEventStore) {
-          // First real event batch arrived — invalidate snapshot seed.
-          // Full replay will happen on next resolveCache() call.
-          this.cachedEntries = null;
           this.seededFromEmptyEventStore = false;
-          this.notifySubscribers();
-          return;
+          // Do NOT null out cachedEntries. The ADR-025 cursor guarantees this event
+          // is strictly after snapshot.lastEventId — no double-application risk.
+          // With delta-only sync the local store is incomplete on new devices;
+          // rebuilding from getAll() would lose all pre-snapshot entries.
         }
+        // Falls through to the incremental applyEventsOnto() call below.
         this.cachedEntries = this.applicator.applyEventsOnto([...this.cachedEntries], [event]);
         this.notifySubscribers();
       }
@@ -203,7 +203,20 @@ export class EntryListProjection {
     const snapshotEventIndex = allEvents.findIndex(e => e.id === snapshot.lastEventId);
 
     if (snapshotEventIndex < 0) {
-      // lastEventId not found in log — full replay fallback (cache stays null)
+      // lastEventId not found in the local log — the local store most likely contains
+      // only delta events (new device after a page refresh with ADR-025 delta-only sync).
+      // The snapshot state is still valid; use it as the base and apply all local events
+      // on top so the UI has complete, correct data.
+      logger.warn(
+        '[EntryListProjection.hydrate] Snapshot anchor not found in local event log.',
+        'Assuming delta-only local store — seeding from snapshot and replaying local events.',
+      );
+      this.cachedEntries = this.applicator.applyEventsOnto([...snapshot.state], allEvents);
+      this.lastSnapshotCursor = allEvents.length > 0
+        ? allEvents[allEvents.length - 1]!.id
+        : snapshot.lastEventId;
+      this.absorbedEventIds = new Set(allEvents.map(e => e.id));
+      this.notifySubscribers();
       return;
     }
 

@@ -21,9 +21,16 @@ export class UserPreferencesProjection {
   private preferencesCache: UserPreferences | null = null;
 
   constructor(private readonly eventStore: IEventStore) {
-    // Subscribe to event store changes to enable reactive projections
-    this.eventStore.subscribe(() => {
-      this.preferencesCache = null;
+    // Apply preference events incrementally to preserve snapshot-seeded state
+    // (ADR-025/026). Non-preference events are ignored — they cannot affect
+    // user preferences. Clearing the cache on every event would cause a full
+    // getAll() rebuild from an incomplete local store on new devices.
+    this.eventStore.subscribe((event: DomainEvent) => {
+      if (!this.isUserPreferencesEvent(event)) return;
+      if (this.preferencesCache !== null) {
+        this.preferencesCache = this.applyUserPreferencesEvent(this.preferencesCache, event);
+      }
+      // If cache was cold, the next getUserPreferences() will replay from the store.
       this.notifySubscribers();
     });
   }
