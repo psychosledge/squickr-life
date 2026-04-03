@@ -4,6 +4,7 @@ import type {
   HabitReadModel,
   HabitDayStatus,
   HabitFrequency,
+  SerializableHabitState,
 } from './habit.types';
 
 // ============================================================================
@@ -533,13 +534,92 @@ function buildReadModel(state: HabitState, today: string): HabitReadModel {
  * state of all habits, then exposes query methods for the UI layer.
  */
 export class HabitProjection {
-  constructor(private readonly eventStore: IEventStore) {}
+  /** In-memory cache of the replayed habit states. Null means cache is cold. */
+  private stateCache: Map<string, HabitState> | null = null;
+
+  /** Subscribers notified on cache invalidation or hydration. */
+  private subscribers = new Set<() => void>();
+
+  constructor(private readonly eventStore: IEventStore) {
+    // Invalidate the cache whenever a new event is appended so that the
+    // next query always reflects the latest event log.
+    this.eventStore.subscribe(() => {
+      this.stateCache = null;
+    });
+  }
 
   // ── Private: load & replay ─────────────────────────────────────────────────
 
   private async loadStates(): Promise<Map<string, HabitState>> {
+    if (this.stateCache !== null) {
+      return this.stateCache;
+    }
     const allEvents = await this.eventStore.getAll();
-    return replayEvents(allEvents);
+    this.stateCache = replayEvents(allEvents);
+    return this.stateCache;
+  }
+
+  // ── Snapshot support (ADR-026) ─────────────────────────────────────────────
+
+  /**
+   * Seed the projection cache from a previously serialised snapshot.
+   *
+   * Deserialises:
+   * - `completions`: `Record<string, string>` → `Map<string, string>`
+   * - `reverted`:    `string[]`               → `Set<string>`
+   *
+   * Notifies all subscribers so that any React state depending on habit data
+   * is refreshed immediately.
+   */
+  hydrateFromSnapshot(states: SerializableHabitState[]): void {
+    const map = new Map<string, HabitState>();
+    for (const s of states) {
+      map.set(s.id, {
+        id: s.id,
+        title: s.title,
+        frequency: s.frequency,
+        createdAt: s.createdAt,
+        order: s.order,
+        archivedAt: s.archivedAt,
+        notificationTime: s.notificationTime,
+        completions: new Map(Object.entries(s.completions)),
+        reverted: new Set(s.reverted),
+      });
+    }
+    this.stateCache = map;
+    this.notifySubscribers();
+  }
+
+  /**
+   * Serialise the current habit state cache into a format suitable for
+   * inclusion in a {@link ProjectionSnapshot}.
+   *
+   * If the cache is cold (no recent query or hydration), this method triggers
+   * a full event-log replay first.
+   *
+   * Serialises:
+   * - `completions`: `Map<string, string>` → `Record<string, string>`
+   * - `reverted`:    `Set<string>`         → `string[]`
+   */
+  async getStatesForSnapshot(): Promise<SerializableHabitState[]> {
+    const states = await this.loadStates();
+    return [...states.values()].map(s => ({
+      id: s.id,
+      title: s.title,
+      frequency: s.frequency,
+      createdAt: s.createdAt,
+      order: s.order,
+      archivedAt: s.archivedAt,
+      notificationTime: s.notificationTime,
+      completions: Object.fromEntries(s.completions),
+      reverted: [...s.reverted],
+    }));
+  }
+
+  // ── Private helpers ────────────────────────────────────────────────────────
+
+  private notifySubscribers(): void {
+    this.subscribers.forEach(cb => cb());
   }
 
   // ── Public query methods ───────────────────────────────────────────────────
@@ -597,10 +677,16 @@ export class HabitProjection {
   }
 
   /**
-   * Subscribe to event store changes.
+   * Subscribe to projection changes (cache invalidation or hydration).
    * Returns an unsubscribe function.
    */
   subscribe(callback: () => void): () => void {
-    return this.eventStore.subscribe(() => callback());
+    this.subscribers.add(callback);
+    // Also forward event store changes so callers get notified on new events.
+    const unsubFromStore = this.eventStore.subscribe(() => callback());
+    return () => {
+      this.subscribers.delete(callback);
+      unsubFromStore();
+    };
   }
 }

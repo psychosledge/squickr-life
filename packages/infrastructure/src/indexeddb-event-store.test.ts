@@ -174,6 +174,58 @@ describe.skip('IndexedDBEventStore', () => {
     });
   });
 
+  describe('getAllAfter', () => {
+    it('getAllAfter(null) returns all events', async () => {
+      const event1 = { id: 'event-1', type: 'TaskCreated', timestamp: '2026-01-24T10:00:00.000Z', version: 1, aggregateId: 'task-1' };
+      const event2 = { id: 'event-2', type: 'TaskCreated', timestamp: '2026-01-24T10:01:00.000Z', version: 1, aggregateId: 'task-2' };
+      const event3 = { id: 'event-3', type: 'TaskCreated', timestamp: '2026-01-24T10:02:00.000Z', version: 1, aggregateId: 'task-3' };
+
+      await eventStore.append(event1 as any);
+      await eventStore.append(event2 as any);
+      await eventStore.append(event3 as any);
+
+      const result = await eventStore.getAllAfter(null);
+      expect(result).toHaveLength(3);
+    });
+
+    it('getAllAfter(lastEventId) returns empty array when anchor is the last event', async () => {
+      const event1 = { id: 'event-1', type: 'TaskCreated', timestamp: '2026-01-24T10:00:00.000Z', version: 1, aggregateId: 'task-1' };
+      const event2 = { id: 'event-2', type: 'TaskCreated', timestamp: '2026-01-24T10:01:00.000Z', version: 1, aggregateId: 'task-2' };
+
+      await eventStore.append(event1 as any);
+      await eventStore.append(event2 as any);
+
+      const result = await eventStore.getAllAfter('event-2');
+      expect(result).toEqual([]);
+    });
+
+    it('getAllAfter(middleId) returns only events after that position', async () => {
+      const event1 = { id: 'event-1', type: 'TaskCreated', timestamp: '2026-01-24T10:00:00.000Z', version: 1, aggregateId: 'task-1' };
+      const event2 = { id: 'event-2', type: 'TaskCreated', timestamp: '2026-01-24T10:01:00.000Z', version: 1, aggregateId: 'task-2' };
+      const event3 = { id: 'event-3', type: 'TaskCreated', timestamp: '2026-01-24T10:02:00.000Z', version: 1, aggregateId: 'task-3' };
+
+      await eventStore.append(event1 as any);
+      await eventStore.append(event2 as any);
+      await eventStore.append(event3 as any);
+
+      const result = await eventStore.getAllAfter('event-1');
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('event-2');
+      expect(result[1].id).toBe('event-3');
+    });
+
+    it('getAllAfter(nonexistent) returns all events (fallback)', async () => {
+      const event1 = { id: 'event-1', type: 'TaskCreated', timestamp: '2026-01-24T10:00:00.000Z', version: 1, aggregateId: 'task-1' };
+      const event2 = { id: 'event-2', type: 'TaskCreated', timestamp: '2026-01-24T10:01:00.000Z', version: 1, aggregateId: 'task-2' };
+
+      await eventStore.append(event1 as any);
+      await eventStore.append(event2 as any);
+
+      const result = await eventStore.getAllAfter('does-not-exist');
+      expect(result).toHaveLength(2);
+    });
+  });
+
   describe('persistence', () => {
     it('should persist events across EventStore instances', async () => {
       const event: TaskCreated = {

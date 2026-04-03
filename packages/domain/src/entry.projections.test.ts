@@ -11,6 +11,9 @@ import type { CreateTaskCommand, CreateNoteCommand, CreateEventCommand } from '.
 import type { ISnapshotStore, ProjectionSnapshot } from './snapshot-store';
 import { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
 import type { Collection } from './collection.types';
+import type { SerializableHabitState } from './habit.types';
+import type { UserPreferences } from './user-preferences.types';
+import { DEFAULT_USER_PREFERENCES } from './user-preferences.types';
 
 // ---------------------------------------------------------------------------
 // Minimal in-memory snapshot store for use in tests.
@@ -31,6 +34,26 @@ class InMemorySnapshotStore implements ISnapshotStore {
   async clear(key: string): Promise<void> {
     this.store.delete(key);
   }
+}
+
+// ---------------------------------------------------------------------------
+// ADR-026: Helper to enrich a snapshot with the required v5 fields.
+// Snapshots produced by EntryListProjection.createSnapshot() do not include
+// `habits` or `userPreferences` — those are injected by SnapshotManager.
+// Tests that exercise the hydrate() success path must augment their snapshots
+// so the field-presence guard in hydrate() does not discard them.
+// ---------------------------------------------------------------------------
+function enrichSnapshot(snapshot: ProjectionSnapshot): ProjectionSnapshot {
+  return {
+    ...snapshot,
+    habits: (snapshot as unknown as Record<string, unknown>)['habits'] ?? [],
+    userPreferences: (snapshot as unknown as Record<string, unknown>)['userPreferences'] ?? {
+      defaultCompletedTaskBehavior: 'keep-in-place',
+      autoFavoriteRecentDailyLogs: false,
+      autoFavoriteRecentMonthlyLogs: false,
+      autoFavoriteCalendarWithActiveTasks: false,
+    },
+  } as unknown as ProjectionSnapshot;
 }
 
 describe('EntryListProjection', () => {
@@ -2182,7 +2205,7 @@ describe('EntryListProjection', () => {
       // Warm the seed projection's cache and create a snapshot
       const snapshot = await seedProjection.createSnapshot();
       expect(snapshot).not.toBeNull();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Create a fresh projection (cold cache) with the same snapshot store
       const freshProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2235,12 +2258,14 @@ describe('EntryListProjection', () => {
       await taskHandler.handle({ content: 'Task' });
 
       const snapshotStore = new InMemorySnapshotStore();
-      const orphanedSnapshot: ProjectionSnapshot = {
+      // ADR-026: orphaned snapshot still needs habits/userPreferences to pass
+      // the field-presence guard; we want to test the lastEventId fallback path.
+      const orphanedSnapshot = enrichSnapshot({
         version: SNAPSHOT_SCHEMA_VERSION,
         lastEventId: 'does-not-exist-in-log',
         state: [],
         savedAt: new Date().toISOString(),
-      };
+      });
       await snapshotStore.save('entry-list-projection', orphanedSnapshot);
 
       const proj = new EntryListProjection(eventStore, snapshotStore);
@@ -2266,7 +2291,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Hydrated projection
       const hydratedProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2291,7 +2316,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Fresh projection hydrated with the up-to-date snapshot
       const freshProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2316,7 +2341,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Add a delta event AFTER the snapshot was taken
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
@@ -2351,7 +2376,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Delta: add a new note after the snapshot
       await noteHandler.handle({ content: 'New Note After Snapshot' });
@@ -2378,7 +2403,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Fresh projection — subscribe BEFORE hydrate to observe the notification
       const freshProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2399,7 +2424,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Add a delta event after the snapshot
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
@@ -2429,6 +2454,86 @@ describe('EntryListProjection', () => {
 
       // Assert: subscriber was NOT called (cache was never set)
       expect(subscriberSpy).not.toHaveBeenCalled();
+    });
+
+    // ---- ADR-024 Fix 2: seed cache from snapshot when event store is empty ----
+
+    it('hydrate() with snapshot and empty event store seeds cache from snapshot state', async () => {
+      // Arrange: build a snapshot using a projection with events,
+      // then present it to a fresh projection with an EMPTY event store.
+      const seedEventStore = new InMemoryEventStore();
+      const seedProjection = new EntryListProjection(seedEventStore);
+      const seedTaskProjection = new TaskListProjection(seedEventStore);
+      const seedHandler = new CreateTaskHandler(seedEventStore, seedTaskProjection, seedProjection);
+      await seedHandler.handle({ content: 'Snapshot Task' });
+      const snapshot = await seedProjection.createSnapshot();
+      expect(snapshot).not.toBeNull();
+
+      // The real projection has an EMPTY event store but the snapshot in store
+      const snapshotStore = new InMemorySnapshotStore();
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
+
+      // Fresh event store with zero events (cold-start scenario)
+      const emptyEventStore = new InMemoryEventStore();
+      const freshProjection = new EntryListProjection(emptyEventStore, snapshotStore);
+
+      // Act
+      await freshProjection.hydrate();
+
+      // Assert: cache is populated even though the event store is empty
+      expect(freshProjection.isCachePopulated()).toBe(true);
+
+      const entries = await freshProjection.getEntries('all');
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({ content: 'Snapshot Task' });
+    });
+
+    it('subscriber invalidates snapshot seed on first event (seededFromEmptyEventStore flag)', async () => {
+      // Arrange: seed cache from a snapshot with an empty event store
+      const seedEventStore = new InMemoryEventStore();
+      const seedProjection = new EntryListProjection(seedEventStore);
+      const seedTaskProjection = new TaskListProjection(seedEventStore);
+      const seedHandler = new CreateTaskHandler(seedEventStore, seedTaskProjection, seedProjection);
+      await seedHandler.handle({ content: 'Old Snapshot Task' });
+      const snapshot = await seedProjection.createSnapshot();
+
+      const snapshotStore = new InMemorySnapshotStore();
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
+
+      const emptyEventStore = new InMemoryEventStore();
+      const freshProjection = new EntryListProjection(emptyEventStore, snapshotStore);
+
+      // Seed from snapshot (event store is empty)
+      await freshProjection.hydrate();
+      expect(freshProjection.isCachePopulated()).toBe(true);
+
+      // Act: first real event arrives (simulates SyncManager downloading events).
+      // Use a TaskCreated event (PascalCase — the actual domain event type).
+      const realEvent = {
+        id: 'real-event-id',
+        type: 'TaskCreated',
+        aggregateId: 'real-task',
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: {
+          taskId: 'real-task',
+          content: 'Real Task From Events',
+          status: 'open',
+          order: 'z',
+          collectionId: null,
+          createdAt: new Date().toISOString(),
+        },
+      };
+      await emptyEventStore.append(realEvent as Parameters<typeof emptyEventStore.append>[0]);
+
+      // Assert: cache is now null (invalidated), forcing a full replay on next getEntries()
+      // This prevents double-applying snapshot events when events download.
+      expect(freshProjection.isCachePopulated()).toBe(false);
+
+      // getEntries() triggers a full replay and returns correct state from real events
+      const entries = await freshProjection.getEntries('all');
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({ content: 'Real Task From Events' });
     });
 
   }); // end hydrate()
@@ -2507,7 +2612,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Fresh projection hydrated from snapshot
       const freshProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2530,7 +2635,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Fresh projection hydrated from snapshot
       const freshProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2561,7 +2666,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Fresh projection hydrated from snapshot
       const freshProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2593,7 +2698,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Fresh projection hydrated from snapshot
       const freshProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2628,7 +2733,7 @@ describe('EntryListProjection', () => {
       const snapshotStore = new InMemorySnapshotStore();
       const seedProjection = new EntryListProjection(eventStore, snapshotStore);
       const snapshot = await seedProjection.createSnapshot();
-      await snapshotStore.save('entry-list-projection', snapshot!);
+      await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
 
       // Fresh projection hydrated from snapshot
       const freshProjection = new EntryListProjection(eventStore, snapshotStore);
@@ -2652,15 +2757,16 @@ describe('EntryListProjection', () => {
       expect(subscriberSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('before hydrate(), appending an event invalidates cache and notifies subscriber (pre-hydrate behaviour unchanged)', async () => {
-      // Arrange: projection with NO hydration
+    it('before hydrate(), appending an event does NOT notify subscribers when cache is null (cold-start fix)', async () => {
+      // Arrange: projection with NO hydration — cachedEntries is null
       const snapshotStore = new InMemorySnapshotStore();
       const bareProjection = new EntryListProjection(eventStore, snapshotStore);
 
       const subscriberSpy = vi.fn();
       bareProjection.subscribe(subscriberSpy);
 
-      // Act: append an event before hydrate() is ever called
+      // Act: append an event before hydrate() is ever called (simulates cold-start
+      // batch download of 1537 events where no cache has been primed yet)
       const event = {
         id: 'pre-hydrate-event-id',
         type: 'task-created',
@@ -2670,7 +2776,35 @@ describe('EntryListProjection', () => {
       };
       await eventStore.append(event);
 
-      // Assert: subscriber WAS called (normal pre-hydrate behaviour)
+      // Assert: subscriber was NOT called — cache is null so incremental update is
+      // impossible. The next getEntries() call will lazy-replay all events and
+      // prime the cache. Notifying here would trigger 1537 redundant UI redraws
+      // on cold-start sync.
+      expect(subscriberSpy).not.toHaveBeenCalled();
+    });
+
+    it('after cache is populated (via getEntries), appending an event DOES notify subscribers', async () => {
+      // Arrange: projection with NO hydration, but cache primed by calling getEntries()
+      const snapshotStore = new InMemorySnapshotStore();
+      const bareProjection = new EntryListProjection(eventStore, snapshotStore);
+
+      // Prime the cache so cachedEntries !== null
+      await bareProjection.getEntries('all');
+
+      const subscriberSpy = vi.fn();
+      bareProjection.subscribe(subscriberSpy);
+
+      // Act: append a new event — cache is populated, so incremental update should run
+      const event = {
+        id: 'post-cache-event-id',
+        type: 'task-created',
+        aggregateId: 'task-post-cache',
+        timestamp: new Date().toISOString(),
+        version: 1,
+      };
+      await eventStore.append(event);
+
+      // Assert: subscriber WAS called — the cache was updated incrementally
       expect(subscriberSpy).toHaveBeenCalledTimes(1);
     });
   });
@@ -2922,6 +3056,170 @@ describe('EntryListProjection.wasLocalStoreEmptyAtHydration()', () => {
     // Note: ADR-024 documents that calling this before hydrate() is a misuse;
     // the safe default here avoids false-positive "new device" detection.
     expect(projection.wasLocalStoreEmptyAtHydration()).toBe(false);
+  });
+});
+
+// ============================================================================
+// ADR-025: getLastSnapshotCursor() — delta-sync cursor
+// ============================================================================
+describe('EntryListProjection.getLastSnapshotCursor()', () => {
+  let eventStore: IEventStore;
+  let snapshotStore: InMemorySnapshotStore;
+  let taskProjection: TaskListProjection;
+  let taskHandler: CreateTaskHandler;
+  let projection: EntryListProjection;
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    snapshotStore = new InMemorySnapshotStore();
+    projection = new EntryListProjection(eventStore, snapshotStore);
+    taskProjection = new TaskListProjection(eventStore);
+    taskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
+  });
+
+  it('returns null before hydrate() is called', () => {
+    expect(projection.getLastSnapshotCursor()).toBeNull();
+  });
+
+  it('returns null after hydrate() when no snapshot exists', async () => {
+    await taskHandler.handle({ content: 'Task 1' });
+
+    await projection.hydrate();
+
+    expect(projection.getLastSnapshotCursor()).toBeNull();
+  });
+
+  it('returns the lastEventId from the snapshot after hydrate() with a valid snapshot', async () => {
+    await taskHandler.handle({ content: 'Task 1' });
+
+    // Build and save a snapshot (enriched with ADR-026 required fields)
+    const seedProjection = new EntryListProjection(eventStore, snapshotStore);
+    const snapshot = await seedProjection.createSnapshot();
+    expect(snapshot).not.toBeNull();
+    await snapshotStore.save('entry-list-projection', enrichSnapshot(snapshot!));
+
+    // Fresh projection — hydrate reads the snapshot
+    const freshProjection = new EntryListProjection(eventStore, snapshotStore);
+    await freshProjection.hydrate();
+
+    expect(freshProjection.getLastSnapshotCursor()).toBe(snapshot!.lastEventId);
+  });
+
+  it('returns the updated lastEventId after createSnapshot() is called', async () => {
+    await taskHandler.handle({ content: 'Task 1' });
+    await taskHandler.handle({ content: 'Task 2' });
+
+    const snapshot = await projection.createSnapshot();
+    expect(snapshot).not.toBeNull();
+
+    expect(projection.getLastSnapshotCursor()).toBe(snapshot!.lastEventId);
+  });
+});
+
+// ============================================================================
+// ADR-026: hydrate() field-presence guard and HabitProjection hydration
+// ============================================================================
+
+describe('EntryListProjection — ADR-026 snapshot field-presence guard', () => {
+  let eventStore: IEventStore;
+  let snapshotStore: InMemorySnapshotStore;
+
+  function makeV5Snapshot(overrides: Partial<ProjectionSnapshot> = {}): ProjectionSnapshot {
+    return {
+      version: SNAPSHOT_SCHEMA_VERSION,
+      lastEventId: 'evt-v5',
+      state: [],
+      savedAt: new Date().toISOString(),
+      habits: [],
+      userPreferences: DEFAULT_USER_PREFERENCES,
+      ...overrides,
+    } as unknown as ProjectionSnapshot;
+  }
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    snapshotStore = new InMemorySnapshotStore();
+  });
+
+  it('discards a v5 snapshot that is missing the habits field', async () => {
+    // Arrange — save a "v5" snapshot without habits
+    const incompleteSnapshot: ProjectionSnapshot = {
+      version: SNAPSHOT_SCHEMA_VERSION,
+      lastEventId: 'evt-missing-habits',
+      state: [],
+      savedAt: new Date().toISOString(),
+      // habits field deliberately absent
+      userPreferences: DEFAULT_USER_PREFERENCES,
+    } as unknown as ProjectionSnapshot;
+
+    await snapshotStore.save('entry-list-projection', incompleteSnapshot);
+
+    // Also put an event in the store so the snapshot appears "stale-but-present"
+    const proj = new EntryListProjection(eventStore, snapshotStore);
+
+    // Act
+    await proj.hydrate();
+
+    // Assert — cache should NOT have been populated (snapshot was discarded)
+    expect(proj.isCachePopulated()).toBe(false);
+  });
+
+  it('discards a v5 snapshot that is missing the userPreferences field', async () => {
+    // Arrange
+    const incompleteSnapshot: ProjectionSnapshot = {
+      version: SNAPSHOT_SCHEMA_VERSION,
+      lastEventId: 'evt-missing-prefs',
+      state: [],
+      savedAt: new Date().toISOString(),
+      habits: [],
+      // userPreferences field deliberately absent
+    } as unknown as ProjectionSnapshot;
+
+    await snapshotStore.save('entry-list-projection', incompleteSnapshot);
+
+    const proj = new EntryListProjection(eventStore, snapshotStore);
+
+    // Act
+    await proj.hydrate();
+
+    // Assert
+    expect(proj.isCachePopulated()).toBe(false);
+  });
+
+  it('accepts a complete v5 snapshot and calls habitProjection.hydrateFromSnapshot()', async () => {
+    // Arrange — save a valid v5 snapshot
+    const habitState: SerializableHabitState = {
+      id: 'habit-snap-1',
+      title: 'Snapshot habit',
+      frequency: { type: 'daily' },
+      createdAt: '2026-01-01T00:00:00.000Z',
+      order: 'a0',
+      completions: {},
+      reverted: [],
+    };
+    const validSnapshot = makeV5Snapshot({ habits: [habitState] });
+    await snapshotStore.save('entry-list-projection', validSnapshot);
+
+    // Add an event that matches the snapshot's lastEventId
+    await eventStore.append({
+      id: 'evt-v5',
+      type: 'SomeEvent',
+      aggregateId: 'agg',
+      timestamp: new Date().toISOString(),
+      version: 1,
+      payload: {},
+    });
+
+    const proj = new EntryListProjection(eventStore, snapshotStore);
+
+    // Act
+    await proj.hydrate();
+
+    // Assert — after hydration the habitProjection should have been seeded
+    // Query via the public delegate to verify the habit is accessible
+    const habits = await proj.getActiveHabits({ asOf: '2026-01-01' });
+    // The habit was seeded from the snapshot even though no HabitCreated event exists
+    expect(habits.find(h => h.id === 'habit-snap-1')).toBeDefined();
   });
 });
 

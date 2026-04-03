@@ -40,6 +40,14 @@ export class InMemoryEventStore implements IEventStore {
     return [...this.events];
   }
 
+  async getAllAfter(lastEventId: string | null): Promise<DomainEvent[]> {
+    const all = await this.getAll();
+    if (lastEventId === null) return all;
+    const anchorIndex = all.findIndex(e => e.id === lastEventId);
+    if (anchorIndex === -1) return all;
+    return all.slice(anchorIndex + 1);
+  }
+
   subscribe(callback: (event: DomainEvent) => void): () => void {
     this.subscribers.add(callback);
     return () => this.subscribers.delete(callback);

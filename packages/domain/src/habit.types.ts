@@ -150,6 +150,32 @@ export interface HabitNotificationTimeCleared extends DomainEvent {
   };
 }
 
+// ============================================================================
+// Serialisable snapshot shape for HabitProjection
+// ============================================================================
+
+/**
+ * Plain-object representation of a habit's state suitable for JSON
+ * serialisation inside a {@link ProjectionSnapshot}.
+ *
+ * `completions` is stored as a `Record<date, completedAt>` (plain object)
+ * because `Map` is not JSON-serialisable.
+ * `reverted` is stored as `string[]` because `Set` is not JSON-serialisable.
+ */
+export interface SerializableHabitState {
+  readonly id: string;
+  readonly title: string;
+  readonly frequency: HabitFrequency;
+  readonly createdAt: string;
+  readonly order: string;
+  readonly archivedAt?: string;
+  readonly notificationTime?: string;
+  /** Map<date, completedAt> serialised as a plain object */
+  readonly completions: Record<string, string>;
+  /** Set<string> serialised as an array */
+  readonly reverted: string[];
+}
+
 /** Union type of all habit domain events */
 export type HabitEvent =
   | HabitCreated

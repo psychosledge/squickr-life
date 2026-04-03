@@ -1,14 +1,15 @@
 import type { IEventStore, DomainEvent } from '@squickr/domain';
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDocs, 
-  query, 
-  where, 
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
   orderBy,
   writeBatch,
-  type Firestore 
+  type Firestore
 } from 'firebase/firestore';
 import { removeUndefinedDeep } from './firestore-utils';
 
@@ -119,6 +120,32 @@ export class FirestoreEventStore implements IEventStore {
     
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => doc.data() as DomainEvent);
+  }
+
+  /**
+   * Get all events appended after the event with the given ID.
+   * Uses a two-phase timestamp cursor against Firestore.
+   * Falls back to getAll() when lastEventId is null, the anchor doc is not found,
+   * or any error occurs.
+   */
+  async getAllAfter(lastEventId: string | null): Promise<DomainEvent[]> {
+    if (lastEventId === null) return this.getAll();
+    try {
+      const eventsRef = collection(this.firestore, `users/${this.userId}/events`);
+      const anchorRef = doc(eventsRef, lastEventId);
+      const anchorSnap = await getDoc(anchorRef);
+      if (!anchorSnap.exists()) return this.getAll();
+      const anchorTimestamp = anchorSnap.data().timestamp as string;
+      const q = query(
+        eventsRef,
+        where('timestamp', '>', anchorTimestamp),
+        orderBy('timestamp', 'asc'),
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => d.data() as DomainEvent);
+    } catch {
+      return this.getAll();
+    }
   }
 
   /**

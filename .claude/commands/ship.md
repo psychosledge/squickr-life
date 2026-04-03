@@ -35,7 +35,7 @@ git status
 If any tracked files are modified (other than the 4 package.json files that will be updated in Step 4), stage and commit them now:
 
 ```bash
-git add -A
+git add -u
 git diff --cached --name-only
 git commit -m "feat/fix: <brief description of changes>"
 ```

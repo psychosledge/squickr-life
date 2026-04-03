@@ -8,6 +8,7 @@ import type {
   HabitRestored,
   HabitCompleted,
   HabitCompletionReverted,
+  SerializableHabitState,
 } from './habit.types';
 
 // ============================================================================
@@ -872,5 +873,212 @@ describe('getHabitsForDate: relative habits', () => {
     const wednesday = '2026-01-07';
     const habitsWed = await projection.getHabitsForDate(wednesday, { asOf: wednesday });
     expect(habitsWed.some(h => h.id === habitId)).toBe(false);
+  });
+});
+
+// ============================================================================
+// ADR-026: Snapshot hydration / serialisation
+// ============================================================================
+
+describe('HabitProjection — snapshot support (ADR-026)', () => {
+  let eventStore: IEventStore;
+  let projection: HabitProjection;
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    projection = new HabitProjection(eventStore);
+  });
+
+  // ── hydrateFromSnapshot ────────────────────────────────────────────────────
+
+  describe('hydrateFromSnapshot()', () => {
+    it('deserialises completions from Record to Map and populates cache', async () => {
+      // Arrange
+      const states: SerializableHabitState[] = [
+        {
+          id: 'habit-1',
+          title: 'Morning run',
+          frequency: { type: 'daily' },
+          createdAt: '2026-01-01T00:00:00.000Z',
+          order: 'a0',
+          completions: { '2026-01-01': '2026-01-01T08:00:00.000Z' },
+          reverted: [],
+        },
+      ];
+
+      // Act
+      projection.hydrateFromSnapshot(states);
+
+      // Assert — getActiveHabits should use the hydrated state
+      const habits = await projection.getActiveHabits({ asOf: '2026-01-01' });
+      expect(habits).toHaveLength(1);
+      expect(habits[0]!.id).toBe('habit-1');
+      expect(habits[0]!.isCompletedToday).toBe(true);
+    });
+
+    it('deserialises reverted from string[] to Set so reverted dates are excluded', async () => {
+      // Arrange — habit has a completion on 2026-01-01, but it is reverted
+      const states: SerializableHabitState[] = [
+        {
+          id: 'habit-2',
+          title: 'Evening yoga',
+          frequency: { type: 'daily' },
+          createdAt: '2026-01-01T00:00:00.000Z',
+          order: 'a0',
+          completions: { '2026-01-01': '2026-01-01T20:00:00.000Z' },
+          reverted: ['2026-01-01'],
+        },
+      ];
+
+      // Act
+      projection.hydrateFromSnapshot(states);
+
+      // Assert — completion should be treated as reverted
+      const habits = await projection.getActiveHabits({ asOf: '2026-01-01' });
+      expect(habits[0]!.isCompletedToday).toBe(false);
+    });
+
+    it('deserialises optional fields (archivedAt, notificationTime)', async () => {
+      // Arrange
+      const states: SerializableHabitState[] = [
+        {
+          id: 'habit-3',
+          title: 'Archived habit',
+          frequency: { type: 'daily' },
+          createdAt: '2026-01-01T00:00:00.000Z',
+          order: 'a0',
+          archivedAt: '2026-01-15T00:00:00.000Z',
+          notificationTime: '07:30',
+          completions: {},
+          reverted: [],
+        },
+      ];
+
+      // Act
+      projection.hydrateFromSnapshot(states);
+
+      // Assert — archived habit should NOT appear in active habits
+      const activeHabits = await projection.getActiveHabits();
+      expect(activeHabits.find(h => h.id === 'habit-3')).toBeUndefined();
+
+      // But should appear in all habits
+      const allHabits = await projection.getAllHabits();
+      const found = allHabits.find(h => h.id === 'habit-3');
+      expect(found).toBeDefined();
+      expect(found!.archivedAt).toBe('2026-01-15T00:00:00.000Z');
+      expect(found!.notificationTime).toBe('07:30');
+    });
+
+    it('notifies subscribers after hydration', async () => {
+      let notified = false;
+      projection.subscribe(() => { notified = true; });
+
+      const states: SerializableHabitState[] = [];
+      projection.hydrateFromSnapshot(states);
+
+      expect(notified).toBe(true);
+    });
+  });
+
+  // ── cache invalidation ─────────────────────────────────────────────────────
+
+  describe('cache invalidation', () => {
+    it('clears cache when eventStore subscriber fires', async () => {
+      // Arrange — hydrate so cache is populated
+      projection.hydrateFromSnapshot([]);
+
+      // Spy on getAll to detect if a replay occurs
+      const getAllSpy = vi.spyOn(eventStore, 'getAll');
+
+      // Append a real event to trigger cache invalidation
+      await appendHabitCreated(eventStore);
+
+      // Act — query after event (should replay because cache was cleared)
+      await projection.getActiveHabits();
+
+      // Assert — getAll was called (cache was cleared, full replay occurred)
+      expect(getAllSpy).toHaveBeenCalled();
+    });
+  });
+
+  // ── getStatesForSnapshot ───────────────────────────────────────────────────
+
+  describe('getStatesForSnapshot()', () => {
+    it('serialises completions Map to Record', async () => {
+      // Arrange — create a habit and complete it
+      const habitId = await appendHabitCreated(eventStore, { order: 'a0' });
+      await appendHabitCompleted(eventStore, habitId, today);
+
+      // Warm the cache by querying
+      await projection.getActiveHabits();
+
+      // Act
+      const states = await projection.getStatesForSnapshot();
+
+      // Assert
+      expect(states).toHaveLength(1);
+      expect(states[0]!.completions).toBeTypeOf('object');
+      expect(states[0]!.completions).not.toBeInstanceOf(Map);
+      expect(states[0]!.completions[today]).toBeTruthy();
+    });
+
+    it('serialises reverted Set to string[]', async () => {
+      // Arrange — create a habit, complete it, then revert it
+      const habitId = await appendHabitCreated(eventStore, { order: 'a0' });
+      await appendHabitCompleted(eventStore, habitId, today);
+      await appendHabitCompletionReverted(eventStore, habitId, today);
+
+      // Warm cache
+      await projection.getActiveHabits();
+
+      // Act
+      const states = await projection.getStatesForSnapshot();
+
+      // Assert
+      expect(Array.isArray(states[0]!.reverted)).toBe(true);
+      expect(states[0]!.reverted).toContain(today);
+    });
+
+    it('returns all habits (active + archived) in snapshot', async () => {
+      // Arrange
+      const id1 = await appendHabitCreated(eventStore, { order: 'a0' });
+      const id2 = await appendHabitCreated(eventStore, { order: 'a1' });
+      await appendHabitArchived(eventStore, id2);
+
+      // Warm cache
+      await projection.getAllHabits();
+
+      // Act
+      const states = await projection.getStatesForSnapshot();
+
+      // Assert — both habits (active + archived) are in the snapshot
+      const ids = states.map(s => s.id);
+      expect(ids).toContain(id1);
+      expect(ids).toContain(id2);
+    });
+
+    it('round-trips correctly: getStatesForSnapshot then hydrateFromSnapshot', async () => {
+      // Arrange — build state via events
+      const habitId = await appendHabitCreated(eventStore, {
+        title: 'Run',
+        order: 'a0',
+        frequency: { type: 'daily' },
+      });
+      await appendHabitCompleted(eventStore, habitId, today);
+
+      // Warm cache and serialise
+      await projection.getActiveHabits();
+      const serialised = await projection.getStatesForSnapshot();
+
+      // Create fresh projection and hydrate from the serialised state
+      const freshProjection = new HabitProjection(eventStore);
+      freshProjection.hydrateFromSnapshot(serialised);
+
+      // Query the fresh projection
+      const habits = await freshProjection.getActiveHabits({ asOf: today });
+      expect(habits).toHaveLength(1);
+      expect(habits[0]!.id).toBe(habitId);
+      expect(habits[0]!.isCompletedToday).toBe(true);
+    });
   });
 });

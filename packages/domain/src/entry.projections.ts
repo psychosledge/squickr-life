@@ -39,6 +39,18 @@ export class EntryListProjection {
   private cachedEntries: Entry[] | null = null;
   private readonly snapshotStore?: ISnapshotStore;
   private absorbedEventIds: Set<string> | null = null;
+  /**
+   * True when hydrate() seeded cachedEntries from a snapshot state while the
+   * local event store was empty (ADR-024 cold-start fix).
+   *
+   * When the first real event arrives from SyncManager, the subscriber handler
+   * uses this flag to invalidate the seed (set cachedEntries = null) and force
+   * a full replay on the next getEntries() call. This prevents double-applying
+   * snapshot events: the seeded state already includes them, so when the event
+   * log downloads, we cannot apply them on top again.
+   */
+  private seededFromEmptyEventStore = false;
+  private lastSnapshotCursor: string | null = null;
 
   /**
    * Set once in hydrate() to record whether the local event store was empty at
@@ -61,6 +73,15 @@ export class EntryListProjection {
   private readonly review: ReviewProjection;
   private readonly habit: HabitProjection;
 
+  /**
+   * Expose the internal HabitProjection so that SnapshotManager (and App.tsx)
+   * can pass it to snapshot enrichment without needing a separate reference.
+   * Read-only — callers must not replace or wrap this instance.
+   */
+  get habitProjection(): HabitProjection {
+    return this.habit;
+  }
+
   constructor(private readonly eventStore: IEventStore, snapshotStore?: ISnapshotStore) {
     this.snapshotStore = snapshotStore;
     this.review = new ReviewProjection(this, this.eventStore);
@@ -79,11 +100,21 @@ export class EntryListProjection {
       // cache instead of discarding it and forcing a full event-log replay.
       // If the cache is null (cold start, not yet populated), leave it null —
       // a full replay will happen lazily on the next getEntries() call.
+      // Only notify subscribers when the cache was actually updated; skipping
+      // notification when cache is null avoids 1537 redundant UI redraws during
+      // a cold-start sync batch download.
       if (this.cachedEntries !== null) {
+        if (this.seededFromEmptyEventStore) {
+          // First real event batch arrived — invalidate snapshot seed.
+          // Full replay will happen on next resolveCache() call.
+          this.cachedEntries = null;
+          this.seededFromEmptyEventStore = false;
+          this.notifySubscribers();
+          return;
+        }
         this.cachedEntries = this.applicator.applyEventsOnto([...this.cachedEntries], [event]);
+        this.notifySubscribers();
       }
-
-      this.notifySubscribers();
     });
   }
 
@@ -128,6 +159,20 @@ export class EntryListProjection {
       return;
     }
 
+    // ADR-026: field-presence completeness guard.
+    // A v5 snapshot saved before the habit/prefs enrichment was wired is
+    // incomplete — discard it and force a full replay.
+    if (snapshot.habits === undefined || snapshot.userPreferences === undefined) {
+      const events = await this.eventStore.getAll();
+      this.localStoreWasEmptyAtHydration = events.length === 0;
+      return;
+    }
+
+    // ADR-026: Hydrate HabitProjection from snapshot.
+    // This must happen after the field-presence guard and before the cache is
+    // seeded, so the habit data is available as soon as entries are ready.
+    this.habit.hydrateFromSnapshot(snapshot.habits);
+
     // Load all events to determine the delta and record the emptiness flag.
     const allEvents = await this.eventStore.getAll();
     // ADR-024: record emptiness before applying any events.
@@ -136,13 +181,21 @@ export class EntryListProjection {
     if (allEvents.length === 0) {
       // No events at all. One legitimate scenario: first cold-start on a new device where
       // the remote snapshot was restored (ADR-018) but SyncManager hasn't downloaded the
-      // event log yet. The snapshot is ignored here; a full replay will happen lazily on
-      // the next getEntries() call once events arrive.
+      // event log yet. Seed the cache from the snapshot state so the UI can render
+      // immediately. The seededFromEmptyEventStore flag ensures the seed is invalidated
+      // when the first real event arrives, preventing double-application of events.
       logger.warn(
         '[EntryListProjection.hydrate] Snapshot exists but local event log is empty.',
         'Possible causes: cold-start before event download completes, or IndexedDB was cleared.',
-        'Falling back to full replay on next getEntries() call.',
+        'Seeding cache from snapshot state. Full replay will occur on first event batch.',
       );
+      this.cachedEntries = [...snapshot.state];
+      this.seededFromEmptyEventStore = true;
+      // ADR-025: record cursor so SyncManager can request only delta events.
+      // Without this, getAllAfter(null) falls back to getAll() and downloads
+      // the full history instead of just the events after the snapshot.
+      this.lastSnapshotCursor = snapshot.lastEventId;
+      this.notifySubscribers();
       return;
     }
 
@@ -155,6 +208,9 @@ export class EntryListProjection {
     }
 
     const deltaEvents = allEvents.slice(snapshotEventIndex + 1);
+
+    // Record the snapshot cursor for ADR-025 delta-only sync.
+    this.lastSnapshotCursor = snapshot.lastEventId;
 
     if (deltaEvents.length === 0) {
       // Snapshot is fully up-to-date — seed the cache directly, zero replay cost
@@ -193,6 +249,35 @@ export class EntryListProjection {
   }
 
   /**
+   * Returns true if the in-memory entry cache is currently populated.
+   *
+   * Used by the ADR-024 cold-start sequencer to decide whether hydrate()
+   * successfully seeded the cache from a snapshot (allowing the overlay to be
+   * skipped while delta sync runs in the background), versus falling back to a
+   * full replay on the next getEntries() call (no data to show yet — keep overlay).
+   *
+   * Also returns true when the cache was seeded from a snapshot state while the
+   * local event store was empty (ADR-024 cold-start fix). In that case,
+   * seededFromEmptyEventStore is true and the cache will be invalidated on the
+   * first real event from SyncManager.
+   *
+   * Returns false if hydrate() has not been called or if it fell back.
+   */
+  isCachePopulated(): boolean {
+    return this.cachedEntries !== null;
+  }
+
+  /**
+   * Returns the lastEventId from the most recently hydrated or created snapshot,
+   * or null if no snapshot has been applied to this projection instance.
+   *
+   * Used by SyncManager as a cursor for delta-only Firestore downloads (ADR-025).
+   */
+  getLastSnapshotCursor(): string | null {
+    return this.lastSnapshotCursor;
+  }
+
+  /**
    * Create a snapshot of the current projection state.
    *
    * The snapshot captures the result of getEntries('all') — all active
@@ -207,6 +292,7 @@ export class EntryListProjection {
     if (allEvents.length === 0) return null;
 
     const lastEvent = allEvents[allEvents.length - 1]!;
+    this.lastSnapshotCursor = lastEvent.id;
 
     // Prime the cache with the events we already fetched so that the
     // getEntries('all') call below hits the cache instead of issuing a

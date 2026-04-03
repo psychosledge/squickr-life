@@ -12,10 +12,11 @@
  */
 
 import type { ISnapshotStore, IEventStore } from '@squickr/domain';
-import type { EntryListProjection } from '@squickr/domain';
+import type { EntryListProjection, CollectionListProjection, HabitProjection, UserPreferencesProjection } from '@squickr/domain';
 
 export class SnapshotManager {
   private eventCounter = 0;
+  private saveInProgress = false;
   private unsubscribeFromEventStore: (() => void) | null = null;
 
   // Event handler references (for cleanup)
@@ -27,7 +28,10 @@ export class SnapshotManager {
     private readonly snapshotStore: ISnapshotStore,
     private readonly remoteStore: ISnapshotStore | null,
     private readonly eventStore: IEventStore,
-    private readonly eventsBeforeSnapshot: number = 50
+    private readonly collectionProjection?: CollectionListProjection,
+    private readonly eventsBeforeSnapshot: number = 50,
+    private readonly habitProjection?: HabitProjection,
+    private readonly userPreferencesProjection?: UserPreferencesProjection,
   ) {}
 
   /**
@@ -89,21 +93,48 @@ export class SnapshotManager {
    * @param trigger - Human-readable label for the trigger source (for logging)
    */
   async saveSnapshot(trigger: string): Promise<void> {
+    if (this.saveInProgress) return;
+    this.saveInProgress = true;
     try {
       const snapshot = await this.projection.createSnapshot();
       if (snapshot === null) {
         return;
       }
-      await this.snapshotStore.save('entry-list-projection', snapshot);
+
+      // Enrich with collection data for cold-start restore (ADR-024)
+      const collections = this.collectionProjection
+        ? await this.collectionProjection.getCollections()
+        : undefined;
+
+      // Enrich with habit state for cold-start restore (ADR-026)
+      const habits = this.habitProjection
+        ? await this.habitProjection.getStatesForSnapshot()
+        : undefined;
+
+      // Enrich with user preferences for cold-start restore (ADR-026)
+      const userPreferences = this.userPreferencesProjection
+        ? await this.userPreferencesProjection.getUserPreferences()
+        : undefined;
+
+      const enrichedSnapshot = {
+        ...snapshot,
+        ...(collections !== undefined ? { collections } : {}),
+        ...(habits !== undefined ? { habits } : {}),
+        ...(userPreferences !== undefined ? { userPreferences } : {}),
+      };
+
+      await this.snapshotStore.save('entry-list-projection', enrichedSnapshot);
       // Fire-and-forget: remote save is an optimisation; local is the reliable path.
       // Errors are swallowed so a remote failure never blocks the local save.
-      this.remoteStore?.save('entry-list-projection', snapshot).catch(err =>
+      this.remoteStore?.save('entry-list-projection', enrichedSnapshot).catch(err =>
         console.warn('[SnapshotManager] remote snapshot save failed:', err)
       );
       // Reset counter so the next save window starts fresh regardless of trigger source
       this.eventCounter = 0;
     } catch (error) {
       console.error(`[SnapshotManager] saveSnapshot(${trigger}) failed:`, error);
+    } finally {
+      this.saveInProgress = false;
     }
   }
 }

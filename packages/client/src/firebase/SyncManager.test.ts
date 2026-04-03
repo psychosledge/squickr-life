@@ -23,15 +23,17 @@ describe('SyncManager', () => {
       append: vi.fn().mockResolvedValue(undefined),
       appendBatch: vi.fn().mockResolvedValue(undefined),
       getAll: vi.fn().mockResolvedValue([]),
+      getAllAfter: vi.fn().mockResolvedValue([]),
       getById: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
-    
+
     // Mock remote store
     remoteStore = {
       append: vi.fn().mockResolvedValue(undefined),
       appendBatch: vi.fn().mockResolvedValue(undefined),
       getAll: vi.fn().mockResolvedValue([]),
+      getAllAfter: vi.fn().mockResolvedValue([]),
       getById: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     };
@@ -81,8 +83,8 @@ describe('SyncManager', () => {
       });
 
       expect(localStore.getAll).toHaveBeenCalled();
-      expect(remoteStore.getAll).toHaveBeenCalled();
-      
+      expect(remoteStore.getAllAfter).toHaveBeenCalled();
+
       syncManager.stop();
     });
 
@@ -179,7 +181,7 @@ describe('SyncManager', () => {
       ];
       
       vi.mocked(localStore.getAll).mockResolvedValue(localEvents);
-      vi.mocked(remoteStore.getAll).mockResolvedValue([]);
+      vi.mocked(remoteStore.getAllAfter).mockResolvedValue([]);
 
       syncManager = new SyncManager(localStore, remoteStore);
       await syncManager.syncNow();
@@ -199,7 +201,7 @@ describe('SyncManager', () => {
       ];
       
       vi.mocked(localStore.getAll).mockResolvedValue([]);
-      vi.mocked(remoteStore.getAll).mockResolvedValue(remoteEvents);
+      vi.mocked(remoteStore.getAllAfter).mockResolvedValue(remoteEvents);
 
       syncManager = new SyncManager(localStore, remoteStore);
       await syncManager.syncNow();
@@ -217,7 +219,7 @@ describe('SyncManager', () => {
       };
       
       vi.mocked(localStore.getAll).mockResolvedValue([sharedEvent]);
-      vi.mocked(remoteStore.getAll).mockResolvedValue([sharedEvent]);
+      vi.mocked(remoteStore.getAllAfter).mockResolvedValue([sharedEvent]);
 
       syncManager = new SyncManager(localStore, remoteStore);
       await syncManager.syncNow();
@@ -245,7 +247,7 @@ describe('SyncManager', () => {
       };
       
       vi.mocked(localStore.getAll).mockResolvedValue([localOnly]);
-      vi.mocked(remoteStore.getAll).mockResolvedValue([remoteOnly]);
+      vi.mocked(remoteStore.getAllAfter).mockResolvedValue([remoteOnly]);
 
       syncManager = new SyncManager(localStore, remoteStore);
       await syncManager.syncNow();
@@ -280,9 +282,9 @@ describe('SyncManager', () => {
 
     it('should pass error message on Firestore timeout', async () => {
       vi.spyOn(console, 'error').mockImplementation(() => {});
-      // Simulate a timeout by having remoteStore.getAll hang forever
+      // Simulate a timeout by having remoteStore.getAllAfter hang forever
       vi.mocked(localStore.getAll).mockResolvedValue([]);
-      vi.mocked(remoteStore.getAll).mockImplementationOnce(
+      vi.mocked(remoteStore.getAllAfter).mockImplementationOnce(
         () => new Promise<never>(() => {}) // never resolves
       );
 
@@ -326,7 +328,7 @@ describe('SyncManager', () => {
       ];
 
       vi.mocked(localStore.getAll).mockResolvedValue([]);
-      vi.mocked(remoteStore.getAll).mockResolvedValue(remoteEvents);
+      vi.mocked(remoteStore.getAllAfter).mockResolvedValue(remoteEvents);
 
       syncManager = new SyncManager(localStore, remoteStore);
       await syncManager.syncNow();
@@ -342,7 +344,7 @@ describe('SyncManager', () => {
     it('should set initialSyncComplete even after a timeout', async () => {
       vi.spyOn(console, 'error').mockImplementation(() => {});
       vi.mocked(localStore.getAll).mockResolvedValue([]);
-      vi.mocked(remoteStore.getAll).mockImplementationOnce(
+      vi.mocked(remoteStore.getAllAfter).mockImplementationOnce(
         () => new Promise<never>(() => {})
       );
 
@@ -609,7 +611,7 @@ describe('SyncManager', () => {
       });
 
       vi.mocked(localStore.getAll).mockResolvedValue([]);
-      vi.mocked(remoteStore.getAll).mockResolvedValue(remoteEvents);
+      vi.mocked(remoteStore.getAllAfter).mockResolvedValue(remoteEvents);
 
       syncManager = new SyncManager(localStore, remoteStore);
       syncManager.start();
@@ -665,6 +667,54 @@ describe('SyncManager', () => {
       expect(localStore.getAll).toHaveBeenCalled();
 
       syncManager.stop();
+    });
+  });
+
+  describe('delta-only sync (getSnapshotCursor)', () => {
+    it('when getSnapshotCursor is not provided, remoteStore.getAllAfter is called with null', async () => {
+      syncManager = new SyncManager(localStore, remoteStore, onSyncStateChange);
+      await syncManager.syncNow();
+
+      expect(remoteStore.getAllAfter).toHaveBeenCalledWith(null);
+    });
+
+    it('when getSnapshotCursor returns a cursor string, remoteStore.getAllAfter is called with that string', async () => {
+      const cursorId = 'snapshot-event-id-42';
+      const getSnapshotCursor = vi.fn().mockReturnValue(cursorId);
+
+      syncManager = new SyncManager(localStore, remoteStore, onSyncStateChange, getSnapshotCursor);
+      await syncManager.syncNow();
+
+      expect(remoteStore.getAllAfter).toHaveBeenCalledWith(cursorId);
+    });
+
+    it('when getSnapshotCursor returns null, remoteStore.getAllAfter is called with null', async () => {
+      const getSnapshotCursor = vi.fn().mockReturnValue(null);
+
+      syncManager = new SyncManager(localStore, remoteStore, onSyncStateChange, getSnapshotCursor);
+      await syncManager.syncNow();
+
+      expect(remoteStore.getAllAfter).toHaveBeenCalledWith(null);
+    });
+
+    it('existing tests continue to pass (no 4th argument — backward compatible)', async () => {
+      // Arrange: remote has one event to download
+      const remoteEvent: DomainEvent = {
+        id: 'evt-remote',
+        type: 'task-created',
+        aggregateId: 'task-1',
+        timestamp: '2026-01-30T10:00:00Z',
+        version: 1,
+      };
+      vi.mocked(localStore.getAll).mockResolvedValue([]);
+      vi.mocked(remoteStore.getAllAfter).mockResolvedValue([remoteEvent]);
+
+      // No 4th argument
+      syncManager = new SyncManager(localStore, remoteStore);
+      await syncManager.syncNow();
+
+      // Download should still work
+      expect(localStore.appendBatch).toHaveBeenCalledWith([remoteEvent]);
     });
   });
 });

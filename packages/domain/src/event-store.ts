@@ -49,6 +49,18 @@ export interface IEventStore {
   getAll(): Promise<DomainEvent[]>;
 
   /**
+   * Get all events appended after the event with the given ID.
+   *
+   * Uses the anchor event's timestamp as a cursor: returns all events whose
+   * timestamp is strictly greater than the anchor's, ordered ascending.
+   *
+   * Falls back to getAll() when lastEventId is null or the anchor is not found.
+   *
+   * @param lastEventId - The id of the last known event, or null for full download.
+   */
+  getAllAfter(lastEventId: string | null): Promise<DomainEvent[]>;
+
+  /**
    * Subscribe to event store changes
    * @param callback - Function to call when events are appended
    * @returns Unsubscribe function

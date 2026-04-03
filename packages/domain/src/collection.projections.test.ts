@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CollectionListProjection } from './collection.projections';
 import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
@@ -1041,6 +1041,140 @@ describe('CollectionListProjection', () => {
 
       const deletedCollections = await projection.getDeletedCollections();
       expect(deletedCollections).toHaveLength(0);
+    });
+  });
+
+  // ============================================================================
+  // ADR-024 Fix 2: in-memory cache and seedFromSnapshot()
+  // ============================================================================
+  describe('cache and seedFromSnapshot()', () => {
+    it('seedFromSnapshot() makes getCollections() return seeded collections without reading event store', async () => {
+      // Arrange: build two collections to use as seed data
+      const seedCollections: import('./collection.types').Collection[] = [
+        {
+          id: 'col-seed-1',
+          name: 'Seeded Alpha',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'col-seed-2',
+          name: 'Seeded Beta',
+          type: 'custom',
+          order: 'a1',
+          createdAt: '2026-01-01T00:01:00.000Z',
+        },
+      ];
+
+      const spy = vi.spyOn(eventStore, 'getAll');
+
+      // Act: seed the projection from the snapshot collections
+      projection.seedFromSnapshot(seedCollections);
+
+      // getCollections() should return the seeded data without hitting eventStore.getAll()
+      const result = await projection.getCollections();
+      expect(spy).not.toHaveBeenCalled();
+      expect(result).toHaveLength(2);
+      expect(result[0]!.name).toBe('Seeded Alpha');
+      expect(result[1]!.name).toBe('Seeded Beta');
+
+      vi.restoreAllMocks();
+    });
+
+    it('event store subscriber clears collection cache on new event', async () => {
+      // Arrange: seed the cache
+      const seedCollections: import('./collection.types').Collection[] = [
+        {
+          id: 'col-seed-1',
+          name: 'Seeded',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ];
+      projection.seedFromSnapshot(seedCollections);
+
+      // Confirm cache is seeded
+      const spy = vi.spyOn(eventStore, 'getAll');
+      await projection.getCollections();
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+
+      // Act: append an event to the event store
+      const newEvent: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-real',
+        payload: {
+          id: 'col-real',
+          name: 'Real Collection',
+          type: 'custom',
+          order: 'a2',
+          createdAt: '2026-01-01T00:02:00.000Z',
+        },
+      };
+      await eventStore.append(newEvent);
+
+      // Assert: getCollections() now does a full replay (cache was invalidated)
+      const spy2 = vi.spyOn(eventStore, 'getAll');
+      const result = await projection.getCollections();
+      expect(spy2).toHaveBeenCalledTimes(1);
+      // Result should come from full replay: the real event, not the seeded data
+      expect(result).toHaveLength(1);
+      expect(result[0]!.name).toBe('Real Collection');
+
+      vi.restoreAllMocks();
+    });
+
+    it('getCollections() caches after first replay and avoids second eventStore.getAll()', async () => {
+      // Arrange: create a collection via event
+      const event: CollectionCreated = {
+        ...generateEventMetadata(),
+        type: 'CollectionCreated',
+        aggregateId: 'col-1',
+        payload: {
+          id: 'col-1',
+          name: 'Cached Collection',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-26T00:00:00.000Z',
+        },
+      };
+      await eventStore.append(event);
+
+      // First call — should do a full replay
+      const spy = vi.spyOn(eventStore, 'getAll');
+      const result1 = await projection.getCollections();
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(result1).toHaveLength(1);
+
+      // Second call — should hit the cache, no additional getAll()
+      const result2 = await projection.getCollections();
+      expect(spy).toHaveBeenCalledTimes(1); // still 1, not 2
+      expect(result2).toEqual(result1);
+
+      vi.restoreAllMocks();
+    });
+
+    it('seedFromSnapshot() notifies subscribers', async () => {
+      // Arrange
+      const subscriberSpy = vi.fn();
+      projection.subscribe(subscriberSpy);
+
+      // Act
+      projection.seedFromSnapshot([
+        {
+          id: 'col-1',
+          name: 'Notified',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]);
+
+      // Assert: subscriber was called once
+      expect(subscriberSpy).toHaveBeenCalledTimes(1);
     });
   });
 

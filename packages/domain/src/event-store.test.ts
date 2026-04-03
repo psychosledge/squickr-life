@@ -188,6 +188,78 @@ describe('EventStore', () => {
     });
   });
 
+  describe('getAllAfter', () => {
+    const event1: DomainEvent = {
+      id: 'event-1',
+      type: 'TaskCreated',
+      timestamp: '2026-01-24T10:00:00.000Z',
+      version: 1,
+      aggregateId: 'task-1',
+    };
+
+    const event2: DomainEvent = {
+      id: 'event-2',
+      type: 'TaskCreated',
+      timestamp: '2026-01-24T10:01:00.000Z',
+      version: 1,
+      aggregateId: 'task-2',
+    };
+
+    const event3: DomainEvent = {
+      id: 'event-3',
+      type: 'TaskCreated',
+      timestamp: '2026-01-24T10:02:00.000Z',
+      version: 1,
+      aggregateId: 'task-3',
+    };
+
+    it('getAllAfter(null) returns all events', async () => {
+      await eventStore.append(event1);
+      await eventStore.append(event2);
+      await eventStore.append(event3);
+
+      const result = await eventStore.getAllAfter(null);
+
+      expect(result).toHaveLength(3);
+      expect(result[0]).toEqual(event1);
+      expect(result[1]).toEqual(event2);
+      expect(result[2]).toEqual(event3);
+    });
+
+    it('getAllAfter(lastEventId) returns empty array when anchor is the last event', async () => {
+      await eventStore.append(event1);
+      await eventStore.append(event2);
+      await eventStore.append(event3);
+
+      const result = await eventStore.getAllAfter('event-3');
+
+      expect(result).toEqual([]);
+    });
+
+    it('getAllAfter(middleId) returns only events after that position', async () => {
+      await eventStore.append(event1);
+      await eventStore.append(event2);
+      await eventStore.append(event3);
+
+      const result = await eventStore.getAllAfter('event-1');
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual(event2);
+      expect(result[1]).toEqual(event3);
+    });
+
+    it('getAllAfter(nonexistent) returns all events (fallback)', async () => {
+      await eventStore.append(event1);
+      await eventStore.append(event2);
+
+      const result = await eventStore.getAllAfter('does-not-exist');
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual(event1);
+      expect(result[1]).toEqual(event2);
+    });
+  });
+
   describe('appendBatch', () => {
     it('should append all events to store', async () => {
       const event1: TaskCreated = {

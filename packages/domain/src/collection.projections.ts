@@ -67,12 +67,30 @@ function migrateCollectionSettings(settings?: CollectionSettings): CollectionSet
  */
 export class CollectionListProjection {
   private subscribers = new Set<() => void>();
+  private cachedCollections: Collection[] | null = null;
 
   constructor(private readonly eventStore: IEventStore) {
-    // Subscribe to event store changes to enable reactive projections
+    // Subscribe to event store changes to enable reactive projections.
+    // Clear the cache on any event so getCollections() performs a fresh replay.
     this.eventStore.subscribe(() => {
+      this.cachedCollections = null;
       this.notifySubscribers();
     });
+  }
+
+  /**
+   * Seed the collection cache from a snapshot (ADR-024 cold-start fix).
+   *
+   * Called by App.tsx immediately after restoring a remote snapshot, this
+   * allows getCollections() to return data without waiting for the full event
+   * log to download. The cache is automatically invalidated by the event-store
+   * subscriber when the first real event arrives.
+   *
+   * @param collections - The collection list from the snapshot.
+   */
+  seedFromSnapshot(collections: Collection[]): void {
+    this.cachedCollections = collections;
+    this.notifySubscribers();
   }
 
   /**
@@ -93,13 +111,21 @@ export class CollectionListProjection {
   }
 
   /**
-   * Get all collections (excluding soft-deleted ones)
-   * 
+   * Get all collections (excluding soft-deleted ones).
+   *
+   * Uses an in-memory cache to avoid replaying the full event log on every
+   * call. The cache is populated after the first replay or via seedFromSnapshot()
+   * and is invalidated whenever the event store receives a new event.
+   *
    * @returns Array of collections sorted by order field
    */
   async getCollections(): Promise<Collection[]> {
+    if (this.cachedCollections !== null) {
+      return this.cachedCollections;
+    }
     const events = await this.eventStore.getAll();
-    return this.applyEvents(events);
+    this.cachedCollections = this.applyEvents(events);
+    return this.cachedCollections;
   }
 
   /**

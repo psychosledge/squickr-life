@@ -39,7 +39,8 @@ export class SyncManager {
   constructor(
     private localStore: IEventStore,
     private remoteStore: IEventStore,
-    public onSyncStateChange?: (syncing: boolean, error?: string) => void
+    public onSyncStateChange?: (syncing: boolean, error?: string) => void,
+    private getSnapshotCursor?: () => string | null,
   ) {}
 
   /** Returns true once the first sync attempt has finished (success or timeout) */
@@ -111,15 +112,29 @@ export class SyncManager {
       // Upload: Get events from localStore, append to remoteStore
       const localEvents = await this.localStore.getAll();
 
-      // Wrap Firestore getAll() in a 15-second timeout guard so a new device
+      // Wrap Firestore getAllAfter() in a 15-second timeout guard so a new device
       // never waits forever on a slow/unavailable network.
+      const cursor = this.getSnapshotCursor?.() ?? null;
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Firestore sync timed out')), SYNC_TIMEOUT_MS)
       );
-      const remoteEvents = await Promise.race([this.remoteStore.getAll(), timeoutPromise]);
+      const remoteEvents = await Promise.race([
+        this.remoteStore.getAllAfter(cursor),
+        timeoutPromise,
+      ]);
 
+      // ADR-025: scope upload to only events after the snapshot cursor.
+      // Without this, when remoteEvents is a delta (cursor was set), remoteIds
+      // contains 0 IDs and ALL local events appear as new → permission error on
+      // duplicate Firestore writes.
+      const localEventsToUpload = cursor !== null
+        ? (() => {
+            const i = localEvents.findIndex(e => e.id === cursor);
+            return i >= 0 ? localEvents.slice(i + 1) : localEvents;
+          })()
+        : localEvents;
       const remoteIds = new Set(remoteEvents.map(e => e.id));
-      const newEvents = localEvents.filter(e => !remoteIds.has(e.id));
+      const newEvents = localEventsToUpload.filter(e => !remoteIds.has(e.id));
       
       logger.info('[SyncManager]', `Uploading ${newEvents.length} new events...`);
       for (const event of newEvents) {

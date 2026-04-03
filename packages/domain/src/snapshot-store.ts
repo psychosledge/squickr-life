@@ -1,4 +1,7 @@
 import type { Entry } from './task.types';
+import type { Collection } from './collection.types';
+import type { SerializableHabitState } from './habit.types';
+import type { UserPreferences } from './user-preferences.types';
 
 /**
  * Schema version for projection snapshots.
@@ -9,7 +12,7 @@ import type { Entry } from './task.types';
  * `version` differs from the current `SNAPSHOT_SCHEMA_VERSION` should discard
  * the stale snapshot and rebuild the projection from scratch.
  */
-export const SNAPSHOT_SCHEMA_VERSION = 3;
+export const SNAPSHOT_SCHEMA_VERSION = 5;
 
 /**
  * A point-in-time snapshot of a projection's read-model state.
@@ -51,6 +54,37 @@ export interface ProjectionSnapshot {
    * Useful for diagnostics and for evicting snapshots that are too old.
    */
   readonly savedAt: string;
+
+  /**
+   * Optional: the fully-materialised collection list at the time the snapshot
+   * was taken. Used by the ADR-024 cold-start sequencer to seed the
+   * CollectionListProjection before the event log downloads, eliminating the
+   * "No collections yet" flash during cold-start restore.
+   *
+   * Field is optional so that snapshots from schema version 3 (without it)
+   * are still deserialised correctly — those snapshots are discarded anyway
+   * due to the SNAPSHOT_SCHEMA_VERSION bump to 4.
+   */
+  readonly collections?: Collection[];
+
+  /**
+   * Optional: serialised habit states at the time the snapshot was taken.
+   * Added in schema version 5 (ADR-026). Allows HabitProjection to be seeded
+   * from a snapshot on cold-start without replaying the full event log.
+   *
+   * Both fields (`habits` and `userPreferences`) must be present for the
+   * snapshot to be considered complete. A snapshot missing either field is
+   * discarded and treated as if no snapshot exists.
+   */
+  readonly habits?: SerializableHabitState[];
+
+  /**
+   * Optional: user preferences at the time the snapshot was taken.
+   * Added in schema version 5 (ADR-026).
+   *
+   * @see habits for the all-or-nothing completeness constraint.
+   */
+  readonly userPreferences?: UserPreferences;
 }
 
 /**

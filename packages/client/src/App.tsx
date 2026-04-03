@@ -256,6 +256,7 @@ function AppContent() {
   const [entryProjection] = useState(() => new EntryListProjection(eventStore, snapshotStore));
   const [taskProjection] = useState(() => new TaskListProjection(eventStore));
   const [collectionProjection] = useState(() => new CollectionListProjection(eventStore));
+  const [userPreferencesProjection] = useState(() => new UserPreferencesProjection(eventStore));
   
   // Collection handlers
   const [createCollectionHandler] = useState(() => new CreateCollectionHandler(eventStore, collectionProjection));
@@ -346,7 +347,16 @@ function AppContent() {
     isInitialized.current = true;
 
     initializeApp().then(() => {
-      const sm = new SnapshotManager(entryProjection, snapshotStore, null, eventStore);
+      const sm = new SnapshotManager(
+        entryProjection,
+        snapshotStore,
+        null,
+        eventStore,
+        collectionProjection,
+        50,
+        entryProjection.habitProjection,
+        userPreferencesProjection,
+      );
       sm.start();
       snapshotManagerRef.current = sm;
     });
@@ -383,7 +393,16 @@ function AppContent() {
 
     // Update SnapshotManager to include the remote store now that we know the user
     snapshotManagerRef.current?.stop();
-    const sm = new SnapshotManager(entryProjection, snapshotStore, remoteSnapshotStore, eventStore);
+    const sm = new SnapshotManager(
+      entryProjection,
+      snapshotStore,
+      remoteSnapshotStore,
+      eventStore,
+      collectionProjection,
+      50,
+      entryProjection.habitProjection,
+      userPreferencesProjection,
+    );
     sm.start();
     snapshotManagerRef.current = sm;
 
@@ -408,7 +427,12 @@ function AppContent() {
         // Advance to 'ready' synchronously before starting background sync so
         // there is no render cycle where the app is "checking" but not ready.
         if (!cancelled) setColdStartPhase('ready');
-        const manager = new SyncManager(eventStore, remoteEventStore);
+        const manager = new SyncManager(
+          eventStore,
+          remoteEventStore,
+          undefined,
+          () => entryProjection.getLastSnapshotCursor(),
+        );
         manager.onSyncStateChange = (_syncing: boolean, error?: string) => {
           if (error) setSyncError(error);
         };
@@ -439,8 +463,24 @@ function AppContent() {
           if (!cancelled) setColdStartPhase('restoring');
           await snapshotStore.save('entry-list-projection', remoteSnapshot);
           await entryProjection.hydrate();
-          restoredFromRemoteRef.current = true;
-          logger.info('[App] Cold-start: restored from remote snapshot — overlay will be skipped');
+          // Seed collection list from snapshot if available (ADR-024)
+          if (remoteSnapshot.collections?.length) {
+            collectionProjection.seedFromSnapshot(remoteSnapshot.collections);
+          }
+          // Seed user preferences from snapshot if available (ADR-026)
+          if (remoteSnapshot.userPreferences) {
+            userPreferencesProjection.hydrateFromSnapshot(remoteSnapshot.userPreferences);
+          }
+          // Skip the blocking overlay if either:
+          // (a) hydrate() populated the entry cache from snapshot state, or
+          // (b) the snapshot contained collection data (so something is displayable)
+          restoredFromRemoteRef.current =
+            entryProjection.isCachePopulated() ||
+            (remoteSnapshot.collections?.length ?? 0) > 0;
+          logger.info(
+            '[App] Cold-start: remote snapshot restored — cache populated:',
+            restoredFromRemoteRef.current,
+          );
         }
       } catch (err) {
         logger.warn('[App] Remote snapshot restore failed, falling back to normal sync:', err);
@@ -448,20 +488,26 @@ function AppContent() {
 
       if (cancelled) return;
 
-      // ── Both restore and timeout/null paths converge here ──────────────────
-      setColdStartPhase('syncing');
-
-      const manager = new SyncManager(eventStore, remoteEventStore);
+      const manager = new SyncManager(
+        eventStore,
+        remoteEventStore,
+        undefined,
+        () => entryProjection.getLastSnapshotCursor(),
+      );
 
       if (restoredFromRemoteRef.current) {
-        // Remote snapshot already hydrated the projection — skip the blocking overlay.
-        // Run sync in background without blocking isAppReady further.
+        // Snapshot data (entries + collections) is already in memory — set ready
+        // immediately so the UI renders from snapshot without waiting for the full
+        // event log to download.  Sync continues in the background; errors surface
+        // via syncError state (non-blocking "Show local data" button).
+        if (!cancelled) setColdStartPhase('ready');
         manager.onSyncStateChange = (_syncing: boolean, error?: string) => {
           if (error) setSyncError(error);
-          if (!_syncing) setColdStartPhase('ready');
         };
       } else {
-        // Normal path (null snapshot / timeout): show overlay until initial sync completes.
+        // Normal path (null / timed-out snapshot): show overlay until initial sync
+        // completes so the user never sees an empty state while events download.
+        if (!cancelled) setColdStartPhase('syncing');
         let initialSnapshotSaved = false;
         manager.onSyncStateChange = (syncing: boolean, error?: string) => {
           setSyncError(error ?? null);
@@ -498,21 +544,18 @@ function AppContent() {
     try {
       // Initialize IndexedDB connection
       await eventStore.initialize();
-      
+
       // Initialize snapshot store and hydrate projection from snapshot
       await snapshotStore.initialize();
       await entryProjection.hydrate();
-      
-      // Subscribe to user preferences changes
-      const userPrefsProjection = new UserPreferencesProjection(eventStore);
-      
-      // Load initial preferences
-      const prefs = await userPrefsProjection.getUserPreferences();
+
+      // Load initial preferences (uses userPreferencesProjection created above)
+      const prefs = await userPreferencesProjection.getUserPreferences();
       setUserPreferences(prefs);
-      
+
       // Subscribe to changes
-      userPrefsProjection.subscribe(async () => {
-        const updatedPrefs = await userPrefsProjection.getUserPreferences();
+      userPreferencesProjection.subscribe(async () => {
+        const updatedPrefs = await userPreferencesProjection.getUserPreferences();
         setUserPreferences(updatedPrefs);
       });
     } catch (error) {

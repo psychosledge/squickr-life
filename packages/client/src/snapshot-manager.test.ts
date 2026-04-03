@@ -11,8 +11,9 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SnapshotManager } from './snapshot-manager';
-import type { ISnapshotStore, IEventStore, ProjectionSnapshot } from '@squickr/domain';
-import type { EntryListProjection } from '@squickr/domain';
+import type { ISnapshotStore, IEventStore, ProjectionSnapshot, Collection, SerializableHabitState } from '@squickr/domain';
+import type { EntryListProjection, CollectionListProjection, HabitProjection, UserPreferencesProjection } from '@squickr/domain';
+import type { UserPreferences } from '@squickr/domain';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -79,6 +80,52 @@ function makeProjection(snapshot: ProjectionSnapshot | null = makeSnapshot()): E
   } as unknown as EntryListProjection;
 }
 
+function makeCollectionProjection(collections: Collection[] = []): CollectionListProjection {
+  return {
+    getCollections: vi.fn().mockResolvedValue(collections),
+  } as unknown as CollectionListProjection;
+}
+
+function makeHabitProjection(states: SerializableHabitState[] = []): HabitProjection {
+  return {
+    getStatesForSnapshot: vi.fn().mockResolvedValue(states),
+  } as unknown as HabitProjection;
+}
+
+function makeUserPreferencesProjection(prefs: UserPreferences = {
+  defaultCompletedTaskBehavior: 'keep-in-place',
+  autoFavoriteRecentDailyLogs: false,
+  autoFavoriteRecentMonthlyLogs: false,
+  autoFavoriteCalendarWithActiveTasks: false,
+}): UserPreferencesProjection {
+  return {
+    getUserPreferences: vi.fn().mockResolvedValue(prefs),
+  } as unknown as UserPreferencesProjection;
+}
+
+function makeHabitState(id: string): SerializableHabitState {
+  return {
+    id,
+    title: `Habit ${id}`,
+    frequency: { type: 'daily' },
+    createdAt: new Date().toISOString(),
+    order: 'a0',
+    completions: {},
+    reverted: [],
+  };
+}
+
+function makeCollection(id: string): Collection {
+  return {
+    id,
+    name: `Collection ${id}`,
+    type: 'custom',
+    order: '0.5',
+    createdAt: new Date().toISOString(),
+    userId: 'user-1',
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -121,7 +168,7 @@ describe('SnapshotManager', () => {
   // -------------------------------------------------------------------------
   describe('count trigger', () => {
     it('should NOT call saveSnapshot after 49 events', async () => {
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       fireEvents(49);
@@ -133,7 +180,7 @@ describe('SnapshotManager', () => {
     });
 
     it('should call saveSnapshot on the 50th event', async () => {
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       fireEvents(50);
@@ -154,7 +201,7 @@ describe('SnapshotManager', () => {
   // -------------------------------------------------------------------------
   describe('counter reset after save', () => {
     it('should reset counter after save so 51st event alone does not trigger', async () => {
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       // First batch: triggers save at 50
@@ -173,7 +220,7 @@ describe('SnapshotManager', () => {
     });
 
     it('should trigger again after a full second batch of 50 events', async () => {
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       // First save
@@ -200,7 +247,7 @@ describe('SnapshotManager', () => {
         configurable: true,
       });
 
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       document.dispatchEvent(new Event('visibilitychange'));
@@ -222,7 +269,7 @@ describe('SnapshotManager', () => {
         configurable: true,
       });
 
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       document.dispatchEvent(new Event('visibilitychange'));
@@ -238,7 +285,7 @@ describe('SnapshotManager', () => {
   // -------------------------------------------------------------------------
   describe('lifecycle trigger: beforeunload', () => {
     it('should call saveSnapshot on window beforeunload', async () => {
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       window.dispatchEvent(new Event('beforeunload'));
@@ -260,7 +307,7 @@ describe('SnapshotManager', () => {
         configurable: true,
       });
 
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
       manager.stop();
 
@@ -274,7 +321,7 @@ describe('SnapshotManager', () => {
     });
 
     it('should unsubscribe from eventStore on stop()', () => {
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
       manager.stop();
 
@@ -292,7 +339,7 @@ describe('SnapshotManager', () => {
         createSnapshot: vi.fn().mockRejectedValue(new Error('projection exploded')),
       } as unknown as EntryListProjection;
 
-      manager = new SnapshotManager(throwingProjection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(throwingProjection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       // Should not throw
@@ -305,7 +352,7 @@ describe('SnapshotManager', () => {
     it('should swallow errors when snapshotStore.save throws', async () => {
       vi.mocked(snapshotStore.save).mockRejectedValueOnce(new Error('storage full'));
 
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       await expect(manager.saveSnapshot('test')).resolves.toBeUndefined();
@@ -319,7 +366,7 @@ describe('SnapshotManager', () => {
     it('should not call snapshotStore.save when createSnapshot returns null', async () => {
       const nullProjection = makeProjection(null);
 
-      manager = new SnapshotManager(nullProjection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(nullProjection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       await manager.saveSnapshot('manual');
@@ -334,7 +381,7 @@ describe('SnapshotManager', () => {
   describe('dual-store (remoteStore)', () => {
     it('should call remoteStore.save after localStore.save succeeds', async () => {
       const remoteStore = makeSnapshotStore();
-      manager = new SnapshotManager(projection, snapshotStore, remoteStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, remoteStore, eventStore, undefined, 50);
       manager.start();
 
       await manager.saveSnapshot('test');
@@ -353,7 +400,7 @@ describe('SnapshotManager', () => {
       const remoteStore = makeSnapshotStore();
       vi.mocked(remoteStore.save).mockRejectedValueOnce(new Error('network error'));
 
-      manager = new SnapshotManager(projection, snapshotStore, remoteStore, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, remoteStore, eventStore, undefined, 50);
       manager.start();
 
       // Should not throw despite remote failure
@@ -364,12 +411,177 @@ describe('SnapshotManager', () => {
 
     it('should not call remoteStore.save when remoteStore is null', async () => {
       // No remoteStore (null) — only local store should be called
-      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, 50);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
       manager.start();
 
       await manager.saveSnapshot('test');
 
       expect(snapshotStore.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 10. Collection enrichment: snapshot includes collections when projection provided
+  // -------------------------------------------------------------------------
+  describe('collection enrichment', () => {
+    it('should include collections in the saved snapshot when collectionProjection is provided', async () => {
+      const collections = [makeCollection('col-1'), makeCollection('col-2')];
+      const collectionProjection = makeCollectionProjection(collections);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, collectionProjection, 50);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+
+      expect(snapshotStore.save).toHaveBeenCalledTimes(1);
+      const savedSnapshot = vi.mocked(snapshotStore.save).mock.calls[0]![1];
+      expect(savedSnapshot.collections).toEqual(collections);
+    });
+
+    it('should not include collections field when collectionProjection is not provided', async () => {
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+
+      const savedSnapshot = vi.mocked(snapshotStore.save).mock.calls[0]![1];
+      expect(savedSnapshot.collections).toBeUndefined();
+    });
+
+    it('should still save snapshot when collectionProjection.getCollections() throws', async () => {
+      const collectionProjection = makeCollectionProjection();
+      vi.mocked(collectionProjection.getCollections).mockRejectedValueOnce(new Error('db error'));
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, collectionProjection, 50);
+      manager.start();
+
+      await expect(manager.saveSnapshot('test')).resolves.toBeUndefined();
+      // Save not called — error propagates to outer catch before save
+      expect(snapshotStore.save).not.toHaveBeenCalled();
+    });
+
+    it('should propagate collections to remoteStore when both are provided', async () => {
+      const collections = [makeCollection('col-1')];
+      const collectionProjection = makeCollectionProjection(collections);
+      const remoteStore = makeSnapshotStore();
+      manager = new SnapshotManager(projection, snapshotStore, remoteStore, eventStore, collectionProjection, 50);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+      await Promise.resolve(); // flush fire-and-forget
+
+      const remoteSnapshot = vi.mocked(remoteStore.save).mock.calls[0]![1];
+      expect(remoteSnapshot.collections).toEqual(collections);
+    });
+
+    it('should not start a second concurrent save when already in progress', async () => {
+      let resolveFirst!: () => void;
+      const firstSavePromise = new Promise<void>(resolve => { resolveFirst = resolve; });
+      vi.mocked(snapshotStore.save).mockReturnValueOnce(firstSavePromise);
+
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, 50);
+      manager.start();
+
+      // Start two saves concurrently — second should be a no-op
+      const first = manager.saveSnapshot('first');
+      const second = manager.saveSnapshot('second');
+
+      resolveFirst();
+      await Promise.all([first, second]);
+
+      expect(snapshotStore.save).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 11. Habit enrichment: snapshot includes habits when habitProjection is provided
+  // -------------------------------------------------------------------------
+  describe('habit enrichment (ADR-026)', () => {
+    it('should include habits in the saved snapshot when habitProjection is provided', async () => {
+      const habits = [makeHabitState('habit-1'), makeHabitState('habit-2')];
+      const habitProjection = makeHabitProjection(habits);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, undefined, habitProjection);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+
+      expect(snapshotStore.save).toHaveBeenCalledTimes(1);
+      const savedSnapshot = vi.mocked(snapshotStore.save).mock.calls[0]![1] as unknown as Record<string, unknown>;
+      expect(savedSnapshot['habits']).toEqual(habits);
+    });
+
+    it('should not include habits field when habitProjection is not provided', async () => {
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, undefined, undefined);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+
+      const savedSnapshot = vi.mocked(snapshotStore.save).mock.calls[0]![1] as unknown as Record<string, unknown>;
+      expect(savedSnapshot['habits']).toBeUndefined();
+    });
+
+    it('should propagate habits to remoteStore when both are provided', async () => {
+      const habits = [makeHabitState('habit-1')];
+      const habitProjection = makeHabitProjection(habits);
+      const remoteStore = makeSnapshotStore();
+      manager = new SnapshotManager(projection, snapshotStore, remoteStore, eventStore, undefined, undefined, habitProjection);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+      await Promise.resolve(); // flush fire-and-forget
+
+      const remoteSnapshot = vi.mocked(remoteStore.save).mock.calls[0]![1] as unknown as Record<string, unknown>;
+      expect(remoteSnapshot['habits']).toEqual(habits);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 12. UserPreferences enrichment
+  // -------------------------------------------------------------------------
+  describe('userPreferences enrichment (ADR-026)', () => {
+    it('should include userPreferences in the saved snapshot when userPreferencesProjection is provided', async () => {
+      const prefs: UserPreferences = {
+        defaultCompletedTaskBehavior: 'collapse',
+        autoFavoriteRecentDailyLogs: true,
+        autoFavoriteRecentMonthlyLogs: false,
+        autoFavoriteCalendarWithActiveTasks: false,
+      };
+      const userPreferencesProjection = makeUserPreferencesProjection(prefs);
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, undefined, undefined, userPreferencesProjection);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+
+      expect(snapshotStore.save).toHaveBeenCalledTimes(1);
+      const savedSnapshot = vi.mocked(snapshotStore.save).mock.calls[0]![1] as unknown as Record<string, unknown>;
+      expect(savedSnapshot['userPreferences']).toEqual(prefs);
+    });
+
+    it('should not include userPreferences field when userPreferencesProjection is not provided', async () => {
+      manager = new SnapshotManager(projection, snapshotStore, null, eventStore, undefined, undefined, undefined, undefined);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+
+      const savedSnapshot = vi.mocked(snapshotStore.save).mock.calls[0]![1] as unknown as Record<string, unknown>;
+      expect(savedSnapshot['userPreferences']).toBeUndefined();
+    });
+
+    it('should propagate userPreferences to remoteStore when both are provided', async () => {
+      const prefs: UserPreferences = {
+        defaultCompletedTaskBehavior: 'move-to-bottom',
+        autoFavoriteRecentDailyLogs: false,
+        autoFavoriteRecentMonthlyLogs: false,
+        autoFavoriteCalendarWithActiveTasks: true,
+      };
+      const userPreferencesProjection = makeUserPreferencesProjection(prefs);
+      const remoteStore = makeSnapshotStore();
+      manager = new SnapshotManager(projection, snapshotStore, remoteStore, eventStore, undefined, undefined, undefined, userPreferencesProjection);
+      manager.start();
+
+      await manager.saveSnapshot('test');
+      await Promise.resolve(); // flush fire-and-forget
+
+      const remoteSnapshot = vi.mocked(remoteStore.save).mock.calls[0]![1] as unknown as Record<string, unknown>;
+      expect(remoteSnapshot['userPreferences']).toEqual(prefs);
     });
   });
 });

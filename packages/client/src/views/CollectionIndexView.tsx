@@ -43,6 +43,10 @@ export function CollectionIndexView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
+  // Debounce timer ref — collapses rapid burst notifications (e.g. cold-start
+  // sync delivering 1537 events) into a single loadData() call.
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Touch gesture tracking
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -88,25 +92,46 @@ export function CollectionIndexView() {
     setCollections(collectionsWithVirtual);
   }, [collectionProjection, entryProjection]);
 
+  // Debounced wrapper: schedules loadData() to run after a 100ms quiet period.
+  // Multiple calls within 100ms are collapsed into one.
+  //
+  // Skips entirely when isAppReady is false (overlay is covering the UI). During
+  // cold-start sync, every downloaded event fires a subscriber notification — with
+  // 1537 events that's ~300+ loadData() calls per second at 100ms debounce cadence,
+  // each triggering a full IndexedDB replay of a growing event log (fan-spinning).
+  // The effect's isAppReady dep already calls loadData() directly the moment the
+  // overlay clears, so nothing is lost by ignoring notifications while hidden.
+  const debouncedLoadData = useCallback(() => {
+    if (!isAppReady) return;
+    if (debounceTimerRef.current !== null) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+      loadData();
+    }, 100);
+  }, [loadData, isAppReady]);
+
   // Subscribe to projection changes (reactive updates)
   useEffect(() => {
-    // Initial load
+    // Initial load (direct — no debounce needed on first mount)
     loadData();
 
-    // Subscribe to changes
-    const unsubscribeCollection = collectionProjection.subscribe(() => {
-      loadData();
-    });
-
-    const unsubscribeEntry = entryProjection.subscribe(() => {
-      loadData();
-    });
+    // Subscribe to changes — use debouncedLoadData to collapse burst notifications
+    // during cold-start sync (CollectionListProjection fires on every event)
+    const unsubscribeCollection = collectionProjection.subscribe(debouncedLoadData);
+    const unsubscribeEntry = entryProjection.subscribe(debouncedLoadData);
 
     return () => {
       unsubscribeCollection();
       unsubscribeEntry();
+      // Cancel any pending debounce on unmount
+      if (debounceTimerRef.current !== null) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
     };
-  }, [loadData, collectionProjection, entryProjection, isAppReady]);
+  }, [loadData, debouncedLoadData, collectionProjection, entryProjection, isAppReady]);
 
   // Auto-trigger tutorial for new users with zero real collections.
   // Gate behind isAppReady so we never fire during initial Firestore sync on a

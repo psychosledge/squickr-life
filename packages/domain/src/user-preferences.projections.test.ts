@@ -411,3 +411,102 @@ describe('UserPreferencesProjection', () => {
     });
   });
 });
+
+// ============================================================================
+// ADR-026: Snapshot hydration / cache
+// ============================================================================
+
+describe('UserPreferencesProjection — snapshot support (ADR-026)', () => {
+  let eventStore: IEventStore;
+  let projection: UserPreferencesProjection;
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    projection = new UserPreferencesProjection(eventStore);
+  });
+
+  describe('hydrateFromSnapshot()', () => {
+    it('sets cache so getUserPreferences() returns hydrated value without event store call', async () => {
+      // Arrange
+      const prefs = {
+        ...DEFAULT_USER_PREFERENCES,
+        defaultCompletedTaskBehavior: 'collapse' as const,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      };
+
+      // Spy on getAll to detect if event store is called
+      const getAllSpy = vi.spyOn(eventStore, 'getAll');
+
+      // Act
+      projection.hydrateFromSnapshot(prefs);
+      const result = await projection.getUserPreferences();
+
+      // Assert — cached value was returned, getAll not called
+      expect(result.defaultCompletedTaskBehavior).toBe('collapse');
+      expect(getAllSpy).not.toHaveBeenCalled();
+    });
+
+    it('notifies subscribers after hydration', async () => {
+      let notified = false;
+      projection.subscribe(() => { notified = true; });
+
+      projection.hydrateFromSnapshot(DEFAULT_USER_PREFERENCES);
+
+      expect(notified).toBe(true);
+    });
+
+    it('clears cache when a new event arrives after hydration', async () => {
+      // Arrange — hydrate then append an event
+      projection.hydrateFromSnapshot({
+        ...DEFAULT_USER_PREFERENCES,
+        defaultCompletedTaskBehavior: 'collapse' as const,
+      });
+
+      const getAllSpy = vi.spyOn(eventStore, 'getAll').mockResolvedValue([]);
+
+      // Append an event (triggers subscriber → clears cache)
+      const metadata = generateEventMetadata();
+      await eventStore.append({
+        ...metadata,
+        type: 'UserPreferencesUpdated',
+        aggregateId: 'user-preferences',
+        payload: {
+          autoFavoriteRecentDailyLogs: true,
+          updatedAt: metadata.timestamp,
+        },
+      } as UserPreferencesUpdated);
+
+      // Act — next call should replay from event store
+      await projection.getUserPreferences();
+
+      // Assert — getAll called because cache was invalidated
+      expect(getAllSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('cache behaviour', () => {
+    it('getUserPreferences() caches the result so second call does not re-query event store', async () => {
+      // Arrange — append an event to give the projection something to replay
+      const metadata = generateEventMetadata();
+      await eventStore.append({
+        ...metadata,
+        type: 'UserPreferencesUpdated',
+        aggregateId: 'user-preferences',
+        payload: {
+          defaultCompletedTaskBehavior: 'move-to-bottom' as const,
+          updatedAt: metadata.timestamp,
+        },
+      } as UserPreferencesUpdated);
+
+      const getAllSpy = vi.spyOn(eventStore, 'getAll');
+
+      // First call — should hit event store
+      await projection.getUserPreferences();
+      const firstCallCount = getAllSpy.mock.calls.length;
+
+      // Second call — should use cache, not hit event store again
+      await projection.getUserPreferences();
+      expect(getAllSpy.mock.calls.length).toBe(firstCallCount);
+    });
+  });
+});

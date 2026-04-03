@@ -202,6 +202,7 @@ export type {
   Habit,
   HabitDayStatus,
   HabitReadModel,
+  SerializableHabitState,
   HabitCreated,
   HabitTitleChanged,
   HabitFrequencyChanged,

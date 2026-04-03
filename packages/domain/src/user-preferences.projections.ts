@@ -17,10 +17,13 @@ import { DEFAULT_USER_PREFERENCES } from './user-preferences.types';
  */
 export class UserPreferencesProjection {
   private subscribers = new Set<() => void>();
+  /** In-memory cache. Null means the cache is cold and a replay is needed. */
+  private preferencesCache: UserPreferences | null = null;
 
   constructor(private readonly eventStore: IEventStore) {
     // Subscribe to event store changes to enable reactive projections
     this.eventStore.subscribe(() => {
+      this.preferencesCache = null;
       this.notifySubscribers();
     });
   }
@@ -43,13 +46,30 @@ export class UserPreferencesProjection {
   }
 
   /**
+   * Seed the projection cache from a previously saved snapshot (ADR-026).
+   *
+   * Sets the in-memory cache directly without replaying events, then notifies
+   * all subscribers so that any React state depending on preferences is
+   * refreshed immediately.
+   */
+  hydrateFromSnapshot(prefs: UserPreferences): void {
+    this.preferencesCache = prefs;
+    this.notifySubscribers();
+  }
+
+  /**
    * Get user preferences
-   * 
+   *
    * @returns UserPreferences built from events, or DEFAULT_USER_PREFERENCES if no events exist
    */
   async getUserPreferences(): Promise<UserPreferences> {
+    if (this.preferencesCache !== null) {
+      return this.preferencesCache;
+    }
     const events = await this.eventStore.getAll();
-    return this.applyEvents(events);
+    const prefs = this.applyEvents(events);
+    this.preferencesCache = prefs;
+    return prefs;
   }
 
   /**

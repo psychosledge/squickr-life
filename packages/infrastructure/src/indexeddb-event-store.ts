@@ -85,7 +85,17 @@ export class IndexedDBEventStore implements IEventStore {
     }
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      let transaction: IDBTransaction;
+      try {
+        transaction = this.db!.transaction([this.storeName], 'readwrite');
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'InvalidStateError') {
+          this.db = null;
+          window.location.reload();
+        }
+        reject(error);
+        return;
+      }
       const objectStore = transaction.objectStore(this.storeName);
       const request = objectStore.add(event);
 
@@ -118,7 +128,17 @@ export class IndexedDBEventStore implements IEventStore {
 
     return new Promise((resolve, reject) => {
       // Create a single transaction for all events (atomic!)
-      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      let transaction: IDBTransaction;
+      try {
+        transaction = this.db!.transaction([this.storeName], 'readwrite');
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'InvalidStateError') {
+          this.db = null;
+          window.location.reload();
+        }
+        reject(error);
+        return;
+      }
       const objectStore = transaction.objectStore(this.storeName);
 
       // Add all events to the transaction
@@ -153,7 +173,17 @@ export class IndexedDBEventStore implements IEventStore {
     }
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readonly');
+      let transaction: IDBTransaction;
+      try {
+        transaction = this.db!.transaction([this.storeName], 'readonly');
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'InvalidStateError') {
+          this.db = null;
+          window.location.reload();
+        }
+        reject(error);
+        return;
+      }
       const objectStore = transaction.objectStore(this.storeName);
       const index = objectStore.index('aggregateId');
       const request = index.getAll(aggregateId);
@@ -178,7 +208,17 @@ export class IndexedDBEventStore implements IEventStore {
     }
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readonly');
+      let transaction: IDBTransaction;
+      try {
+        transaction = this.db!.transaction([this.storeName], 'readonly');
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'InvalidStateError') {
+          this.db = null;
+          window.location.reload();
+        }
+        reject(error);
+        return;
+      }
       const objectStore = transaction.objectStore(this.storeName);
       const request = objectStore.getAll();
 
@@ -194,6 +234,18 @@ export class IndexedDBEventStore implements IEventStore {
   }
 
   /**
+   * Get all events appended after the event with the given ID.
+   * Falls back to getAll() when lastEventId is null or the anchor is not found.
+   */
+  async getAllAfter(lastEventId: string | null): Promise<DomainEvent[]> {
+    const all = await this.getAll();
+    if (lastEventId === null) return all;
+    const anchorIndex = all.findIndex(e => e.id === lastEventId);
+    if (anchorIndex === -1) return all;
+    return all.slice(anchorIndex + 1);
+  }
+
+  /**
    * Clear all events (useful for testing)
    */
   async clear(): Promise<void> {
@@ -202,7 +254,17 @@ export class IndexedDBEventStore implements IEventStore {
     }
 
     return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction([this.storeName], 'readwrite');
+      let transaction: IDBTransaction;
+      try {
+        transaction = this.db!.transaction([this.storeName], 'readwrite');
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'InvalidStateError') {
+          this.db = null;
+          window.location.reload();
+        }
+        reject(error);
+        return;
+      }
       const objectStore = transaction.objectStore(this.storeName);
       const request = objectStore.clear();
 

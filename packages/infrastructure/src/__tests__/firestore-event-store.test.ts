@@ -10,6 +10,7 @@ import type { DomainEvent } from '@squickr/domain';
 
 // Mock Firestore SDK
 const mockSetDoc = vi.fn();
+const mockGetDoc = vi.fn();
 const mockGetDocs = vi.fn();
 const mockOnSnapshot = vi.fn();
 const mockCollection = vi.fn();
@@ -25,6 +26,7 @@ vi.mock('firebase/firestore', () => ({
   collection: (...args: any[]) => mockCollection(...args),
   doc: (...args: any[]) => mockDoc(...args),
   setDoc: (...args: any[]) => mockSetDoc(...args),
+  getDoc: (...args: any[]) => mockGetDoc(...args),
   getDocs: (...args: any[]) => mockGetDocs(...args),
   query: (...args: any[]) => mockQuery(...args),
   where: (...args: any[]) => mockWhere(...args),
@@ -41,6 +43,7 @@ describe('FirestoreEventStore', () => {
   beforeEach(() => {
     // Reset all mocks
     mockSetDoc.mockClear();
+    mockGetDoc.mockClear();
     mockGetDocs.mockClear();
     mockOnSnapshot.mockClear();
     mockCollection.mockClear();
@@ -395,6 +398,80 @@ describe('FirestoreEventStore', () => {
       // undefined values should be removed, not converted to null
       const call = mockSetDoc.mock.calls[0][1];
       expect(call.data).not.toHaveProperty('title');
+    });
+  });
+
+  describe('getAllAfter()', () => {
+    it('getAllAfter(null) calls the getAll() path without any getDoc call', async () => {
+      const mockEvents = [
+        { id: 'event-1', type: 'task-created', aggregateId: 'task-1', timestamp: '2026-02-07T10:00:00Z' },
+        { id: 'event-2', type: 'task-created', aggregateId: 'task-2', timestamp: '2026-02-07T11:00:00Z' },
+      ];
+      mockGetDocs.mockResolvedValue({
+        docs: mockEvents.map(data => ({ data: () => data })),
+      });
+
+      const result = await eventStore.getAllAfter(null);
+
+      expect(mockGetDoc).not.toHaveBeenCalled();
+      expect(result).toEqual(mockEvents);
+    });
+
+    it('getAllAfter(existingId) calls getDoc, then issues timestamp-range query and returns delta events', async () => {
+      const anchorTimestamp = '2026-02-07T10:00:00Z';
+      mockGetDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({ id: 'event-1', timestamp: anchorTimestamp }),
+      });
+
+      const deltaEvents = [
+        { id: 'event-2', type: 'task-created', aggregateId: 'task-2', timestamp: '2026-02-07T11:00:00Z' },
+      ];
+      mockGetDocs.mockResolvedValue({
+        docs: deltaEvents.map(data => ({ data: () => data })),
+      });
+
+      const result = await eventStore.getAllAfter('event-1');
+
+      expect(mockGetDoc).toHaveBeenCalledTimes(1);
+      expect(mockWhere).toHaveBeenCalledWith('timestamp', '>', anchorTimestamp);
+      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'asc');
+      expect(result).toEqual(deltaEvents);
+    });
+
+    it('getAllAfter(nonexistentId) falls back to getAll() when getDoc returns no document', async () => {
+      mockGetDoc.mockResolvedValue({
+        exists: () => false,
+        data: () => undefined,
+      });
+
+      const allEvents = [
+        { id: 'event-1', type: 'task-created', aggregateId: 'task-1', timestamp: '2026-02-07T10:00:00Z' },
+      ];
+      mockGetDocs.mockResolvedValue({
+        docs: allEvents.map(data => ({ data: () => data })),
+      });
+
+      const result = await eventStore.getAllAfter('does-not-exist');
+
+      expect(result).toEqual(allEvents);
+      // orderBy was called from the getAll() fallback path (no where clause for timestamp >)
+      expect(mockWhere).not.toHaveBeenCalledWith('timestamp', '>', expect.anything());
+    });
+
+    it('getAllAfter(id) falls back to getAll() when getDoc throws', async () => {
+      mockGetDoc.mockRejectedValue(new Error('Firestore unavailable'));
+
+      const allEvents = [
+        { id: 'event-1', type: 'task-created', aggregateId: 'task-1', timestamp: '2026-02-07T10:00:00Z' },
+      ];
+      mockGetDocs.mockResolvedValue({
+        docs: allEvents.map(data => ({ data: () => data })),
+      });
+
+      const result = await eventStore.getAllAfter('event-1');
+
+      expect(result).toEqual(allEvents);
     });
   });
 
