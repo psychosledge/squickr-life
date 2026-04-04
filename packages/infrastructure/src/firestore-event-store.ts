@@ -135,7 +135,7 @@ export class FirestoreEventStore implements IEventStore {
       const anchorRef = doc(eventsRef, lastEventId);
       const anchorSnap = await getDoc(anchorRef);
       if (!anchorSnap.exists()) return this.getAll();
-      const anchorTimestamp = anchorSnap.data().timestamp as string;
+      const anchorTimestamp = anchorSnap.data()['timestamp'] as string;
       const q = query(
         eventsRef,
         where('timestamp', '>', anchorTimestamp),
