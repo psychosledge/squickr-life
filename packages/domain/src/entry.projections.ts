@@ -352,11 +352,12 @@ export class EntryListProjection {
     // including them in the snapshot state is safe and correct.
     const rawEntries = await this.resolveCache();
 
-    const orphanedInSave = rawEntries.filter(e => e.collections.length === 0 && !e.deletedAt && (e as Record<string, unknown>)['migratedTo'] !== undefined);
+    const getMigratedTo = (e: Entry) => (e as unknown as { migratedTo?: string }).migratedTo;
+    const orphanedInSave = rawEntries.filter(e => e.collections.length === 0 && !e.deletedAt && getMigratedTo(e) !== undefined);
     if (orphanedInSave.length > 0) {
       logger.warn(
         '[EntryListProjection.createSnapshot] Snapshot contains legacy orphaned migrated entries (collections=[], migratedTo set) — they will be excluded from active views by getEntries():',
-        orphanedInSave.map(e => ({ id: e.id, type: e.type, migratedTo: (e as Record<string, unknown>)['migratedTo'] })),
+        orphanedInSave.map(e => ({ id: e.id, type: e.type, migratedTo: getMigratedTo(e) })),
       );
     }
 
