@@ -10,7 +10,8 @@
       "Bash(npx tsc:*)",
       "Bash(firebase functions:log --only habitReminderFanOut --lines 50)",
       "Bash(echo \"EXIT:$?\")",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(node -p \"require\\(''./package.json''\\).version\")"
     ]
   }
 }
