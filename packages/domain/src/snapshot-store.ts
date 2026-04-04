@@ -12,7 +12,7 @@ import type { UserPreferences } from './user-preferences.types';
  * `version` differs from the current `SNAPSHOT_SCHEMA_VERSION` should discard
  * the stale snapshot and rebuild the projection from scratch.
  */
-export const SNAPSHOT_SCHEMA_VERSION = 5;
+export const SNAPSHOT_SCHEMA_VERSION = 8;
 
 /**
  * A point-in-time snapshot of a projection's read-model state.

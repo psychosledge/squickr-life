@@ -248,6 +248,10 @@ function TutorialJoyride() {
  * - Auto-sync every 5 minutes
  * - Sync on window focus, network reconnect, tab visibility
  */
+// Parsed once at module load — window.location does not change during a session.
+// Used in both initializeApp() and startSync() to bypass snapshot loading.
+const FORCE_FULL_REPLAY = window.location.search.toLowerCase().includes('ignoresnapshot');
+
 function AppContent() {
   const { user, loading: authLoading } = useAuth();
   
@@ -411,6 +415,7 @@ function AppContent() {
 
     const startSync = async () => {
       // ── ADR-024: Cold-start sequencer ──────────────────────────────────────
+      const forceFullReplay = FORCE_FULL_REPLAY;
       // Read the emptiness flag captured by initializeApp()'s hydrate() call.
       // This is the single check that decides whether to fetch a remote snapshot.
       const isEmptyLocalStore = entryProjection.wasLocalStoreEmptyAtHydration();
@@ -434,8 +439,13 @@ function AppContent() {
           undefined,
           () => entryProjection.getLastSnapshotCursor(),
         );
-        manager.onSyncStateChange = (_syncing: boolean, error?: string) => {
+        let initialSnapshotSaved = false;
+        manager.onSyncStateChange = (syncing: boolean, error?: string) => {
           if (error) setSyncError(error);
+          if (!syncing && !initialSnapshotSaved) {
+            initialSnapshotSaved = true;
+            void snapshotManagerRef.current?.saveSnapshot('post-initial-sync-fast-path');
+          }
         };
         manager.start();
         syncManagerRef.current = manager;
@@ -463,7 +473,7 @@ function AppContent() {
           // Remote snapshot found — seed local store and re-hydrate
           if (!cancelled) setColdStartPhase('restoring');
           await snapshotStore.save('entry-list-projection', remoteSnapshot);
-          await entryProjection.hydrate();
+          await entryProjection.hydrate(forceFullReplay ? { forceFullReplay: true } : undefined);
           // Seed collection list from snapshot if available (ADR-024)
           if (remoteSnapshot.collections?.length) {
             collectionProjection.seedFromSnapshot(remoteSnapshot.collections);
@@ -546,25 +556,29 @@ function AppContent() {
       // Initialize IndexedDB connection
       await eventStore.initialize();
 
-      // Initialize snapshot store and hydrate projection from snapshot
+      // Initialize snapshot store and hydrate projection from snapshot.
+      // ?ignoreSnapshot forces a full event replay (dev diagnostic — bypasses snapshot loading).
       await snapshotStore.initialize();
-      await entryProjection.hydrate();
+      const forceFullReplay = FORCE_FULL_REPLAY;
+      await entryProjection.hydrate(forceFullReplay ? { forceFullReplay: true } : undefined);
 
-      // Seed collectionProjection and userPreferencesProjection from the local snapshot.
-      // This is the fast-path equivalent of what startSync() does on the cold-start slow
-      // path. Without this, projections rebuild from getAll() — which on a new device
-      // (delta-only local store) returns only recent events, losing all pre-snapshot data.
-      const localSnapshot = await snapshotStore.load('entry-list-projection');
-      if (
-        localSnapshot !== null &&
-        localSnapshot.version === SNAPSHOT_SCHEMA_VERSION &&
-        localSnapshot.habits !== undefined &&
-        localSnapshot.userPreferences !== undefined
-      ) {
-        if (localSnapshot.collections?.length) {
-          collectionProjection.seedFromSnapshot(localSnapshot.collections);
+      if (!forceFullReplay) {
+        // Seed collectionProjection and userPreferencesProjection from the local snapshot.
+        // This is the fast-path equivalent of what startSync() does on the cold-start slow
+        // path. Without this, projections rebuild from getAll() — which on a new device
+        // (delta-only local store) returns only recent events, losing all pre-snapshot data.
+        const localSnapshot = await snapshotStore.load('entry-list-projection');
+        if (
+          localSnapshot !== null &&
+          localSnapshot.version === SNAPSHOT_SCHEMA_VERSION &&
+          localSnapshot.habits !== undefined &&
+          localSnapshot.userPreferences !== undefined
+        ) {
+          if (localSnapshot.collections?.length) {
+            collectionProjection.seedFromSnapshot(localSnapshot.collections);
+          }
+          userPreferencesProjection.hydrateFromSnapshot(localSnapshot.userPreferences);
         }
-        userPreferencesProjection.hydrateFromSnapshot(localSnapshot.userPreferences);
       }
 
       // Load initial preferences (uses userPreferencesProjection created above)

@@ -1,6 +1,7 @@
 ---
 name: casey
 description: Code quality review, test coverage analysis, and refactoring suggestions. Use after implementation to review changes before committing.
+color: orange
 ---
 
 # Code-Review Casey

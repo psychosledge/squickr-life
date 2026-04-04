@@ -1062,6 +1062,193 @@ describe('EntryListProjection', () => {
     });
   });
 
+  // ============================================================================
+  // Bug Fix: legacy MigrateTaskHandler orphan exclusion
+  //
+  // The legacy MigrateTaskHandler emitted TaskRemovedFromCollection BEFORE
+  // TaskMigrated, stripping the original task from its collection without
+  // soft-deleting it. This created permanent orphans with:
+  //   collections: []  (stripped by TaskRemovedFromCollection)
+  //   migratedTo: <id> (set by TaskMigrated)
+  //   deletedAt: undefined (never soft-deleted)
+  // These orphans must be hidden from all views.
+  // ============================================================================
+  describe('orphaned migrated entry exclusion', () => {
+    it('hides orphaned migrated entry (collections:[] AND migratedTo set) from getEntries()', async () => {
+      // Arrange: replay the legacy 3-event sequence
+      // 1. TaskCreated with a collectionId
+      const taskId = await taskHandler.handle({ content: 'Legacy orphan', collectionId: 'collection-A' });
+
+      // 2. TaskRemovedFromCollection — strips task from collection (legacy bug: emitted before TaskMigrated)
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskRemovedFromCollection',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId, collectionId: 'collection-A', removedAt: new Date().toISOString() },
+      } as import('./task.types').TaskRemovedFromCollection);
+
+      // 3. TaskMigrated — marks original with migratedTo (new task created in target)
+      const newTaskId = crypto.randomUUID();
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskMigrated',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: {
+          originalTaskId: taskId,
+          targetCollectionId: 'collection-B',
+          migratedToId: newTaskId,
+          migratedAt: new Date().toISOString(),
+        },
+      } as import('./task.types').TaskMigrated);
+
+      // Act
+      const entries = await projection.getEntries('all');
+
+      // Assert: the orphaned original must NOT appear in any view
+      expect(entries.some(e => e.id === taskId)).toBe(false);
+    });
+
+    it('hides orphaned migrated entry from getEntriesByCollection(null)', async () => {
+      // Arrange: same legacy 3-event sequence
+      const taskId = await taskHandler.handle({ content: 'Legacy orphan uncategorized', collectionId: 'collection-A' });
+
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskRemovedFromCollection',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId, collectionId: 'collection-A', removedAt: new Date().toISOString() },
+      } as import('./task.types').TaskRemovedFromCollection);
+
+      const newTaskId = crypto.randomUUID();
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskMigrated',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: {
+          originalTaskId: taskId,
+          targetCollectionId: 'collection-B',
+          migratedToId: newTaskId,
+          migratedAt: new Date().toISOString(),
+        },
+      } as import('./task.types').TaskMigrated);
+
+      // Act: query the virtual "Uncategorized" bucket
+      const uncategorized = await projection.getEntriesByCollection(null);
+
+      // Assert: orphan must NOT appear in Uncategorized
+      expect(uncategorized.some(e => e.id === taskId)).toBe(false);
+    });
+
+    it('does NOT hide a migrated original that retains its source collection', async () => {
+      // Arrange: use the current MigrateTaskHandler which only emits TaskMigrated
+      // (no TaskRemovedFromCollection) so the original keeps collections:[sourceId].
+      const migrateHandler = new MigrateTaskHandler(eventStore, projection);
+      const taskId = await taskHandler.handle({ content: 'Normal migrated original', collectionId: 'collection-A' });
+
+      await migrateHandler.handle({ taskId, targetCollectionId: 'collection-B' });
+
+      // Act: the original should still appear in its source collection as a ghost
+      const inA = await projection.getEntriesByCollection('collection-A');
+
+      // Assert: original IS visible in collection-A (it retains its source collection)
+      expect(inA.some(e => e.id === taskId)).toBe(true);
+    });
+
+    it('hides orphaned migrated entry even when migratedTo is sanitized away (migration target deleted)', async () => {
+      // Arrange: legacy 3-event sequence, then delete the migration target so
+      // sanitizeMigrationPointers() clears migratedTo on the original.
+      const taskId = await taskHandler.handle({ content: 'Sanitized orphan', collectionId: 'collection-A' });
+
+      // TaskRemovedFromCollection — strips task from collection (legacy bug)
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskRemovedFromCollection',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId, collectionId: 'collection-A', removedAt: new Date().toISOString() },
+      } as import('./task.types').TaskRemovedFromCollection);
+
+      // TaskMigrated — marks original with migratedTo pointing at newTaskId
+      const newTaskId = crypto.randomUUID();
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskMigrated',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: {
+          originalTaskId: taskId,
+          targetCollectionId: 'collection-B',
+          migratedToId: newTaskId,
+          migratedAt: new Date().toISOString(),
+        },
+      } as import('./task.types').TaskMigrated);
+
+      // TaskDeleted on the migration TARGET — sanitizeMigrationPointers() will clear
+      // migratedTo on the original, making it look like a plain orphan with no pointer
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskDeleted',
+        aggregateId: newTaskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId: newTaskId, deletedAt: new Date().toISOString() },
+      } as import('./task.types').TaskDeleted);
+
+      // Act
+      const entries = await projection.getEntries('all');
+      const uncategorized = await projection.getEntriesByCollection(null);
+
+      // Assert: original must NOT appear even though migratedTo was sanitized away
+      expect(entries.some(e => e.id === taskId)).toBe(false);
+      expect(uncategorized.some(e => e.id === taskId)).toBe(false);
+    });
+
+    it('hides failed-move orphan (TaskRemovedFromCollection with no subsequent TaskAddedToCollection)', async () => {
+      // Arrange: create task in a collection, then emit only the removal half of a
+      // MoveTaskToCollectionHandler — simulating a crash between the two events.
+      const taskId = await taskHandler.handle({ content: 'Failed move orphan', collectionId: 'collection-A' });
+
+      // Only the removal fires — TaskAddedToCollection never comes
+      await eventStore.append({
+        id: crypto.randomUUID(),
+        type: 'TaskRemovedFromCollection',
+        aggregateId: taskId,
+        timestamp: new Date().toISOString(),
+        version: 1,
+        payload: { taskId, collectionId: 'collection-A', removedAt: new Date().toISOString() },
+      } as import('./task.types').TaskRemovedFromCollection);
+
+      // Act
+      const entries = await projection.getEntries('all');
+      const uncategorized = await projection.getEntriesByCollection(null);
+
+      // Assert: stranded task must NOT appear in any view
+      expect(entries.some(e => e.id === taskId)).toBe(false);
+      expect(uncategorized.some(e => e.id === taskId)).toBe(false);
+    });
+
+    it('does NOT hide a legitimately uncategorised entry (collections:[], migratedTo undefined)', async () => {
+      // Arrange: create a task without a collectionId — legitimately uncategorized
+      const taskId = await taskHandler.handle({ content: 'Legitimate uncategorized' });
+
+      // Act
+      const uncategorized = await projection.getEntriesByCollection(null);
+
+      // Assert: legitimate uncategorized entry must still appear
+      expect(uncategorized.some(e => e.id === taskId)).toBe(true);
+    });
+  });
+
   describe('getEntryCountsByCollection', () => {
     it('should return counts for all collections in a single query', async () => {
       // Create entries in different collections

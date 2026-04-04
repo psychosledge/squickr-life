@@ -1,6 +1,7 @@
 ---
 name: alex
 description: Architecture decisions, event modeling, system design, and ADRs. Use when designing new aggregates, event schemas, or making structural decisions.
+color: purple
 ---
 
 # Architecture Alex

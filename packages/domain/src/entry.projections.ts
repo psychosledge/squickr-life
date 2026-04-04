@@ -145,8 +145,17 @@ export class EntryListProjection {
    * method is a no-op — a full replay will happen lazily on the first
    * getEntries() call.
    */
-  async hydrate(): Promise<void> {
+  async hydrate(options?: { forceFullReplay?: boolean }): Promise<void> {
     if (!this.snapshotStore) return;
+
+    if (options?.forceFullReplay) {
+      logger.warn(
+        '[EntryListProjection.hydrate] forceFullReplay=true — skipping snapshot, forcing full event replay on first getEntries()',
+      );
+      const events = await this.eventStore.getAll();
+      this.localStoreWasEmptyAtHydration = events.length === 0;
+      return;
+    }
 
     const snapshot = await this.snapshotStore.load('entry-list-projection');
 
@@ -166,6 +175,24 @@ export class EntryListProjection {
       const events = await this.eventStore.getAll();
       this.localStoreWasEmptyAtHydration = events.length === 0;
       return;
+    }
+
+    // Diagnostic: warn if the snapshot contains orphaned entries — entries with
+    // no collection membership and no deletedAt. These are created by a legacy
+    // MigrateTaskHandler bug — the handler emitted TaskRemovedFromCollection before
+    // TaskMigrated, creating permanent orphans (collections:[], migratedTo set, no deletedAt).
+    // getEntries() filters these out at query time, but they remain in the snapshot state.
+    const orphanedInSnapshot = snapshot.state.filter(e => e.collections.length === 0 && !e.deletedAt);
+    if (orphanedInSnapshot.length > 0) {
+      logger.warn(
+        '[EntryListProjection.hydrate] Snapshot contains orphaned entries (collections=[], no deletedAt) — these will appear in Uncategorized:',
+        orphanedInSnapshot.map(e => ({
+          id: e.id,
+          type: e.type,
+          migratedTo: (e as { migratedTo?: string }).migratedTo ?? 'none',
+          collections: e.collections,
+        })),
+      );
     }
 
     // ADR-026: Hydrate HabitProjection from snapshot.
@@ -293,9 +320,11 @@ export class EntryListProjection {
   /**
    * Create a snapshot of the current projection state.
    *
-   * The snapshot captures the result of getEntries('all') — all active
-   * (non-deleted) entries — together with the ID of the last event that was
-   * applied.  The SnapshotManager (Step 6) is responsible for persisting the
+   * The snapshot captures the full raw cache — all entries including
+   * soft-deleted ones — together with the ID of the last event that was
+   * applied. Soft-deleted entries must be included so that
+   * sanitizeMigrationPointers() can correctly preserve migratedTo pointers
+   * when loading from snapshot. getEntries() filters at query time.  The SnapshotManager (Step 6) is responsible for persisting the
    * snapshot via snapshotStore.save().
    *
    * @returns A ProjectionSnapshot, or null if there are no events yet.
@@ -314,13 +343,27 @@ export class EntryListProjection {
       this.cachedEntries = this.applicator.applyEvents(allEvents);
     }
 
-    // getEntries('all') will hit the cache we just warmed
-    const entries = await this.getEntries('all');
+    // Save the full raw cache (including soft-deleted entries) so that
+    // sanitizeMigrationPointers() works correctly when loading from snapshot.
+    // If we saved only active entries, soft-deleted migration targets would be
+    // absent from the snapshot state, causing sanitizeMigrationPointers() to
+    // clear migratedTo on the originals — making them appear as active tasks.
+    // getEntries() filters soft-deleted and orphaned entries at query time, so
+    // including them in the snapshot state is safe and correct.
+    const rawEntries = await this.resolveCache();
+
+    const orphanedInSave = rawEntries.filter(e => e.collections.length === 0 && !e.deletedAt && (e as Record<string, unknown>)['migratedTo'] !== undefined);
+    if (orphanedInSave.length > 0) {
+      logger.warn(
+        '[EntryListProjection.createSnapshot] Snapshot contains legacy orphaned migrated entries (collections=[], migratedTo set) — they will be excluded from active views by getEntries():',
+        orphanedInSave.map(e => ({ id: e.id, type: e.type, migratedTo: (e as Record<string, unknown>)['migratedTo'] })),
+      );
+    }
 
     return {
       version: SNAPSHOT_SCHEMA_VERSION,
       lastEventId: lastEvent.id,
-      state: entries,
+      state: rawEntries,
       savedAt: new Date().toISOString(),
     };
   }
@@ -359,8 +402,20 @@ export class EntryListProjection {
     // Exclude soft-deleted entries from active views
     const activeEntries = sanitizedEntries.filter(entry => !entry.deletedAt);
 
-    // Apply filter
-    return this.applicator.filterEntries(activeEntries, filter);
+    // Exclude legacy orphaned entries: tasks that were removed from all their collections
+    // but never soft-deleted. This covers two scenarios:
+    // 1. Legacy MigrateTaskHandler bug: emitted TaskRemovedFromCollection before TaskMigrated,
+    //    leaving the original with collections:[] and no deletedAt.
+    // 2. Failed MoveTaskToCollectionHandler: TaskRemovedFromCollection succeeded but
+    //    TaskAddedToCollection failed, leaving the task stranded.
+    // We detect this via collectionHistory (immutable) rather than migratedTo (which
+    // sanitizeMigrationPointers() may clear if the migration target was later deleted).
+    const visibleEntries = activeEntries.filter(entry =>
+      !(entry.collections.length === 0 &&
+        (entry.collectionHistory ?? []).some(h => h.removedAt !== undefined))
+    );
+
+    return this.applicator.filterEntries(visibleEntries, filter);
   }
 
   /**
