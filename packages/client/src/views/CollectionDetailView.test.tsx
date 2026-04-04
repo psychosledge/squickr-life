@@ -1943,6 +1943,146 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
     // No error toast should appear
     expect(screen.queryByText(/today.*daily log/i)).not.toBeInTheDocument();
   });
+
+  it('should navigate to today\'s collection after successful migration', async () => {
+    const user = userEvent.setup();
+    const mockBulkMigrate = vi.fn().mockResolvedValue(undefined);
+    const { appContext } = buildAppContext({
+      collections: [oldDailyCollection, todayCollection],
+      entries: [openTask],
+      bulkMigrateHandle: mockBulkMigrate,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/collection/old-daily-col']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+            <Route path="/collection/today-col" element={<div data-testid="today-view" />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Buy groceries')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/Migrate all open tasks → Today/i);
+    await user.click(migrateItem);
+
+    await waitFor(() => {
+      expect(mockBulkMigrate).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('today-view')).toBeInTheDocument();
+    });
+  });
+
+  it('should NOT navigate when handleBulkMigrateWithMode throws', async () => {
+    const user = userEvent.setup();
+    const mockBulkMigrate = vi.fn().mockRejectedValue(new Error('Migration failed'));
+    const { appContext } = buildAppContext({
+      collections: [oldDailyCollection, todayCollection],
+      entries: [openTask],
+      bulkMigrateHandle: mockBulkMigrate,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/collection/old-daily-col']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+            <Route path="/collection/today-col" element={<div data-testid="today-view" />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Buy groceries')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/Migrate all open tasks → Today/i);
+    await user.click(migrateItem);
+
+    await waitFor(() => {
+      expect(mockBulkMigrate).toHaveBeenCalled();
+    });
+
+    // Should stay on the source collection — no navigation on failure
+    expect(screen.queryByTestId('today-view')).not.toBeInTheDocument();
+    // Error message should be shown
+    await waitFor(() => {
+      expect(screen.getByText('Migration failed')).toBeInTheDocument();
+    });
+  });
+
+  it('should navigate to the auto-created today collection after migration', async () => {
+    const user = userEvent.setup();
+    const newTodayId = 'newly-created-today-col';
+    const newTodayCollection: Collection = {
+      id: newTodayId,
+      name: 'Today Log (auto)',
+      type: 'daily',
+      date: todayDateKey,
+      order: 'a2',
+      createdAt: new Date().toISOString(),
+    };
+    const mockBulkMigrate = vi.fn().mockResolvedValue(undefined);
+    let todayCreated = false;
+    const mockCreateCollection = vi.fn().mockImplementation(async () => {
+      todayCreated = true;
+      return newTodayId;
+    });
+
+    const { appContext, mockCollectionProjection } = buildAppContext({
+      collections: [oldDailyCollection],
+      entries: [openTask],
+      bulkMigrateHandle: mockBulkMigrate,
+      createCollectionHandle: mockCreateCollection,
+    });
+
+    mockCollectionProjection.getCollections.mockImplementation(() =>
+      Promise.resolve(todayCreated ? [oldDailyCollection, newTodayCollection] : [oldDailyCollection])
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/collection/old-daily-col']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+            <Route path={`/collection/${newTodayId}`} element={<div data-testid="auto-today-view" />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Buy groceries')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/Migrate all open tasks → Today/i);
+    await user.click(migrateItem);
+
+    await waitFor(() => {
+      expect(mockBulkMigrate).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('auto-today-view')).toBeInTheDocument();
+    });
+  });
 });
 
 // ─── Issue #7a: handleMigrateAllToToday early-return error path ───────────────

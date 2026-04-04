@@ -468,6 +468,7 @@ export function CollectionDetailView({
     if (activeTaskIds.length === 0) return;
     try {
       await operations.handleBulkMigrateWithMode(activeTaskIds, todayCollection.id, 'move');
+      operations.handleNavigateToMigrated(todayCollection.id);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to migrate tasks');
     }

@@ -24,8 +24,8 @@ const messaging = firebase.messaging();
 
 // Handle background FCM messages (tab not focused / app in background)
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title ?? 'Habit Reminder';
-  const body = payload.notification?.body ?? '';
+  const title = payload.data?.title ?? 'Habit Reminder';
+  const body = payload.data?.body ?? '';
   self.registration.showNotification(title, {
     body,
     icon: '/pwa-192x192.png',

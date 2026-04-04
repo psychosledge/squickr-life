@@ -184,11 +184,9 @@ export async function processUserHabitNotifications(
         }
 
         const message: admin.messaging.Message = {
-          notification: {
+          data: {
             title: "Squickr",
             body: `Time for: ${habit.title}`,
-          },
-          data: {
             // TODO: deep-link to specific habit once client routing supports it
             url: "/",
           },

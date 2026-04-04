@@ -294,7 +294,7 @@ describe("processUserHabitNotifications", () => {
     expect(messaging.send).toHaveBeenCalledTimes(1);
     expect(messaging.send).toHaveBeenCalledWith(
       expect.objectContaining({
-        notification: expect.objectContaining({
+        data: expect.objectContaining({
           title: "Squickr",
           body: "Time for: Morning Run",
         }),
@@ -453,7 +453,7 @@ describe("processUserHabitNotifications", () => {
 
     expect(messaging.send).toHaveBeenCalledTimes(2);
     const bodies = (messaging.send as jest.Mock).mock.calls.map(
-      (c: unknown[]) => (c[0] as { notification: { body: string } }).notification.body
+      (c: unknown[]) => (c[0] as { data: { body: string } }).data.body
     );
     expect(bodies).toContain("Time for: Morning Run");
     expect(bodies).toContain("Time for: Evening Walk");
@@ -599,11 +599,9 @@ describe("processUserHabitNotifications", () => {
     );
 
     expect(messaging.send).toHaveBeenCalledWith({
-      notification: {
+      data: {
         title: "Squickr",
         body: "Time for: Drink Water",
-      },
-      data: {
         url: "/",
       },
       token: "my-fcm-token",
