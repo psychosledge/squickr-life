@@ -137,8 +137,8 @@ export class SyncManager {
       const newEvents = localEventsToUpload.filter(e => !remoteIds.has(e.id));
       
       logger.info('[SyncManager]', `Uploading ${newEvents.length} new events...`);
-      for (const event of newEvents) {
-        await this.remoteStore.append(event);
+      if (newEvents.length > 0) {
+        await this.remoteStore.appendBatch(newEvents);
       }
       
       // Download: Get events from remoteStore, append to localStore  

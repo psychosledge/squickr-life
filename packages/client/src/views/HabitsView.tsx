@@ -16,7 +16,7 @@ import { ROUTES } from '../routes';
 
 export function HabitsView() {
   const navigate = useNavigate();
-  const { entryProjection } = useApp();
+  const { habitProjection } = useApp();
   const habitsMgmt = useHabitsManagement();
 
   const [activeHabits, setActiveHabits] = useState<HabitReadModel[]>([]);
@@ -24,17 +24,17 @@ export function HabitsView() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const loadData = async () => {
-    const active = await entryProjection.getActiveHabits();
-    const all = await entryProjection.getAllHabits();
+    const active = await habitProjection.getActiveHabits();
+    const all = await habitProjection.getAllHabits();
     setActiveHabits(active);
     setArchivedHabits(all.filter((h) => !!h.archivedAt));
   };
 
   useEffect(() => {
     loadData();
-    const unsub = entryProjection.subscribe(() => loadData());
+    const unsub = habitProjection.subscribe(() => loadData());
     return () => unsub();
-  }, [entryProjection]);
+  }, [habitProjection]);
 
   const handleCreateHabit = async (cmd: CreateHabitCommand) => {
     await habitsMgmt.createHabit(cmd);

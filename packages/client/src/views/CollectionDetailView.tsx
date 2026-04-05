@@ -141,12 +141,10 @@ export function CollectionDetailView({
   const { id: paramId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const collectionId = propCollectionId ?? paramId;
-  const { 
-    eventStore, 
-    collectionProjection, 
-    entryProjection, 
-    taskProjection, 
-    migrateTaskHandler, 
+  const {
+    eventStore,
+    collectionProjection,
+    entryProjection,
     createCollectionHandler,
     addTaskToCollectionHandler,
     moveTaskToCollectionHandler,
@@ -210,7 +208,6 @@ export function CollectionDetailView({
     eventStore,
     collectionProjection,
     entryProjection,
-    taskProjection,
   });
 
   // Initialize modal states
@@ -222,7 +219,6 @@ export function CollectionDetailView({
       handlers,
       entries,
       collection,
-      migrateTaskHandler,
       createCollectionHandler,
       entryProjection,
       addTaskToCollectionHandler,

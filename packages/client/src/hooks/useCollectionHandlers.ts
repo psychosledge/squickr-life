@@ -12,7 +12,7 @@
  */
 
 import { useMemo } from 'react';
-import type { IEventStore, CollectionListProjection, EntryListProjection, TaskListProjection } from '@squickr/domain';
+import type { IEventStore, CollectionListProjection, EntryListProjection } from '@squickr/domain';
 import {
   CreateTaskHandler,
   CreateSubTaskHandler,
@@ -82,7 +82,6 @@ export interface UseCollectionHandlersParams {
   eventStore: IEventStore;
   collectionProjection: CollectionListProjection;
   entryProjection: EntryListProjection;
-  taskProjection: TaskListProjection;
 }
 
 /**
@@ -92,12 +91,11 @@ export function useCollectionHandlers({
   eventStore,
   collectionProjection,
   entryProjection,
-  taskProjection,
 }: UseCollectionHandlersParams): CollectionHandlers {
   // Entry creation handlers
   const createTaskHandler = useMemo(
-    () => new CreateTaskHandler(eventStore, taskProjection, entryProjection),
-    [eventStore, taskProjection, entryProjection]
+    () => new CreateTaskHandler(eventStore, entryProjection),
+    [eventStore, entryProjection]
   );
   
   // Phase 1: Sub-Tasks handler

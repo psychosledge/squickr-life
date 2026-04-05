@@ -30,7 +30,7 @@ export interface ReviewData {
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useReviewData(period: ReviewPeriod = 'weekly'): ReviewData {
-  const { entryProjection, collectionProjection } = useApp();
+  const { entryProjection, habitProjection, collectionProjection } = useApp();
 
   const [completedEntries, setCompletedEntries] = useState<Entry[]>([]);
   const [stalledTasks, setStalledTasks] = useState<StalledTask[]>([]);
@@ -50,7 +50,7 @@ export function useReviewData(period: ReviewPeriod = 'weekly'): ReviewData {
     const [completed, stalled, activeHabits] = await Promise.all([
       entryProjection.getCompletedInRange(dateRange.from, dateRange.to),
       entryProjection.getStalledMonthlyTasks(14, getCollection),
-      entryProjection.getActiveHabits(),
+      habitProjection.getActiveHabits(),
     ]);
 
     setCollectionMap(map);
@@ -58,7 +58,7 @@ export function useReviewData(period: ReviewPeriod = 'weekly'): ReviewData {
     setStalledTasks(stalled);
     setHabits(activeHabits);
     setIsLoading(false);
-  }, [dateRange, entryProjection, collectionProjection]);
+  }, [dateRange, entryProjection, habitProjection, collectionProjection]);
 
   // Initial load + re-fetch when period changes
   useEffect(() => {
@@ -66,13 +66,19 @@ export function useReviewData(period: ReviewPeriod = 'weekly'): ReviewData {
     fetchData();
   }, [fetchData]);
 
-  // Subscribe to projection changes so we re-fetch on any entry mutation
+  // Subscribe to both projections so we re-fetch on any entry or habit mutation
   useEffect(() => {
-    const unsubscribe = entryProjection.subscribe(() => {
+    const unsubEntry = entryProjection.subscribe(() => {
       fetchData();
     });
-    return unsubscribe;
-  }, [entryProjection, fetchData]);
+    const unsubHabit = habitProjection.subscribe(() => {
+      fetchData();
+    });
+    return () => {
+      unsubEntry();
+      unsubHabit();
+    };
+  }, [entryProjection, habitProjection, fetchData]);
 
   return {
     completedEntries,

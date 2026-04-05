@@ -5,7 +5,6 @@ import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import { CreateSubTaskHandler } from './sub-task.handlers';
 import { CreateTaskHandler, CompleteTaskHandler } from './task.handlers';
-import { TaskListProjection } from './task.projections';
 import type { CompleteParentTaskCommand, TaskCompleted } from './task.types';
 
 /**
@@ -30,10 +29,9 @@ describe('CompleteParentTaskHandler', () => {
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
-    const taskProjection = new TaskListProjection(eventStore);
     projection = new EntryListProjection(eventStore);
     handler = new CompleteParentTaskHandler(eventStore, projection);
-    createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
+    createTaskHandler = new CreateTaskHandler(eventStore, projection);
     createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
     completeTaskHandler = new CompleteTaskHandler(eventStore, projection);
   });

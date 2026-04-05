@@ -1,43 +1,54 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { IndexedDBEventStore } from './indexeddb-event-store';
-import type { TaskCreated } from '@squickr/domain';
+import type { DomainEvent, TaskCreated } from '@squickr/domain';
 
-// Skip these tests in Node environment since IndexedDB is browser-only
-// These will work when run in the client package with jsdom environment
-describe.skip('IndexedDBEventStore', () => {
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function makeTaskCreated(id: string, timestamp: string, aggregateId?: string): DomainEvent {
+  return {
+    id,
+    type: 'TaskCreated',
+    timestamp,
+    version: 1,
+    aggregateId: aggregateId ?? id,
+    payload: {
+      id: aggregateId ?? id,
+      title: `Task ${id}`,
+      createdAt: timestamp,
+      status: 'open',
+    },
+  } as TaskCreated;
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe('IndexedDBEventStore', () => {
   let eventStore: IndexedDBEventStore;
-  const dbName = 'test-squickr-events';
+  let dbIndex = 0;
 
+  /**
+   * Each test gets a fresh IDBFactory instance plus a unique DB name,
+   * guaranteeing full isolation without needing deleteDatabase().
+   */
   beforeEach(async () => {
-    eventStore = new IndexedDBEventStore(dbName);
+    const fakeIDB = new IDBFactory();
+    const dbName = `test-squickr-events-${++dbIndex}`;
+    eventStore = new IndexedDBEventStore(dbName, fakeIDB, IDBKeyRange);
     await eventStore.initialize();
   });
 
-  afterEach(async () => {
-    // Clean up: delete the test database
-    try {
-      await eventStore.clear();
-      indexedDB.deleteDatabase(dbName);
-    } catch (e) {
-      // Ignore cleanup errors
-    }
-  });
+  // -------------------------------------------------------------------------
+  // append / getAll
+  // -------------------------------------------------------------------------
 
   describe('append', () => {
     it('should persist event to IndexedDB', async () => {
-      const event: TaskCreated = {
-        id: 'event-1',
-        type: 'TaskCreated',
-        timestamp: new Date().toISOString(),
-        version: 1,
-        aggregateId: 'task-1',
-        payload: {
-          id: 'task-1',
-          title: 'Buy milk',
-          createdAt: new Date().toISOString(),
-          status: 'open',
-        },
-      };
+      const event = makeTaskCreated('event-1', '2026-01-24T10:00:00.000Z', 'task-1');
 
       await eventStore.append(event);
 
@@ -47,33 +58,8 @@ describe.skip('IndexedDBEventStore', () => {
     });
 
     it('should persist multiple events in order', async () => {
-      const event1: TaskCreated = {
-        id: 'event-1',
-        type: 'TaskCreated',
-        timestamp: '2026-01-24T10:00:00.000Z',
-        version: 1,
-        aggregateId: 'task-1',
-        payload: {
-          id: 'task-1',
-          title: 'First task',
-          createdAt: '2026-01-24T10:00:00.000Z',
-          status: 'open',
-        },
-      };
-
-      const event2: TaskCreated = {
-        id: 'event-2',
-        type: 'TaskCreated',
-        timestamp: '2026-01-24T10:01:00.000Z',
-        version: 1,
-        aggregateId: 'task-2',
-        payload: {
-          id: 'task-2',
-          title: 'Second task',
-          createdAt: '2026-01-24T10:01:00.000Z',
-          status: 'open',
-        },
-      };
+      const event1 = makeTaskCreated('event-1', '2026-01-24T10:00:00.000Z', 'task-1');
+      const event2 = makeTaskCreated('event-2', '2026-01-24T10:01:00.000Z', 'task-2');
 
       await eventStore.append(event1);
       await eventStore.append(event2);
@@ -85,35 +71,14 @@ describe.skip('IndexedDBEventStore', () => {
     });
   });
 
+  // -------------------------------------------------------------------------
+  // getById
+  // -------------------------------------------------------------------------
+
   describe('getById', () => {
     it('should retrieve events for specific aggregate', async () => {
-      const event1: TaskCreated = {
-        id: 'event-1',
-        type: 'TaskCreated',
-        timestamp: new Date().toISOString(),
-        version: 1,
-        aggregateId: 'task-1',
-        payload: {
-          id: 'task-1',
-          title: 'Task 1',
-          createdAt: new Date().toISOString(),
-          status: 'open',
-        },
-      };
-
-      const event2: TaskCreated = {
-        id: 'event-2',
-        type: 'TaskCreated',
-        timestamp: new Date().toISOString(),
-        version: 1,
-        aggregateId: 'task-2',
-        payload: {
-          id: 'task-2',
-          title: 'Task 2',
-          createdAt: new Date().toISOString(),
-          status: 'open',
-        },
-      };
+      const event1 = makeTaskCreated('event-1', '2026-01-24T10:00:00.000Z', 'task-1');
+      const event2 = makeTaskCreated('event-2', '2026-01-24T10:01:00.000Z', 'task-2');
 
       await eventStore.append(event1);
       await eventStore.append(event2);
@@ -129,40 +94,19 @@ describe.skip('IndexedDBEventStore', () => {
     });
   });
 
+  // -------------------------------------------------------------------------
+  // getAll
+  // -------------------------------------------------------------------------
+
   describe('getAll', () => {
     it('should return empty array when no events exist', async () => {
       const events = await eventStore.getAll();
       expect(events).toEqual([]);
     });
 
-    it('should return all events in order', async () => {
-      const event1: TaskCreated = {
-        id: 'event-1',
-        type: 'TaskCreated',
-        timestamp: '2026-01-24T10:00:00.000Z',
-        version: 1,
-        aggregateId: 'task-1',
-        payload: {
-          id: 'task-1',
-          title: 'First',
-          createdAt: '2026-01-24T10:00:00.000Z',
-          status: 'open',
-        },
-      };
-
-      const event2: TaskCreated = {
-        id: 'event-2',
-        type: 'TaskCreated',
-        timestamp: '2026-01-24T10:01:00.000Z',
-        version: 1,
-        aggregateId: 'task-2',
-        payload: {
-          id: 'task-2',
-          title: 'Second',
-          createdAt: '2026-01-24T10:01:00.000Z',
-          status: 'open',
-        },
-      };
+    it('should return all events sorted by timestamp', async () => {
+      const event1 = makeTaskCreated('event-1', '2026-01-24T10:00:00.000Z', 'task-1');
+      const event2 = makeTaskCreated('event-2', '2026-01-24T10:01:00.000Z', 'task-2');
 
       await eventStore.append(event1);
       await eventStore.append(event2);
@@ -174,39 +118,43 @@ describe.skip('IndexedDBEventStore', () => {
     });
   });
 
+  // -------------------------------------------------------------------------
+  // getAllAfter
+  // -------------------------------------------------------------------------
+
   describe('getAllAfter', () => {
     it('getAllAfter(null) returns all events', async () => {
-      const event1 = { id: 'event-1', type: 'TaskCreated', timestamp: '2026-01-24T10:00:00.000Z', version: 1, aggregateId: 'task-1' };
-      const event2 = { id: 'event-2', type: 'TaskCreated', timestamp: '2026-01-24T10:01:00.000Z', version: 1, aggregateId: 'task-2' };
-      const event3 = { id: 'event-3', type: 'TaskCreated', timestamp: '2026-01-24T10:02:00.000Z', version: 1, aggregateId: 'task-3' };
+      const event1 = makeTaskCreated('event-1', '2026-01-24T10:00:00.000Z');
+      const event2 = makeTaskCreated('event-2', '2026-01-24T10:01:00.000Z');
+      const event3 = makeTaskCreated('event-3', '2026-01-24T10:02:00.000Z');
 
-      await eventStore.append(event1 as any);
-      await eventStore.append(event2 as any);
-      await eventStore.append(event3 as any);
+      await eventStore.append(event1);
+      await eventStore.append(event2);
+      await eventStore.append(event3);
 
       const result = await eventStore.getAllAfter(null);
       expect(result).toHaveLength(3);
     });
 
     it('getAllAfter(lastEventId) returns empty array when anchor is the last event', async () => {
-      const event1 = { id: 'event-1', type: 'TaskCreated', timestamp: '2026-01-24T10:00:00.000Z', version: 1, aggregateId: 'task-1' };
-      const event2 = { id: 'event-2', type: 'TaskCreated', timestamp: '2026-01-24T10:01:00.000Z', version: 1, aggregateId: 'task-2' };
+      const event1 = makeTaskCreated('event-1', '2026-01-24T10:00:00.000Z');
+      const event2 = makeTaskCreated('event-2', '2026-01-24T10:01:00.000Z');
 
-      await eventStore.append(event1 as any);
-      await eventStore.append(event2 as any);
+      await eventStore.append(event1);
+      await eventStore.append(event2);
 
       const result = await eventStore.getAllAfter('event-2');
       expect(result).toEqual([]);
     });
 
     it('getAllAfter(middleId) returns only events after that position', async () => {
-      const event1 = { id: 'event-1', type: 'TaskCreated', timestamp: '2026-01-24T10:00:00.000Z', version: 1, aggregateId: 'task-1' };
-      const event2 = { id: 'event-2', type: 'TaskCreated', timestamp: '2026-01-24T10:01:00.000Z', version: 1, aggregateId: 'task-2' };
-      const event3 = { id: 'event-3', type: 'TaskCreated', timestamp: '2026-01-24T10:02:00.000Z', version: 1, aggregateId: 'task-3' };
+      const event1 = makeTaskCreated('event-1', '2026-01-24T10:00:00.000Z');
+      const event2 = makeTaskCreated('event-2', '2026-01-24T10:01:00.000Z');
+      const event3 = makeTaskCreated('event-3', '2026-01-24T10:02:00.000Z');
 
-      await eventStore.append(event1 as any);
-      await eventStore.append(event2 as any);
-      await eventStore.append(event3 as any);
+      await eventStore.append(event1);
+      await eventStore.append(event2);
+      await eventStore.append(event3);
 
       const result = await eventStore.getAllAfter('event-1');
       expect(result).toHaveLength(2);
@@ -215,72 +163,89 @@ describe.skip('IndexedDBEventStore', () => {
     });
 
     it('getAllAfter(nonexistent) returns all events (fallback)', async () => {
-      const event1 = { id: 'event-1', type: 'TaskCreated', timestamp: '2026-01-24T10:00:00.000Z', version: 1, aggregateId: 'task-1' };
-      const event2 = { id: 'event-2', type: 'TaskCreated', timestamp: '2026-01-24T10:01:00.000Z', version: 1, aggregateId: 'task-2' };
+      const event1 = makeTaskCreated('event-1', '2026-01-24T10:00:00.000Z');
+      const event2 = makeTaskCreated('event-2', '2026-01-24T10:01:00.000Z');
 
-      await eventStore.append(event1 as any);
-      await eventStore.append(event2 as any);
+      await eventStore.append(event1);
+      await eventStore.append(event2);
 
       const result = await eventStore.getAllAfter('does-not-exist');
       expect(result).toHaveLength(2);
     });
+
+    it('getAllAfter(null) on empty store returns []', async () => {
+      const result = await eventStore.getAllAfter(null);
+      expect(result).toEqual([]);
+    });
+
+    it('getAllAfter(id) on empty store returns [] (fallback)', async () => {
+      const result = await eventStore.getAllAfter('event-99');
+      expect(result).toEqual([]);
+    });
+
+    it('same-millisecond sibling: sibling IS returned, anchor is NOT', async () => {
+      // Arrange — anchor and sibling share the same timestamp; newer has a later one
+      const SAME_TS = '2026-01-24T10:00:00.000Z';
+      const LATER_TS = '2026-01-24T10:01:00.000Z';
+
+      const anchor  = makeTaskCreated('anchor',  SAME_TS);
+      const sibling = makeTaskCreated('sibling', SAME_TS);   // same ms, different id
+      const newer   = makeTaskCreated('newer',   LATER_TS);
+
+      await eventStore.append(anchor);
+      await eventStore.append(sibling);
+      await eventStore.append(newer);
+
+      // Act
+      const result = await eventStore.getAllAfter('anchor');
+
+      // Assert — sibling (same ms) and newer both returned; anchor excluded
+      expect(result.map(e => e.id)).toContain('sibling');
+      expect(result.map(e => e.id)).toContain('newer');
+      expect(result.map(e => e.id)).not.toContain('anchor');
+    });
   });
 
+  // -------------------------------------------------------------------------
+  // persistence across instances
+  // -------------------------------------------------------------------------
+
   describe('persistence', () => {
-    it('should persist events across EventStore instances', async () => {
-      const event: TaskCreated = {
-        id: 'event-1',
-        type: 'TaskCreated',
-        timestamp: new Date().toISOString(),
-        version: 1,
-        aggregateId: 'task-1',
-        payload: {
-          id: 'task-1',
-          title: 'Persisted task',
-          createdAt: new Date().toISOString(),
-          status: 'open',
-        },
-      };
+    it('should persist events across EventStore instances sharing the same DB', async () => {
+      // Capture the fakeIDB and dbName from the current store to create a second
+      // instance against the same in-memory database.
+      const sharedFakeIDB = new IDBFactory();
+      const sharedDbName = `shared-db-${++dbIndex}`;
 
-      await eventStore.append(event);
+      const store1 = new IndexedDBEventStore(sharedDbName, sharedFakeIDB, IDBKeyRange);
+      await store1.initialize();
 
-      // Create a new instance (simulates page refresh)
-      const newEventStore = new IndexedDBEventStore(dbName);
-      await newEventStore.initialize();
+      const event = makeTaskCreated('event-1', new Date().toISOString(), 'task-1');
+      await store1.append(event);
 
-      const events = await newEventStore.getAll();
+      const store2 = new IndexedDBEventStore(sharedDbName, sharedFakeIDB, IDBKeyRange);
+      await store2.initialize();
+
+      const events = await store2.getAll();
       expect(events).toHaveLength(1);
       expect(events[0]).toEqual(event);
     });
   });
 
-  describe('initialize', () => {
-    it('should create database and object store', async () => {
-      const newStore = new IndexedDBEventStore('test-new-db');
-      await newStore.initialize();
+  // -------------------------------------------------------------------------
+  // initialize guard
+  // -------------------------------------------------------------------------
 
-      // Should be able to append without errors
-      const event: TaskCreated = {
-        id: 'event-1',
-        type: 'TaskCreated',
-        timestamp: new Date().toISOString(),
-        version: 1,
-        aggregateId: 'task-1',
-        payload: {
-          id: 'task-1',
-          title: 'Test',
-          createdAt: new Date().toISOString(),
-          status: 'open',
-        },
-      };
+  describe('initialize guard', () => {
+    it('throws if append() is called before initialize()', async () => {
+      const uninit = new IndexedDBEventStore('uninit-db', new IDBFactory(), IDBKeyRange);
+      const event = makeTaskCreated('event-1', new Date().toISOString());
+      await expect(uninit.append(event)).rejects.toThrow('EventStore not initialized');
+    });
 
-      await newStore.append(event);
-      const events = await newStore.getAll();
-      expect(events).toHaveLength(1);
-
-      // Cleanup
-      await newStore.clear();
-      indexedDB.deleteDatabase('test-new-db');
+    it('throws if getAll() is called before initialize()', async () => {
+      const uninit = new IndexedDBEventStore('uninit-db-2', new IDBFactory(), IDBKeyRange);
+      await expect(uninit.getAll()).rejects.toThrow('EventStore not initialized');
     });
   });
 });

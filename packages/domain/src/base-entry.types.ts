@@ -125,4 +125,4 @@ export interface DailyLog {
 /**
  * Union of all domain events in the system
  */
-export type SquickrDomainEvent = TaskEvent | NoteEvent | EventEvent | import('./collection.types').CollectionEvent | import('./habit.types').HabitEvent;
+export type SquickrDomainEvent = TaskEvent | NoteEvent | EventEvent | import('./collection.types').CollectionEvent | import('./habit.types').HabitEvent | import('./user-preferences.types').UserPreferencesEvent;

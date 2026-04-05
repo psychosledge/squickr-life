@@ -17,7 +17,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import type { CompletedTaskBehavior } from '@squickr/domain';
 import { UpdateUserPreferencesHandler } from '@squickr/domain';
-import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useApp } from '../context/AppContext';
 import { BEHAVIOR_LABELS, BEHAVIOR_DESCRIPTIONS } from '../utils/constants';
 import { useFcmRegistrationStatus } from '../hooks/useFcmRegistrationStatus';
@@ -30,8 +29,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const currentPreferences = useUserPreferences();
-  const { eventStore } = useApp();
+  const { eventStore, userPreferences: currentPreferences } = useApp();
   const fcmStatus = useFcmRegistrationStatus();
 
   const [defaultCompletedTaskBehavior, setDefaultCompletedTaskBehavior] = useState<CompletedTaskBehavior>('move-to-bottom');

@@ -49,7 +49,7 @@ export function HabitDetailView() {
   const { habitId } = useParams<{ habitId: string }>();
   const navigate = useNavigate();
   const {
-    entryProjection,
+    habitProjection,
     updateHabitTitleHandler,
     updateHabitFrequencyHandler,
     archiveHabitHandler,
@@ -86,13 +86,13 @@ export function HabitDetailView() {
         setHabit(null);
         return;
       }
-      const found = await entryProjection.getHabitById(habitId);
+      const found = await habitProjection.getHabitById(habitId);
       setHabit(found ?? null);
     };
     loadData();
-    const unsub = entryProjection.subscribe(() => loadData());
+    const unsub = habitProjection.subscribe(() => loadData());
     return () => unsub();
-  }, [habitId, entryProjection]);
+  }, [habitId, habitProjection]);
 
   // ── Sync frequency edit state when settings opens ──
   // We use habit?.id (not the full habit object) to avoid re-syncing on every

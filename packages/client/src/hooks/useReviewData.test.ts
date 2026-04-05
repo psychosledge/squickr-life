@@ -23,12 +23,21 @@ import { useApp } from '../context/AppContext';
 function makeEntryProjection(overrides: Partial<{
   getCompletedInRange: ReturnType<typeof vi.fn>;
   getStalledMonthlyTasks: ReturnType<typeof vi.fn>;
-  getActiveHabits: ReturnType<typeof vi.fn>;
   subscribe: ReturnType<typeof vi.fn>;
 }> = {}) {
   return {
     getCompletedInRange: vi.fn().mockResolvedValue([]),
     getStalledMonthlyTasks: vi.fn().mockResolvedValue([]),
+    subscribe: vi.fn().mockReturnValue(() => {}),
+    ...overrides,
+  };
+}
+
+function makeHabitProjection(overrides: Partial<{
+  getActiveHabits: ReturnType<typeof vi.fn>;
+  subscribe: ReturnType<typeof vi.fn>;
+}> = {}) {
+  return {
     getActiveHabits: vi.fn().mockResolvedValue([]),
     subscribe: vi.fn().mockReturnValue(() => {}),
     ...overrides,
@@ -47,17 +56,18 @@ function makeCollectionProjection(overrides: Partial<{
 function setupMocks(
   entryProjectionOverrides: Parameters<typeof makeEntryProjection>[0] = {},
   collectionProjectionOverrides: Parameters<typeof makeCollectionProjection>[0] = {},
+  habitProjectionOverrides: Parameters<typeof makeHabitProjection>[0] = {},
 ) {
   const entryProjection = makeEntryProjection(entryProjectionOverrides);
+  const habitProjection = makeHabitProjection(habitProjectionOverrides);
   const collectionProjection = makeCollectionProjection(collectionProjectionOverrides);
 
   vi.mocked(useApp).mockReturnValue({
     entryProjection: entryProjection as any,
+    habitProjection: habitProjection as any,
     collectionProjection: collectionProjection as any,
     eventStore: {} as any,
-    taskProjection: {} as any,
     createCollectionHandler: {} as any,
-    migrateTaskHandler: {} as any,
     restoreCollectionHandler: {} as any,
     reorderCollectionHandler: undefined,
     addTaskToCollectionHandler: {} as any,
@@ -85,7 +95,7 @@ function setupMocks(
     reorderHabitHandler: {} as any,
   });
 
-  return { entryProjection, collectionProjection };
+  return { entryProjection, habitProjection, collectionProjection };
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -281,12 +291,15 @@ describe('useReviewData', () => {
     });
   });
 
-  it('unsubscribes from entryProjection on unmount', async () => {
+  it('unsubscribes from both entryProjection and habitProjection on unmount', async () => {
     // Arrange
-    const mockUnsubscribe = vi.fn();
-    setupMocks({
-      subscribe: vi.fn().mockReturnValue(mockUnsubscribe),
-    });
+    const mockEntryUnsubscribe = vi.fn();
+    const mockHabitUnsubscribe = vi.fn();
+    setupMocks(
+      { subscribe: vi.fn().mockReturnValue(mockEntryUnsubscribe) },
+      {},
+      { subscribe: vi.fn().mockReturnValue(mockHabitUnsubscribe) },
+    );
 
     // Act
     const { result, unmount } = renderHook(() => useReviewData('weekly'));
@@ -294,11 +307,12 @@ describe('useReviewData', () => {
 
     unmount();
 
-    // Assert
-    expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+    // Assert — both subscriptions cleaned up
+    expect(mockEntryUnsubscribe).toHaveBeenCalledTimes(1);
+    expect(mockHabitUnsubscribe).toHaveBeenCalledTimes(1);
   });
 
-  it('returns active habits from entryProjection', async () => {
+  it('returns active habits from habitProjection', async () => {
     // Arrange
     const habits = [
       {
@@ -313,7 +327,7 @@ describe('useReviewData', () => {
         order: '2026-01-01T00:00:00.000Z',
       },
     ];
-    setupMocks({ getActiveHabits: vi.fn().mockResolvedValue(habits) });
+    setupMocks({}, {}, { getActiveHabits: vi.fn().mockResolvedValue(habits) });
 
     // Act
     const { result } = renderHook(() => useReviewData('weekly'));
@@ -325,7 +339,7 @@ describe('useReviewData', () => {
 
   it('returns empty habits array when no active habits', async () => {
     // Arrange
-    setupMocks({ getActiveHabits: vi.fn().mockResolvedValue([]) });
+    setupMocks({}, {}, { getActiveHabits: vi.fn().mockResolvedValue([]) });
 
     // Act
     const { result } = renderHook(() => useReviewData('weekly'));

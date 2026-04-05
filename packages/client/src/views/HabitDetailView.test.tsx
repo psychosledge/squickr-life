@@ -39,19 +39,18 @@ function makeHabit(overrides: Partial<HabitReadModel> = {}): HabitReadModel {
 }
 
 function buildMockAppContext(habit: HabitReadModel | null = makeHabit()) {
-  const mockEntryProjection = {
+  const mockHabitProjection = {
     getHabitById: vi.fn().mockResolvedValue(habit ?? undefined),
     subscribe: vi.fn().mockReturnValue(() => {}),
   };
 
   return {
     eventStore: { append: vi.fn(), getAll: vi.fn().mockResolvedValue([]), subscribe: vi.fn().mockReturnValue(() => {}) } as any,
-    entryProjection: mockEntryProjection as any,
-    taskProjection: {} as any,
+    entryProjection: {} as any,
+    habitProjection: mockHabitProjection as any,
     collectionProjection: {} as any,
     createCollectionHandler: {} as any,
     restoreCollectionHandler: {} as any,
-    migrateTaskHandler: {} as any,
     addTaskToCollectionHandler: {} as any,
     removeTaskFromCollectionHandler: {} as any,
     moveTaskToCollectionHandler: {} as any,

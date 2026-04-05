@@ -5,7 +5,6 @@ import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import { CreateSubTaskHandler } from './sub-task.handlers';
 import { CreateTaskHandler } from './task.handlers';
-import { TaskListProjection } from './task.projections';
 import type { DeleteParentTaskCommand, TaskDeleted } from './task.types';
 
 /**
@@ -28,10 +27,9 @@ describe('DeleteParentTaskHandler', () => {
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
-    const taskProjection = new TaskListProjection(eventStore);
     projection = new EntryListProjection(eventStore);
     handler = new DeleteParentTaskHandler(eventStore, projection);
-    createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
+    createTaskHandler = new CreateTaskHandler(eventStore, projection);
     createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
   });
 

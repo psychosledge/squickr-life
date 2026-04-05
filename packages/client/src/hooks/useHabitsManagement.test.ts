@@ -32,12 +32,10 @@ function setupMocks() {
   vi.mocked(useApp).mockReturnValue({
     eventStore: {} as any,
     entryProjection: {} as any,
-    taskProjection: {} as any,
     collectionProjection: {} as any,
     createCollectionHandler: {} as any,
     reorderCollectionHandler: undefined,
     restoreCollectionHandler: {} as any,
-    migrateTaskHandler: {} as any,
     addTaskToCollectionHandler: {} as any,
     removeTaskFromCollectionHandler: {} as any,
     moveTaskToCollectionHandler: {} as any,

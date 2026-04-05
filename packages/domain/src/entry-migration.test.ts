@@ -5,13 +5,11 @@ import { CreateNoteHandler } from './note.handlers';
 import { CreateEventHandler } from './event.handlers';
 import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
-import { TaskListProjection } from './task.projections';
 import { EntryListProjection } from './entry.projections';
 import type { MoveEntryToCollectionCommand, EntryMovedToCollection } from './task.types';
 
 describe('MoveEntryToCollectionHandler', () => {
   let eventStore: IEventStore;
-  let taskProjection: TaskListProjection;
   let entryProjection: EntryListProjection;
   let handler: MoveEntryToCollectionHandler;
   let createTaskHandler: CreateTaskHandler;
@@ -20,10 +18,9 @@ describe('MoveEntryToCollectionHandler', () => {
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
-    taskProjection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     handler = new MoveEntryToCollectionHandler(eventStore, entryProjection);
-    createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+    createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
     createNoteHandler = new CreateNoteHandler(eventStore, entryProjection);
     createEventHandler = new CreateEventHandler(eventStore, entryProjection);
   });

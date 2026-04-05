@@ -2,7 +2,7 @@
  * useHabitsForDate Hook Tests
  *
  * Tests for the hook that fetches habits scheduled for a specific date,
- * subscribing to entryProjection for reactive updates.
+ * subscribing to habitProjection for reactive updates.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -19,7 +19,7 @@ import { useApp } from '../context/AppContext';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeEntryProjection(overrides: Partial<{
+function makeHabitProjection(overrides: Partial<{
   getHabitsForDate: ReturnType<typeof vi.fn>;
   subscribe: ReturnType<typeof vi.fn>;
 }> = {}) {
@@ -31,17 +31,16 @@ function makeEntryProjection(overrides: Partial<{
 }
 
 function setupMocks(
-  entryProjectionOverrides: Parameters<typeof makeEntryProjection>[0] = {},
+  habitProjectionOverrides: Parameters<typeof makeHabitProjection>[0] = {},
 ) {
-  const entryProjection = makeEntryProjection(entryProjectionOverrides);
+  const habitProjection = makeHabitProjection(habitProjectionOverrides);
 
   vi.mocked(useApp).mockReturnValue({
-    entryProjection: entryProjection as any,
+    habitProjection: {} as any,
+    habitProjection: habitProjection as any,
     collectionProjection: {} as any,
     eventStore: {} as any,
-    taskProjection: {} as any,
     createCollectionHandler: {} as any,
-    migrateTaskHandler: {} as any,
     restoreCollectionHandler: {} as any,
     reorderCollectionHandler: undefined,
     addTaskToCollectionHandler: {} as any,
@@ -69,7 +68,7 @@ function setupMocks(
     isAppReady: true,
   });
 
-  return { entryProjection };
+  return { habitProjection };
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -105,7 +104,7 @@ describe('useHabitsForDate', () => {
     });
   });
 
-  it('returns habits from entryProjection.getHabitsForDate', async () => {
+  it('returns habits from habitProjection.getHabitsForDate', async () => {
     // Arrange
     const habits = [
       {
@@ -136,19 +135,19 @@ describe('useHabitsForDate', () => {
 
   it('calls getHabitsForDate with the provided date', async () => {
     // Arrange
-    const { entryProjection } = setupMocks();
+    const { habitProjection } = setupMocks();
 
     // Act
     const { result } = renderHook(() => useHabitsForDate('2026-03-15'));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     // Assert
-    expect(entryProjection.getHabitsForDate).toHaveBeenCalledWith('2026-03-15', undefined);
+    expect(habitProjection.getHabitsForDate).toHaveBeenCalledWith('2026-03-15', undefined);
   });
 
   it('forwards asOf option to getHabitsForDate', async () => {
     // Arrange
-    const { entryProjection } = setupMocks();
+    const { habitProjection } = setupMocks();
 
     // Act
     const { result } = renderHook(() =>
@@ -157,16 +156,16 @@ describe('useHabitsForDate', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     // Assert
-    expect(entryProjection.getHabitsForDate).toHaveBeenCalledWith(
+    expect(habitProjection.getHabitsForDate).toHaveBeenCalledWith(
       '2026-03-20',
       { asOf: '2026-03-15' },
     );
   });
 
-  it('re-fetches when entryProjection notifies subscribers', async () => {
+  it('re-fetches when habitProjection notifies subscribers', async () => {
     // Arrange: capture the subscriber callback so we can invoke it
     let subscriberCallback: (() => void) | null = null;
-    const { entryProjection } = setupMocks({
+    const { habitProjection } = setupMocks({
       subscribe: vi.fn().mockImplementation((cb: () => void) => {
         subscriberCallback = cb;
         return () => { subscriberCallback = null; };
@@ -175,7 +174,7 @@ describe('useHabitsForDate', () => {
 
     const { result } = renderHook(() => useHabitsForDate('2026-03-20'));
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(entryProjection.getHabitsForDate).toHaveBeenCalledTimes(1);
+    expect(habitProjection.getHabitsForDate).toHaveBeenCalledTimes(1);
 
     // Act — projection notifies subscribers
     act(() => {
@@ -184,32 +183,32 @@ describe('useHabitsForDate', () => {
 
     // Assert — fetched again
     await waitFor(() => {
-      expect(entryProjection.getHabitsForDate).toHaveBeenCalledTimes(2);
+      expect(habitProjection.getHabitsForDate).toHaveBeenCalledTimes(2);
     });
   });
 
   it('re-fetches when date prop changes', async () => {
     // Arrange
-    const { entryProjection } = setupMocks();
+    const { habitProjection } = setupMocks();
     const { result, rerender } = renderHook(
       ({ date }: { date: string }) => useHabitsForDate(date),
       { initialProps: { date: '2026-03-20' } },
     );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(entryProjection.getHabitsForDate).toHaveBeenCalledTimes(1);
+    expect(habitProjection.getHabitsForDate).toHaveBeenCalledTimes(1);
 
     // Act — change date
     rerender({ date: '2026-03-19' });
 
     // Assert — fetched again with new date
     await waitFor(() => {
-      expect(entryProjection.getHabitsForDate).toHaveBeenCalledTimes(2);
+      expect(habitProjection.getHabitsForDate).toHaveBeenCalledTimes(2);
     });
-    expect(entryProjection.getHabitsForDate).toHaveBeenCalledWith('2026-03-19', undefined);
+    expect(habitProjection.getHabitsForDate).toHaveBeenCalledWith('2026-03-19', undefined);
   });
 
-  it('unsubscribes from entryProjection on unmount', async () => {
+  it('unsubscribes from habitProjection on unmount', async () => {
     // Arrange
     const mockUnsubscribe = vi.fn();
     setupMocks({
@@ -228,7 +227,7 @@ describe('useHabitsForDate', () => {
 
   it('returns empty habits and isLoading: false immediately when date is empty string', async () => {
     // Arrange
-    const { entryProjection } = setupMocks();
+    const { habitProjection } = setupMocks();
 
     // Act
     const { result } = renderHook(() => useHabitsForDate(''));
@@ -238,6 +237,6 @@ describe('useHabitsForDate', () => {
       expect(result.current.isLoading).toBe(false);
     });
     expect(result.current.habits).toEqual([]);
-    expect(entryProjection.getHabitsForDate).not.toHaveBeenCalled();
+    expect(habitProjection.getHabitsForDate).not.toHaveBeenCalled();
   });
 });

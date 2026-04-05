@@ -30,11 +30,9 @@ export function renderWithAppProvider(
       initialize: vi.fn().mockResolvedValue(undefined),
     } as any,
     entryProjection: {} as any,
-    taskProjection: {} as any,
     collectionProjection: {} as any,
     createCollectionHandler: {} as any,
     restoreCollectionHandler: {} as any,
-    migrateTaskHandler: {} as any,
     addTaskToCollectionHandler: {} as any,
     removeTaskFromCollectionHandler: {} as any,
     moveTaskToCollectionHandler: {} as any,
@@ -58,6 +56,7 @@ export function renderWithAppProvider(
     archiveHabitHandler: {} as any,
     restoreHabitHandler: {} as any,
     reorderHabitHandler: {} as any,
+    habitProjection: {} as any,
   };
 
   const wrapped = (

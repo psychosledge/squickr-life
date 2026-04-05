@@ -1278,8 +1278,8 @@ Implement improvements in 4 phases:
 
 ## ADR-015: Multi-Collection Event Pattern (TaskMigrated Deprecation)
 
-**Date**: 2026-02-15  
-**Status**: Accepted
+**Date**: 2026-02-15
+**Status**: Accepted (enforcement complete 2026-04-04)
 
 ### Context
 
@@ -1384,12 +1384,12 @@ interface CollectionHistoryEntry {
 - ⚠️ **More events per migration**: 2 events (remove + add) vs 1 event (TaskMigrated)
 - ⚠️ **Larger event log**: More events = more storage (mitigated: events are small JSON)
 - ⚠️ **Legacy support burden**: Projections must handle both old and new patterns
-- ⚠️ **Two handlers for migration**: `MoveTaskToCollectionHandler` vs old `MigrateTaskHandler`
+- ~~⚠️ **Two handlers for migration**: `MoveTaskToCollectionHandler` vs old `MigrateTaskHandler`~~ — resolved: `MigrateTaskHandler` removed from all UI call sites (2026-04-04)
 
 **Trade-offs:**
 - **Event volume vs clarity**: Acceptable trade-off for data integrity
 - **Backward compatibility complexity**: Worth it to avoid breaking existing data
-- **Handler duplication**: Old handlers kept for legacy events only
+- **Handler duplication**: `MigrateTaskHandler` retained in domain layer for event replay only; no longer instantiated in UI
 
 ### Implementation Details
 

@@ -4,7 +4,6 @@ import { AppProvider, useApp, useProjections } from './AppContext';
 import type {
   IEventStore,
   EntryListProjection,
-  TaskListProjection,
   CollectionListProjection,
   CreateCollectionHandler,
 } from '@squickr/domain';
@@ -13,7 +12,6 @@ describe('AppContext', () => {
   const createMockContext = () => ({
     eventStore: {} as IEventStore,
     entryProjection: {} as EntryListProjection,
-    taskProjection: {} as TaskListProjection,
     collectionProjection: {} as CollectionListProjection,
     createCollectionHandler: {} as CreateCollectionHandler,
   });
@@ -48,7 +46,6 @@ describe('AppContext', () => {
       const { result } = renderHook(() => useProjections(), { wrapper });
 
       expect(result.current.entryProjection).toBe(mockContext.entryProjection);
-      expect(result.current.taskProjection).toBe(mockContext.taskProjection);
       expect(result.current.collectionProjection).toBe(
         mockContext.collectionProjection
       );

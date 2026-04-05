@@ -17,7 +17,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
-import { TaskListProjection } from './task.projections';
 import { CreateTaskHandler, MoveEntryToCollectionHandler } from './task.handlers';
 import { CreateSubTaskHandler } from './sub-task.handlers';
 import type { MoveEntryToCollectionCommand, EntryMovedToCollection } from './task.types';
@@ -27,7 +26,6 @@ import { MoveParentTaskHandler } from './move-parent-task.handler';
 
 describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
   let eventStore: InMemoryEventStore;
-  let taskProjection: TaskListProjection;
   let projection: EntryListProjection;
   let createTaskHandler: CreateTaskHandler;
   let createSubTaskHandler: CreateSubTaskHandler;
@@ -36,9 +34,8 @@ describe('MoveParentTaskHandler (Phase 3: Parent Migration Cascade)', () => {
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
-    taskProjection = new TaskListProjection(eventStore);
     projection = new EntryListProjection(eventStore);
-    createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
+    createTaskHandler = new CreateTaskHandler(eventStore, projection);
     createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
     moveParentTaskHandler = new MoveParentTaskHandler(eventStore, projection);
     moveEntryHandler = new MoveEntryToCollectionHandler(eventStore, projection);

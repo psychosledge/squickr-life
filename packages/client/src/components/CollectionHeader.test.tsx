@@ -65,9 +65,7 @@ describe('CollectionHeader', () => {
             } as any,
             collectionProjection: mockCollectionProjection,
             entryProjection: mockEntryProjection,
-            taskProjection: {} as any,
             createCollectionHandler: {} as any,
-            migrateTaskHandler: {} as any,
           }}
         >
           <CollectionHeader {...defaultProps} {...props} />
@@ -209,9 +207,7 @@ describe('CollectionHeader - Virtual Collection Behavior', () => {
             } as any,
             collectionProjection: mockCollectionProjection,
             entryProjection: mockEntryProjection,
-            taskProjection: {} as any,
             createCollectionHandler: {} as any,
-            migrateTaskHandler: {} as any,
           }}
         >
           <CollectionHeader {...defaultProps} {...props} />
@@ -292,9 +288,7 @@ describe('CollectionHeader - data-tutorial-id anchor', () => {
             } as any,
             collectionProjection: mockCollectionProjection,
             entryProjection: mockEntryProjection,
-            taskProjection: {} as any,
             createCollectionHandler: {} as any,
-            migrateTaskHandler: {} as any,
           }}
         >
           <CollectionHeader
@@ -351,9 +345,7 @@ describe('CollectionHeader - onMigrateAllToToday', () => {
             } as any,
             collectionProjection: mockCollectionProjection,
             entryProjection: mockEntryProjection,
-            taskProjection: {} as any,
             createCollectionHandler: {} as any,
-            migrateTaskHandler: {} as any,
           }}
         >
           <CollectionHeader
@@ -434,9 +426,7 @@ describe('CollectionHeader - CollectionDebugPanel integration', () => {
             } as any,
             collectionProjection: mockCollectionProjection,
             entryProjection: mockEntryProjection,
-            taskProjection: {} as any,
             createCollectionHandler: {} as any,
-            migrateTaskHandler: {} as any,
           }}
         >
           <CollectionHeader

@@ -15,12 +15,11 @@
 
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { 
-  Entry, 
-  Collection, 
-  CollectionSettings, 
-  MigrateTaskHandler, 
-  CreateCollectionHandler, 
+import type {
+  Entry,
+  Collection,
+  CollectionSettings,
+  CreateCollectionHandler,
   EntryListProjection,
   AddTaskToCollectionHandler,
   MoveTaskToCollectionHandler,
@@ -41,7 +40,6 @@ export interface UseEntryOperationsParams {
   handlers: CollectionHandlers;
   entries: Entry[];
   collection: Collection | null;
-  migrateTaskHandler: MigrateTaskHandler;
   createCollectionHandler: CreateCollectionHandler;
   entryProjection: EntryListProjection; // Phase 4: Need projection for sub-task queries
   addTaskToCollectionHandler: AddTaskToCollectionHandler; // Phase 3: Multi-collection add
@@ -125,7 +123,6 @@ export function useEntryOperations(
     handlers,
     entries,
     collection,
-    migrateTaskHandler,
     createCollectionHandler,
     entryProjection, // Phase 4: Need for sub-task queries
     addTaskToCollectionHandler, // Phase 3: Multi-collection add
@@ -325,7 +322,17 @@ export function useEntryOperations(
 
     switch (entry.type) {
       case 'task':
-        await migrateTaskHandler.handle({ taskId: entryId, targetCollectionId });
+        if (collectionId) {
+          // In a specific collection — move (remove from current, add to target)
+          await moveTaskToCollectionHandler.handle({
+            taskId: entryId,
+            currentCollectionId: collectionId,
+            targetCollectionId: effectiveTargetId,
+          });
+        } else {
+          // Not in a specific collection — just add to target
+          await addTaskToCollectionHandler.handle({ taskId: entryId, collectionId: effectiveTargetId });
+        }
         break;
       case 'note':
         if (collectionId) {
@@ -354,7 +361,7 @@ export function useEntryOperations(
         }
         break;
     }
-  }, [entries, migrateTaskHandler, collectionId, moveNoteToCollectionHandler, addNoteToCollectionHandler, moveEventToCollectionHandler, addEventToCollectionHandler]);
+  }, [entries, moveTaskToCollectionHandler, addTaskToCollectionHandler, collectionId, moveNoteToCollectionHandler, addNoteToCollectionHandler, moveEventToCollectionHandler, addEventToCollectionHandler]);
 
   // Phase 3: Multi-collection migration with mode (move vs add)
   const handleMigrateWithMode = useCallback(async (entryId: string, targetCollectionId: string | null, mode: 'move' | 'add' = 'move') => {

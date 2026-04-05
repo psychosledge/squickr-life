@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
-import { TaskListProjection } from './task.projections';
+import { HabitProjection } from './habit.projection';
 import { CreateTaskHandler, CompleteTaskHandler, DeleteTaskHandler, MigrateTaskHandler, MoveEntryToCollectionHandler } from './task.handlers';
 import { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler } from './note.handlers';
 import { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler } from './event.handlers';
@@ -59,7 +59,6 @@ function enrichSnapshot(snapshot: ProjectionSnapshot): ProjectionSnapshot {
 describe('EntryListProjection', () => {
   let eventStore: IEventStore;
   let projection: EntryListProjection;
-  let taskProjection: TaskListProjection;
   let taskHandler: CreateTaskHandler;
   let noteHandler: CreateNoteHandler;
   let eventHandler: CreateEventHandler;
@@ -67,8 +66,7 @@ describe('EntryListProjection', () => {
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
     projection = new EntryListProjection(eventStore);
-    taskProjection = new TaskListProjection(eventStore);
-    taskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
+    taskHandler = new CreateTaskHandler(eventStore, projection);
     noteHandler = new CreateNoteHandler(eventStore, projection);
     eventHandler = new CreateEventHandler(eventStore, projection);
   });
@@ -574,8 +572,6 @@ describe('EntryListProjection', () => {
       
       // Reorder note to be before task (previousEntryId = null, nextEntryId = taskId)
       const { ReorderNoteHandler } = await import('./note.handlers');
-      const { TaskListProjection } = await import('./task.projections');
-      const taskProjection = new TaskListProjection(eventStore);
       const reorderHandler = new ReorderNoteHandler(eventStore, projection, projection);
       
       await reorderHandler.handle({
@@ -605,8 +601,6 @@ describe('EntryListProjection', () => {
       
       // Reorder task to be between the two notes
       const { ReorderTaskHandler } = await import('./task.handlers');
-      const { TaskListProjection } = await import('./task.projections');
-      const taskProjection = new TaskListProjection(eventStore);
       const reorderHandler = new ReorderTaskHandler(eventStore, projection);
       
       await reorderHandler.handle({
@@ -2652,8 +2646,7 @@ describe('EntryListProjection', () => {
       // then present it to a fresh projection with an EMPTY event store.
       const seedEventStore = new InMemoryEventStore();
       const seedProjection = new EntryListProjection(seedEventStore);
-      const seedTaskProjection = new TaskListProjection(seedEventStore);
-      const seedHandler = new CreateTaskHandler(seedEventStore, seedTaskProjection, seedProjection);
+      const seedHandler = new CreateTaskHandler(seedEventStore, seedProjection);
       await seedHandler.handle({ content: 'Snapshot Task' });
       const snapshot = await seedProjection.createSnapshot();
       expect(snapshot).not.toBeNull();
@@ -2681,8 +2674,7 @@ describe('EntryListProjection', () => {
       // Arrange: build a snapshot with one task from a populated event store.
       const seedEventStore = new InMemoryEventStore();
       const seedProjection = new EntryListProjection(seedEventStore);
-      const seedTaskProjection = new TaskListProjection(seedEventStore);
-      const seedHandler = new CreateTaskHandler(seedEventStore, seedTaskProjection, seedProjection);
+      const seedHandler = new CreateTaskHandler(seedEventStore, seedProjection);
       await seedHandler.handle({ content: 'Snapshot Task' });
       const snapshot = await seedProjection.createSnapshot();
 
@@ -3009,15 +3001,13 @@ describe('EntryListProjection', () => {
 describe('EntryListProjection — review delegation', () => {
   let eventStore: IEventStore;
   let projection: EntryListProjection;
-  let taskProjection: TaskListProjection;
   let createTask: CreateTaskHandler;
   let completeTask: CompleteTaskHandler;
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
     projection = new EntryListProjection(eventStore);
-    taskProjection = new TaskListProjection(eventStore);
-    createTask = new CreateTaskHandler(eventStore, taskProjection, projection);
+    createTask = new CreateTaskHandler(eventStore, projection);
     completeTask = new CompleteTaskHandler(eventStore, projection);
   });
 
@@ -3083,16 +3073,16 @@ describe('EntryListProjection — review delegation', () => {
 });
 
 // ============================================================================
-// HabitProjection integration via EntryListProjection facade
+// HabitProjection as a standalone top-level projection (P2-10 extraction)
 // ============================================================================
 
-describe('EntryListProjection — HabitProjection facade', () => {
+describe('HabitProjection — standalone projection (extracted from EntryListProjection)', () => {
   let eventStore: IEventStore;
-  let projection: EntryListProjection;
+  let habitProjection: HabitProjection;
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
-    projection = new EntryListProjection(eventStore);
+    habitProjection = new HabitProjection(eventStore);
   });
 
   async function appendHabitCreated(habitId: string, title = 'Morning run'): Promise<void> {
@@ -3113,14 +3103,14 @@ describe('EntryListProjection — HabitProjection facade', () => {
   }
 
   it('getActiveHabits() returns empty when no habits', async () => {
-    const habits = await projection.getActiveHabits();
+    const habits = await habitProjection.getActiveHabits();
     expect(habits).toEqual([]);
   });
 
   it('getActiveHabits() returns a created habit', async () => {
     const habitId = crypto.randomUUID();
     await appendHabitCreated(habitId);
-    const habits = await projection.getActiveHabits();
+    const habits = await habitProjection.getActiveHabits();
     expect(habits).toHaveLength(1);
     expect(habits[0]!.id).toBe(habitId);
   });
@@ -3136,22 +3126,22 @@ describe('EntryListProjection — HabitProjection facade', () => {
       version: 1,
       payload: { habitId, archivedAt: new Date().toISOString() },
     });
-    const active = await projection.getActiveHabits();
+    const active = await habitProjection.getActiveHabits();
     expect(active).toHaveLength(0);
-    const all = await projection.getAllHabits();
+    const all = await habitProjection.getAllHabits();
     expect(all).toHaveLength(1);
   });
 
   it('getHabitById() returns the correct habit', async () => {
     const habitId = crypto.randomUUID();
     await appendHabitCreated(habitId, 'Read 10 pages');
-    const habit = await projection.getHabitById(habitId);
+    const habit = await habitProjection.getHabitById(habitId);
     expect(habit).toBeDefined();
     expect(habit!.title).toBe('Read 10 pages');
   });
 
   it('getHabitById() returns undefined for unknown id', async () => {
-    const habit = await projection.getHabitById('no-such-id');
+    const habit = await habitProjection.getHabitById('no-such-id');
     expect(habit).toBeUndefined();
   });
 
@@ -3159,8 +3149,28 @@ describe('EntryListProjection — HabitProjection facade', () => {
     const habitId = crypto.randomUUID();
     await appendHabitCreated(habitId);
     const today = new Date().toISOString().slice(0, 10);
-    const habits = await projection.getHabitsForDate(today);
+    const habits = await habitProjection.getHabitsForDate(today);
     expect(habits).toHaveLength(1);
+  });
+
+  it('hydrateFromSnapshot() seeds the projection without an event log', async () => {
+    // Arrange: no events in store, but we have a serialised snapshot
+    const habitState: SerializableHabitState = {
+      id: 'habit-snap-direct',
+      title: 'Snapshot habit',
+      frequency: { type: 'daily' },
+      createdAt: '2026-01-01T00:00:00.000Z',
+      order: 'a0',
+      completions: {},
+      reverted: [],
+    };
+
+    // Act: hydrate from snapshot directly
+    habitProjection.hydrateFromSnapshot([habitState]);
+
+    // Assert: habit is available without a full replay
+    const habits = await habitProjection.getActiveHabits({ asOf: '2026-01-01' });
+    expect(habits.find(h => h.id === 'habit-snap-direct')).toBeDefined();
   });
 });
 
@@ -3257,7 +3267,6 @@ describe('EntryListProjection.wasLocalStoreEmptyAtHydration()', () => {
 describe('EntryListProjection.getLastSnapshotCursor()', () => {
   let eventStore: IEventStore;
   let snapshotStore: InMemorySnapshotStore;
-  let taskProjection: TaskListProjection;
   let taskHandler: CreateTaskHandler;
   let projection: EntryListProjection;
 
@@ -3265,8 +3274,7 @@ describe('EntryListProjection.getLastSnapshotCursor()', () => {
     eventStore = new InMemoryEventStore();
     snapshotStore = new InMemorySnapshotStore();
     projection = new EntryListProjection(eventStore, snapshotStore);
-    taskProjection = new TaskListProjection(eventStore);
-    taskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
+    taskHandler = new CreateTaskHandler(eventStore, projection);
   });
 
   it('returns null before hydrate() is called', () => {
@@ -3378,7 +3386,7 @@ describe('EntryListProjection — ADR-026 snapshot field-presence guard', () => 
     expect(proj.isCachePopulated()).toBe(false);
   });
 
-  it('accepts a complete v5 snapshot and calls habitProjection.hydrateFromSnapshot()', async () => {
+  it('accepts a complete v5 snapshot — HabitProjection must be hydrated separately by the caller', async () => {
     // Arrange — save a valid v5 snapshot
     const habitState: SerializableHabitState = {
       id: 'habit-snap-1',
@@ -3403,13 +3411,15 @@ describe('EntryListProjection — ADR-026 snapshot field-presence guard', () => 
     });
 
     const proj = new EntryListProjection(eventStore, snapshotStore);
+    const habitProj = new HabitProjection(eventStore);
 
-    // Act
+    // Act: hydrate entry projection, then hydrate habit projection separately (P2-10 pattern)
     await proj.hydrate();
+    const loadedSnapshot = await snapshotStore.load('entry-list-projection');
+    habitProj.hydrateFromSnapshot(loadedSnapshot!.habits!);
 
-    // Assert — after hydration the habitProjection should have been seeded
-    // Query via the public delegate to verify the habit is accessible
-    const habits = await proj.getActiveHabits({ asOf: '2026-01-01' });
+    // Assert — after explicit hydration the habit is accessible
+    const habits = await habitProj.getActiveHabits({ asOf: '2026-01-01' });
     // The habit was seeded from the snapshot even though no HabitCreated event exists
     expect(habits.find(h => h.id === 'habit-snap-1')).toBeDefined();
   });

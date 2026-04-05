@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
-import { TaskListProjection } from './task.projections';
 import { CreateTaskHandler } from './task.handlers';
 import { 
   AddTaskToCollectionHandler, 
@@ -28,7 +27,6 @@ import type { DomainEvent } from './domain-event';
  */
 describe('Multi-Collection Integration Tests', () => {
   let eventStore: InMemoryEventStore;
-  let taskProjection: TaskListProjection;
   let entryProjection: EntryListProjection;
   let createTaskHandler: CreateTaskHandler;
   let addHandler: AddTaskToCollectionHandler;
@@ -39,11 +37,10 @@ describe('Multi-Collection Integration Tests', () => {
   beforeEach(() => {
     // Setup fresh event store and projections for each test
     eventStore = new InMemoryEventStore();
-    taskProjection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     
     // Setup handlers
-    createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+    createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
     addHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
     removeHandler = new RemoveTaskFromCollectionHandler(eventStore, entryProjection);
     moveHandler = new MoveTaskToCollectionHandler(eventStore, addHandler, entryProjection);

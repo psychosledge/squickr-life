@@ -37,11 +37,9 @@ vi.mock('../context/AppContext', async () => {
       // Remaining context values (unused by ReviewView but required by AppContextValue)
       eventStore: {} as any,
       entryProjection: { subscribe: vi.fn().mockReturnValue(() => {}) } as any,
-      taskProjection: {} as any,
       createCollectionHandler: {} as any,
       reorderCollectionHandler: {} as any,
       restoreCollectionHandler: {} as any,
-      migrateTaskHandler: {} as any,
       addTaskToCollectionHandler: {} as any,
       removeTaskFromCollectionHandler: {} as any,
       moveTaskToCollectionHandler: {} as any,
@@ -119,14 +117,12 @@ function renderReviewView(initialPath = '/review') {
   const mockAppContext = {
     eventStore: {} as any,
     entryProjection: { subscribe: vi.fn().mockReturnValue(() => {}) } as any,
-    taskProjection: {} as any,
     collectionProjection: {
       getCollections: mockGetCollections,
       subscribe: vi.fn().mockReturnValue(() => {}),
     } as any,
     createCollectionHandler: {} as any,
     restoreCollectionHandler: {} as any,
-    migrateTaskHandler: {} as any,
     addTaskToCollectionHandler: {} as any,
     removeTaskFromCollectionHandler: {} as any,
     moveTaskToCollectionHandler: {} as any,

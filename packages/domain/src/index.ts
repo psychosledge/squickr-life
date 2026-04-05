@@ -243,7 +243,6 @@ export {
 // Helpers
 export { generateEventMetadata } from './event-helpers';
 export type { EventMetadata } from './event-helpers';
-export { validateTaskExists, validateTaskStatus } from './task-validation';
 export { validateContent, isValidISODate, validateOptionalISODate } from './content-validation';
 export { getLocalDateKey, isoToLocalDateKey } from './date-utils';
 export { validateCollectionName } from './collection-validation';
@@ -254,7 +253,6 @@ export { ReorderEntryHandler } from './reorder-entry.handler';
 export type { ReorderEntryCommand } from './base-entry.types';
 
 // Projections (Read Models)
-export { TaskListProjection } from './task.projections';
 export { EntryListProjection } from './entry.projections';
 export { CollectionViewProjection } from './collection-view.projection';
 export { SubTaskProjection } from './sub-task.projection';

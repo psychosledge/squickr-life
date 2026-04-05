@@ -1,5 +1,4 @@
 import type { ISnapshotStore, ProjectionSnapshot } from '@squickr/domain';
-import { SNAPSHOT_SCHEMA_VERSION } from '@squickr/domain';
 import {
   collection,
   doc,
@@ -9,6 +8,7 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { removeUndefinedDeep } from './firestore-utils';
+import { validateProjectionSnapshot } from './firestore-event-validator';
 
 /**
  * Firestore-backed SnapshotStore
@@ -64,13 +64,7 @@ export class FirestoreSnapshotStore implements ISnapshotStore {
       return null;
     }
 
-    const data = snap.data() as ProjectionSnapshot;
-
-    if (data.version !== SNAPSHOT_SCHEMA_VERSION) {
-      return null;
-    }
-
-    return data;
+    return validateProjectionSnapshot(snap.data());
   }
 
   /**

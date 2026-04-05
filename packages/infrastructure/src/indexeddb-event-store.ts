@@ -22,10 +22,29 @@ export class IndexedDBEventStore implements IEventStore {
   private readonly dbName: string;
   private readonly storeName = 'events';
   private readonly version = 1;
+  private readonly idbFactory: IDBFactory;
+  private readonly IDBKeyRange: typeof IDBKeyRange;
   private subscribers = new Set<(event: DomainEvent) => void>();
 
-  constructor(dbName: string = 'squickr-events') {
+  /**
+   * @param dbName - Database name. Defaults to 'squickr-events'.
+   *                 Pass a unique name in tests to achieve isolation.
+   * @param idbFactory - Optional IDBFactory to inject. Defaults to the global
+   *                     `indexedDB`. Pass `new IDBFactory()` from fake-indexeddb
+   *                     in unit tests.
+   * @param idbKeyRange - Optional IDBKeyRange constructor to inject. Defaults to
+   *                      the global `IDBKeyRange`. Pass the named export from
+   *                      fake-indexeddb in unit tests.
+   */
+  constructor(
+    dbName: string = 'squickr-events',
+    idbFactory?: IDBFactory,
+    idbKeyRange?: typeof IDBKeyRange,
+  ) {
     this.dbName = dbName;
+    // Fall back to the global indexedDB when running in the real browser
+    this.idbFactory = idbFactory ?? indexedDB;
+    this.IDBKeyRange = idbKeyRange ?? IDBKeyRange;
   }
 
   /**
@@ -34,7 +53,7 @@ export class IndexedDBEventStore implements IEventStore {
    */
   async initialize(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, this.version);
+      const request = this.idbFactory.open(this.dbName, this.version);
 
       request.onerror = () => {
         reject(new Error(`Failed to open IndexedDB: ${request.error}`));
@@ -235,14 +254,81 @@ export class IndexedDBEventStore implements IEventStore {
 
   /**
    * Get all events appended after the event with the given ID.
+   *
+   * Two-phase, single-transaction approach (O(log n) index seek vs O(n) full scan):
+   *   Phase 1 — O(1) primary-key lookup to find the anchor event's timestamp.
+   *   Phase 2 — Inclusive lower-bound range scan on the 'timestamp' index from
+   *              that timestamp onward, then filter out the anchor by id.
+   *
    * Falls back to getAll() when lastEventId is null or the anchor is not found.
+   *
+   * Inclusive (not exclusive) lower bound ensures same-millisecond siblings are
+   * included; the anchor itself is then excluded by id filter.
    */
   async getAllAfter(lastEventId: string | null): Promise<DomainEvent[]> {
-    const all = await this.getAll();
-    if (lastEventId === null) return all;
-    const anchorIndex = all.findIndex(e => e.id === lastEventId);
-    if (anchorIndex === -1) return all;
-    return all.slice(anchorIndex + 1);
+    if (!this.db) {
+      throw new Error('EventStore not initialized. Call initialize() first.');
+    }
+
+    // Null path — return everything, same as getAll()
+    if (lastEventId === null) {
+      return this.getAll();
+    }
+
+    return new Promise((resolve, reject) => {
+      let transaction: IDBTransaction;
+      try {
+        transaction = this.db!.transaction([this.storeName], 'readonly');
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'InvalidStateError') {
+          this.db = null;
+          window.location.reload();
+        }
+        reject(error);
+        return;
+      }
+
+      const objectStore = transaction.objectStore(this.storeName);
+
+      // Phase 1: O(1) primary-key lookup for the anchor event
+      const anchorRequest = objectStore.get(lastEventId);
+
+      anchorRequest.onsuccess = () => {
+        const anchor = anchorRequest.result as DomainEvent | undefined;
+
+        // Anchor not found — fall back to returning all events
+        if (anchor === undefined) {
+          const allRequest = objectStore.index('timestamp').getAll();
+          allRequest.onsuccess = () => {
+            const events = allRequest.result as DomainEvent[];
+            events.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+            resolve(events);
+          };
+          allRequest.onerror = () =>
+            reject(new Error(`Failed to get all events (fallback): ${allRequest.error}`));
+          return;
+        }
+
+        // Phase 2: Inclusive lower-bound range scan starting at anchor's timestamp
+        const range = this.IDBKeyRange.lowerBound(anchor.timestamp, false); // inclusive
+        const rangeRequest = objectStore.index('timestamp').getAll(range);
+
+        rangeRequest.onsuccess = () => {
+          const events = (rangeRequest.result as DomainEvent[])
+            // Exclude the anchor itself; keep same-ms siblings and all newer events
+            .filter(e => e.id !== lastEventId);
+          // Sort by timestamp for stable ordering of same-ms siblings
+          events.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+          resolve(events);
+        };
+
+        rangeRequest.onerror = () =>
+          reject(new Error(`Failed to get events after anchor: ${rangeRequest.error}`));
+      };
+
+      anchorRequest.onerror = () =>
+        reject(new Error(`Failed to look up anchor event: ${anchorRequest.error}`));
+    });
   }
 
   /**

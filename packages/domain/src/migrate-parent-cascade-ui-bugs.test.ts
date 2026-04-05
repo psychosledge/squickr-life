@@ -15,13 +15,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
-import { TaskListProjection } from './task.projections';
 import { CreateTaskHandler, MigrateTaskHandler } from './task.handlers';
 import { CreateSubTaskHandler } from './sub-task.handlers';
 
 describe('Parent Migration Cascade - UI/Projection Bugs', () => {
   let eventStore: InMemoryEventStore;
-  let taskProjection: TaskListProjection;
   let entryProjection: EntryListProjection;
   let createTaskHandler: CreateTaskHandler;
   let createSubTaskHandler: CreateSubTaskHandler;
@@ -29,9 +27,8 @@ describe('Parent Migration Cascade - UI/Projection Bugs', () => {
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
-    taskProjection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
-    createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+    createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
     createSubTaskHandler = new CreateSubTaskHandler(eventStore, entryProjection);
     migrateTaskHandler = new MigrateTaskHandler(eventStore, entryProjection);
   });

@@ -7,7 +7,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
-import { TaskListProjection } from './task.projections';
 import { CreateTaskHandler, DeleteTaskHandler } from './task.handlers';
 import { RestoreTaskHandler } from './task.handlers';
 import { CreateNoteHandler, DeleteNoteHandler } from './note.handlers';
@@ -34,9 +33,8 @@ import type {
 function makeSetup() {
   const eventStore: IEventStore = new InMemoryEventStore();
   const entryProjection = new EntryListProjection(eventStore);
-  const taskProjection = new TaskListProjection(eventStore);
 
-  const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+  const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
   const deleteTaskHandler = new DeleteTaskHandler(eventStore, entryProjection);
   const restoreTaskHandler = new RestoreTaskHandler(eventStore, entryProjection);
 

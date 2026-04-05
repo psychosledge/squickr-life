@@ -4,3 +4,4 @@ export { FirestoreEventStore } from './firestore-event-store';
 export { InMemorySnapshotStore } from './in-memory-snapshot-store';
 export { IndexedDBSnapshotStore } from './indexeddb-snapshot-store';
 export { FirestoreSnapshotStore } from './firestore-snapshot-store';
+export { FirestoreValidationError } from './firestore-event-validator';

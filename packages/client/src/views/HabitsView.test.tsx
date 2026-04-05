@@ -50,7 +50,7 @@ function buildMockAppContext(overrides: {
     createHabitHandle = vi.fn().mockResolvedValue(undefined),
   } = overrides;
 
-  const mockEntryProjection = {
+  const mockHabitProjection = {
     getActiveHabits: vi.fn().mockResolvedValue(activeHabits),
     getAllHabits: vi.fn().mockResolvedValue(allHabits),
     subscribe: vi.fn().mockReturnValue(() => {}),
@@ -58,12 +58,11 @@ function buildMockAppContext(overrides: {
 
   return {
     eventStore: { append: vi.fn(), getAll: vi.fn().mockResolvedValue([]), subscribe: vi.fn().mockReturnValue(() => {}) } as any,
-    entryProjection: mockEntryProjection as any,
-    taskProjection: {} as any,
+    entryProjection: {} as any,
+    habitProjection: mockHabitProjection as any,
     collectionProjection: {} as any,
     createCollectionHandler: {} as any,
     restoreCollectionHandler: {} as any,
-    migrateTaskHandler: {} as any,
     addTaskToCollectionHandler: {} as any,
     removeTaskFromCollectionHandler: {} as any,
     moveTaskToCollectionHandler: {} as any,

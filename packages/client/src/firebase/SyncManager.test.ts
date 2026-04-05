@@ -169,7 +169,7 @@ describe('SyncManager', () => {
   });
 
   describe('syncNow()', () => {
-    it('should upload local events to remote store', async () => {
+    it('should upload local events to remote store using appendBatch', async () => {
       const localEvents: DomainEvent[] = [
         {
           id: 'event-1',
@@ -179,14 +179,70 @@ describe('SyncManager', () => {
           version: 1,
         },
       ];
-      
+
       vi.mocked(localStore.getAll).mockResolvedValue(localEvents);
       vi.mocked(remoteStore.getAllAfter).mockResolvedValue([]);
 
       syncManager = new SyncManager(localStore, remoteStore);
       await syncManager.syncNow();
 
-      expect(remoteStore.append).toHaveBeenCalledWith(localEvents[0]);
+      expect(remoteStore.appendBatch).toHaveBeenCalledWith(localEvents);
+      expect(remoteStore.append).not.toHaveBeenCalled();
+    });
+
+    it('should not call appendBatch or append when there are no new events to upload', async () => {
+      const sharedEvent: DomainEvent = {
+        id: 'event-1',
+        type: 'task-created',
+        aggregateId: 'task-1',
+        timestamp: '2026-01-30T10:00:00Z',
+        version: 1,
+      };
+
+      vi.mocked(localStore.getAll).mockResolvedValue([sharedEvent]);
+      vi.mocked(remoteStore.getAllAfter).mockResolvedValue([sharedEvent]);
+
+      syncManager = new SyncManager(localStore, remoteStore);
+      await syncManager.syncNow();
+
+      expect(remoteStore.appendBatch).not.toHaveBeenCalled();
+      expect(remoteStore.append).not.toHaveBeenCalled();
+    });
+
+    it('should upload multiple events in a single appendBatch call', async () => {
+      const localEvents: DomainEvent[] = [
+        {
+          id: 'event-1',
+          type: 'task-created',
+          aggregateId: 'task-1',
+          timestamp: '2026-01-30T10:00:00Z',
+          version: 1,
+        },
+        {
+          id: 'event-2',
+          type: 'task-completed',
+          aggregateId: 'task-2',
+          timestamp: '2026-01-30T11:00:00Z',
+          version: 1,
+        },
+        {
+          id: 'event-3',
+          type: 'task-created',
+          aggregateId: 'task-3',
+          timestamp: '2026-01-30T12:00:00Z',
+          version: 1,
+        },
+      ];
+
+      vi.mocked(localStore.getAll).mockResolvedValue(localEvents);
+      vi.mocked(remoteStore.getAllAfter).mockResolvedValue([]);
+
+      syncManager = new SyncManager(localStore, remoteStore);
+      await syncManager.syncNow();
+
+      expect(remoteStore.appendBatch).toHaveBeenCalledTimes(1);
+      expect(remoteStore.appendBatch).toHaveBeenCalledWith(localEvents);
+      expect(remoteStore.append).not.toHaveBeenCalled();
     });
 
     it('should download remote events to local store', async () => {
@@ -226,6 +282,7 @@ describe('SyncManager', () => {
 
       // Should not append events that already exist
       expect(remoteStore.append).not.toHaveBeenCalled();
+      expect(remoteStore.appendBatch).not.toHaveBeenCalled();
       expect(localStore.append).not.toHaveBeenCalled();
     });
 
@@ -252,7 +309,8 @@ describe('SyncManager', () => {
       syncManager = new SyncManager(localStore, remoteStore);
       await syncManager.syncNow();
 
-      expect(remoteStore.append).toHaveBeenCalledWith(localOnly);
+      expect(remoteStore.appendBatch).toHaveBeenCalledWith([localOnly]);
+      expect(remoteStore.append).not.toHaveBeenCalled();
       expect(localStore.appendBatch).toHaveBeenCalledWith([remoteOnly]);
     });
 

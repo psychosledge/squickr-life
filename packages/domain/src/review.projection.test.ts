@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
-import { TaskListProjection } from './task.projections';
 import {
   CreateTaskHandler,
   CompleteTaskHandler,
@@ -69,8 +68,7 @@ describe('ReviewProjection.getCompletedInRange', () => {
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
     entryProjection = new EntryListProjection(eventStore);
-    const taskProjection = new TaskListProjection(eventStore);
-    createTask = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+    createTask = new CreateTaskHandler(eventStore, entryProjection);
     completeTask = new CompleteTaskHandler(eventStore, entryProjection);
     review = new ReviewProjection(entryProjection, eventStore);
   });

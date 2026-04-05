@@ -75,7 +75,6 @@ function buildMockAppContext(overrides: Partial<any> = {}): any {
     entryProjection: {
       getEntriesByCollection: vi.fn().mockResolvedValue([]),
       getEntriesForCollectionView: vi.fn().mockResolvedValue([]),
-      getHabitsForDate: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
       getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
       getSubTasks: vi.fn().mockResolvedValue([]),
@@ -84,13 +83,15 @@ function buildMockAppContext(overrides: Partial<any> = {}): any {
       isParentTask: vi.fn().mockResolvedValue(false),
       getDeletedEntries: vi.fn().mockResolvedValue([]),
     },
-    taskProjection: {} as any,
+    habitProjection: {
+      getHabitsForDate: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    },
     collectionProjection: {
       getCollections: vi.fn().mockResolvedValue([]),
       subscribe: vi.fn().mockReturnValue(() => {}),
     },
     createCollectionHandler: {} as any,
-    migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
     moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
@@ -296,7 +297,6 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
   let mockCollectionProjection: any;
   let mockEntryProjection: any;
   let mockEventStore: any;
-  let mockTaskProjection: any;
 
   const mockOrphanedEntries: Entry[] = [
     {
@@ -344,11 +344,6 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
       getHabitsForDate: vi.fn().mockResolvedValue([]),
     };
 
-    mockTaskProjection = {
-      getTasks: vi.fn().mockResolvedValue([]),
-      subscribe: vi.fn().mockReturnValue(() => {}),
-    };
-
     mockEventStore = {
       append: vi.fn(),
       getEvents: vi.fn().mockResolvedValue([]),
@@ -361,7 +356,6 @@ describe('CollectionDetailView - Uncategorized Collection Handling', () => {
     const appContext = buildMockAppContext({
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: mockTaskProjection,
       collectionProjection: mockCollectionProjection,
     });
 
@@ -1705,7 +1699,11 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
       getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
       isParentTask: vi.fn().mockResolvedValue(false),
       getDeletedEntries: vi.fn().mockResolvedValue([]),
+    };
+
+    const mockHabitProjection = {
       getHabitsForDate: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
     };
 
     // Allow callers to supply a growing collections list so post-create refreshes work
@@ -1727,10 +1725,9 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
           subscribe: vi.fn().mockReturnValue(() => {}),
         },
         entryProjection: mockEntryProjection,
-        taskProjection: {} as any,
+        habitProjection: mockHabitProjection,
         collectionProjection: mockCollectionProjection,
         createCollectionHandler: { handle: mockCreateCollection } as any,
-        migrateTaskHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
         addTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
         removeTaskFromCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
         moveTaskToCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
@@ -1759,6 +1756,7 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
       mockBulkMigrate,
       mockCreateCollection,
       mockEntryProjection,
+      mockHabitProjection,
       mockCollectionProjection,
     };
   }

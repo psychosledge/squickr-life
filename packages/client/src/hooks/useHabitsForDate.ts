@@ -23,7 +23,7 @@ export function useHabitsForDate(
   date: string,
   options?: { asOf?: string },
 ): HabitsForDateData {
-  const { entryProjection } = useApp();
+  const { habitProjection } = useApp();
 
   const [habits, setHabits] = useState<HabitReadModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,10 +36,10 @@ export function useHabitsForDate(
       setIsLoading(false);
       return;
     }
-    const result = await entryProjection.getHabitsForDate(date, asOf ? { asOf } : undefined);
+    const result = await habitProjection.getHabitsForDate(date, asOf ? { asOf } : undefined);
     setHabits(result);
     setIsLoading(false);
-  }, [date, asOf, entryProjection]);
+  }, [date, asOf, habitProjection]);
 
   // Initial load + re-fetch when date changes
   useEffect(() => {
@@ -49,11 +49,11 @@ export function useHabitsForDate(
 
   // Subscribe to projection changes so we re-fetch on any habit mutation
   useEffect(() => {
-    const unsubscribe = entryProjection.subscribe(() => {
+    const unsubscribe = habitProjection.subscribe(() => {
       fetchData();
     });
     return unsubscribe;
-  }, [entryProjection, fetchData]);
+  }, [habitProjection, fetchData]);
 
   return { habits, isLoading };
 }

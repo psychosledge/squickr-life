@@ -3,7 +3,6 @@ import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { CreateSubTaskHandler } from './sub-task.handlers';
 import { EntryListProjection } from './entry.projections';
 import { CreateTaskHandler } from './task.handlers';
-import { TaskListProjection } from './task.projections';
 import type { CreateSubTaskCommand, TaskCreated, TaskDeleted, TaskAddedToCollection, TaskRemovedFromCollection } from './task.types';
 
 /**
@@ -17,13 +16,11 @@ import type { CreateSubTaskCommand, TaskCreated, TaskDeleted, TaskAddedToCollect
  */
 describe('CreateSubTaskHandler', () => {
   let eventStore: InMemoryEventStore;
-  let taskProjection: TaskListProjection;
   let entryProjection: EntryListProjection;
   let handler: CreateSubTaskHandler;
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
-    taskProjection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     handler = new CreateSubTaskHandler(eventStore, entryProjection);
   });
@@ -31,7 +28,7 @@ describe('CreateSubTaskHandler', () => {
   describe('successful sub-task creation', () => {
     it('should create sub-task under top-level task', async () => {
       // Arrange: Create parent task first
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'App launch',
         collectionId: 'work-projects',
@@ -61,7 +58,7 @@ describe('CreateSubTaskHandler', () => {
 
     it('should create sub-task with trimmed title', async () => {
       // Arrange
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent task',
       });
@@ -83,7 +80,7 @@ describe('CreateSubTaskHandler', () => {
 
     it('should use command collectionId when parent is in collection', async () => {
       // Arrange
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent',
         collectionId: 'monthly-2026-02',
@@ -106,7 +103,7 @@ describe('CreateSubTaskHandler', () => {
 
     it('should use command collectionId even when parent is in a different collection', async () => {
       // Arrange: Parent in collection-A
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent',
         collectionId: 'collection-A',
@@ -130,7 +127,7 @@ describe('CreateSubTaskHandler', () => {
 
     it('should create multiple sub-tasks under same parent', async () => {
       // Arrange
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'App launch',
         collectionId: 'work',
@@ -171,7 +168,7 @@ describe('CreateSubTaskHandler', () => {
       // Arrange: create parent in 'collection-A', then move it to 'collection-B'
       // so parentTask.collectionId (legacy field) is still 'collection-A',
       // but the parent's collections[] = ['collection-B'] after the move.
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent task',
         collectionId: 'collection-A',
@@ -220,7 +217,7 @@ describe('CreateSubTaskHandler', () => {
   describe('validation errors', () => {
     it('should reject empty title', async () => {
       // Arrange
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent',
       });
@@ -237,7 +234,7 @@ describe('CreateSubTaskHandler', () => {
 
     it('should reject whitespace-only title', async () => {
       // Arrange
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent',
       });
@@ -254,7 +251,7 @@ describe('CreateSubTaskHandler', () => {
 
     it('should reject title longer than 500 characters', async () => {
       // Arrange
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent',
       });
@@ -283,7 +280,7 @@ describe('CreateSubTaskHandler', () => {
 
     it('should reject creating sub-task under another sub-task (enforce 2-level limit)', async () => {
       // Arrange: Create parent and sub-task
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Grandparent',
       });
@@ -308,7 +305,7 @@ describe('CreateSubTaskHandler', () => {
 
     it('should reject when parent task was deleted', async () => {
       // Arrange: Create and delete parent task
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent',
       });
@@ -341,7 +338,7 @@ describe('CreateSubTaskHandler', () => {
   describe('edge cases', () => {
     it('should handle userId propagation', async () => {
       // Arrange
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent',
         userId: 'user-123',
@@ -365,7 +362,7 @@ describe('CreateSubTaskHandler', () => {
 
     it('should generate unique IDs for multiple sub-tasks', async () => {
       // Arrange
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent',
       });
@@ -389,7 +386,7 @@ describe('CreateSubTaskHandler', () => {
 
     it('should handle maximum title length (500 characters)', async () => {
       // Arrange
-      const createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+      const createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
       const parentId = await createTaskHandler.handle({
         content: 'Parent',
       });

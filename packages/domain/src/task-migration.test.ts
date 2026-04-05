@@ -3,23 +3,20 @@ import { MigrateTaskHandler } from './task.handlers';
 import { CreateTaskHandler } from './task.handlers';
 import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
-import { TaskListProjection } from './task.projections';
 import { EntryListProjection } from './entry.projections';
 import type { MigrateTaskCommand, TaskMigrated } from './task.types';
 
 describe('MigrateTaskHandler', () => {
   let eventStore: IEventStore;
-  let taskProjection: TaskListProjection;
   let entryProjection: EntryListProjection;
   let handler: MigrateTaskHandler;
   let createTaskHandler: CreateTaskHandler;
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
-    taskProjection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
     handler = new MigrateTaskHandler(eventStore, entryProjection);
-    createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+    createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
   });
 
   describe('handle', () => {

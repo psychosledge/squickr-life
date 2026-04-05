@@ -61,9 +61,7 @@ describe('useCollectionNavigation', () => {
             } as any,
             collectionProjection: mockCollectionProjection,
             entryProjection: mockEntryProjection,
-            taskProjection: {} as any,
             createCollectionHandler: {} as any,
-            migrateTaskHandler: {} as any,
           }}
         >
           {children}

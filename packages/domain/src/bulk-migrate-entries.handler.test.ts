@@ -3,7 +3,6 @@ import { BulkMigrateEntriesHandler } from './bulk-migrate-entries.handler';
 import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
-import { TaskListProjection } from './task.projections';
 import { CreateTaskHandler } from './task.handlers';
 import { CreateNoteHandler } from './note.handlers';
 import { CreateEventHandler } from './event.handlers';
@@ -24,7 +23,7 @@ describe('BulkMigrateEntriesHandler', () => {
     eventStore = new InMemoryEventStore();
     entryProjection = new EntryListProjection(eventStore);
     handler = new BulkMigrateEntriesHandler(eventStore, entryProjection);
-    createTaskHandler = new CreateTaskHandler(eventStore, undefined as any, entryProjection);
+    createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
     createNoteHandler = new CreateNoteHandler(eventStore, entryProjection);
     createEventHandler = new CreateEventHandler(eventStore, entryProjection);
   });
@@ -498,8 +497,7 @@ describe('BulkMigrateEntriesHandler', () => {
 
   describe('Migrated sub-task bulk migration', () => {
     it('should remove migrated sub-task from actual collection, not parent collection', async () => {
-      // Setup: Need AddTaskToCollectionHandler, TaskListProjection, and CreateSubTaskHandler
-      const taskProjection = new TaskListProjection(eventStore);
+      // Setup: Need AddTaskToCollectionHandler and CreateSubTaskHandler
       const addTaskHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
       const createSubTaskHandler = new CreateSubTaskHandler(eventStore, entryProjection);
       
@@ -567,14 +565,11 @@ describe('BulkMigrateEntriesHandler', () => {
       // Expected: Sub-task should be removed from 2/15, NOT from monthly-log
 
       // Setup handlers
-      const taskProjection = new TaskListProjection(eventStore);
       const addTaskHandler = new AddTaskToCollectionHandler(eventStore, entryProjection);
       const removeTaskHandler = new (await import('./collection-management.handlers')).RemoveTaskFromCollectionHandler(eventStore, entryProjection);
       const createSubTaskHandler = new CreateSubTaskHandler(eventStore, entryProjection);
       
-      // Setup: Need AddTaskToCollectionHandler, TaskListProjection, and CreateSubTaskHandler
-      const taskProjection2 = new TaskListProjection(eventStore);
-      void taskProjection2; // used below indirectly
+      // Setup: Need AddTaskToCollectionHandler, RemoveTaskFromCollectionHandler, and CreateSubTaskHandler
       const parentId = await createTaskHandler.handle({
         content: 'Monthly Parent Task',
         collectionId: 'monthly-log',

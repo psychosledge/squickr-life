@@ -1,5 +1,4 @@
 import type { IEventStore } from './event-store';
-import type { TaskListProjection } from './task.projections';
 import type { EntryListProjection } from './entry.projections';
 import type { 
   CreateTaskCommand, 
@@ -40,7 +39,6 @@ import { generateKeyBetween } from 'fractional-indexing';
 export class CreateTaskHandler {
   constructor(
     private readonly eventStore: IEventStore,
-    _taskProjection: TaskListProjection, // Not used in CreateTaskHandler (kept for signature compatibility)
     private readonly entryProjection: EntryListProjection
   ) {}
 

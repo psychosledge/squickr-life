@@ -18,8 +18,6 @@ import { DailyLogProjection } from './daily-log.projection';
 import { ReviewProjection } from './review.projection';
 import type { StalledTask } from './review.projection';
 import type { Collection } from './collection.types';
-import { HabitProjection } from './habit.projection';
-import type { HabitReadModel } from './habit.types';
 
 /**
  * EntryListProjection - Unified Read Model for Tasks, Notes, and Events
@@ -71,21 +69,10 @@ export class EntryListProjection {
   private readonly subTask = new SubTaskProjection(this);
   private readonly dailyLog = new DailyLogProjection(this);
   private readonly review: ReviewProjection;
-  private readonly habit: HabitProjection;
-
-  /**
-   * Expose the internal HabitProjection so that SnapshotManager (and App.tsx)
-   * can pass it to snapshot enrichment without needing a separate reference.
-   * Read-only — callers must not replace or wrap this instance.
-   */
-  get habitProjection(): HabitProjection {
-    return this.habit;
-  }
 
   constructor(private readonly eventStore: IEventStore, snapshotStore?: ISnapshotStore) {
     this.snapshotStore = snapshotStore;
     this.review = new ReviewProjection(this, this.eventStore);
-    this.habit = new HabitProjection(this.eventStore);
     // Subscribe to event store changes to enable reactive projections
     this.eventStore.subscribe((event: DomainEvent) => {
       // If this event was already baked into the hydrated snapshot, absorb silently.
@@ -184,8 +171,8 @@ export class EntryListProjection {
     // getEntries() filters these out at query time, but they remain in the snapshot state.
     const orphanedInSnapshot = snapshot.state.filter(e => e.collections.length === 0 && !e.deletedAt);
     if (orphanedInSnapshot.length > 0) {
-      logger.warn(
-        '[EntryListProjection.hydrate] Snapshot contains orphaned entries (collections=[], no deletedAt) — these will appear in Uncategorized:',
+      logger.debug(
+        '[EntryListProjection.hydrate] Snapshot contains legacy orphaned entries (collections=[], no deletedAt) — hidden by getEntries():',
         orphanedInSnapshot.map(e => ({
           id: e.id,
           type: e.type,
@@ -194,11 +181,6 @@ export class EntryListProjection {
         })),
       );
     }
-
-    // ADR-026: Hydrate HabitProjection from snapshot.
-    // This must happen after the field-presence guard and before the cache is
-    // seeded, so the habit data is available as soon as entries are ready.
-    this.habit.hydrateFromSnapshot(snapshot.habits);
 
     // Load all events to determine the delta and record the emptiness flag.
     const allEvents = await this.eventStore.getAll();
@@ -355,8 +337,8 @@ export class EntryListProjection {
     const getMigratedTo = (e: Entry) => (e as unknown as { migratedTo?: string }).migratedTo;
     const orphanedInSave = rawEntries.filter(e => e.collections.length === 0 && !e.deletedAt && getMigratedTo(e) !== undefined);
     if (orphanedInSave.length > 0) {
-      logger.warn(
-        '[EntryListProjection.createSnapshot] Snapshot contains legacy orphaned migrated entries (collections=[], migratedTo set) — they will be excluded from active views by getEntries():',
+      logger.debug(
+        '[EntryListProjection.createSnapshot] Snapshot contains legacy orphaned migrated entries (collections=[], migratedTo set) — excluded from active views by getEntries():',
         orphanedInSave.map(e => ({ id: e.id, type: e.type, migratedTo: getMigratedTo(e) })),
       );
     }
@@ -634,25 +616,4 @@ export class EntryListProjection {
     return this.review.getStalledMonthlyTasks(olderThanDays, getCollection);
   }
 
-  // ── HabitProjection delegates ──────────────────────────────────────────────
-
-  /** @see HabitProjection.getActiveHabits */
-  async getActiveHabits(options?: { asOf?: string }): Promise<HabitReadModel[]> {
-    return this.habit.getActiveHabits(options);
-  }
-
-  /** @see HabitProjection.getAllHabits */
-  async getAllHabits(options?: { asOf?: string }): Promise<HabitReadModel[]> {
-    return this.habit.getAllHabits(options);
-  }
-
-  /** @see HabitProjection.getHabitById */
-  async getHabitById(habitId: string, options?: { asOf?: string }): Promise<HabitReadModel | undefined> {
-    return this.habit.getHabitById(habitId, options);
-  }
-
-  /** @see HabitProjection.getHabitsForDate */
-  async getHabitsForDate(date: string, options?: { asOf?: string }): Promise<HabitReadModel[]> {
-    return this.habit.getHabitsForDate(date, options);
-  }
 }

@@ -6,7 +6,6 @@ import {
   CreateCollectionHandler,
   ReorderCollectionHandler,
   RestoreCollectionHandler,
-  MigrateTaskHandler,
   AddTaskToCollectionHandler,
   RemoveTaskFromCollectionHandler,
   MoveTaskToCollectionHandler,
@@ -21,7 +20,7 @@ import {
   RestoreNoteHandler,
   RestoreEventHandler,
   EntryListProjection,
-  TaskListProjection,
+  HabitProjection,
   CollectionListProjection,
   UserPreferencesProjection,
   DEFAULT_USER_PREFERENCES,
@@ -40,12 +39,13 @@ import {
   SetHabitNotificationTimeHandler,
   ClearHabitNotificationTimeHandler,
 } from '@squickr/domain';
-import { IndexedDBEventStore, FirestoreEventStore, IndexedDBSnapshotStore, FirestoreSnapshotStore } from '@squickr/infrastructure';
+import { IndexedDBEventStore, IndexedDBSnapshotStore } from '@squickr/infrastructure';
 import { AppProvider } from './context/AppContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DebugProvider } from './context/DebugContext';
 import { TutorialProvider } from './context/TutorialContext';
 import { useTutorial } from './hooks/useTutorial';
+import { useColdStartSequencer } from './hooks/useColdStartSequencer';
 import { TUTORIAL_STEP_COUNT } from './context/TutorialContext';
 import { CollectionIndexView } from './views/CollectionIndexView';
 import { CollectionDetailView } from './views/CollectionDetailView';
@@ -53,19 +53,14 @@ import { ReviewView } from './views/ReviewView';
 import { HabitsView } from './views/HabitsView';
 import { HabitDetailView } from './views/HabitDetailView';
 import { SignInView } from './views/SignInView';
-import { SyncManager } from './firebase/SyncManager';
 import { SnapshotManager } from './snapshot-manager';
-import { firestore } from './firebase/config';
 import { registerFcmToken } from './firebase/fcm';
 import { ROUTES } from './routes';
 import { logger } from './utils/logger';
 
-// ─── ADR-024: Cold-start phase type ───────────────────────────────────────────
-// 'checking'  — auth resolved, determining whether remote restore is needed
-// 'restoring' — fetching / seeding remote snapshot into local store
-// 'syncing'   — SyncManager initial sync in progress (overlay shown)
-// 'ready'     — app ready for user interaction
-export type ColdStartPhase = 'checking' | 'restoring' | 'syncing' | 'ready';
+// ColdStartPhase is exported from useColdStartSequencer — re-export for
+// consumers that previously imported it from App.tsx.
+export type { ColdStartPhase } from './hooks/useColdStartSequencer';
 
 // ─── Tutorial Step Definitions ────────────────────────────────────────────────
 // Real DOM anchors use data-tutorial-id attributes added in Commit 3.
@@ -259,7 +254,7 @@ function AppContent() {
   const [eventStore] = useState(() => new IndexedDBEventStore());
   const [snapshotStore] = useState(() => new IndexedDBSnapshotStore());
   const [entryProjection] = useState(() => new EntryListProjection(eventStore, snapshotStore));
-  const [taskProjection] = useState(() => new TaskListProjection(eventStore));
+  const [habitProjection] = useState(() => new HabitProjection(eventStore));
   const [collectionProjection] = useState(() => new CollectionListProjection(eventStore));
   const [userPreferencesProjection] = useState(() => new UserPreferencesProjection(eventStore));
   
@@ -267,9 +262,6 @@ function AppContent() {
   const [createCollectionHandler] = useState(() => new CreateCollectionHandler(eventStore, collectionProjection));
   const [reorderCollectionHandler] = useState(() => new ReorderCollectionHandler(eventStore, collectionProjection));
   const [restoreCollectionHandler] = useState(() => new RestoreCollectionHandler(eventStore, collectionProjection));
-  
-  // Migration handlers (legacy single-collection — tasks only)
-  const [migrateTaskHandler] = useState(() => new MigrateTaskHandler(eventStore, entryProjection));
   
   // Multi-collection handlers (Phase 3)
   const [addTaskToCollectionHandler] = useState(() => new AddTaskToCollectionHandler(eventStore, entryProjection));
@@ -324,24 +316,12 @@ function AppContent() {
   // UI state (for loading indicator only)
   const [isLoading, setIsLoading] = useState(true);
 
-  // ── ADR-024: Cold-start phase state machine ─────────────────────────────────
-  // Replaces the previous isRemoteRestoring + isSyncing boolean pair.
-  // Type is declared at module scope (exported) so tests can reference it.
-  const [coldStartPhase, setColdStartPhase] = useState<ColdStartPhase>('checking');
-
-  const [syncError, setSyncError] = useState<string | null>(null);
-  
   // Track if app is initialized (prevents double-init in React StrictMode)
   const isInitialized = useRef(false);
-  
-  // Background sync manager
-  const syncManagerRef = useRef<SyncManager | null>(null);
 
-  // Snapshot manager
+  // Snapshot manager — must exist before user is known so initializeApp() can
+  // populate it, and so useColdStartSequencer can update it with the remote store.
   const snapshotManagerRef = useRef<SnapshotManager | null>(null);
-
-  // Track if a remote snapshot was restored (skips sync overlay on cold-start)
-  const restoredFromRemoteRef = useRef(false);
 
   // Initialize IndexedDB and load tasks on mount
   useEffect(() => {
@@ -359,7 +339,7 @@ function AppContent() {
         eventStore,
         collectionProjection,
         50,
-        entryProjection.habitProjection,
+        habitProjection,
         userPreferencesProjection,
       );
       sm.start();
@@ -377,179 +357,18 @@ function AppContent() {
   // isAppReady starts as false and cannot trigger the tutorial prematurely
   // before startSync() has run (ADR-024 bug fix).
 
-  // Start/stop background sync when user signs in/out
-  useEffect(() => {
-    if (!user || isLoading) {
-      // User signed out or still loading - stop sync
-      syncManagerRef.current?.stop();
-      syncManagerRef.current = null;
-      return;
-    }
-    
-    // User signed in - start background sync.
-    // Reset to 'checking' synchronously: the no-user guard may have left
-    // coldStartPhase as 'ready' (and therefore isAppReady=true) while
-    // SignInView was shown. If we don't reset here, CollectionIndexView's
-    // tutorial effect fires before startSync() can set the session flag.
-    setColdStartPhase('checking');
-
-    const remoteEventStore = new FirestoreEventStore(firestore, user.uid);
-    const remoteSnapshotStore = new FirestoreSnapshotStore(firestore, user.uid);
-
-    // Update SnapshotManager to include the remote store now that we know the user
-    snapshotManagerRef.current?.stop();
-    const sm = new SnapshotManager(
-      entryProjection,
-      snapshotStore,
-      remoteSnapshotStore,
-      eventStore,
-      collectionProjection,
-      50,
-      entryProjection.habitProjection,
-      userPreferencesProjection,
-    );
-    sm.start();
-    snapshotManagerRef.current = sm;
-
-    let cancelled = false;
-
-    const startSync = async () => {
-      // ── ADR-024: Cold-start sequencer ──────────────────────────────────────
-      const forceFullReplay = FORCE_FULL_REPLAY;
-      // Read the emptiness flag captured by initializeApp()'s hydrate() call.
-      // This is the single check that decides whether to fetch a remote snapshot.
-      const isEmptyLocalStore = entryProjection.wasLocalStoreEmptyAtHydration();
-      logger.info('[App] Cold-start: isEmptyLocalStore =', isEmptyLocalStore);
-
-      // Set the tutorial-suppression flag synchronously — before any await — so it
-      // is guaranteed to be in sessionStorage before isAppReady can become true,
-      // regardless of which cold-start path executes (ADR-024).
-      if (isEmptyLocalStore) {
-        sessionStorage.setItem('squickr_cold_start_restored', 'true');
-      }
-
-      if (!isEmptyLocalStore) {
-        // ── Fast path: local store has data — skip Firestore round-trip ──────
-        // Advance to 'ready' synchronously before starting background sync so
-        // there is no render cycle where the app is "checking" but not ready.
-        if (!cancelled) setColdStartPhase('ready');
-        const manager = new SyncManager(
-          eventStore,
-          remoteEventStore,
-          undefined,
-          () => entryProjection.getLastSnapshotCursor(),
-        );
-        let initialSnapshotSaved = false;
-        manager.onSyncStateChange = (syncing: boolean, error?: string) => {
-          if (error) setSyncError(error);
-          if (!syncing && !initialSnapshotSaved) {
-            initialSnapshotSaved = true;
-            void snapshotManagerRef.current?.saveSnapshot('post-initial-sync-fast-path');
-          }
-        };
-        manager.start();
-        syncManagerRef.current = manager;
-        logger.info('[App] Cold-start fast path: background sync started (local store non-empty)');
-        return;
-      }
-
-      // ── Slow path: local store is empty — attempt remote snapshot restore ──
-      // Uses a 10-second timeout (ADR-024: increased from 5s — see Rationale).
-      logger.info('[App] Cold-start: local store empty — attempting remote snapshot restore…');
-      try {
-        const remoteSnapshot = await Promise.race([
-          remoteSnapshotStore.load('entry-list-projection'),
-          new Promise<null>(resolve => setTimeout(() => resolve(null), 10_000)),
-        ]);
-
-        logger.info('[App] Cold-start: remote snapshot result =', remoteSnapshot ? `found (savedAt=${remoteSnapshot.savedAt}, lastEventId=${remoteSnapshot.lastEventId})` : 'null (not found or timed out)');
-
-        if (cancelled) {
-          logger.info('[App] Cold-start: cancelled before snapshot check');
-          return;
-        }
-
-        if (remoteSnapshot) {
-          // Remote snapshot found — seed local store and re-hydrate
-          if (!cancelled) setColdStartPhase('restoring');
-          await snapshotStore.save('entry-list-projection', remoteSnapshot);
-          await entryProjection.hydrate(forceFullReplay ? { forceFullReplay: true } : undefined);
-          // Seed collection list from snapshot if available (ADR-024)
-          if (remoteSnapshot.collections?.length) {
-            collectionProjection.seedFromSnapshot(remoteSnapshot.collections);
-          }
-          // Seed user preferences from snapshot if available (ADR-026)
-          if (remoteSnapshot.userPreferences) {
-            userPreferencesProjection.hydrateFromSnapshot(remoteSnapshot.userPreferences);
-          }
-          // Skip the blocking overlay if either:
-          // (a) hydrate() populated the entry cache from snapshot state, or
-          // (b) the snapshot contained collection data (so something is displayable)
-          restoredFromRemoteRef.current =
-            entryProjection.isCachePopulated() ||
-            (remoteSnapshot.collections?.length ?? 0) > 0;
-          logger.info(
-            '[App] Cold-start: remote snapshot restored — cache populated:',
-            restoredFromRemoteRef.current,
-          );
-        }
-      } catch (err) {
-        logger.warn('[App] Remote snapshot restore failed, falling back to normal sync:', err);
-      }
-
-      if (cancelled) return;
-
-      const manager = new SyncManager(
-        eventStore,
-        remoteEventStore,
-        undefined,
-        () => entryProjection.getLastSnapshotCursor(),
-      );
-
-      if (restoredFromRemoteRef.current) {
-        // Snapshot data (entries + collections) is already in memory — set ready
-        // immediately so the UI renders from snapshot without waiting for the full
-        // event log to download.  Sync continues in the background; errors surface
-        // via syncError state (non-blocking "Show local data" button).
-        if (!cancelled) setColdStartPhase('ready');
-        manager.onSyncStateChange = (_syncing: boolean, error?: string) => {
-          if (error) setSyncError(error);
-        };
-      } else {
-        // Normal path (null / timed-out snapshot): show overlay until initial sync
-        // completes so the user never sees an empty state while events download.
-        if (!cancelled) setColdStartPhase('syncing');
-        let initialSnapshotSaved = false;
-        manager.onSyncStateChange = (syncing: boolean, error?: string) => {
-          setSyncError(error ?? null);
-          if (!syncing) {
-            setColdStartPhase('ready');
-            // After initial sync completes, proactively save a snapshot so Firestore
-            // has one available for future cold-starts on new devices / incognito.
-            if (!initialSnapshotSaved) {
-              initialSnapshotSaved = true;
-              void snapshotManagerRef.current?.saveSnapshot('post-initial-sync');
-            }
-          }
-        };
-      }
-
-      manager.start();
-      syncManagerRef.current = manager;
-
-      logger.info('[App] Background sync started');
-    };
-
-    void startSync();
-    
-    return () => {
-      cancelled = true;
-      restoredFromRemoteRef.current = false;
-      syncManagerRef.current?.stop();
-      syncManagerRef.current = null;
-      logger.info('[App] Background sync stopped');
-    };
-  }, [user, isLoading, eventStore, snapshotStore, entryProjection]);
+  // ── ADR-024: Cold-start sequencer (extracted to hook, P2-9) ─────────────────
+  const { coldStartPhase, syncError, isAppReady, dismissSyncError } = useColdStartSequencer({
+    user,
+    isLoading,
+    entryProjection,
+    habitProjection,
+    collectionProjection,
+    userPreferencesProjection,
+    eventStore,
+    snapshotStore,
+    snapshotManagerRef,
+  });
 
   const initializeApp = async () => {
     try {
@@ -563,10 +382,11 @@ function AppContent() {
       await entryProjection.hydrate(forceFullReplay ? { forceFullReplay: true } : undefined);
 
       if (!forceFullReplay) {
-        // Seed collectionProjection and userPreferencesProjection from the local snapshot.
-        // This is the fast-path equivalent of what startSync() does on the cold-start slow
-        // path. Without this, projections rebuild from getAll() — which on a new device
-        // (delta-only local store) returns only recent events, losing all pre-snapshot data.
+        // Seed collectionProjection, habitProjection, and userPreferencesProjection from the
+        // local snapshot. This is the fast-path equivalent of what startSync() does on the
+        // cold-start slow path. Without this, projections rebuild from getAll() — which on a
+        // new device (delta-only local store) returns only recent events, losing all
+        // pre-snapshot data.
         const localSnapshot = await snapshotStore.load('entry-list-projection');
         if (
           localSnapshot !== null &&
@@ -577,6 +397,7 @@ function AppContent() {
           if (localSnapshot.collections?.length) {
             collectionProjection.seedFromSnapshot(localSnapshot.collections);
           }
+          habitProjection.hydrateFromSnapshot(localSnapshot.habits);
           userPreferencesProjection.hydrateFromSnapshot(localSnapshot.userPreferences);
         }
       }
@@ -596,16 +417,6 @@ function AppContent() {
       setIsLoading(false);
     }
   };
-
-  // The app is "ready" once IndexedDB has loaded AND the cold-start phase has
-  // reached 'ready' AND there is no unacknowledged sync error.
-  // Background syncs after the first do not block (coldStartPhase stays 'ready').
-  // When a sync error occurs, the overlay stays visible until the user dismisses
-  // it with "Show local data".
-  const isAppReady =
-    !isLoading &&
-    coldStartPhase === 'ready' &&
-    syncError === null;
 
   // Register FCM token once the app is ready and the user is signed in.
   // 2-second delay keeps it off the critical path so it doesn't compete with
@@ -636,12 +447,11 @@ function AppContent() {
   const contextValue = {
     eventStore,
     entryProjection,
-    taskProjection,
+    habitProjection,
     collectionProjection,
     createCollectionHandler,
     reorderCollectionHandler,
     restoreCollectionHandler,
-    migrateTaskHandler,
     addTaskToCollectionHandler,
     removeTaskFromCollectionHandler,
     moveTaskToCollectionHandler,
@@ -696,7 +506,7 @@ function AppContent() {
                   {syncError}
                 </p>
                 <button
-                  onClick={() => setSyncError(null)}
+                  onClick={dismissSyncError}
                   className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium
                              hover:bg-blue-700 active:bg-blue-800 transition-colors"
                 >

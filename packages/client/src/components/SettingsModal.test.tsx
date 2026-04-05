@@ -11,11 +11,6 @@ import { SettingsModal } from './SettingsModal';
 import type { IEventStore } from '@squickr/domain';
 import { InMemoryEventStore } from '@squickr/infrastructure';
 
-// Mock hooks
-vi.mock('../hooks/useUserPreferences', () => ({
-  useUserPreferences: vi.fn(),
-}));
-
 vi.mock('../context/AppContext', () => ({
   useApp: vi.fn(),
 }));
@@ -24,9 +19,15 @@ vi.mock('../hooks/useFcmRegistrationStatus', () => ({
   useFcmRegistrationStatus: vi.fn(),
 }));
 
-import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useApp } from '../context/AppContext';
 import { useFcmRegistrationStatus } from '../hooks/useFcmRegistrationStatus';
+
+const defaultPreferences = {
+  defaultCompletedTaskBehavior: 'move-to-bottom' as const,
+  autoFavoriteRecentDailyLogs: false,
+  autoFavoriteRecentMonthlyLogs: false,
+  autoFavoriteCalendarWithActiveTasks: false,
+};
 
 describe('SettingsModal', () => {
   let mockEventStore: IEventStore;
@@ -38,33 +39,28 @@ describe('SettingsModal', () => {
     subscribe: vi.fn().mockReturnValue(() => {}),
   };
 
+  const mockUseApp = (preferenceOverrides = {}) =>
+    vi.mocked(useApp).mockReturnValue({
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection as unknown as ReturnType<typeof useApp>['entryProjection'],
+      userPreferences: { ...defaultPreferences, ...preferenceOverrides },
+      user: null,
+      loading: false,
+      signOut: vi.fn(),
+    } as unknown as ReturnType<typeof useApp>);
+
   beforeEach(() => {
     // Reset mocks
     vi.clearAllMocks();
-    
+
     // Setup event store
     mockEventStore = new InMemoryEventStore();
 
     // Reset entryProjection mocks
     mockEntryProjection.getActiveHabits.mockResolvedValue([]);
     mockEntryProjection.subscribe.mockReturnValue(() => {});
-    
-    // Mock useApp hook
-    vi.mocked(useApp).mockReturnValue({
-      eventStore: mockEventStore,
-      entryProjection: mockEntryProjection as unknown as ReturnType<typeof useApp>['entryProjection'],
-      user: null,
-      loading: false,
-      signOut: vi.fn(),
-    } as unknown as ReturnType<typeof useApp>);
-    
-    // Mock useUserPreferences hook with defaults
-    vi.mocked(useUserPreferences).mockReturnValue({
-      defaultCompletedTaskBehavior: 'move-to-bottom',
-      autoFavoriteRecentDailyLogs: false,
-      autoFavoriteRecentMonthlyLogs: false,
-      autoFavoriteCalendarWithActiveTasks: false,
-    });
+
+    mockUseApp();
 
     // Mock useFcmRegistrationStatus hook with default
     vi.mocked(useFcmRegistrationStatus).mockReturnValue('unregistered');
@@ -88,12 +84,7 @@ describe('SettingsModal', () => {
   });
 
   it('should display current preferences on open', () => {
-    vi.mocked(useUserPreferences).mockReturnValue({
-      defaultCompletedTaskBehavior: 'collapse',
-      autoFavoriteRecentDailyLogs: true,
-      autoFavoriteRecentMonthlyLogs: false,
-      autoFavoriteCalendarWithActiveTasks: false,
-    });
+    mockUseApp({ defaultCompletedTaskBehavior: 'collapse', autoFavoriteRecentDailyLogs: true });
 
     render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
 
@@ -330,12 +321,7 @@ describe('SettingsModal', () => {
   });
 
   it('should reflect current autoFavoriteCalendarWithActiveTasks preference when modal opens', () => {
-    vi.mocked(useUserPreferences).mockReturnValue({
-      defaultCompletedTaskBehavior: 'move-to-bottom',
-      autoFavoriteRecentDailyLogs: false,
-      autoFavoriteRecentMonthlyLogs: false,
-      autoFavoriteCalendarWithActiveTasks: true,
-    });
+    mockUseApp({ autoFavoriteCalendarWithActiveTasks: true });
 
     render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
 

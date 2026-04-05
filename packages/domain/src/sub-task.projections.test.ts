@@ -3,7 +3,6 @@ import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
 import { CreateTaskHandler, CompleteTaskHandler, MigrateTaskHandler } from './task.handlers';
 import { CreateSubTaskHandler } from './sub-task.handlers';
-import { TaskListProjection } from './task.projections';
 import type { TaskDeleted, TaskAddedToCollection } from './task.types';
 
 /**
@@ -22,7 +21,6 @@ import type { TaskDeleted, TaskAddedToCollection } from './task.types';
 describe('EntryListProjection - Sub-Task Queries', () => {
   let eventStore: InMemoryEventStore;
   let projection: EntryListProjection;
-  let taskProjection: TaskListProjection;
   let createTaskHandler: CreateTaskHandler;
   let createSubTaskHandler: CreateSubTaskHandler;
   let completeTaskHandler: CompleteTaskHandler;
@@ -31,8 +29,7 @@ describe('EntryListProjection - Sub-Task Queries', () => {
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
     projection = new EntryListProjection(eventStore);
-    taskProjection = new TaskListProjection(eventStore);
-    createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, projection);
+    createTaskHandler = new CreateTaskHandler(eventStore, projection);
     createSubTaskHandler = new CreateSubTaskHandler(eventStore, projection);
     completeTaskHandler = new CompleteTaskHandler(eventStore, projection);
     migrateTaskHandler = new MigrateTaskHandler(eventStore, projection);

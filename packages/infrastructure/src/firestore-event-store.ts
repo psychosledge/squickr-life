@@ -12,6 +12,7 @@ import {
   type Firestore
 } from 'firebase/firestore';
 import { removeUndefinedDeep } from './firestore-utils';
+import { assertValidDomainEvent, FirestoreValidationError } from './firestore-event-validator';
 
 /**
  * Firestore-backed EventStore
@@ -108,7 +109,7 @@ export class FirestoreEventStore implements IEventStore {
     );
     
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => doc.data() as DomainEvent);
+    return snapshot.docs.map(d => assertValidDomainEvent(d.data(), d.id));
   }
 
   /**
@@ -117,9 +118,9 @@ export class FirestoreEventStore implements IEventStore {
   async getAll(): Promise<DomainEvent[]> {
     const eventsRef = collection(this.firestore, `users/${this.userId}/events`);
     const q = query(eventsRef, orderBy('timestamp', 'asc'));
-    
+
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => doc.data() as DomainEvent);
+    return snapshot.docs.map(d => assertValidDomainEvent(d.data(), d.id));
   }
 
   /**
@@ -135,15 +136,25 @@ export class FirestoreEventStore implements IEventStore {
       const anchorRef = doc(eventsRef, lastEventId);
       const anchorSnap = await getDoc(anchorRef);
       if (!anchorSnap.exists()) return this.getAll();
-      const anchorTimestamp = anchorSnap.data()['timestamp'] as string;
+      const anchorRaw = anchorSnap.data();
+      const anchorTimestamp = anchorRaw['timestamp'];
+      if (typeof anchorTimestamp !== 'string') {
+        throw new FirestoreValidationError(
+          `Firestore anchor document "${lastEventId}" has a non-string "timestamp" field`,
+          lastEventId,
+          anchorRaw
+        );
+      }
       const q = query(
         eventsRef,
         where('timestamp', '>', anchorTimestamp),
         orderBy('timestamp', 'asc'),
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(d => d.data() as DomainEvent);
-    } catch {
+      return snapshot.docs.map(d => assertValidDomainEvent(d.data(), d.id));
+    } catch (err) {
+      // Validation errors are programmer-visible bugs — re-throw so they are not silently swallowed.
+      if (err instanceof FirestoreValidationError) throw err;
       return this.getAll();
     }
   }

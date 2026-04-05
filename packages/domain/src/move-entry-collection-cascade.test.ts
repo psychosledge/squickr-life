@@ -12,13 +12,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
-import { TaskListProjection } from './task.projections';
 import { CreateTaskHandler, MoveEntryToCollectionHandler } from './task.handlers';
 import { CreateSubTaskHandler } from './sub-task.handlers';
 
 describe('MoveEntryToCollectionHandler - Phase 3 Parent Cascade (Bug Reproduction)', () => {
   let eventStore: InMemoryEventStore;
-  let taskProjection: TaskListProjection;
   let entryProjection: EntryListProjection;
   let createTaskHandler: CreateTaskHandler;
   let createSubTaskHandler: CreateSubTaskHandler;
@@ -26,9 +24,8 @@ describe('MoveEntryToCollectionHandler - Phase 3 Parent Cascade (Bug Reproductio
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
-    taskProjection = new TaskListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
-    createTaskHandler = new CreateTaskHandler(eventStore, taskProjection, entryProjection);
+    createTaskHandler = new CreateTaskHandler(eventStore, entryProjection);
     createSubTaskHandler = new CreateSubTaskHandler(eventStore, entryProjection);
     moveEntryHandler = new MoveEntryToCollectionHandler(eventStore, entryProjection);
   });

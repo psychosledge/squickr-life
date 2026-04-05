@@ -5,20 +5,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useCollectionHandlers } from './useCollectionHandlers';
-import { CollectionListProjection, EntryListProjection, TaskListProjection } from '@squickr/domain';
 import { InMemoryEventStore } from '@squickr/infrastructure';
+import { CollectionListProjection, EntryListProjection } from '@squickr/domain';
 
 describe('useCollectionHandlers', () => {
   let eventStore: InMemoryEventStore;
   let collectionProjection: CollectionListProjection;
   let entryProjection: EntryListProjection;
-  let taskProjection: TaskListProjection;
 
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
     collectionProjection = new CollectionListProjection(eventStore);
     entryProjection = new EntryListProjection(eventStore);
-    taskProjection = new TaskListProjection(eventStore);
   });
 
   it('should initialize all handlers', () => {
@@ -27,7 +25,6 @@ describe('useCollectionHandlers', () => {
         eventStore,
         collectionProjection,
         entryProjection,
-        taskProjection,
       })
     );
 
@@ -59,7 +56,6 @@ describe('useCollectionHandlers', () => {
         eventStore,
         collectionProjection,
         entryProjection,
-        taskProjection,
       })
     );
 
@@ -97,14 +93,12 @@ describe('useCollectionHandlers', () => {
           eventStore: props.eventStore,
           collectionProjection: props.collectionProjection,
           entryProjection: props.entryProjection,
-          taskProjection: props.taskProjection,
         }),
       {
         initialProps: {
           eventStore,
           collectionProjection,
           entryProjection,
-          taskProjection,
         },
       }
     );
@@ -115,13 +109,11 @@ describe('useCollectionHandlers', () => {
     const newEventStore = new InMemoryEventStore();
     const newCollectionProjection = new CollectionListProjection(newEventStore);
     const newEntryProjection = new EntryListProjection(newEventStore);
-    const newTaskProjection = new TaskListProjection(newEventStore);
 
     rerender({
       eventStore: newEventStore,
       collectionProjection: newCollectionProjection,
       entryProjection: newEntryProjection,
-      taskProjection: newTaskProjection,
     });
 
     const secondRender = result.current;

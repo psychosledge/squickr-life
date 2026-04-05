@@ -21,7 +21,7 @@ describe('Multi-Collection Migration - Bidirectional Navigation', () => {
   beforeEach(() => {
     eventStore = new InMemoryEventStore();
     projection = new EntryListProjection(eventStore);
-    createTaskHandler = new CreateTaskHandler(eventStore, null as any, projection);
+    createTaskHandler = new CreateTaskHandler(eventStore, projection);
     
     const addHandler = new AddTaskToCollectionHandler(eventStore, projection);
     const removeHandler = new RemoveTaskFromCollectionHandler(eventStore, projection);

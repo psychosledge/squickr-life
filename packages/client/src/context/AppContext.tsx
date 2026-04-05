@@ -11,15 +11,14 @@
  */
 
 import { createContext, useContext } from 'react';
-import type { 
-  IEventStore, 
+import type {
+  IEventStore,
   EntryListProjection,
-  TaskListProjection,
+  HabitProjection,
   CollectionListProjection,
   CreateCollectionHandler,
   ReorderCollectionHandler,
   RestoreCollectionHandler,
-  MigrateTaskHandler,
   AddTaskToCollectionHandler,
   RemoveTaskFromCollectionHandler,
   MoveTaskToCollectionHandler,
@@ -49,12 +48,11 @@ import type {
 interface AppContextValue {
   eventStore: IEventStore;
   entryProjection: EntryListProjection;
-  taskProjection: TaskListProjection;
+  habitProjection: HabitProjection;
   collectionProjection: CollectionListProjection;
   createCollectionHandler: CreateCollectionHandler;
   reorderCollectionHandler?: ReorderCollectionHandler;
   restoreCollectionHandler: RestoreCollectionHandler;
-  migrateTaskHandler: MigrateTaskHandler;
   addTaskToCollectionHandler: AddTaskToCollectionHandler;
   removeTaskFromCollectionHandler: RemoveTaskFromCollectionHandler;
   moveTaskToCollectionHandler: MoveTaskToCollectionHandler;
@@ -105,6 +103,6 @@ export function useApp(): AppContextValue {
  * Type-safe hook for accessing projections
  */
 export function useProjections() {
-  const { entryProjection, taskProjection, collectionProjection } = useApp();
-  return { entryProjection, taskProjection, collectionProjection };
+  const { entryProjection, collectionProjection } = useApp();
+  return { entryProjection, collectionProjection };
 }

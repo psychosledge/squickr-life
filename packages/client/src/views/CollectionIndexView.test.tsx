@@ -89,11 +89,9 @@ describe('CollectionIndexView - Header Branding', () => {
     const mockAppContext = {
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
       restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      migrateTaskHandler: {} as any,
       addTaskToCollectionHandler: {} as any,
       removeTaskFromCollectionHandler: {} as any,
       moveTaskToCollectionHandler: {} as any,
@@ -207,11 +205,9 @@ describe('CollectionIndexView - Navigation Arrows', () => {
     const mockAppContext = {
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
       restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      migrateTaskHandler: {} as any,
       addTaskToCollectionHandler: {} as any,
       removeTaskFromCollectionHandler: {} as any,
       moveTaskToCollectionHandler: {} as any,
@@ -417,11 +413,9 @@ describe('CollectionIndexView - Virtual Uncategorized Collection', () => {
     const mockAppContext = {
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
       restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      migrateTaskHandler: {} as any,
       addTaskToCollectionHandler: {} as any,
       removeTaskFromCollectionHandler: {} as any,
       moveTaskToCollectionHandler: {} as any,
@@ -598,7 +592,6 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
   let mockEventStore: any;
   let mockCreateCollectionHandler: any;
   let mockReorderCollectionHandler: any;
-  let mockMigrateTaskHandler: any;
 
   beforeEach(() => {
     mockCollectionProjection = {
@@ -632,22 +625,16 @@ describe('CollectionIndexView - Drag and Drop Reordering', () => {
     mockReorderCollectionHandler = {
       handle: vi.fn().mockResolvedValue(undefined),
     };
-
-    mockMigrateTaskHandler = {
-      handle: vi.fn().mockResolvedValue(undefined),
-    };
   });
 
   function renderView() {
     const mockAppContext = {
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
       reorderCollectionHandler: mockReorderCollectionHandler,
       restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      migrateTaskHandler: mockMigrateTaskHandler,
       addTaskToCollectionHandler: {} as any,
       removeTaskFromCollectionHandler: {} as any,
       moveTaskToCollectionHandler: {} as any,
@@ -762,11 +749,9 @@ describe('CollectionIndexView - Auto-trigger tutorial (integration)', () => {
     const mockAppContext = {
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
       restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      migrateTaskHandler: {} as any,
       addTaskToCollectionHandler: {} as any,
       removeTaskFromCollectionHandler: {} as any,
       moveTaskToCollectionHandler: {} as any,
@@ -876,11 +861,9 @@ describe('CollectionIndexView - data-tutorial-id anchor on h1', () => {
     const mockAppContext = {
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
       restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      migrateTaskHandler: {} as any,
       addTaskToCollectionHandler: {} as any,
       removeTaskFromCollectionHandler: {} as any,
       moveTaskToCollectionHandler: {} as any,
@@ -979,11 +962,9 @@ describe('CollectionIndexView - ADR-024: Tutorial suppression guard', () => {
     const mockAppContext = {
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection,
-      taskProjection: {} as any,
       collectionProjection: mockCollectionProjection,
       createCollectionHandler: mockCreateCollectionHandler,
       restoreCollectionHandler: { handle: vi.fn().mockResolvedValue(undefined) } as any,
-      migrateTaskHandler: {} as any,
       addTaskToCollectionHandler: {} as any,
       removeTaskFromCollectionHandler: {} as any,
       moveTaskToCollectionHandler: {} as any,

@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FirestoreEventStore } from '../firestore-event-store';
+import { FirestoreValidationError } from '../firestore-event-validator';
 import type { DomainEvent } from '@squickr/domain';
 
 // Mock Firestore SDK
@@ -159,14 +160,16 @@ describe('FirestoreEventStore', () => {
       const mockEvents = [
         {
           id: 'event-1',
-          type: 'task-created',
+          type: 'TaskCreated',
+          version: 1,
           aggregateId: 'task-1',
           timestamp: '2026-02-07T10:00:00Z',
           data: { taskId: 'task-1', title: 'Task 1' },
         },
         {
           id: 'event-2',
-          type: 'task-created',
+          type: 'TaskCreated',
+          version: 1,
           aggregateId: 'task-2',
           timestamp: '2026-02-07T11:00:00Z',
           data: { taskId: 'task-2', title: 'Task 2' },
@@ -174,7 +177,7 @@ describe('FirestoreEventStore', () => {
       ];
 
       mockGetDocs.mockResolvedValue({
-        docs: mockEvents.map(data => ({ data: () => data })),
+        docs: mockEvents.map(data => ({ id: data.id, data: () => data })),
       });
 
       const events = await eventStore.getAll();
@@ -196,14 +199,16 @@ describe('FirestoreEventStore', () => {
       const mockEvents = [
         {
           id: 'event-2',
-          type: 'task-created',
+          type: 'TaskCreated',
+          version: 1,
           aggregateId: 'task-2',
           timestamp: '2026-02-07T11:00:00Z',
           data: { taskId: 'task-2', title: 'Task 2' },
         },
         {
           id: 'event-1',
-          type: 'task-created',
+          type: 'TaskCreated',
+          version: 1,
           aggregateId: 'task-1',
           timestamp: '2026-02-07T10:00:00Z',
           data: { taskId: 'task-1', title: 'Task 1' },
@@ -211,7 +216,7 @@ describe('FirestoreEventStore', () => {
       ];
 
       mockGetDocs.mockResolvedValue({
-        docs: mockEvents.map(data => ({ data: () => data })),
+        docs: mockEvents.map(data => ({ id: data.id, data: () => data })),
       });
 
       await eventStore.getAll();
@@ -226,14 +231,16 @@ describe('FirestoreEventStore', () => {
       const mockEvents = [
         {
           id: 'event-1',
-          type: 'task-created',
+          type: 'TaskCreated',
+          version: 1,
           aggregateId: 'task-1',
           timestamp: '2026-02-07T10:00:00Z',
           data: { taskId: 'task-1', title: 'Task 1' },
         },
         {
           id: 'event-2',
-          type: 'task-completed',
+          type: 'TaskCompleted',
+          version: 1,
           aggregateId: 'task-1',
           timestamp: '2026-02-07T11:00:00Z',
           data: { taskId: 'task-1' },
@@ -241,7 +248,7 @@ describe('FirestoreEventStore', () => {
       ];
 
       mockGetDocs.mockResolvedValue({
-        docs: mockEvents.map(data => ({ data: () => data })),
+        docs: mockEvents.map(data => ({ id: data.id, data: () => data })),
       });
 
       const events = await eventStore.getById(aggregateId);
@@ -404,11 +411,11 @@ describe('FirestoreEventStore', () => {
   describe('getAllAfter()', () => {
     it('getAllAfter(null) calls the getAll() path without any getDoc call', async () => {
       const mockEvents = [
-        { id: 'event-1', type: 'task-created', aggregateId: 'task-1', timestamp: '2026-02-07T10:00:00Z' },
-        { id: 'event-2', type: 'task-created', aggregateId: 'task-2', timestamp: '2026-02-07T11:00:00Z' },
+        { id: 'event-1', type: 'TaskCreated', version: 1, aggregateId: 'task-1', timestamp: '2026-02-07T10:00:00Z' },
+        { id: 'event-2', type: 'TaskCreated', version: 1, aggregateId: 'task-2', timestamp: '2026-02-07T11:00:00Z' },
       ];
       mockGetDocs.mockResolvedValue({
-        docs: mockEvents.map(data => ({ data: () => data })),
+        docs: mockEvents.map(data => ({ id: data.id, data: () => data })),
       });
 
       const result = await eventStore.getAllAfter(null);
@@ -425,10 +432,10 @@ describe('FirestoreEventStore', () => {
       });
 
       const deltaEvents = [
-        { id: 'event-2', type: 'task-created', aggregateId: 'task-2', timestamp: '2026-02-07T11:00:00Z' },
+        { id: 'event-2', type: 'TaskCreated', version: 1, aggregateId: 'task-2', timestamp: '2026-02-07T11:00:00Z' },
       ];
       mockGetDocs.mockResolvedValue({
-        docs: deltaEvents.map(data => ({ data: () => data })),
+        docs: deltaEvents.map(data => ({ id: data.id, data: () => data })),
       });
 
       const result = await eventStore.getAllAfter('event-1');
@@ -446,10 +453,10 @@ describe('FirestoreEventStore', () => {
       });
 
       const allEvents = [
-        { id: 'event-1', type: 'task-created', aggregateId: 'task-1', timestamp: '2026-02-07T10:00:00Z' },
+        { id: 'event-1', type: 'TaskCreated', version: 1, aggregateId: 'task-1', timestamp: '2026-02-07T10:00:00Z' },
       ];
       mockGetDocs.mockResolvedValue({
-        docs: allEvents.map(data => ({ data: () => data })),
+        docs: allEvents.map(data => ({ id: data.id, data: () => data })),
       });
 
       const result = await eventStore.getAllAfter('does-not-exist');
@@ -463,10 +470,10 @@ describe('FirestoreEventStore', () => {
       mockGetDoc.mockRejectedValue(new Error('Firestore unavailable'));
 
       const allEvents = [
-        { id: 'event-1', type: 'task-created', aggregateId: 'task-1', timestamp: '2026-02-07T10:00:00Z' },
+        { id: 'event-1', type: 'TaskCreated', version: 1, aggregateId: 'task-1', timestamp: '2026-02-07T10:00:00Z' },
       ];
       mockGetDocs.mockResolvedValue({
-        docs: allEvents.map(data => ({ data: () => data })),
+        docs: allEvents.map(data => ({ id: data.id, data: () => data })),
       });
 
       const result = await eventStore.getAllAfter('event-1');
@@ -599,6 +606,58 @@ describe('FirestoreEventStore', () => {
       // Must notify once per event (600 total) so the projection
       // cache can apply each event, matching InMemoryEventStore.
       expect(callback).toHaveBeenCalledTimes(600);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Validation integration: FirestoreValidationError propagation
+  // ---------------------------------------------------------------------------
+
+  describe('validation integration — FirestoreValidationError propagates', () => {
+    it('getAll() throws FirestoreValidationError when a doc has an unknown type', async () => {
+      const corruptDoc = {
+        id: 'evt-bad',
+        type: 'UnknownCorruptType',
+        version: 1,
+        aggregateId: 'agg-1',
+        timestamp: '2026-04-04T10:00:00.000Z',
+      };
+      mockGetDocs.mockResolvedValue({
+        docs: [{ id: corruptDoc.id, data: () => corruptDoc }],
+      });
+
+      await expect(eventStore.getAll()).rejects.toThrow(FirestoreValidationError);
+    });
+
+    it('getById() throws FirestoreValidationError when a doc is missing aggregateId', async () => {
+      const corruptDoc = {
+        id: 'evt-bad',
+        type: 'TaskCreated',
+        version: 1,
+        // aggregateId intentionally missing
+        timestamp: '2026-04-04T10:00:00.000Z',
+      };
+      mockGetDocs.mockResolvedValue({
+        docs: [{ id: corruptDoc.id, data: () => corruptDoc }],
+      });
+
+      await expect(eventStore.getById('agg-1')).rejects.toThrow(FirestoreValidationError);
+    });
+
+    it('getAllAfter() throws FirestoreValidationError when anchor timestamp is not a string', async () => {
+      // Anchor doc exists but timestamp field is a number, not a string
+      mockGetDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          id: 'evt-anchor',
+          type: 'TaskCreated',
+          version: 1,
+          aggregateId: 'agg-1',
+          timestamp: 9999999999, // corrupt: number instead of string
+        }),
+      });
+
+      await expect(eventStore.getAllAfter('evt-anchor')).rejects.toThrow(FirestoreValidationError);
     });
   });
 });
