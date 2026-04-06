@@ -12,7 +12,8 @@
       "Bash(echo \"EXIT:$?\")",
       "Bash(echo \"exit: $?\")",
       "Bash(node -p \"require\\(''./package.json''\\).version\")",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(firebase deploy:*)"
     ]
   }
 }

@@ -61,4 +61,20 @@ git tag v<NEW_VERSION>
 git push origin master --tags
 ```
 
-Report the tag and version that was pushed.
+## Step 6 — Deploy Firebase Functions (if changed)
+
+Check whether any files under `functions/` changed since the last release tag:
+
+```bash
+git diff v<PREVIOUS_VERSION> v<NEW_VERSION> --name-only -- functions/
+```
+
+If any files are listed, deploy the functions:
+
+```bash
+firebase deploy --only functions
+```
+
+If no files changed under `functions/`, skip this step and note that Firebase Functions were not redeployed.
+
+Report the tag, version, and whether Firebase Functions were deployed.
