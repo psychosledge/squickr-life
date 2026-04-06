@@ -40,3 +40,19 @@ export function getMonthKeyForTemporal(
   return `${year}-${month}`; // "2026-02"
 }
 
+export function buildDailyCollectionName(dateKey: string): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(year!, month! - 1, day!));
+}
+
+export function buildMonthlyCollectionName(monthKey: string): string {
+  const [year, month] = monthKey.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(year!, month! - 1, 1));
+}

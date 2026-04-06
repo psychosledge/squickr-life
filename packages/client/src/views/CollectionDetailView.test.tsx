@@ -2319,3 +2319,582 @@ describe('CollectionDetailView - Habits section for daily collections', () => {
     expect(screen.queryByRole('region', { name: /habits/i })).not.toBeInTheDocument();
   });
 });
+
+// ─── ADR-028: Temporal Route Auto-Create ────────────────────────────────────
+
+describe('CollectionDetailView - Auto-create for today', () => {
+  it('should auto-create today collection when date="today" and no collection exists', async () => {
+    const todayKey = getLocalDateKey();
+    const mockCreateCollectionHandler = {
+      handle: vi.fn().mockResolvedValue('new-today-id'),
+    };
+    const createdCollection: Collection = {
+      id: 'new-today-id',
+      name: 'Wednesday, February 11',
+      type: 'daily',
+      date: todayKey,
+      order: 'a0',
+      createdAt: new Date().toISOString(),
+    };
+    // First two calls return [] (useCollectionNavigation + loadData both call getCollections on mount)
+    // All subsequent calls return the created collection
+    const mockCollectionProjection = {
+      getCollections: vi.fn()
+        .mockResolvedValueOnce([])  // useCollectionNavigation on mount
+        .mockResolvedValueOnce([])  // loadData initial call
+        .mockResolvedValue([createdCollection]), // ensureCollectionForDate refresh + further calls
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+    const appContext = buildMockAppContext({
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: mockCreateCollectionHandler,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/today']}>
+        <AppProvider value={appContext}>
+          <CollectionDetailView date="today" />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(mockCreateCollectionHandler.handle).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'daily', date: todayKey })
+      );
+    });
+
+    // Should not show the error screen
+    expect(screen.queryByText(/collection not found/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('CollectionDetailView - Temporal empty state for non-today keywords', () => {
+  it('should show "Create daily log" button for date="yesterday" with empty collections', async () => {
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+    const appContext = buildMockAppContext({ collectionProjection: mockCollectionProjection });
+
+    render(
+      <MemoryRouter initialEntries={['/yesterday']}>
+        <AppProvider value={appContext}>
+          <CollectionDetailView date="yesterday" />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/create daily log/i)).toBeInTheDocument();
+    });
+
+    // Generic "Collection Not Found" should NOT appear
+    expect(screen.queryByText(/collection not found/i)).not.toBeInTheDocument();
+  });
+
+  it('should call createCollectionHandler when "Create daily log" button is clicked for yesterday', async () => {
+    const user = userEvent.setup();
+    const mockCreateCollectionHandler = {
+      handle: vi.fn().mockResolvedValue('new-id'),
+    };
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+    const appContext = buildMockAppContext({
+      collectionProjection: mockCollectionProjection,
+      createCollectionHandler: mockCreateCollectionHandler,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/yesterday']}>
+        <AppProvider value={appContext}>
+          <CollectionDetailView date="yesterday" />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/create daily log/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/create daily log/i));
+
+    await waitFor(() => {
+      expect(mockCreateCollectionHandler.handle).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'daily' })
+      );
+    });
+  });
+
+  it('should show "Create monthly log" button for date="this-month" with empty collections', async () => {
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+    const appContext = buildMockAppContext({ collectionProjection: mockCollectionProjection });
+
+    render(
+      <MemoryRouter initialEntries={['/this-month']}>
+        <AppProvider value={appContext}>
+          <CollectionDetailView date="this-month" />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/create monthly log/i)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/collection not found/i)).not.toBeInTheDocument();
+  });
+});
+
+// ─── ADR-028: Migrate All to Tomorrow ───────────────────────────────────────
+
+describe('CollectionDetailView - Migrate all to tomorrow', () => {
+  const todayKey = getLocalDateKey();
+
+  const mockTodayCollection: Collection = {
+    id: 'today-col',
+    name: 'Today',
+    type: 'daily',
+    date: todayKey,
+    order: 'a0',
+    createdAt: new Date().toISOString(),
+  };
+
+  const openTask: Entry = {
+    id: 'task-open-1',
+    type: 'task',
+    content: 'Open task',
+    status: 'open',
+    createdAt: new Date().toISOString(),
+    order: 'a0',
+    collectionId: 'today-col',
+    collections: ['today-col'],
+  };
+
+  function renderTodayView(overrides: Partial<any> = {}) {
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([mockTodayCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([openTask]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([openTask]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+    };
+    const appContext = buildMockAppContext({
+      collectionProjection: mockCollectionProjection,
+      entryProjection: mockEntryProjection,
+      ...overrides,
+    });
+    return render(
+      <MemoryRouter initialEntries={['/today']}>
+        <AppProvider value={appContext}>
+          <CollectionDetailView date="today" collectionId={undefined} />
+        </AppProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it('should show "Migrate all open tasks → Tomorrow" in menu when viewing today log with open tasks', async () => {
+    const user = userEvent.setup();
+    renderTodayView();
+
+    await waitFor(() => {
+      expect(screen.getByText(/today/i)).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    expect(screen.getByText(/migrate all open tasks → tomorrow/i)).toBeInTheDocument();
+  });
+
+  it('should NOT show "Migrate all open tasks → Tomorrow" when viewing a non-today collection', async () => {
+    const user = userEvent.setup();
+    const nonTodayCollection: Collection = {
+      id: 'other-col',
+      name: 'Other Collection',
+      type: 'log',
+      order: 'a0',
+      createdAt: new Date().toISOString(),
+    };
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([nonTodayCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([openTask]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([openTask]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+    };
+    const appContext = buildMockAppContext({
+      collectionProjection: mockCollectionProjection,
+      entryProjection: mockEntryProjection,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/collection/other-col']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Other Collection')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    expect(screen.queryByText(/migrate all open tasks → tomorrow/i)).not.toBeInTheDocument();
+  });
+
+  it('should NOT show "Migrate all open tasks → Tomorrow" when today log has no open tasks', async () => {
+    const user = userEvent.setup();
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+    };
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([mockTodayCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+    const appContext = buildMockAppContext({
+      collectionProjection: mockCollectionProjection,
+      entryProjection: mockEntryProjection,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/today']}>
+        <AppProvider value={appContext}>
+          <CollectionDetailView date="today" collectionId={undefined} />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/today/i)).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    expect(screen.queryByText(/migrate all open tasks → tomorrow/i)).not.toBeInTheDocument();
+  });
+
+  it('should call bulkMigrateEntriesHandler with active task IDs and tomorrow\'s collection ID when migrate item is clicked', async () => {
+    const user = userEvent.setup();
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowKey = getLocalDateKey(tomorrowDate);
+
+    const tomorrowCollection: Collection = {
+      id: 'tomorrow-col',
+      name: 'Tomorrow Log',
+      type: 'daily',
+      date: tomorrowKey,
+      order: 'a1',
+      createdAt: tomorrowDate.toISOString(),
+    };
+
+    const mockBulkMigrate = vi.fn().mockResolvedValue(undefined);
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([openTask]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([openTask]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+    };
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([mockTodayCollection, tomorrowCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    const appContext = buildMockAppContext({
+      collectionProjection: mockCollectionProjection,
+      entryProjection: mockEntryProjection,
+      bulkMigrateEntriesHandler: { handle: mockBulkMigrate } as any,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/today']}>
+        <AppProvider value={appContext}>
+          <CollectionDetailView date="today" collectionId={undefined} />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Open task')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/migrate all open tasks → tomorrow/i);
+    await user.click(migrateItem);
+
+    await waitFor(() => {
+      expect(mockBulkMigrate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entryIds: ['task-open-1'],
+          targetCollectionId: 'tomorrow-col',
+          mode: 'move',
+        })
+      );
+    });
+  });
+
+  it('should auto-create tomorrow\'s daily log and migrate when it does not exist yet', async () => {
+    const user = userEvent.setup();
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowKey = getLocalDateKey(tomorrowDate);
+
+    const newTomorrowId = 'newly-created-tomorrow-col';
+    const newTomorrowCollection: Collection = {
+      id: newTomorrowId,
+      name: 'Tomorrow Log (auto)',
+      type: 'daily',
+      date: tomorrowKey,
+      order: 'a1',
+      createdAt: tomorrowDate.toISOString(),
+    };
+
+    const mockBulkMigrate = vi.fn().mockResolvedValue(undefined);
+    let tomorrowCreated = false;
+    const mockCreateCollection = vi.fn().mockImplementation(async () => {
+      tomorrowCreated = true;
+      return newTomorrowId;
+    });
+
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([openTask]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([openTask]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+    };
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockImplementation(() =>
+        Promise.resolve(tomorrowCreated ? [mockTodayCollection, newTomorrowCollection] : [mockTodayCollection])
+      ),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    const appContext = buildMockAppContext({
+      collectionProjection: mockCollectionProjection,
+      entryProjection: mockEntryProjection,
+      bulkMigrateEntriesHandler: { handle: mockBulkMigrate } as any,
+      createCollectionHandler: { handle: mockCreateCollection } as any,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/today']}>
+        <AppProvider value={appContext}>
+          <CollectionDetailView date="today" collectionId={undefined} />
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Open task')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/migrate all open tasks → tomorrow/i);
+    await user.click(migrateItem);
+
+    await waitFor(() => {
+      expect(mockCreateCollection).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'daily', date: tomorrowKey })
+      );
+    });
+
+    await waitFor(() => {
+      expect(mockBulkMigrate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entryIds: ['task-open-1'],
+          targetCollectionId: newTomorrowId,
+          mode: 'move',
+        })
+      );
+    });
+  });
+
+  it('should navigate to tomorrow\'s collection after successful migration', async () => {
+    const user = userEvent.setup();
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowKey = getLocalDateKey(tomorrowDate);
+
+    const tomorrowCollection: Collection = {
+      id: 'tomorrow-col',
+      name: 'Tomorrow Log',
+      type: 'daily',
+      date: tomorrowKey,
+      order: 'a1',
+      createdAt: tomorrowDate.toISOString(),
+    };
+
+    const mockBulkMigrate = vi.fn().mockResolvedValue(undefined);
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([openTask]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([openTask]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+    };
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([mockTodayCollection, tomorrowCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    const appContext = buildMockAppContext({
+      collectionProjection: mockCollectionProjection,
+      entryProjection: mockEntryProjection,
+      bulkMigrateEntriesHandler: { handle: mockBulkMigrate } as any,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/today']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/today" element={<CollectionDetailView date="today" collectionId={undefined} />} />
+            <Route path="/collection/tomorrow-col" element={<div data-testid="tomorrow-view" />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Open task')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/migrate all open tasks → tomorrow/i);
+    await user.click(migrateItem);
+
+    await waitFor(() => {
+      expect(mockBulkMigrate).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tomorrow-view')).toBeInTheDocument();
+    });
+  });
+
+  it('should show an error toast and NOT navigate when bulkMigrateEntriesHandler throws', async () => {
+    const user = userEvent.setup();
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowKey = getLocalDateKey(tomorrowDate);
+
+    const tomorrowCollection: Collection = {
+      id: 'tomorrow-col',
+      name: 'Tomorrow Log',
+      type: 'daily',
+      date: tomorrowKey,
+      order: 'a1',
+      createdAt: tomorrowDate.toISOString(),
+    };
+
+    const mockBulkMigrate = vi.fn().mockRejectedValue(new Error('Migration to tomorrow failed'));
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([openTask]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([openTask]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+    };
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([mockTodayCollection, tomorrowCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    const appContext = buildMockAppContext({
+      collectionProjection: mockCollectionProjection,
+      entryProjection: mockEntryProjection,
+      bulkMigrateEntriesHandler: { handle: mockBulkMigrate } as any,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/today']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/today" element={<CollectionDetailView date="today" collectionId={undefined} />} />
+            <Route path="/collection/tomorrow-col" element={<div data-testid="tomorrow-view" />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Open task')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/migrate all open tasks → tomorrow/i);
+    await user.click(migrateItem);
+
+    await waitFor(() => {
+      expect(mockBulkMigrate).toHaveBeenCalled();
+    });
+
+    // Should stay on today — no navigation on failure
+    expect(screen.queryByTestId('tomorrow-view')).not.toBeInTheDocument();
+    // Error message should be shown
+    await waitFor(() => {
+      expect(screen.getByText('Migration to tomorrow failed')).toBeInTheDocument();
+    });
+  });
+});

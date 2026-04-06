@@ -24,6 +24,7 @@ interface CollectionHeaderProps {
   isVirtual?: boolean;
   onEnterSelectionMode?: () => void;
   onMigrateAllToToday?: () => void;
+  onMigrateAllToTomorrow?: () => void;
 }
 
 export function CollectionHeader({
@@ -37,6 +38,7 @@ export function CollectionHeader({
   isVirtual = false,
   onEnterSelectionMode,
   onMigrateAllToToday,
+  onMigrateAllToTomorrow,
 }: CollectionHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -92,6 +94,11 @@ export function CollectionHeader({
   const handleMigrateAllToToday = () => {
     setIsMenuOpen(false);
     onMigrateAllToToday?.();
+  };
+
+  const handleMigrateAllToTomorrow = () => {
+    setIsMenuOpen(false);
+    onMigrateAllToTomorrow?.();
   };
 
   return (
@@ -233,6 +240,21 @@ export function CollectionHeader({
                     type="button"
                   >
                     Migrate all open tasks → Today
+                  </button>
+                )}
+                {onMigrateAllToTomorrow && (
+                  <button
+                    onClick={handleMigrateAllToTomorrow}
+                    className="
+                      w-full px-4 py-2
+                      text-left text-gray-700 dark:text-gray-300
+                      hover:bg-gray-100 dark:hover:bg-gray-700
+                      transition-colors
+                      focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700
+                    "
+                    type="button"
+                  >
+                    Migrate all open tasks → Tomorrow
                   </button>
                 )}
                 {onToggleFavorite && (

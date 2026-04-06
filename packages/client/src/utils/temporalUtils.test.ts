@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getDateKeyForTemporal, getMonthKeyForTemporal } from './temporalUtils';
+import { getDateKeyForTemporal, getMonthKeyForTemporal, buildDailyCollectionName, buildMonthlyCollectionName } from './temporalUtils';
 
 describe('getDateKeyForTemporal', () => {
   it('should return current date in YYYY-MM-DD format for "today"', () => {
@@ -106,5 +106,42 @@ describe('getMonthKeyForTemporal', () => {
     const sep = new Date('2026-09-15T14:30:00Z');
     const result = getMonthKeyForTemporal('this-month', sep);
     expect(result).toBe('2026-09');
+  });
+});
+
+describe('buildDailyCollectionName', () => {
+  it('should return correct weekday/month/day for a known date', () => {
+    // 2026-02-11 is a Wednesday
+    const result = buildDailyCollectionName('2026-02-11');
+    expect(result).toBe('Wednesday, February 11');
+  });
+
+  it('should return correct weekday/month/day for another known date', () => {
+    // 2026-01-01 is a Thursday
+    const result = buildDailyCollectionName('2026-01-01');
+    expect(result).toBe('Thursday, January 1');
+  });
+
+  it('should handle month boundaries correctly', () => {
+    // 2026-03-01 is a Sunday
+    const result = buildDailyCollectionName('2026-03-01');
+    expect(result).toBe('Sunday, March 1');
+  });
+});
+
+describe('buildMonthlyCollectionName', () => {
+  it('should return correct month/year for a known month key', () => {
+    const result = buildMonthlyCollectionName('2026-02');
+    expect(result).toBe('February 2026');
+  });
+
+  it('should return correct month/year for January', () => {
+    const result = buildMonthlyCollectionName('2026-01');
+    expect(result).toBe('January 2026');
+  });
+
+  it('should return correct month/year for December', () => {
+    const result = buildMonthlyCollectionName('2025-12');
+    expect(result).toBe('December 2025');
   });
 });

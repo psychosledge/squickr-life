@@ -398,6 +398,86 @@ describe('CollectionHeader - onMigrateAllToToday', () => {
   });
 });
 
+// ─── Migrate all open tasks → Tomorrow ──────────────────────────────────────
+describe('CollectionHeader - onMigrateAllToTomorrow', () => {
+  let mockCollectionProjection: any;
+  let mockEntryProjection: any;
+
+  beforeEach(() => {
+    mockUseDebug.mockReturnValue({ events: [], isEnabled: false });
+    mockCollectionProjection = {
+      getCollections: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+    mockEntryProjection = {
+      getEntriesByCollection: vi.fn(async () => []),
+      subscribe: vi.fn(() => () => {}),
+    };
+  });
+
+  function renderHeader(props = {}) {
+    return render(
+      <BrowserRouter>
+        <AppProvider
+          value={{
+            eventStore: {
+              getAll: vi.fn().mockResolvedValue([]),
+              subscribe: vi.fn().mockReturnValue(() => {}),
+            } as any,
+            collectionProjection: mockCollectionProjection,
+            entryProjection: mockEntryProjection,
+            createCollectionHandler: {} as any,
+          }}
+        >
+          <CollectionHeader
+            collectionName="Today"
+            collectionId="today-col"
+            onRename={vi.fn()}
+            onDelete={vi.fn()}
+            onSettings={vi.fn()}
+            {...props}
+          />
+        </AppProvider>
+      </BrowserRouter>
+    );
+  }
+
+  it('should render "Migrate all open tasks → Tomorrow" when onMigrateAllToTomorrow is provided', async () => {
+    const user = userEvent.setup();
+    renderHeader({ onMigrateAllToTomorrow: vi.fn() });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    expect(screen.getByText(/Migrate all open tasks → Tomorrow/i)).toBeInTheDocument();
+  });
+
+  it('should NOT render "Migrate all open tasks → Tomorrow" when onMigrateAllToTomorrow is undefined', async () => {
+    const user = userEvent.setup();
+    renderHeader({ onMigrateAllToTomorrow: undefined });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    expect(screen.queryByText(/Migrate all open tasks → Tomorrow/i)).not.toBeInTheDocument();
+  });
+
+  it('should call onMigrateAllToTomorrow and close the menu when the item is clicked', async () => {
+    const user = userEvent.setup();
+    const onMigrateAllToTomorrow = vi.fn();
+    renderHeader({ onMigrateAllToTomorrow });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+
+    const migrateItem = screen.getByText(/Migrate all open tasks → Tomorrow/i);
+    await user.click(migrateItem);
+
+    expect(onMigrateAllToTomorrow).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/Migrate all open tasks → Tomorrow/i)).not.toBeInTheDocument();
+  });
+});
+
 // ─── CollectionDebugPanel integration ────────────────────────────────────────
 describe('CollectionHeader - CollectionDebugPanel integration', () => {
   let mockCollectionProjection: any;

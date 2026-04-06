@@ -40,7 +40,7 @@ import { ErrorToast } from '../components/ErrorToast';
 import { CreateHabitModal } from '../components/CreateHabitModal';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { DEBOUNCE } from '../utils/constants';
-import { getDateKeyForTemporal, getMonthKeyForTemporal } from '../utils/temporalUtils';
+import { getDateKeyForTemporal, getMonthKeyForTemporal, buildDailyCollectionName, buildMonthlyCollectionName } from '../utils/temporalUtils';
 import { getCollectionDisplayName } from '../utils/formatters';
 import { getCompletedTaskBehavior } from '../utils/collectionSettings';
 
@@ -248,6 +248,26 @@ export function CollectionDetailView({
     }
   );
 
+  // Ensure a temporal collection exists, creating it if missing
+  const ensureCollectionForDate = useCallback(async (
+    dateKey: string,
+    type: 'daily' | 'monthly',
+    collections: Collection[],
+  ): Promise<Collection> => {
+    const existing = collections.find(c => c.type === type && c.date === dateKey);
+    if (existing) return existing;
+
+    const name = type === 'daily'
+      ? buildDailyCollectionName(dateKey)
+      : buildMonthlyCollectionName(dateKey);
+
+    const newId = await createCollectionHandler.handle({ name, type, date: dateKey });
+    const refreshed = await collectionProjection.getCollections();
+    const created = refreshed.find(c => c.id === newId);
+    if (!created) throw new Error(`Failed to create ${type} collection for ${dateKey}.`);
+    return created;
+  }, [createCollectionHandler, collectionProjection]);
+
   // Load collection and entries
   const loadData = useCallback(async () => {
     if (!collectionId && !temporalDate) return;
@@ -274,9 +294,22 @@ export function CollectionDetailView({
           targetType = 'daily';
         }
         
-        foundCollection = collections.find(c => 
+        foundCollection = collections.find(c =>
           c.type === targetType && c.date === targetDate
         ) || null;
+
+        // Auto-create for "today" silently — no user action required
+        if (temporalDate === 'today' && !foundCollection) {
+          try {
+            foundCollection = await ensureCollectionForDate(targetDate, 'daily', collections);
+            const refreshed = await collectionProjection.getCollections();
+            setAllCollections(refreshed);
+          } catch (error) {
+            setErrorMessage(error instanceof Error ? error.message : "Failed to create today's daily log.");
+            setIsLoading(false);
+            return;
+          }
+        }
       }
       // Strategy 2: Virtual "uncategorized" collection (EXISTING)
       else if (collectionId === UNCATEGORIZED_COLLECTION_ID) {
@@ -328,7 +361,7 @@ export function CollectionDetailView({
     } finally {
       setIsLoading(false);
     }
-  }, [collectionId, temporalDate, collectionProjection, entryProjection]);
+  }, [collectionId, temporalDate, collectionProjection, entryProjection, ensureCollectionForDate]);
 
   // Subscribe to projection changes (reactive updates with debouncing to prevent memory leaks)
   useEffect(() => {
@@ -421,36 +454,12 @@ export function CollectionDetailView({
 
   const handleMigrateAllToToday = async () => {
     const todayKey = getLocalDateKey();
-    let todayCollection = allCollections.find(c => c.type === 'daily' && c.date === todayKey);
-    if (!todayCollection) {
-      // Auto-create today's daily log — same name-generation logic as CreateCollectionModal
-      const parts = todayKey.split('-');
-      const year = parseInt(parts[0]!, 10);
-      const month = parseInt(parts[1]!, 10) - 1; // 0-indexed
-      const day = parseInt(parts[2]!, 10);
-      const todayName = new Intl.DateTimeFormat('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-      }).format(new Date(year, month, day));
-      try {
-        const newId = await createCollectionHandler.handle({
-          name: todayName,
-          type: 'daily',
-          date: todayKey,
-        });
-        // Re-fetch collections so we have the full Collection object
-        const refreshed = await collectionProjection.getCollections();
-        const created = refreshed.find(c => c.id === newId);
-        if (!created) {
-          setErrorMessage("Failed to create today's daily log.");
-          return;
-        }
-        todayCollection = created;
-      } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Failed to create today's daily log.");
-        return;
-      }
+    let todayCollection: Collection;
+    try {
+      todayCollection = await ensureCollectionForDate(todayKey, 'daily', allCollections);
+    } catch (error) {
+      setErrorMessage("Failed to create today's daily log.");
+      return;
     }
     const activeTaskIds = entries
       .filter(e =>
@@ -467,6 +476,27 @@ export function CollectionDetailView({
       operations.handleNavigateToMigrated(todayCollection.id);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to migrate tasks');
+    }
+  };
+
+  const handleMigrateAllToTomorrow = async () => {
+    const tomorrowKey = getDateKeyForTemporal('tomorrow');
+    try {
+      const tomorrowCollection = await ensureCollectionForDate(tomorrowKey, 'daily', allCollections);
+      const activeTaskIds = entries
+        .filter(e =>
+          e.type === 'task' &&
+          e.status === 'open' &&
+          !e.migratedTo &&
+          !(e as EntryWithGhost).renderAsGhost &&
+          !e.deletedAt
+        )
+        .map(e => e.id);
+      if (activeTaskIds.length === 0) return;
+      await operations.handleBulkMigrateWithMode(activeTaskIds, tomorrowCollection.id, 'move');
+      operations.handleNavigateToMigrated(tomorrowCollection.id);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to migrate tasks to tomorrow.');
     }
   };
 
@@ -487,6 +517,21 @@ export function CollectionDetailView({
     handleCloseSubTaskModal();
   };
 
+  const handleCreateTemporalCollection = async () => {
+    if (!temporalDate || temporalDate === 'today') return;
+    const isMonthly = temporalDate === 'this-month' || temporalDate === 'last-month' || temporalDate === 'next-month';
+    const dateKey = isMonthly
+      ? getMonthKeyForTemporal(temporalDate)
+      : getDateKeyForTemporal(temporalDate);
+    const type = isMonthly ? 'monthly' : 'daily';
+    try {
+      await ensureCollectionForDate(dateKey, type, allCollections);
+      // Reactive subscription fires debouncedLoadData automatically — no manual re-fetch needed
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to create collection.');
+    }
+  };
+
   // Success state - show collection and entries
   if (isLoading) {
     return (
@@ -500,6 +545,41 @@ export function CollectionDetailView({
 
   // Error state - collection not found (or load error — toast will indicate which)
   if (!collection) {
+    const isTemporalCreate = temporalDate && temporalDate !== 'today' && !errorMessage;
+
+    if (isTemporalCreate) {
+      const isMonthly = temporalDate === 'this-month' || temporalDate === 'last-month' || temporalDate === 'next-month';
+      const label = isMonthly ? 'monthly log' : 'daily log';
+
+      return (
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              No {label} yet
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              There's no {label} for this period.
+            </p>
+            <button
+              onClick={handleCreateTemporalCollection}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              type="button"
+            >
+              Create {label}
+            </button>
+            <button
+              onClick={() => navigate(ROUTES.index)}
+              className="ml-3 px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 rounded-lg transition-colors"
+              type="button"
+            >
+              Back to Collections
+            </button>
+          </div>
+          {errorMessage && <ErrorToast message={errorMessage} onDismiss={() => setErrorMessage(null)} />}
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -582,6 +662,7 @@ export function CollectionDetailView({
           !e.deletedAt
         );
         const showMigrateAllToToday = !isTodaysLog && hasActiveTasks && collection.id !== UNCATEGORIZED_COLLECTION_ID;
+        const showMigrateAllToTomorrow = isTodaysLog && hasActiveTasks;
         return (
           <CollectionHeader
             collectionName={getCollectionDisplayName(collection, new Date())}
@@ -594,6 +675,7 @@ export function CollectionDetailView({
             isVirtual={collection.id === UNCATEGORIZED_COLLECTION_ID}
             onEnterSelectionMode={selection.enterSelectionMode}
             onMigrateAllToToday={showMigrateAllToToday ? handleMigrateAllToToday : undefined}
+            onMigrateAllToTomorrow={showMigrateAllToTomorrow ? handleMigrateAllToTomorrow : undefined}
           />
         );
       })()}
