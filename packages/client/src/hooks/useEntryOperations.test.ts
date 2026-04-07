@@ -8,9 +8,12 @@ import { useEntryOperations } from './useEntryOperations';
 import type { CollectionHandlers } from './useCollectionHandlers';
 import type { Entry, Collection } from '@squickr/domain';
 
+// Shared navigate spy — captured so individual tests can assert call args.
+const mockNavigate = vi.fn();
+
 // Mock react-router-dom
 vi.mock('react-router-dom', () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
 }));
 
 describe('useEntryOperations', () => {
@@ -28,6 +31,8 @@ describe('useEntryOperations', () => {
   let mockMoveTaskToCollectionHandler: any;
 
   beforeEach(() => {
+    mockNavigate.mockReset();
+
     // Create mock handlers
     mockHandlers = {
       createTaskHandler: { handle: vi.fn() } as any,
@@ -285,6 +290,35 @@ describe('useEntryOperations', () => {
     expect(mockRemoveTaskFromCollectionHandler.handle).toHaveBeenCalledWith({
       taskId: 'task-1',
       collectionId: 'collection-1',
+    });
+  });
+
+  describe('handleNavigateToMigrated', () => {
+    it('should call navigate with migratedFrom state when migrationContext is provided', () => {
+      const { result } = renderHook(() =>
+        useEntryOperations(buildParams(), mockConfig)
+      );
+
+      const migrationContext = { collectionName: 'Monday, Apr 6', count: 3 };
+      result.current.handleNavigateToMigrated('target-col-1', migrationContext);
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/collection/target-col-1',
+        { state: { migratedFrom: migrationContext } }
+      );
+    });
+
+    it('should call navigate without state payload when migrationContext is omitted', () => {
+      const { result } = renderHook(() =>
+        useEntryOperations(buildParams(), mockConfig)
+      );
+
+      result.current.handleNavigateToMigrated('target-col-1');
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/collection/target-col-1',
+        { state: undefined }
+      );
     });
   });
 });

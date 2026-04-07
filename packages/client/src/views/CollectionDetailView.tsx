@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import type { Collection, Entry } from '@squickr/domain';
 import { getLocalDateKey } from '@squickr/domain';
 import { useApp } from '../context/AppContext';
@@ -37,6 +37,7 @@ import { SelectionToolbar } from '../components/SelectionToolbar';
 import { SwipeIndicator } from '../components/SwipeIndicator';
 import { FAB } from '../components/FAB';
 import { ErrorToast } from '../components/ErrorToast';
+import { MigrationBanner } from '../components/MigrationBanner';
 import { CreateHabitModal } from '../components/CreateHabitModal';
 import { ROUTES, UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import { DEBOUNCE } from '../utils/constants';
@@ -61,7 +62,7 @@ interface EntryListHandlers {
   handleRestore: (entryId: string, entryType: 'task' | 'note' | 'event') => Promise<void>;
   handleReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => void;
   handleMigrateWithMode: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
-  handleNavigateToMigrated: (collectionId: string | null) => void;
+  handleNavigateToMigrated: (collectionId: string | null, migrationContext?: { collectionName: string; count: number }) => void;
   handleCreateCollection: (name: string) => Promise<string>;
   handleRemoveFromCollection: (taskId: string, collectionId: string) => Promise<void>;
 }
@@ -140,6 +141,7 @@ export function CollectionDetailView({
 } = {}) {
   const { id: paramId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const collectionId = propCollectionId ?? paramId;
   const {
     eventStore,
@@ -165,6 +167,21 @@ export function CollectionDetailView({
   const [entries, setEntries] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Migration banner state — populated from route location state on mount
+  const [migrationNotice, setMigrationNotice] = useState<{ collectionName: string; count: number } | null>(null);
+
+  const didReadLocationStateRef = useRef(false);
+  useEffect(() => {
+    if (didReadLocationStateRef.current) return;
+    didReadLocationStateRef.current = true;
+    const state = location.state as { migratedFrom?: { collectionName: string; count: number } } | null;
+    if (state?.migratedFrom) {
+      setMigrationNotice(state.migratedFrom);
+      // Clear the location state immediately so back-navigation doesn't re-show the banner
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location, navigate]);
 
   // Habit hooks — only active for daily collections
   const habitDate = collection?.type === 'daily' && collection.date ? collection.date : '';
@@ -473,7 +490,12 @@ export function CollectionDetailView({
     if (activeTaskIds.length === 0) return;
     try {
       await operations.handleBulkMigrateWithMode(activeTaskIds, todayCollection.id, 'move');
-      operations.handleNavigateToMigrated(todayCollection.id);
+      // collection is guaranteed non-null here: the button only renders when collection exists,
+      // and the early-return above guards against a null collection state.
+      operations.handleNavigateToMigrated(todayCollection.id, {
+        collectionName: getCollectionDisplayName(collection!, new Date()),
+        count: activeTaskIds.length,
+      });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to migrate tasks');
     }
@@ -494,7 +516,12 @@ export function CollectionDetailView({
         .map(e => e.id);
       if (activeTaskIds.length === 0) return;
       await operations.handleBulkMigrateWithMode(activeTaskIds, tomorrowCollection.id, 'move');
-      operations.handleNavigateToMigrated(tomorrowCollection.id);
+      // collection is guaranteed non-null here: the button only renders when collection exists,
+      // and activeTaskIds.length > 0 guard above already means we have a live collection.
+      operations.handleNavigateToMigrated(tomorrowCollection.id, {
+        collectionName: getCollectionDisplayName(collection!, new Date()),
+        count: activeTaskIds.length,
+      });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to migrate tasks to tomorrow.');
     }
@@ -679,6 +706,15 @@ export function CollectionDetailView({
           />
         );
       })()}
+
+      {/* Migration banner — shown when navigated here after a bulk migrate-all */}
+      {migrationNotice && (
+        <MigrationBanner
+          count={migrationNotice.count}
+          collectionName={migrationNotice.collectionName}
+          onDismiss={() => setMigrationNotice(null)}
+        />
+      )}
 
       {/* Entry list - dynamic bottom padding when selection toolbar is visible */}
       <div className={`py-8 px-4 ${selection.isSelectionMode ? 'pb-52' : 'pb-20'}`}>

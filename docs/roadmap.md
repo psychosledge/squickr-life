@@ -19,9 +19,19 @@ Design: `docs/archive/designs/proactive-squickr.md`
 
 ---
 
-## Up Next — Under Discussion
+## Up Next
 
-_(No features currently queued. Add items here as they emerge.)_
+### Task Reminders (designed — ADR-029, ready for Sam)
+
+Set a date+time on a task and receive an FCM push notification at that time. Taps open the app to the index. Auto-clears after firing. One reminder per task. Set at create time or via task edit. Scheduled Cloud Function mirrors habitReminderFanOut with a materialized taskReminders index document.
+
+### Events as Log (designed — ADR-030, ready for Sam)
+
+Reframe events as log entries, not calendar appointments. UI-only change: remove date picker from event create flow, remove date display from event items everywhere. Domain types and historical data untouched.
+
+### Google Calendar Read-Only Integration (designed — ADR-031, ready for Sam)
+
+Surface today's Google Calendar events as a read-only section in the daily log, above HabitsSection. Online-only. User selects which calendars to include (stored in UserPreferences). Uses incremental OAuth scope (calendar.readonly) via re-auth popup. Client-side API calls only — no Cloud Functions.
 
 ### Retired (superseded by Proactive Squickr)
 

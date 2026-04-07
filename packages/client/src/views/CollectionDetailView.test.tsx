@@ -5,12 +5,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { CollectionDetailView } from './CollectionDetailView';
 import { AppProvider } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import type { Collection, Entry } from '@squickr/domain';
 import { DEFAULT_USER_PREFERENCES, getLocalDateKey } from '@squickr/domain';
+import { getCollectionDisplayName } from '../utils/formatters';
 
 // Mock useTutorial to avoid needing TutorialProvider in tests
 vi.mock('../hooks/useTutorial', () => ({
@@ -287,9 +288,101 @@ describe('CollectionDetailView', () => {
     });
     
     unmount();
-    
+
     expect(unsubscribeCollection).toHaveBeenCalled();
     expect(unsubscribeEntry).toHaveBeenCalled();
+  });
+
+  // ── Migration Banner ──────────────────────────────────────────────────────
+
+  function renderViewWithLocationState(state: unknown, collectionId = 'col-1') {
+    const appContext = buildMockAppContext({
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      collectionProjection: mockCollectionProjection,
+    });
+
+    return render(
+      <MemoryRouter
+        initialEntries={[{ pathname: `/collection/${collectionId}`, state }]}
+      >
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it('should show migration banner when location state contains migratedFrom', async () => {
+    renderViewWithLocationState({
+      migratedFrom: { collectionName: 'Monday, Apr 6', count: 5 },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('5 tasks migrated here from Monday, Apr 6')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('should not show migration banner when location state is absent', async () => {
+    renderView();
+
+    await waitFor(() => {
+      expect(screen.getByText('Books to Read')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText(/migrated here from/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it('should hide migration banner when dismiss button is clicked', async () => {
+    const user = userEvent.setup();
+
+    renderViewWithLocationState({
+      migratedFrom: { collectionName: 'Monday, Apr 6', count: 3 },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('3 tasks migrated here from Monday, Apr 6')
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /dismiss/i }));
+
+    expect(
+      screen.queryByText('3 tasks migrated here from Monday, Apr 6')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should use singular "task" when count is 1', async () => {
+    renderViewWithLocationState({
+      migratedFrom: { collectionName: 'Last Week', count: 1 },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('1 task migrated here from Last Week')
+      ).toBeInTheDocument();
+    });
+  });
+
+  // Issue #6: back-navigation should NOT re-show the banner
+  it('should NOT show banner when navigating to the collection without location state', async () => {
+    // Render without any location state (simulates back-navigation after state was cleared)
+    renderView('col-1');
+
+    await waitFor(() => {
+      expect(screen.getByText('Books to Read')).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByText(/migrated here from/i)
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -1981,6 +2074,62 @@ describe('CollectionDetailView - Migrate all open tasks to Today', () => {
     });
   });
 
+  it('should pass migrationContext state to navigate when migrating all to today', async () => {
+    // Destination component reads location.state so we can assert the payload
+    function MigrationStateCapture() {
+      const location = useLocation();
+      const state = location.state as { migratedFrom?: { collectionName: string; count: number } } | null;
+      return (
+        <div data-testid="today-view">
+          {state?.migratedFrom && (
+            <span data-testid="migrated-from-name">{state.migratedFrom.collectionName}</span>
+          )}
+          {state?.migratedFrom && (
+            <span data-testid="migrated-from-count">{state.migratedFrom.count}</span>
+          )}
+        </div>
+      );
+    }
+
+    const user = userEvent.setup();
+    const mockBulkMigrate = vi.fn().mockResolvedValue(undefined);
+    const { appContext } = buildAppContext({
+      collections: [oldDailyCollection, todayCollection],
+      entries: [openTask],
+      bulkMigrateHandle: mockBulkMigrate,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/collection/old-daily-col']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+            <Route path="/collection/today-col" element={<MigrationStateCapture />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Buy groceries')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+    await user.click(screen.getByText(/Migrate all open tasks → Today/i));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('today-view')).toBeInTheDocument();
+    });
+
+    // The destination must receive { state: { migratedFrom: { collectionName, count } } }
+    // so that the MigrationBanner can appear on arrival.
+    // collectionName is the formatted display name of the source collection.
+    const expectedName = getCollectionDisplayName(oldDailyCollection, new Date());
+    expect(screen.getByTestId('migrated-from-name')).toHaveTextContent(expectedName);
+    expect(screen.getByTestId('migrated-from-count')).toHaveTextContent('1');
+  });
+
   it('should NOT navigate when handleBulkMigrateWithMode throws', async () => {
     const user = userEvent.setup();
     const mockBulkMigrate = vi.fn().mockRejectedValue(new Error('Migration failed'));
@@ -2825,6 +2974,89 @@ describe('CollectionDetailView - Migrate all to tomorrow', () => {
     await waitFor(() => {
       expect(screen.getByTestId('tomorrow-view')).toBeInTheDocument();
     });
+  });
+
+  it('should pass migrationContext state to navigate when migrating all to tomorrow', async () => {
+    // Destination component reads location.state so we can assert the payload
+    function MigrationStateCapture() {
+      const location = useLocation();
+      const state = location.state as { migratedFrom?: { collectionName: string; count: number } } | null;
+      return (
+        <div data-testid="tomorrow-view">
+          {state?.migratedFrom && (
+            <span data-testid="migrated-from-name">{state.migratedFrom.collectionName}</span>
+          )}
+          {state?.migratedFrom && (
+            <span data-testid="migrated-from-count">{state.migratedFrom.count}</span>
+          )}
+        </div>
+      );
+    }
+
+    const user = userEvent.setup();
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowKey = getLocalDateKey(tomorrowDate);
+
+    const tomorrowCollection: Collection = {
+      id: 'tomorrow-col',
+      name: 'Tomorrow Log',
+      type: 'daily',
+      date: tomorrowKey,
+      order: 'a1',
+      createdAt: tomorrowDate.toISOString(),
+    };
+
+    const mockBulkMigrate = vi.fn().mockResolvedValue(undefined);
+    const mockEntryProjection = {
+      getEntriesByCollection: vi.fn().mockResolvedValue([openTask]),
+      getEntriesForCollectionView: vi.fn().mockResolvedValue([openTask]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      getParentCompletionStatus: vi.fn().mockResolvedValue({ total: 0, completed: 0, allComplete: true }),
+      getSubTasks: vi.fn().mockResolvedValue([]),
+      getSubTasksForMultipleParents: vi.fn().mockResolvedValue(new Map()),
+      getParentTitlesForSubTasks: vi.fn().mockResolvedValue(new Map()),
+      isParentTask: vi.fn().mockResolvedValue(false),
+      getDeletedEntries: vi.fn().mockResolvedValue([]),
+    };
+    const mockCollectionProjection = {
+      getCollections: vi.fn().mockResolvedValue([mockTodayCollection, tomorrowCollection]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    const appContext = buildMockAppContext({
+      collectionProjection: mockCollectionProjection,
+      entryProjection: mockEntryProjection,
+      bulkMigrateEntriesHandler: { handle: mockBulkMigrate } as any,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/today']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/today" element={<CollectionDetailView date="today" collectionId={undefined} />} />
+            <Route path="/collection/tomorrow-col" element={<MigrationStateCapture />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Open task')).toBeInTheDocument();
+    });
+
+    const menuButton = screen.getByLabelText(/collection menu/i);
+    await user.click(menuButton);
+    await user.click(screen.getByText(/migrate all open tasks → tomorrow/i));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tomorrow-view')).toBeInTheDocument();
+    });
+
+    // The destination must receive { state: { migratedFrom: { collectionName, count } } }
+    // so that the MigrationBanner can appear on arrival.
+    expect(screen.getByTestId('migrated-from-name')).toHaveTextContent('Today');
+    expect(screen.getByTestId('migrated-from-count')).toHaveTextContent('1');
   });
 
   it('should show an error toast and NOT navigate when bulkMigrateEntriesHandler throws', async () => {

@@ -92,7 +92,7 @@ export interface EntryOperations {
   handleMigrateWithMode: (entryId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   handleBulkMigrateWithMode: (entryIds: string[], targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
   
-  handleNavigateToMigrated: (targetCollectionId: string | null) => void;
+  handleNavigateToMigrated: (targetCollectionId: string | null, migrationContext?: { collectionName: string; count: number }) => void;
   handleCreateCollection: (name: string, type?: import('@squickr/domain').CollectionType, date?: string) => Promise<string>;
   
   // Collection operations
@@ -426,12 +426,12 @@ export function useEntryOperations(
     await handleBulkMigrateWithMode(entryIds, targetCollectionId, 'move');
   }, [handleBulkMigrateWithMode]);
 
-  const handleNavigateToMigrated = useCallback((targetCollectionId: string | null) => {
-    if (targetCollectionId) {
-      navigate(`/collection/${targetCollectionId}`);
-    } else {
-      navigate(`/collection/${UNCATEGORIZED_COLLECTION_ID}`);
-    }
+  const handleNavigateToMigrated = useCallback((targetCollectionId: string | null, migrationContext?: { collectionName: string; count: number }) => {
+    const path = targetCollectionId
+      ? `/collection/${targetCollectionId}`
+      : `/collection/${UNCATEGORIZED_COLLECTION_ID}`;
+    const state = migrationContext ? { migratedFrom: migrationContext } : undefined;
+    navigate(path, { state });
   }, [navigate]);
 
   const handleCreateCollection = useCallback(async (name: string, type?: import('@squickr/domain').CollectionType, date?: string): Promise<string> => {
