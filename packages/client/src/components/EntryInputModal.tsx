@@ -6,7 +6,7 @@ interface EntryInputModalProps {
   onClose: () => void;
   onSubmitTask: (title: string) => Promise<void>;
   onSubmitNote: (content: string) => Promise<void>;
-  onSubmitEvent: (content: string, eventDate?: string) => Promise<void>;
+  onSubmitEvent: (content: string) => Promise<void>;
 }
 
 export function EntryInputModal({

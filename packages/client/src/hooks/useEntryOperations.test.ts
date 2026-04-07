@@ -175,6 +175,19 @@ describe('useEntryOperations', () => {
     });
   });
 
+  it('should call createEventHandler without eventDate field when handleCreateEvent is invoked', async () => {
+    const { result } = renderHook(() =>
+      useEntryOperations(buildParams(), mockConfig)
+    );
+
+    await result.current.handleCreateEvent('Team standup');
+
+    const callArg = (mockHandlers.createEventHandler.handle as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(callArg).toHaveProperty('content', 'Team standup');
+    expect(callArg).toHaveProperty('collectionId', 'collection-1');
+    expect(callArg).not.toHaveProperty('eventDate');
+  });
+
   it('should call renameCollectionHandler when handleRenameSubmit is invoked', async () => {
     const { result } = renderHook(() =>
       useEntryOperations(buildParams(), mockConfig)

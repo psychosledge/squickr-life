@@ -42,18 +42,18 @@ describe('EntryInput', () => {
 
   it('should switch to event type when selected', () => {
     render(
-      <EntryInput 
+      <EntryInput
         onSubmitTask={mockOnSubmitTask}
         onSubmitNote={mockOnSubmitNote}
         onSubmitEvent={mockOnSubmitEvent}
       />
     );
-    
+
     const eventButton = screen.getByRole('button', { name: /event/i });
     fireEvent.click(eventButton);
-    
+
     expect(screen.getByPlaceholderText(/add an event/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/event date/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/event date/i)).not.toBeInTheDocument();
   });
 
   it('should submit task when task type is selected', async () => {
@@ -103,53 +103,28 @@ describe('EntryInput', () => {
     });
   });
 
-  it('should submit event with date when event type is selected', async () => {
+  it('should submit event when event type is selected', async () => {
     render(
-      <EntryInput 
+      <EntryInput
         onSubmitTask={mockOnSubmitTask}
         onSubmitNote={mockOnSubmitNote}
         onSubmitEvent={mockOnSubmitEvent}
       />
     );
-    
+
     const eventButton = screen.getByRole('button', { name: /event/i });
     fireEvent.click(eventButton);
-    
+
     const input = screen.getByPlaceholderText(/add an event/i);
-    const dateInput = screen.getByLabelText(/event date/i);
     const button = screen.getByRole('button', { name: /save/i });
-    
+
     fireEvent.change(input, { target: { value: 'Meeting' } });
-    fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
     fireEvent.click(button);
-    
+
     await waitFor(() => {
-      expect(mockOnSubmitEvent).toHaveBeenCalledWith('Meeting', '2026-02-15');
+      expect(mockOnSubmitEvent).toHaveBeenCalledWith('Meeting');
       expect(mockOnSubmitTask).not.toHaveBeenCalled();
       expect(mockOnSubmitNote).not.toHaveBeenCalled();
-    });
-  });
-
-  it('should submit event without date when date is not provided', async () => {
-    render(
-      <EntryInput 
-        onSubmitTask={mockOnSubmitTask}
-        onSubmitNote={mockOnSubmitNote}
-        onSubmitEvent={mockOnSubmitEvent}
-      />
-    );
-    
-    const eventButton = screen.getByRole('button', { name: /event/i });
-    fireEvent.click(eventButton);
-    
-    const input = screen.getByPlaceholderText(/add an event/i);
-    const button = screen.getByRole('button', { name: /save/i });
-    
-    fireEvent.change(input, { target: { value: 'Meeting' } });
-    fireEvent.click(button);
-    
-    await waitFor(() => {
-      expect(mockOnSubmitEvent).toHaveBeenCalledWith('Meeting', undefined);
     });
   });
 
@@ -437,57 +412,53 @@ describe('EntryInput', () => {
       expect(mockOnSubmitNote).toHaveBeenCalledWith('Test note');
     });
 
-    it('should call onSubmitEvent exactly once when pressing Enter in event textarea', async () => {
+    it('should call onSubmitEvent exactly once when pressing Enter in event input', async () => {
       render(
-        <EntryInput 
+        <EntryInput
           onSubmitTask={mockOnSubmitTask}
           onSubmitNote={mockOnSubmitNote}
           onSubmitEvent={mockOnSubmitEvent}
         />
       );
-      
+
       const eventButton = screen.getByRole('button', { name: /event/i });
       fireEvent.click(eventButton);
-      
+
       const input = screen.getByPlaceholderText(/add an event/i);
-      const dateInput = screen.getByLabelText(/event date/i);
-      
+
       fireEvent.change(input, { target: { value: 'Test event' } });
-      fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
       fireEvent.keyDown(input, { key: 'Enter', shiftKey: false });
-      
+
       await waitFor(() => {
         expect(mockOnSubmitEvent).toHaveBeenCalledTimes(1);
       });
-      
-      expect(mockOnSubmitEvent).toHaveBeenCalledWith('Test event', '2026-02-15');
+
+      expect(mockOnSubmitEvent).toHaveBeenCalledWith('Test event');
     });
 
     it('should call onSubmitEvent exactly once when clicking Save button', async () => {
       render(
-        <EntryInput 
+        <EntryInput
           onSubmitTask={mockOnSubmitTask}
           onSubmitNote={mockOnSubmitNote}
           onSubmitEvent={mockOnSubmitEvent}
         />
       );
-      
+
       const eventButton = screen.getByRole('button', { name: /event/i });
       fireEvent.click(eventButton);
-      
+
       const input = screen.getByPlaceholderText(/add an event/i);
-      const dateInput = screen.getByLabelText(/event date/i);
       const button = screen.getByRole('button', { name: /save/i });
-      
+
       fireEvent.change(input, { target: { value: 'Test event' } });
-      fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
       fireEvent.click(button);
-      
+
       await waitFor(() => {
         expect(mockOnSubmitEvent).toHaveBeenCalledTimes(1);
       });
-      
-      expect(mockOnSubmitEvent).toHaveBeenCalledWith('Test event', '2026-02-15');
+
+      expect(mockOnSubmitEvent).toHaveBeenCalledWith('Test event');
     });
   });
 
@@ -595,28 +566,26 @@ describe('EntryInput', () => {
       });
     });
 
-    it('should trigger submission when Save button is clicked for events with date', async () => {
+    it('should trigger submission when Save button is clicked for events', async () => {
       render(
-        <EntryInput 
+        <EntryInput
           onSubmitTask={mockOnSubmitTask}
           onSubmitNote={mockOnSubmitNote}
           onSubmitEvent={mockOnSubmitEvent}
         />
       );
-      
+
       const eventButton = screen.getByRole('button', { name: /event/i });
       fireEvent.click(eventButton);
-      
+
       const input = screen.getByPlaceholderText(/add an event/i);
-      const dateInput = screen.getByLabelText(/event date/i);
       const saveButton = screen.getByRole('button', { name: /save/i });
-      
+
       fireEvent.change(input, { target: { value: 'Meeting' } });
-      fireEvent.change(dateInput, { target: { value: '2026-02-15' } });
       fireEvent.click(saveButton);
-      
+
       await waitFor(() => {
-        expect(mockOnSubmitEvent).toHaveBeenCalledWith('Meeting', '2026-02-15');
+        expect(mockOnSubmitEvent).toHaveBeenCalledWith('Meeting');
       });
     });
 

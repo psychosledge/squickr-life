@@ -9,7 +9,6 @@ describe('EntryList', () => {
   const mockOnUpdateTaskTitle = vi.fn();
   const mockOnUpdateNoteContent = vi.fn();
   const mockOnUpdateEventContent = vi.fn();
-  const mockOnUpdateEventDate = vi.fn();
   const mockOnDelete = vi.fn();
   const mockOnReorder = vi.fn();
 
@@ -26,7 +25,7 @@ describe('EntryList', () => {
         onUpdateTaskTitle={mockOnUpdateTaskTitle}
         onUpdateNoteContent={mockOnUpdateNoteContent}
         onUpdateEventContent={mockOnUpdateEventContent}
-        onUpdateEventDate={mockOnUpdateEventDate}
+
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
       />
@@ -67,7 +66,7 @@ describe('EntryList', () => {
         onUpdateTaskTitle={mockOnUpdateTaskTitle}
         onUpdateNoteContent={mockOnUpdateNoteContent}
         onUpdateEventContent={mockOnUpdateEventContent}
-        onUpdateEventDate={mockOnUpdateEventDate}
+
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
       />
@@ -104,7 +103,7 @@ describe('EntryList', () => {
         onUpdateTaskTitle={mockOnUpdateTaskTitle}
         onUpdateNoteContent={mockOnUpdateNoteContent}
         onUpdateEventContent={mockOnUpdateEventContent}
-        onUpdateEventDate={mockOnUpdateEventDate}
+
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
       />
@@ -132,7 +131,7 @@ describe('EntryList', () => {
         onUpdateTaskTitle={mockOnUpdateTaskTitle}
         onUpdateNoteContent={mockOnUpdateNoteContent}
         onUpdateEventContent={mockOnUpdateEventContent}
-        onUpdateEventDate={mockOnUpdateEventDate}
+
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
       />
@@ -172,7 +171,7 @@ describe('EntryList', () => {
         onUpdateTaskTitle={mockOnUpdateTaskTitle}
         onUpdateNoteContent={mockOnUpdateNoteContent}
         onUpdateEventContent={mockOnUpdateEventContent}
-        onUpdateEventDate={mockOnUpdateEventDate}
+
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
       />
@@ -211,7 +210,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
         />
@@ -250,7 +249,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
         />
@@ -290,7 +289,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
         />
@@ -336,7 +335,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
         />
@@ -373,7 +372,7 @@ describe('EntryList', () => {
         onUpdateTaskTitle={mockOnUpdateTaskTitle}
         onUpdateNoteContent={mockOnUpdateNoteContent}
         onUpdateEventContent={mockOnUpdateEventContent}
-        onUpdateEventDate={mockOnUpdateEventDate}
+
         onDelete={mockOnDelete}
         onReorder={mockOnReorder}
       />
@@ -434,7 +433,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
         />
@@ -483,7 +482,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
         />
@@ -536,7 +535,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
         />
@@ -579,7 +578,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
         />
@@ -650,7 +649,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -725,7 +724,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -766,7 +765,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -806,7 +805,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -838,7 +837,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
         />
@@ -884,7 +883,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -942,7 +941,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -1002,7 +1001,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -1071,7 +1070,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -1119,7 +1118,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -1167,7 +1166,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -1216,7 +1215,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -1264,7 +1263,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -1304,7 +1303,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -1348,7 +1347,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -1399,7 +1398,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}
@@ -1455,7 +1454,7 @@ describe('EntryList', () => {
           onUpdateTaskTitle={mockOnUpdateTaskTitle}
           onUpdateNoteContent={mockOnUpdateNoteContent}
           onUpdateEventContent={mockOnUpdateEventContent}
-          onUpdateEventDate={mockOnUpdateEventDate}
+  
           onDelete={mockOnDelete}
           onReorder={mockOnReorder}
           getSubTasks={mockGetSubTasks}

@@ -21,7 +21,6 @@ describe('SortableEntryItem', () => {
   const mockOnUpdateTaskTitle = vi.fn();
   const mockOnUpdateNoteContent = vi.fn();
   const mockOnUpdateEventContent = vi.fn();
-  const mockOnUpdateEventDate = vi.fn();
   const mockOnDelete = vi.fn();
 
   beforeEach(() => {
@@ -135,7 +134,6 @@ describe('SortableEntryItem', () => {
       <SortableEntryItem
         entry={mockEvent}
         onUpdateEventContent={mockOnUpdateEventContent}
-        onUpdateEventDate={mockOnUpdateEventDate}
         onDelete={mockOnDelete}
       />
     );
@@ -143,7 +141,7 @@ describe('SortableEntryItem', () => {
     // Should render event content
     expect(screen.getByText('Test event')).toBeInTheDocument();
     expect(screen.getByText('📅')).toBeInTheDocument(); // Event bullet
-    expect(screen.getByText(/February 15, 2026/i)).toBeInTheDocument(); // Event date
+    expect(screen.queryByText(/February 15, 2026/i)).not.toBeInTheDocument(); // Date no longer shown
   });
 
   it('should apply dragging opacity when isDragging is true', () => {

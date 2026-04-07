@@ -5,7 +5,6 @@ import type { Entry } from '@squickr/domain';
 
 describe('EventEntryItem', () => {
   const mockOnUpdateEventContent = vi.fn();
-  const mockOnUpdateEventDate = vi.fn();
   const mockOnDelete = vi.fn();
 
   beforeEach(() => {
@@ -20,50 +19,27 @@ describe('EventEntryItem', () => {
     eventDate: '2026-02-15',
   };
 
-  const mockEventNoDate: Entry & { type: 'event' } = {
-    type: 'event',
-    id: 'event-2',
-    content: 'Someday event',
-    createdAt: '2026-01-24T10:00:00.000Z',
-  };
-
-  it('should render event with circle bullet', () => {
+  it('should render event content', () => {
     render(
-      <EventEntryItem 
-        entry={mockEvent} 
+      <EventEntryItem
+        entry={mockEvent}
         onDelete={mockOnDelete}
       />
     );
-    
-    expect(screen.getByText('📅')).toBeInTheDocument();
+
     expect(screen.getByText('Team meeting')).toBeInTheDocument();
   });
 
-  it('should display event date when provided', () => {
+  it('should not display event date in view mode', () => {
     render(
-      <EventEntryItem 
-        entry={mockEvent} 
+      <EventEntryItem
+        entry={mockEvent}
         onDelete={mockOnDelete}
       />
     );
-    
-    // Look for the date specifically in the date display (not the bullet)
-    expect(screen.getByText(/February 15, 2026/i)).toBeInTheDocument();
-  });
 
-  it('should not display date when not provided', () => {
-    render(
-      <EventEntryItem 
-        entry={mockEventNoDate} 
-        onDelete={mockOnDelete}
-      />
-    );
-    
-    // Should still show the bullet emoji
-    expect(screen.getByText('📅')).toBeInTheDocument();
-    
-    // But should NOT show a formatted date
-    expect(screen.queryByText(/February/i)).not.toBeInTheDocument();
+    // The date text should not be rendered even when eventDate is present in the entry
+    expect(screen.queryByText(/February 15, 2026/i)).not.toBeInTheDocument();
   });
 
   it('should call onDelete when Delete is clicked from menu', () => {
@@ -143,6 +119,27 @@ describe('EventEntryItem', () => {
     
     expect(screen.queryByRole('button', { name: /complete/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /reopen/i })).not.toBeInTheDocument();
+  });
+
+  it('should not display a date input in edit mode', () => {
+    render(
+      <EventEntryItem
+        entry={mockEvent}
+        onUpdateEventContent={mockOnUpdateEventContent}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    // Enter edit mode
+    const content = screen.getByText('Team meeting');
+    fireEvent.doubleClick(content);
+
+    // Textarea should appear (edit mode active)
+    expect(screen.getByDisplayValue('Team meeting')).toBeInTheDocument();
+
+    // Date input should NOT appear in edit mode
+    expect(screen.queryByRole('textbox', { name: /date/i })).not.toBeInTheDocument();
+    expect(document.querySelector('input[type="date"]')).not.toBeInTheDocument();
   });
 
   describe('URL linkification', () => {

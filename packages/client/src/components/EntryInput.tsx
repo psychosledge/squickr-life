@@ -5,7 +5,7 @@ import { ENTRY_ICONS } from '../utils/constants';
 interface EntryInputProps {
   onSubmitTask: (title: string) => Promise<void>;
   onSubmitNote: (content: string) => Promise<void>;
-  onSubmitEvent: (content: string, eventDate?: string) => Promise<void>;
+  onSubmitEvent: (content: string) => Promise<void>;
   variant?: 'default' | 'modal';
   onSuccess?: () => void;
 }
@@ -16,7 +16,7 @@ interface EntryInputProps {
  * Allows users to quickly capture entries of different types:
  * - Task: short title (1-500 characters)
  * - Note: short content (1-500 characters)
- * - Event: content (1-500 characters) + optional date
+ * - Event: content (1-500 characters)
  * 
  * Features:
  * - Auto-focus on mount
@@ -33,9 +33,7 @@ export function EntryInput({
 }: EntryInputProps) {
   const [entryType, setEntryType] = useState<EntryType>('task');
   const [inputValue, setInputValue] = useState('');
-  const [eventDate, setEventDate] = useState('');
   const [error, setError] = useState('');
-  const [dateError, setDateError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-focus on mount and when type changes (default variant only)
@@ -56,41 +54,22 @@ export function EntryInput({
       return;
     }
 
-    // Validate date if it's an event with a date
-    if (entryType === 'event' && eventDate.trim()) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(eventDate.trim())) {
-        setDateError('Please enter a valid date in YYYY-MM-DD format');
-        return;
-      }
-      
-      // Additional validation: check if it's a valid date
-      const dateObj = new Date(eventDate.trim() + 'T00:00:00');
-      if (isNaN(dateObj.getTime())) {
-        setDateError('Please enter a valid date');
-        return;
-      }
-    }
-
     try {
       if (entryType === 'task') {
         await onSubmitTask(trimmedValue);
       } else if (entryType === 'note') {
         await onSubmitNote(trimmedValue);
       } else if (entryType === 'event') {
-        const trimmedDate = eventDate.trim();
-        await onSubmitEvent(trimmedValue, trimmedDate || undefined);
+        await onSubmitEvent(trimmedValue);
       }
-      
+
       // Clear inputs on success
       setInputValue('');
-      setEventDate('');
       setError('');
-      setDateError('');
-      
+
       // Call success callback (for modal auto-close)
       onSuccess?.();
-      
+
       // Return focus
       inputRef.current?.focus();
     } catch (err) {
@@ -119,9 +98,7 @@ export function EntryInput({
   const handleTypeChange = (type: EntryType) => {
     setEntryType(type);
     setInputValue('');
-    setEventDate('');
     setError('');
-    setDateError('');
   };
 
   const getPlaceholder = (): string => {
@@ -200,36 +177,6 @@ export function EntryInput({
             Event
           </button>
         </div>
-
-        {/* Event Date Picker (only for events) */}
-        {entryType === 'event' && (
-          <div>
-            <label htmlFor="event-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Event Date (optional)
-            </label>
-            <input
-              id="event-date"
-              type="date"
-              value={eventDate}
-              onChange={(e) => {
-                setEventDate(e.target.value);
-                setDateError(''); // Clear error when user changes date
-              }}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                         bg-white dark:bg-gray-800 text-gray-900 dark:text-white
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                         transition-colors"
-              aria-label="Event date"
-              aria-invalid={dateError ? 'true' : 'false'}
-              aria-describedby={dateError ? 'date-error' : undefined}
-            />
-            {dateError && (
-              <div id="date-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
-                {dateError}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Input Field */}
         <div className="space-y-1">

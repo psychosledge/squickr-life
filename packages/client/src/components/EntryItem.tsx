@@ -13,7 +13,6 @@ interface EntryItemProps {
   onUpdateNoteContent?: (noteId: string, newContent: string) => void | Promise<void>;
   // Event handlers
   onUpdateEventContent?: (eventId: string, newContent: string) => void | Promise<void>;
-  onUpdateEventDate?: (eventId: string, newDate: string | null) => void | Promise<void>;
   // Common handlers
   onDelete: (entryId: string) => void;
   // Item 3: Restore deleted entry
@@ -60,7 +59,6 @@ export function EntryItem({
   onUpdateTaskTitle,
   onUpdateNoteContent,
   onUpdateEventContent,
-  onUpdateEventDate,
   onDelete,
   onRestore,
   onMigrate,
@@ -123,7 +121,6 @@ export function EntryItem({
       <EventEntryItem
         entry={entry}
         onUpdateEventContent={onUpdateEventContent}
-        onUpdateEventDate={onUpdateEventDate}
         onDelete={onDelete}
         onRestore={onRestore}
         onMigrate={onMigrate}

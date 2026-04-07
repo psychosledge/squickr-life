@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Entry, Collection } from '@squickr/domain';
-import { formatTimestamp, formatDate } from '../utils/formatters';
+import { formatTimestamp } from '../utils/formatters';
 import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
@@ -10,7 +10,6 @@ import { LinkifiedContent } from './LinkifiedContent';
 interface EventEntryItemProps {
   entry: Entry & { type: 'event' };
   onUpdateEventContent?: (eventId: string, newContent: string) => void | Promise<void>;
-  onUpdateEventDate?: (eventId: string, newDate: string | null) => void | Promise<void>;
   onDelete: (entryId: string) => void;
   onRestore?: () => void; // Item 3: Restore deleted entry
   onMigrate?: (eventId: string, targetCollectionId: string | null, mode?: 'move' | 'add') => Promise<void>;
@@ -22,16 +21,14 @@ interface EventEntryItemProps {
 
 /**
  * EventEntryItem Component
- * 
+ *
  * Displays an Event entry with:
  * - Circle bullet (○)
  * - Content with inline editing
- * - Date display and editing (📅)
  */
 export function EventEntryItem({
   entry,
   onUpdateEventContent,
-  onUpdateEventDate,
   onDelete,
   onRestore,
   onMigrate,
@@ -42,7 +39,6 @@ export function EventEntryItem({
 }: EventEntryItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
-  const [editDate, setEditDate] = useState('');
   const [editError, setEditError] = useState('');
   const [showMoveModal, setShowMoveModal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -58,7 +54,6 @@ export function EventEntryItem({
   const handleDoubleClick = () => {
     if (onUpdateEventContent) {
       setEditValue(entry.content);
-      setEditDate(entry.eventDate || '');
       setEditError('');
       setIsEditing(true);
     }
@@ -76,15 +71,7 @@ export function EventEntryItem({
       if (trimmedValue !== entry.content && onUpdateEventContent) {
         await onUpdateEventContent(entry.id, trimmedValue);
       }
-      
-      // Also save date if it changed
-      const trimmedDate = editDate.trim();
-      const newDate = trimmedDate || null;
-      const currentDate = entry.eventDate || null;
-      if (newDate !== currentDate && onUpdateEventDate) {
-        await onUpdateEventDate(entry.id, newDate);
-      }
-      
+
       setIsEditing(false);
       setEditError('');
     } catch (err) {
@@ -109,7 +96,6 @@ export function EventEntryItem({
   const handleEdit = () => {
     if (onUpdateEventContent) {
       setEditValue(entry.content);
-      setEditDate(entry.eventDate || '');
       setEditError('');
       setIsEditing(true);
     }
@@ -154,19 +140,6 @@ export function EventEntryItem({
                   maxLength={5000}
                   rows={3}
                 />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Event Date
-                  </label>
-                  <input
-                    type="date"
-                    value={editDate}
-                    onChange={(e) => setEditDate(e.target.value)}
-                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded
-                               bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                               focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
                 {editError && (
                   <div className="text-sm text-red-600 dark:text-red-400" role="alert">
                     {editError}
@@ -189,11 +162,6 @@ export function EventEntryItem({
                 >
                   <LinkifiedContent text={entry.content} />
                 </div>
-                {entry.eventDate && (
-                  <div className="mt-1 text-sm font-medium text-blue-600 dark:text-blue-400">
-                    📅 {formatDate(entry.eventDate)}
-                  </div>
-                )}
                 <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   {formatTimestamp(entry.createdAt)}
                 </div>

@@ -19,7 +19,6 @@ interface EntryListProps {
   onUpdateNoteContent: (noteId: string, newContent: string) => void;
   // Event handlers
   onUpdateEventContent: (eventId: string, newContent: string) => void;
-  onUpdateEventDate: (eventId: string, newDate: string | null) => void;
   // Common handlers
   onDelete: (entryId: string) => void;
   // Item 3: Restore deleted entry
@@ -69,8 +68,7 @@ export function EntryList({
   onUpdateTaskTitle,
   onUpdateNoteContent,
   onUpdateEventContent,
-  onUpdateEventDate,
-  onDelete, 
+  onDelete,
   onRestore,
   onReorder,
   onMigrate,
@@ -365,7 +363,6 @@ export function EntryList({
                     onUpdateTaskTitle={onUpdateTaskTitle}
                     onUpdateNoteContent={onUpdateNoteContent}
                     onUpdateEventContent={onUpdateEventContent}
-                    onUpdateEventDate={onUpdateEventDate}
                     onDelete={onDelete}
                     onRestore={onRestore}
                     onMigrate={onMigrate}
@@ -409,7 +406,6 @@ export function EntryList({
                               onUpdateTaskTitle={onUpdateTaskTitle}
                               onUpdateNoteContent={onUpdateNoteContent}
                               onUpdateEventContent={onUpdateEventContent}
-                              onUpdateEventDate={onUpdateEventDate}
                               onDelete={onDelete}
                               onRestore={onRestore ? () => onRestore(subTask.id, 'task') : undefined}
                               onMigrate={onMigrate}

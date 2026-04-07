@@ -14,7 +14,6 @@ interface DailyLogsListProps {
   onUpdateNoteContent: (noteId: string, newContent: string) => void;
   // Event handlers
   onUpdateEventContent: (eventId: string, newContent: string) => void;
-  onUpdateEventDate: (eventId: string, newDate: string | null) => void;
   // Common handlers
   onDelete: (entryId: string) => void;
   onReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => void;
@@ -35,7 +34,6 @@ export function DailyLogsList({
   onUpdateTaskTitle,
   onUpdateNoteContent,
   onUpdateEventContent,
-  onUpdateEventDate,
   onDelete,
   onReorder
 }: DailyLogsListProps) {
@@ -64,7 +62,6 @@ export function DailyLogsList({
           onUpdateTaskTitle={onUpdateTaskTitle}
           onUpdateNoteContent={onUpdateNoteContent}
           onUpdateEventContent={onUpdateEventContent}
-          onUpdateEventDate={onUpdateEventDate}
           onDelete={onDelete}
           onReorder={onReorder}
         />

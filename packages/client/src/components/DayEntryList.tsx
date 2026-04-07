@@ -13,7 +13,6 @@ interface DayEntryListProps {
   onUpdateNoteContent: (noteId: string, newContent: string) => void;
   // Event handlers
   onUpdateEventContent: (eventId: string, newContent: string) => void;
-  onUpdateEventDate: (eventId: string, newDate: string | null) => void;
   // Common handlers
   onDelete: (entryId: string) => void;
   onReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => void;
@@ -33,7 +32,6 @@ export function DayEntryList({
   onUpdateTaskTitle,
   onUpdateNoteContent,
   onUpdateEventContent,
-  onUpdateEventDate,
   onDelete,
   onReorder
 }: DayEntryListProps) {
@@ -105,7 +103,6 @@ export function DayEntryList({
               onUpdateTaskTitle={onUpdateTaskTitle}
               onUpdateNoteContent={onUpdateNoteContent}
               onUpdateEventContent={onUpdateEventContent}
-              onUpdateEventDate={onUpdateEventDate}
               onDelete={onDelete}
             />
           ))}

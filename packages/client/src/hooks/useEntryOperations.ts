@@ -60,7 +60,7 @@ export interface EntryOperations {
   handleCreateTask: (title: string) => Promise<void>;
   handleCreateSubTask: (parentEntryId: string, title: string) => Promise<void>; // Phase 1: Sub-Tasks
   handleCreateNote: (content: string) => Promise<void>;
-  handleCreateEvent: (content: string, eventDate?: string) => Promise<void>;
+  handleCreateEvent: (content: string) => Promise<void>;
   
   // Task state operations
   handleCompleteTask: (taskId: string) => Promise<void>;
@@ -166,10 +166,10 @@ export function useEntryOperations(
     await handlers.createNoteHandler.handle({ content, collectionId: actualCollectionId });
   }, [handlers.createNoteHandler, collectionId]);
 
-  const handleCreateEvent = useCallback(async (content: string, eventDate?: string) => {
+  const handleCreateEvent = useCallback(async (content: string) => {
     // If in uncategorized view, don't set collectionId (keep entries truly uncategorized)
     const actualCollectionId = collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId;
-    await handlers.createEventHandler.handle({ content, eventDate, collectionId: actualCollectionId });
+    await handlers.createEventHandler.handle({ content, collectionId: actualCollectionId });
   }, [handlers.createEventHandler, collectionId]);
 
   // Task state operations

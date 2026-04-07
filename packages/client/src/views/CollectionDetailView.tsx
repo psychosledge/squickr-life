@@ -57,7 +57,6 @@ interface EntryListHandlers {
   handleUpdateTaskTitle: (taskId: string, newTitle: string) => void;
   handleUpdateNoteContent: (noteId: string, newContent: string) => void;
   handleUpdateEventContent: (eventId: string, newContent: string) => void;
-  handleUpdateEventDate: (eventId: string, newDate: string | null) => void;
   handleDelete: (entryId: string) => void;
   handleRestore: (entryId: string, entryType: 'task' | 'note' | 'event') => Promise<void>;
   handleReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => void;
@@ -110,7 +109,6 @@ function CollectionEntrySection({
       onUpdateTaskTitle={operations.handleUpdateTaskTitle}
       onUpdateNoteContent={operations.handleUpdateNoteContent}
       onUpdateEventContent={operations.handleUpdateEventContent}
-      onUpdateEventDate={operations.handleUpdateEventDate}
       onDelete={operations.handleDelete}
       onRestore={operations.handleRestore}
       onReorder={operations.handleReorder}
