@@ -723,4 +723,148 @@ describe('FirestoreEventStore', () => {
       await expect(eventStore.getAllAfter('evt-anchor')).rejects.toThrow(FirestoreValidationError);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Hybrid cursor strategy: serverReceivedAt vs timestamp fallback
+  // ---------------------------------------------------------------------------
+
+  describe('getAllAfter() hybrid cursor strategy', () => {
+    it('uses serverReceivedAt query path when anchor has serverReceivedAt present', async () => {
+      // Arrange: anchor doc has serverReceivedAt (a Firestore Timestamp object)
+      const anchorServerReceivedAt = { toMillis: () => 1704067200000, seconds: 1704067200, nanoseconds: 0 };
+      mockGetDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          id: 'event-anchor',
+          type: 'TaskCreated',
+          version: 1,
+          aggregateId: 'task-1',
+          timestamp: '2024-01-01T00:00:00Z',
+          serverReceivedAt: anchorServerReceivedAt,
+        }),
+      });
+
+      const deltaEvents = [
+        { id: 'event-2', type: 'TaskCreated', version: 1, aggregateId: 'task-2', timestamp: '2024-01-01T01:00:00Z' },
+      ];
+      mockGetDocs.mockResolvedValue({
+        docs: deltaEvents.map(data => ({ id: data.id, data: () => data })),
+      });
+
+      // Act
+      await eventStore.getAllAfter('event-anchor');
+
+      // Assert: uses serverReceivedAt, not timestamp, in the where clause
+      expect(mockWhere).toHaveBeenCalledWith('serverReceivedAt', '>', anchorServerReceivedAt);
+      expect(mockOrderBy).toHaveBeenCalledWith('serverReceivedAt', 'asc');
+      expect(mockWhere).not.toHaveBeenCalledWith('timestamp', '>', expect.anything());
+    });
+
+    it('passes the Firestore Timestamp value directly to where clause (not converted to string)', async () => {
+      // Arrange: Timestamp object with real Firestore Timestamp shape
+      const firestoreTimestamp = { toMillis: () => 1704067200000, seconds: 1704067200, nanoseconds: 500 };
+      mockGetDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          id: 'event-anchor',
+          type: 'TaskCreated',
+          version: 1,
+          aggregateId: 'task-1',
+          timestamp: '2024-01-01T00:00:00Z',
+          serverReceivedAt: firestoreTimestamp,
+        }),
+      });
+      mockGetDocs.mockResolvedValue({ docs: [] });
+
+      // Act
+      await eventStore.getAllAfter('event-anchor');
+
+      // Assert: the exact Timestamp object is passed — not a string conversion
+      const whereCall = mockWhere.mock.calls.find(
+        (call: any[]) => call[0] === 'serverReceivedAt'
+      );
+      expect(whereCall).toBeDefined();
+      expect(whereCall![2]).toBe(firestoreTimestamp); // reference equality — same object
+    });
+
+    it('falls back to timestamp query path when anchor has no serverReceivedAt', async () => {
+      // Arrange: anchor doc has NO serverReceivedAt field
+      const anchorTimestamp = '2024-01-01T00:00:00Z';
+      mockGetDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          id: 'event-anchor',
+          type: 'TaskCreated',
+          version: 1,
+          aggregateId: 'task-1',
+          timestamp: anchorTimestamp,
+          // serverReceivedAt intentionally absent
+        }),
+      });
+
+      const deltaEvents = [
+        { id: 'event-2', type: 'TaskCreated', version: 1, aggregateId: 'task-2', timestamp: '2024-01-01T01:00:00Z' },
+      ];
+      mockGetDocs.mockResolvedValue({
+        docs: deltaEvents.map(data => ({ id: data.id, data: () => data })),
+      });
+
+      // Act
+      await eventStore.getAllAfter('event-anchor');
+
+      // Assert: falls back to legacy timestamp path
+      expect(mockWhere).toHaveBeenCalledWith('timestamp', '>', anchorTimestamp);
+      expect(mockOrderBy).toHaveBeenCalledWith('timestamp', 'asc');
+      expect(mockWhere).not.toHaveBeenCalledWith('serverReceivedAt', '>', expect.anything());
+    });
+
+    it('corruption guard still fires on legacy path when timestamp is not a string and serverReceivedAt is absent', async () => {
+      // Arrange: anchor doc has no serverReceivedAt, and timestamp is corrupt (number)
+      mockGetDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          id: 'event-anchor',
+          type: 'TaskCreated',
+          version: 1,
+          aggregateId: 'task-1',
+          timestamp: 12345678, // corrupt: number instead of string
+          // serverReceivedAt absent — forces legacy path
+        }),
+      });
+
+      // Act + Assert: FirestoreValidationError should be thrown
+      await expect(eventStore.getAllAfter('event-anchor')).rejects.toThrow(FirestoreValidationError);
+      expect(mockGetDocs).not.toHaveBeenCalled();
+    });
+
+    it('returns delta events when using serverReceivedAt path', async () => {
+      // Arrange
+      const anchorServerReceivedAt = { toMillis: () => 1704067200000, seconds: 1704067200, nanoseconds: 0 };
+      mockGetDoc.mockResolvedValue({
+        exists: () => true,
+        data: () => ({
+          id: 'event-anchor',
+          type: 'TaskCreated',
+          version: 1,
+          aggregateId: 'task-1',
+          timestamp: '2024-01-01T00:00:00Z',
+          serverReceivedAt: anchorServerReceivedAt,
+        }),
+      });
+
+      const deltaEvents = [
+        { id: 'event-2', type: 'TaskCreated', version: 1, aggregateId: 'task-2', timestamp: '2024-01-01T01:00:00Z' },
+        { id: 'event-3', type: 'TaskCompleted', version: 1, aggregateId: 'task-2', timestamp: '2024-01-01T02:00:00Z' },
+      ];
+      mockGetDocs.mockResolvedValue({
+        docs: deltaEvents.map(data => ({ id: data.id, data: () => data })),
+      });
+
+      // Act
+      const result = await eventStore.getAllAfter('event-anchor');
+
+      // Assert
+      expect(result).toEqual(deltaEvents);
+    });
+  });
 });

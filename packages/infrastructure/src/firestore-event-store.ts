@@ -138,19 +138,33 @@ export class FirestoreEventStore implements IEventStore {
       const anchorSnap = await getDoc(anchorRef);
       if (!anchorSnap.exists()) return this.getAll();
       const anchorRaw = anchorSnap.data();
-      const anchorTimestamp = anchorRaw['timestamp'];
-      if (typeof anchorTimestamp !== 'string') {
-        throw new FirestoreValidationError(
-          `Firestore anchor document "${lastEventId}" has a non-string "timestamp" field`,
-          lastEventId,
-          anchorRaw
+
+      let q;
+      if (anchorRaw['serverReceivedAt'] != null) {
+        // Primary path: use serverReceivedAt Timestamp for stable ordering across devices
+        const anchorServerReceivedAt = anchorRaw['serverReceivedAt'];
+        q = query(
+          eventsRef,
+          where('serverReceivedAt', '>', anchorServerReceivedAt),
+          orderBy('serverReceivedAt', 'asc'),
+        );
+      } else {
+        // Legacy fallback: use client-side timestamp string
+        const anchorTimestamp = anchorRaw['timestamp'];
+        if (typeof anchorTimestamp !== 'string') {
+          throw new FirestoreValidationError(
+            `Firestore anchor document "${lastEventId}" has a non-string "timestamp" field`,
+            lastEventId,
+            anchorRaw
+          );
+        }
+        q = query(
+          eventsRef,
+          where('timestamp', '>', anchorTimestamp),
+          orderBy('timestamp', 'asc'),
         );
       }
-      const q = query(
-        eventsRef,
-        where('timestamp', '>', anchorTimestamp),
-        orderBy('timestamp', 'asc'),
-      );
+
       const snapshot = await getDocs(q);
       return snapshot.docs.map(d => assertValidDomainEvent(d.data(), d.id));
     } catch (err) {
