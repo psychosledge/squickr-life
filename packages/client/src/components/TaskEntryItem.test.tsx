@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TaskEntryItem } from './TaskEntryItem';
 import type { Entry } from '@squickr/domain';
 
@@ -519,5 +519,162 @@ describe('TaskEntryItem', () => {
         screen.queryByRole('menuitem', { name: /remove from this collection/i })
       ).not.toBeInTheDocument();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Task reminders (ADR-029)
+// ---------------------------------------------------------------------------
+
+describe('TaskEntryItem — reminders', () => {
+  const mockOnDelete = vi.fn();
+  const mockOnSetReminder = vi.fn().mockResolvedValue(undefined);
+  const mockOnClearReminder = vi.fn().mockResolvedValue(undefined);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const taskWithReminder: Entry & { type: 'task' } = {
+    type: 'task',
+    id: 'task-1',
+    content: 'Buy milk',
+    createdAt: '2026-04-07T09:00:00.000Z',
+    status: 'open',
+    reminderAt: '2026-04-08T10:00:00.000Z',
+  };
+
+  const taskWithoutReminder: Entry & { type: 'task' } = {
+    type: 'task',
+    id: 'task-2',
+    content: 'Walk the dog',
+    createdAt: '2026-04-07T09:00:00.000Z',
+    status: 'open',
+  };
+
+  it('displays bell indicator when reminder is set', () => {
+    render(
+      <TaskEntryItem
+        entry={taskWithReminder}
+        onDelete={mockOnDelete}
+        onSetReminder={mockOnSetReminder}
+        onClearReminder={mockOnClearReminder}
+      />
+    );
+    expect(screen.getByTestId('reminder-indicator')).toBeInTheDocument();
+  });
+
+  it('displays Lucide Bell icon (not emoji) in reminder indicator', () => {
+    render(
+      <TaskEntryItem
+        entry={taskWithReminder}
+        onDelete={mockOnDelete}
+        onSetReminder={mockOnSetReminder}
+        onClearReminder={mockOnClearReminder}
+      />
+    );
+    // Should have an accessible label for the Bell icon
+    const reminderIndicator = screen.getByTestId('reminder-indicator');
+    // SVG Bell icon should be present inside the indicator
+    const svg = reminderIndicator.querySelector('svg');
+    expect(svg).toBeInTheDocument();
+    // Emoji should NOT be used
+    expect(reminderIndicator.textContent).not.toContain('🔔');
+  });
+
+  it('does NOT display bell indicator when reminder is not set', () => {
+    render(
+      <TaskEntryItem
+        entry={taskWithoutReminder}
+        onDelete={mockOnDelete}
+        onSetReminder={mockOnSetReminder}
+        onClearReminder={mockOnClearReminder}
+      />
+    );
+    expect(screen.queryByTestId('reminder-indicator')).not.toBeInTheDocument();
+  });
+
+  it('opens TaskReminderModal when "Set reminder" is clicked from actions menu', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+
+    render(
+      <TaskEntryItem
+        entry={taskWithoutReminder}
+        onDelete={mockOnDelete}
+        onSetReminder={mockOnSetReminder}
+        onClearReminder={mockOnClearReminder}
+      />
+    );
+
+    // Open actions menu
+    await user.click(screen.getByRole('button', { name: /entry actions/i }));
+
+    // Click "Set reminder"
+    const setReminderItem = await screen.findByRole('menuitem', { name: /set reminder/i });
+    await user.click(setReminderItem);
+
+    // Modal should be visible
+    expect(await screen.findByRole('heading', { name: /set reminder/i })).toBeInTheDocument();
+  });
+
+  it('closes TaskReminderModal when Cancel is clicked', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+
+    render(
+      <TaskEntryItem
+        entry={taskWithoutReminder}
+        onDelete={mockOnDelete}
+        onSetReminder={mockOnSetReminder}
+        onClearReminder={mockOnClearReminder}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: /entry actions/i }));
+    const setReminderItem = await screen.findByRole('menuitem', { name: /set reminder/i });
+    await user.click(setReminderItem);
+
+    // Modal open
+    expect(await screen.findByRole('heading', { name: /set reminder/i })).toBeInTheDocument();
+
+    // Click Cancel
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(screen.queryByRole('heading', { name: /set reminder/i })).not.toBeInTheDocument();
+  });
+
+  it('surfaces handler error in the modal when onSetReminder rejects', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+
+    const failingOnSetReminder = vi.fn().mockRejectedValue(new Error('reminderAt must be at least 1 minute in the future'));
+
+    render(
+      <TaskEntryItem
+        entry={taskWithoutReminder}
+        onDelete={mockOnDelete}
+        onSetReminder={failingOnSetReminder}
+        onClearReminder={mockOnClearReminder}
+      />
+    );
+
+    // Open the modal
+    await user.click(screen.getByRole('button', { name: /entry actions/i }));
+    const setReminderItem = await screen.findByRole('menuitem', { name: /set reminder/i });
+    await user.click(setReminderItem);
+    expect(await screen.findByRole('heading', { name: /set reminder/i })).toBeInTheDocument();
+
+    // Enter a far-future date+time so the modal's own validation passes,
+    // but the handler (mocked above) still rejects.
+    await user.type(screen.getByLabelText(/date/i), '2099-12-31');
+    await user.type(screen.getByLabelText(/time/i), '12:00');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    // The error from the handler should appear inside the modal
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+    // Modal stays open so the user can correct and retry
+    expect(screen.getByRole('heading', { name: /set reminder/i })).toBeInTheDocument();
   });
 });

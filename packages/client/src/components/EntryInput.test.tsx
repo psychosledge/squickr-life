@@ -72,7 +72,7 @@ describe('EntryInput', () => {
     fireEvent.click(button);
     
     await waitFor(() => {
-      expect(mockOnSubmitTask).toHaveBeenCalledWith('Buy milk');
+      expect(mockOnSubmitTask).toHaveBeenCalledWith('Buy milk', undefined);
       expect(mockOnSubmitNote).not.toHaveBeenCalled();
       expect(mockOnSubmitEvent).not.toHaveBeenCalled();
     });
@@ -181,7 +181,7 @@ describe('EntryInput', () => {
     fireEvent.submit(form!);
     
     await waitFor(() => {
-      expect(mockOnSubmitTask).toHaveBeenCalledWith('Buy milk');
+      expect(mockOnSubmitTask).toHaveBeenCalledWith('Buy milk', undefined);
     });
   });
 
@@ -201,7 +201,7 @@ describe('EntryInput', () => {
     fireEvent.submit(form!);
     
     await waitFor(() => {
-      expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task');
+      expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task', undefined);
     });
   });
 
@@ -339,7 +339,7 @@ describe('EntryInput', () => {
         expect(mockOnSubmitTask).toHaveBeenCalledTimes(1);
       });
       
-      expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task');
+      expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task', undefined);
     });
 
     it('should call onSubmitTask exactly once when clicking Save button', async () => {
@@ -361,7 +361,7 @@ describe('EntryInput', () => {
         expect(mockOnSubmitTask).toHaveBeenCalledTimes(1);
       });
       
-      expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task');
+      expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task', undefined);
     });
 
     it('should call onSubmitNote exactly once when pressing Enter in note textarea', async () => {
@@ -539,7 +539,7 @@ describe('EntryInput', () => {
       fireEvent.click(saveButton);
       
       await waitFor(() => {
-        expect(mockOnSubmitTask).toHaveBeenCalledWith('Buy milk');
+        expect(mockOnSubmitTask).toHaveBeenCalledWith('Buy milk', undefined);
       });
     });
 
@@ -605,7 +605,7 @@ describe('EntryInput', () => {
       fireEvent.keyDown(input, { key: 'Enter' });
       
       await waitFor(() => {
-        expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task');
+        expect(mockOnSubmitTask).toHaveBeenCalledWith('Test task', undefined);
       });
       
       // Clear mock
@@ -617,7 +617,7 @@ describe('EntryInput', () => {
       fireEvent.click(saveButton);
       
       await waitFor(() => {
-        expect(mockOnSubmitTask).toHaveBeenCalledWith('Another task');
+        expect(mockOnSubmitTask).toHaveBeenCalledWith('Another task', undefined);
       });
     });
 
@@ -640,16 +640,203 @@ describe('EntryInput', () => {
 
     it('should render save button in modal variant', () => {
       render(
-        <EntryInput 
+        <EntryInput
           variant="modal"
           onSubmitTask={mockOnSubmitTask}
           onSubmitNote={mockOnSubmitNote}
           onSubmitEvent={mockOnSubmitEvent}
         />
       );
-      
+
       // Save button should be visible in modal variant too (for mobile users)
       expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reminder section (ADR-029)
+// ---------------------------------------------------------------------------
+
+describe('EntryInput — reminder section', () => {
+  const mockOnSubmitTask = vi.fn(async () => {});
+  const mockOnSubmitNote = vi.fn(async () => {});
+  const mockOnSubmitEvent = vi.fn(async () => {});
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('reminder section toggle is visible when task type is selected', () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+    // Default type is task — toggle should be present
+    expect(screen.getByRole('button', { name: /set reminder/i })).toBeInTheDocument();
+  });
+
+  it('reminder section toggle is NOT visible for note type', () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /note/i }));
+    expect(screen.queryByRole('button', { name: /set reminder/i })).not.toBeInTheDocument();
+  });
+
+  it('reminder section toggle is NOT visible for event type', () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /event/i }));
+    expect(screen.queryByRole('button', { name: /set reminder/i })).not.toBeInTheDocument();
+  });
+
+  it('date and time pickers are hidden initially (collapsed)', () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+    expect(screen.queryByLabelText(/reminder date/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/reminder time/i)).not.toBeInTheDocument();
+  });
+
+  it('clicking toggle shows date and time pickers', () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /set reminder/i }));
+    expect(screen.getByLabelText(/reminder date/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/reminder time/i)).toBeInTheDocument();
+  });
+
+  it('submits with reminderAt when both date and time are filled', async () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+
+    // Fill the task title
+    const input = screen.getByLabelText(/entry content/i);
+    fireEvent.change(input, { target: { value: 'Test task' } });
+
+    // Open reminder section and fill date + time
+    fireEvent.click(screen.getByRole('button', { name: /set reminder/i }));
+    fireEvent.change(screen.getByLabelText(/reminder date/i), { target: { value: '2099-12-31' } });
+    fireEvent.change(screen.getByLabelText(/reminder time/i), { target: { value: '12:00' } });
+
+    // Submit
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(mockOnSubmitTask).toHaveBeenCalledTimes(1);
+      const [title, reminderAt] = mockOnSubmitTask.mock.calls[0] as [string, string | undefined];
+      expect(title).toBe('Test task');
+      expect(reminderAt).toBeDefined();
+      expect(typeof reminderAt).toBe('string');
+    });
+  });
+
+  it('submits without reminderAt when reminder section is unused', async () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+
+    const input = screen.getByLabelText(/entry content/i);
+    fireEvent.change(input, { target: { value: 'Quick task' } });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(mockOnSubmitTask).toHaveBeenCalledTimes(1);
+      const [title, reminderAt] = mockOnSubmitTask.mock.calls[0] as [string, string | undefined];
+      expect(title).toBe('Quick task');
+      expect(reminderAt).toBeUndefined();
+    });
+  });
+
+  // ── Past reminder validation (P1 fix) ────────────────────────────────────────
+
+  it('shows error and does NOT submit when reminder datetime is in the past', async () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+
+    const input = screen.getByLabelText(/entry content/i);
+    fireEvent.change(input, { target: { value: 'Past reminder task' } });
+
+    // Open reminder section
+    fireEvent.click(screen.getByRole('button', { name: /set reminder/i }));
+
+    // Set a past date/time
+    fireEvent.change(screen.getByLabelText(/reminder date/i), { target: { value: '2000-01-01' } });
+    fireEvent.change(screen.getByLabelText(/reminder time/i), { target: { value: '00:00' } });
+
+    // Try to submit
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    // Error should be shown in the reminder section
+    expect(await screen.findByText(/reminder must be in the future/i)).toBeInTheDocument();
+
+    // onSubmitTask must NOT have been called
+    expect(mockOnSubmitTask).not.toHaveBeenCalled();
+  });
+
+  it('submits normally when reminder datetime is at least 1 minute in the future', async () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+
+    const input = screen.getByLabelText(/entry content/i);
+    fireEvent.change(input, { target: { value: 'Future reminder task' } });
+
+    // Open reminder section
+    fireEvent.click(screen.getByRole('button', { name: /set reminder/i }));
+
+    // Set a far-future date/time
+    fireEvent.change(screen.getByLabelText(/reminder date/i), { target: { value: '2099-12-31' } });
+    fireEvent.change(screen.getByLabelText(/reminder time/i), { target: { value: '12:00' } });
+
+    // Submit
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(mockOnSubmitTask).toHaveBeenCalledTimes(1);
+    });
+
+    // Should NOT show an error
+    expect(screen.queryByText(/reminder must be in the future/i)).not.toBeInTheDocument();
   });
 });

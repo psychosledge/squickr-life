@@ -5,7 +5,8 @@ import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
 import { EventHistoryDebugTool } from './EventHistoryDebugTool';
-import { ChevronRight, ChevronDown, Link2 } from 'lucide-react';
+import { TaskReminderModal } from './TaskReminderModal';
+import { ChevronRight, ChevronDown, Link2, Bell } from 'lucide-react';
 import { LinkifiedContent } from './LinkifiedContent';
 
 interface TaskEntryItemProps {
@@ -22,6 +23,9 @@ interface TaskEntryItemProps {
   onCreateCollection?: (name: string) => Promise<string>;
   onAddSubTask?: (entry: Entry) => void;
   onRemoveFromCollection?: (taskId: string, collectionId: string) => Promise<void>; // Bug #7
+  // ADR-029: Task reminders
+  onSetReminder?: (taskId: string, reminderAt: string) => Promise<void>;
+  onClearReminder?: (taskId: string) => Promise<void>;
   // Phase 2: Completion status for parent tasks with sub-tasks
   completionStatus?: {
     total: number;
@@ -60,6 +64,8 @@ export function TaskEntryItem({
   onCreateCollection: _onCreateCollection, // Not used in new dialog
   onAddSubTask,
   onRemoveFromCollection,
+  onSetReminder,
+  onClearReminder,
   completionStatus,
   parentTitle,
   isCollapsed = false,
@@ -70,6 +76,8 @@ export function TaskEntryItem({
   const [editValue, setEditValue] = useState('');
   const [editError, setEditError] = useState('');
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [reminderError, setReminderError] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when entering edit mode
@@ -297,6 +305,13 @@ export function TaskEntryItem({
                     • Completed {formatTimestamp(entry.completedAt)}
                   </span>
                 )}
+                {entry.reminderAt && (
+                  <span className="ml-2 inline-flex items-center gap-1" data-testid="reminder-indicator">
+                    <Bell className="w-3 h-3" aria-hidden="true" />
+                    <span className="sr-only">Reminder set</span>
+                    {formatTimestamp(entry.reminderAt)}
+                  </span>
+                )}
               </div>
             </>
           )}
@@ -318,6 +333,7 @@ export function TaskEntryItem({
               ? () => onRemoveFromCollection!(entry.id, currentCollectionId!)
               : undefined
           }
+          onSetReminder={onSetReminder ? () => setShowReminderModal(true) : undefined}
           collections={collections}
           currentCollectionId={currentCollectionId}
           onNavigateToMigrated={onNavigateToMigrated}
@@ -341,6 +357,31 @@ export function TaskEntryItem({
         />
       )}
       
+      {/* ADR-029: Reminder modal */}
+      {showReminderModal && (
+        <TaskReminderModal
+          existingReminderAt={entry.reminderAt}
+          externalError={reminderError}
+          onSave={async (reminderAt) => {
+            try {
+              await onSetReminder?.(entry.id, reminderAt);
+              setReminderError(undefined);
+              setShowReminderModal(false);
+            } catch (err) {
+              setReminderError(err instanceof Error ? err.message : 'Failed to set reminder');
+            }
+          }}
+          onClear={async () => {
+            await onClearReminder?.(entry.id);
+            setShowReminderModal(false);
+          }}
+          onClose={() => {
+            setReminderError(undefined);
+            setShowReminderModal(false);
+          }}
+        />
+      )}
+
       {/* Debug tool (dev mode only) */}
       <EventHistoryDebugTool entry={entry} />
     </div>

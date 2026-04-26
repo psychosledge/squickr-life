@@ -1136,3 +1136,100 @@ describe('EntryActionsMenu - Remove from this collection', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Set reminder menu item (ADR-029)
+// ---------------------------------------------------------------------------
+
+describe('EntryActionsMenu — Set reminder', () => {
+  const mockOnEdit = vi.fn();
+  const mockOnMove = vi.fn();
+  const mockOnDelete = vi.fn();
+  const mockOnSetReminder = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockTaskEntry: Entry & { type: 'task' } = {
+    type: 'task',
+    id: 'task-1',
+    content: 'Test task',
+    createdAt: '2026-01-24T10:00:00.000Z',
+    status: 'open',
+  };
+
+  const mockNoteEntry: Entry & { type: 'note' } = {
+    type: 'note',
+    id: 'note-1',
+    content: 'Test note',
+    createdAt: '2026-01-24T10:00:00.000Z',
+  };
+
+  it('"Set reminder" is visible when onSetReminder provided for a non-deleted task', async () => {
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+        onSetReminder={mockOnSetReminder}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: /set reminder/i })).toBeInTheDocument();
+    });
+  });
+
+  it('"Set reminder" is NOT visible when onSetReminder is absent', async () => {
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+    await waitFor(() => {
+      expect(screen.queryByRole('menuitem', { name: /set reminder/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('"Set reminder" is NOT visible for non-task entries', async () => {
+    render(
+      <EntryActionsMenu
+        entry={mockNoteEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+        onSetReminder={mockOnSetReminder}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+    await waitFor(() => {
+      expect(screen.queryByRole('menuitem', { name: /set reminder/i })).not.toBeInTheDocument();
+    });
+  });
+
+  it('calls onSetReminder and closes menu when "Set reminder" is clicked', async () => {
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+        onSetReminder={mockOnSetReminder}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: /set reminder/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('menuitem', { name: /set reminder/i }));
+    await waitFor(() => {
+      expect(mockOnSetReminder).toHaveBeenCalledTimes(1);
+    });
+  });
+});

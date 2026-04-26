@@ -4,7 +4,7 @@ import { EntryInput } from './EntryInput';
 interface EntryInputModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmitTask: (title: string) => Promise<void>;
+  onSubmitTask: (title: string, reminderAt?: string) => Promise<void>;
   onSubmitNote: (content: string) => Promise<void>;
   onSubmitEvent: (content: string) => Promise<void>;
 }

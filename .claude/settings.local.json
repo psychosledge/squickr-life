@@ -13,7 +13,28 @@
       "Bash(echo \"exit: $?\")",
       "Bash(node -p \"require\\(''./package.json''\\).version\")",
       "Bash(npx jest:*)",
-      "Bash(firebase deploy:*)"
+      "Bash(firebase deploy:*)",
+      "Bash(npm run:*)",
+      "Read(//c/Users/psych/AppData/Local/**)",
+      "Read(//c/Users/psych/AppData/Roaming/**)",
+      "Read(//c/Users/psych/**)",
+      "Bash(cmd.exe /c \"where pnpm\")",
+      "Bash(cmd.exe /c \"where node\")",
+      "Bash(cmd.exe /c \"where pnpm 2>&1\")",
+      "Bash(cmd.exe /c \"pnpm --version\")",
+      "Bash(cmd.exe /c \"node --version\")",
+      "Bash(powershell.exe -Command \"Get-Command pnpm -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source; Get-Command node -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(npm --version)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs\")",
+      "Bash(npm install:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs:/c/Users/psych/AppData/Roaming/npm\")",
+      "Bash(npx pnpm:*)",
+      "Bash(\"/c/Users/psych/AppData/Roaming/npm/pnpm.cmd\" --version)",
+      "Bash(export PATH)",
+      "Bash(\"/c/Users/psych/AppData/Roaming/npm/pnpm\" --version)",
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
+      "Bash(\"/c/Users/psych/AppData/Roaming/npm/pnpm\" test:*)",
+      "Bash(export PATH=\"/c/Program Files/nodejs:/c/Users/psych/AppData/Roaming/npm:$PATH\")"
     ]
   }
 }

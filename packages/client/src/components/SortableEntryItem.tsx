@@ -34,6 +34,9 @@ interface SortableEntryItemProps {
   onAddSubTask?: (entry: Entry) => void;
   // Bug #7: Remove from collection handler (tasks only)
   onRemoveFromCollection?: (taskId: string, collectionId: string) => Promise<void>;
+  // ADR-029: Task reminder handlers
+  onSetReminder?: (taskId: string, reminderAt: string) => Promise<void>;
+  onClearReminder?: (taskId: string) => Promise<void>;
   // Phase 2: Completion status for parent tasks
   completionStatus?: {
     total: number;
@@ -79,6 +82,8 @@ export function SortableEntryItem({
   isCollapsed,
   onToggleCollapse,
   parentCollections,
+  onSetReminder,
+  onClearReminder,
 }: SortableEntryItemProps) {
   const {
     attributes,
@@ -151,6 +156,8 @@ export function SortableEntryItem({
           onCreateCollection={onCreateCollection}
           onAddSubTask={onAddSubTask}
           onRemoveFromCollection={onRemoveFromCollection}
+          onSetReminder={onSetReminder}
+          onClearReminder={onClearReminder}
           completionStatus={completionStatus}
           parentTitle={parentTitle}
           isCollapsed={isCollapsed}

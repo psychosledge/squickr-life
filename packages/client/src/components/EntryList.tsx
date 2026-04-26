@@ -40,6 +40,9 @@ interface EntryListProps {
   onAddSubTask?: (entry: Entry) => void;
   // Bug #7: Remove from collection handler (tasks only)
   onRemoveFromCollection?: (taskId: string, collectionId: string) => Promise<void>;
+  // ADR-029: Task reminder handlers (tasks only)
+  onSetReminder?: (taskId: string, reminderAt: string) => Promise<void>;
+  onClearReminder?: (taskId: string) => Promise<void>;
   // Phase 2: Optional completion status calculator (for parent tasks)
   getCompletionStatus?: (taskId: string) => Promise<{
     total: number;
@@ -81,6 +84,8 @@ export function EntryList({
   onToggleSelection,
   onAddSubTask,
   onRemoveFromCollection,
+  onSetReminder,
+  onClearReminder,
   getCompletionStatus,
   getSubTasks,
   getSubTasksForMultipleParents,
@@ -372,6 +377,8 @@ export function EntryList({
                     onCreateCollection={onCreateCollection}
                     onAddSubTask={onAddSubTask}
                     onRemoveFromCollection={onRemoveFromCollection}
+                    onSetReminder={onSetReminder}
+                    onClearReminder={onClearReminder}
                     isSelectionMode={isSelectionMode}
                     isSelected={selectedEntryIds.has(entry.id)}
                     onToggleSelection={onToggleSelection}
@@ -415,6 +422,8 @@ export function EntryList({
                               onCreateCollection={onCreateCollection}
                               onAddSubTask={onAddSubTask}
                               onRemoveFromCollection={onRemoveFromCollection}
+                              onSetReminder={onSetReminder}
+                              onClearReminder={onClearReminder}
                               parentCollections={parentCollections}
                             />
                           </div>

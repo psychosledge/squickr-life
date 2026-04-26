@@ -3,7 +3,7 @@ import type { EntryType } from '@squickr/domain';
 import { ENTRY_ICONS } from '../utils/constants';
 
 interface EntryInputProps {
-  onSubmitTask: (title: string) => Promise<void>;
+  onSubmitTask: (title: string, reminderAt?: string) => Promise<void>;
   onSubmitNote: (content: string) => Promise<void>;
   onSubmitEvent: (content: string) => Promise<void>;
   variant?: 'default' | 'modal';
@@ -34,6 +34,10 @@ export function EntryInput({
   const [entryType, setEntryType] = useState<EntryType>('task');
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState('');
+  const [showReminderSection, setShowReminderSection] = useState(false);
+  const [reminderDate, setReminderDate] = useState('');
+  const [reminderTime, setReminderTime] = useState('');
+  const [reminderError, setReminderError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-focus on mount and when type changes (default variant only)
@@ -56,7 +60,21 @@ export function EntryInput({
 
     try {
       if (entryType === 'task') {
-        await onSubmitTask(trimmedValue);
+        // Build reminderAt if both date and time are filled
+        let reminderAt: string | undefined;
+        if (reminderDate && reminderTime) {
+          const combined = new Date(`${reminderDate}T${reminderTime}:00`);
+          if (!isNaN(combined.getTime())) {
+            // Validate the reminder is at least 1 minute in the future
+            const oneMinuteFromNow = Date.now() + 60_000;
+            if (combined.getTime() < oneMinuteFromNow) {
+              setReminderError('Reminder must be in the future');
+              return;
+            }
+            reminderAt = combined.toISOString();
+          }
+        }
+        await onSubmitTask(trimmedValue, reminderAt);
       } else if (entryType === 'note') {
         await onSubmitNote(trimmedValue);
       } else if (entryType === 'event') {
@@ -65,7 +83,11 @@ export function EntryInput({
 
       // Clear inputs on success
       setInputValue('');
+      setReminderDate('');
+      setReminderTime('');
+      setShowReminderSection(false);
       setError('');
+      setReminderError('');
 
       // Call success callback (for modal auto-close)
       onSuccess?.();
@@ -98,7 +120,11 @@ export function EntryInput({
   const handleTypeChange = (type: EntryType) => {
     setEntryType(type);
     setInputValue('');
+    setReminderDate('');
+    setReminderTime('');
+    setShowReminderSection(false);
     setError('');
+    setReminderError('');
   };
 
   const getPlaceholder = (): string => {
@@ -214,6 +240,66 @@ export function EntryInput({
             {inputValue.length}/{getMaxLength()}
           </div>
         </div>
+
+        {/* Reminder section — only for tasks */}
+        {entryType === 'task' && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => setShowReminderSection(!showReminderSection)}
+              className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+              aria-expanded={showReminderSection}
+            >
+              ⏰ Set reminder
+            </button>
+
+            {showReminderSection && (
+              <div className="mt-2">
+                <div className="flex gap-2">
+                  <div>
+                    <label
+                      htmlFor="entry-reminder-date"
+                      className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                    >
+                      Reminder date
+                    </label>
+                    <input
+                      id="entry-reminder-date"
+                      type="date"
+                      value={reminderDate}
+                      onChange={(e) => { setReminderDate(e.target.value); setReminderError(''); }}
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+                                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="entry-reminder-time"
+                      className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                    >
+                      Reminder time
+                    </label>
+                    <input
+                      id="entry-reminder-time"
+                      type="time"
+                      value={reminderTime}
+                      onChange={(e) => { setReminderTime(e.target.value); setReminderError(''); }}
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                                 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
+                                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                {reminderError && (
+                  <div className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
+                    {reminderError}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </form>
       
       {error && (

@@ -11,6 +11,7 @@ interface EntryActionsMenuProps {
   onRestore?: () => void; // Item 3: Restore deleted entry
   onAddSubTask?: () => void; // Phase 1: Sub-Tasks
   onRemoveFromCollection?: () => void; // Bug #7: Remove from this collection
+  onSetReminder?: () => void; // ADR-029: Task reminders
   collections?: Collection[];
   currentCollectionId?: string; // Current collection we're viewing from
   onNavigateToMigrated?: (collectionId: string | null) => void;
@@ -42,6 +43,7 @@ export function EntryActionsMenu({
   onRestore,
   onAddSubTask,
   onRemoveFromCollection,
+  onSetReminder,
   collections,
   currentCollectionId,
   onNavigateToMigrated,
@@ -65,6 +67,8 @@ export function EntryActionsMenu({
   const canAddSubTask = isTask && !isSubTask && !isGhost && !isDeleted && onAddSubTask;
   // Bug #7: Show "Remove from this collection" only for non-ghost, non-deleted tasks when prop is provided
   const showRemoveFromCollection = isTask && !isGhost && !isDeleted && !!onRemoveFromCollection;
+  // ADR-029: Show "Set reminder" only for non-ghost, non-deleted tasks when prop is provided
+  const showSetReminder = isTask && !isGhost && !isDeleted && !!onSetReminder;
 
   // Close menu when clicking outside or pressing Escape
   useEffect(() => {
@@ -193,6 +197,13 @@ export function EntryActionsMenu({
     }
   };
 
+  const handleSetReminder = () => {
+    if (onSetReminder) {
+      onSetReminder();
+      setIsOpen(false);
+    }
+  };
+
   return (
     <div className="relative">
       {/* Trigger Button */}
@@ -282,6 +293,16 @@ export function EntryActionsMenu({
               className="w-full text-left px-4 py-2 text-sm text-orange-600 dark:text-orange-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               Remove from this collection
+            </button>
+          )}
+          {/* ADR-029: Set reminder */}
+          {showSetReminder && (
+            <button
+              role="menuitem"
+              onClick={handleSetReminder}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              Set reminder
             </button>
           )}
           {/* Item 3: Show Restore for deleted entries, Delete for active entries */}

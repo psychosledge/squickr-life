@@ -29,3 +29,4 @@ admin.initializeApp();
 setGlobalOptions({ maxInstances: 10 });
 
 export { habitReminderFanOut } from "./habit-reminder-fanout";
+export { taskReminderFanOut } from "./task-reminder-fanout";

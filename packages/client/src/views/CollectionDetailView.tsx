@@ -64,6 +64,8 @@ interface EntryListHandlers {
   handleNavigateToMigrated: (collectionId: string | null, migrationContext?: { collectionName: string; count: number }) => void;
   handleCreateCollection: (name: string) => Promise<string>;
   handleRemoveFromCollection: (taskId: string, collectionId: string) => Promise<void>;
+  handleSetReminder: (taskId: string, reminderAt: string) => Promise<void>;
+  handleClearReminder: (taskId: string) => Promise<void>;
 }
 
 /** Shared projection methods used to fetch sub-task and completion data */
@@ -119,6 +121,8 @@ function CollectionEntrySection({
       onCreateCollection={operations.handleCreateCollection}
       onAddSubTask={onAddSubTask}
       onRemoveFromCollection={operations.handleRemoveFromCollection}
+      onSetReminder={operations.handleSetReminder}
+      onClearReminder={operations.handleClearReminder}
       isSelectionMode={selection.isSelectionMode}
       selectedEntryIds={selection.selectedEntryIds}
       onToggleSelection={selection.toggleSelection}

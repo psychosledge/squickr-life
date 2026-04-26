@@ -57,7 +57,7 @@ export interface UseEntryOperationsParams {
 
 export interface EntryOperations {
   // Entry creation operations
-  handleCreateTask: (title: string) => Promise<void>;
+  handleCreateTask: (title: string, reminderAt?: string) => Promise<void>;
   handleCreateSubTask: (parentEntryId: string, title: string) => Promise<void>; // Phase 1: Sub-Tasks
   handleCreateNote: (content: string) => Promise<void>;
   handleCreateEvent: (content: string) => Promise<void>;
@@ -80,7 +80,11 @@ export interface EntryOperations {
   
   // Remove from collection (Bug #7)
   handleRemoveFromCollection: (taskId: string, collectionId: string) => Promise<void>;
-  
+
+  // Task reminders (ADR-029)
+  handleSetReminder: (taskId: string, reminderAt: string) => Promise<void>;
+  handleClearReminder: (taskId: string) => Promise<void>;
+
   // Entry reordering operations
   handleReorder: (entryId: string, previousEntryId: string | null, nextEntryId: string | null) => Promise<void>;
   
@@ -143,11 +147,20 @@ export function useEntryOperations(
   const collectionId = collection?.id;
 
   // Entry creation operations
-  const handleCreateTask = useCallback(async (title: string) => {
+  const handleCreateTask = useCallback(async (title: string, reminderAt?: string) => {
     // If in uncategorized view, don't set collectionId (keep entries truly uncategorized)
     const actualCollectionId = collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId;
-    await handlers.createTaskHandler.handle({ content: title, collectionId: actualCollectionId });
-  }, [handlers.createTaskHandler, collectionId]);
+    const taskId = await handlers.createTaskHandler.handle({ content: title, collectionId: actualCollectionId });
+    // ADR-029: If a reminderAt was provided, set it immediately after creating the task
+    if (reminderAt && taskId) {
+      try {
+        await handlers.setTaskReminderHandler.handle({ taskId, reminderAt });
+      } catch {
+        // Non-fatal: task was created successfully even if reminder fails
+        console.warn('[handleCreateTask] Failed to set reminder for task', taskId);
+      }
+    }
+  }, [handlers.createTaskHandler, handlers.setTaskReminderHandler, collectionId]);
 
   // Phase 1: Sub-Tasks - Create sub-task under parent
   const handleCreateSubTask = useCallback(async (parentEntryId: string, title: string) => {
@@ -303,6 +316,15 @@ export function useEntryOperations(
   const handleRemoveFromCollection = useCallback(async (taskId: string, collectionId: string) => {
     await removeTaskFromCollectionHandler.handle({ taskId, collectionId });
   }, [removeTaskFromCollectionHandler]);
+
+  // ADR-029: Task reminders
+  const handleSetReminder = useCallback(async (taskId: string, reminderAt: string) => {
+    await handlers.setTaskReminderHandler.handle({ taskId, reminderAt });
+  }, [handlers.setTaskReminderHandler]);
+
+  const handleClearReminder = useCallback(async (taskId: string) => {
+    await handlers.clearTaskReminderHandler.handle({ taskId, reason: 'user' });
+  }, [handlers.clearTaskReminderHandler]);
 
   // Entry reordering operations
   const handleReorder = useCallback(async (
@@ -498,6 +520,8 @@ export function useEntryOperations(
     handleDelete,
     handleRestore,
     handleRemoveFromCollection,
+    handleSetReminder,
+    handleClearReminder,
     handleReorder,
     handleMigrate,
     handleBulkMigrate,

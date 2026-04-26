@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { EntryEventApplicator } from './entry.event-applicator';
 import type { DomainEvent } from './domain-event';
-import type { Entry } from './task.types';
+import type { Entry, Task } from './task.types';
 
 // ---------------------------------------------------------------------------
 // Minimal event factories (inline) — no external helper dependency
@@ -54,6 +54,91 @@ function noteTitleEvent(id: string, content: string, offset = 0): DomainEvent {
     },
   } as unknown as DomainEvent;
 }
+
+// ---------------------------------------------------------------------------
+// Reminder event factories
+// ---------------------------------------------------------------------------
+
+function taskReminderSetEvent(taskId: string, reminderAt: string, offset = 0): DomainEvent {
+  return {
+    id: `evt-reminder-set-${taskId}`,
+    type: 'TaskReminderSet',
+    aggregateId: taskId,
+    timestamp: ts(offset),
+    payload: {
+      taskId,
+      reminderAt,
+      setAt: ts(offset),
+    },
+  } as unknown as DomainEvent;
+}
+
+function taskReminderClearedEvent(taskId: string, reason: 'user' | 'fired', offset = 0): DomainEvent {
+  return {
+    id: `evt-reminder-cleared-${taskId}`,
+    type: 'TaskReminderCleared',
+    aggregateId: taskId,
+    timestamp: ts(offset),
+    payload: {
+      taskId,
+      clearedAt: ts(offset),
+      reason,
+    },
+  } as unknown as DomainEvent;
+}
+
+// ---------------------------------------------------------------------------
+
+describe('EntryEventApplicator — TaskReminderSet / TaskReminderCleared', () => {
+  const applicator = new EntryEventApplicator();
+
+  it('TaskReminderSet sets reminderAt on the task projection', () => {
+    const reminderAt = '2026-04-08T10:00:00.000Z';
+    const events = [
+      taskCreatedEvent('t1', 'My task'),
+      taskReminderSetEvent('t1', reminderAt, 100),
+    ];
+    const result = applicator.applyEvents(events);
+    const task = result.find(e => e.id === 't1') as Task;
+    expect(task.reminderAt).toBe(reminderAt);
+  });
+
+  it('a second TaskReminderSet overwrites the previous reminderAt', () => {
+    const firstReminder = '2026-04-08T10:00:00.000Z';
+    const secondReminder = '2026-04-09T12:00:00.000Z';
+    const events = [
+      taskCreatedEvent('t1', 'My task'),
+      taskReminderSetEvent('t1', firstReminder, 100),
+      taskReminderSetEvent('t1', secondReminder, 200),
+    ];
+    const result = applicator.applyEvents(events);
+    const task = result.find(e => e.id === 't1') as Task;
+    expect(task.reminderAt).toBe(secondReminder);
+  });
+
+  it('TaskReminderCleared removes reminderAt from the task', () => {
+    const reminderAt = '2026-04-08T10:00:00.000Z';
+    const events = [
+      taskCreatedEvent('t1', 'My task'),
+      taskReminderSetEvent('t1', reminderAt, 100),
+      taskReminderClearedEvent('t1', 'user', 200),
+    ];
+    const result = applicator.applyEvents(events);
+    const task = result.find(e => e.id === 't1') as Task;
+    expect(task.reminderAt).toBeUndefined();
+  });
+
+  it('TaskReminderCleared on a task with no reminder is a no-op', () => {
+    const events = [
+      taskCreatedEvent('t1', 'My task'),
+      taskReminderClearedEvent('t1', 'user', 100),
+    ];
+    const result = applicator.applyEvents(events);
+    const task = result.find(e => e.id === 't1') as Task;
+    expect(task.reminderAt).toBeUndefined();
+    expect(task.content).toBe('My task'); // task still intact
+  });
+});
 
 // ---------------------------------------------------------------------------
 

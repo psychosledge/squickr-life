@@ -21,6 +21,8 @@ import type {
   TaskMigrated,
   TaskAddedToCollection,
   TaskRemovedFromCollection,
+  TaskReminderSet,
+  TaskReminderCleared,
   NoteCreated,
   NoteContentChanged,
   NoteDeleted,
@@ -241,7 +243,9 @@ export class EntryEventApplicator {
     | TaskTitleChanged
     | TaskMigrated
     | TaskAddedToCollection
-    | TaskRemovedFromCollection {
+    | TaskRemovedFromCollection
+    | TaskReminderSet
+    | TaskReminderCleared {
     return (
       event.type === 'TaskCreated' ||
       event.type === 'TaskCompleted' ||
@@ -252,7 +256,9 @@ export class EntryEventApplicator {
       event.type === 'TaskTitleChanged' ||
       event.type === 'TaskMigrated' ||
       event.type === 'TaskAddedToCollection' ||
-      event.type === 'TaskRemovedFromCollection'
+      event.type === 'TaskRemovedFromCollection' ||
+      event.type === 'TaskReminderSet' ||
+      event.type === 'TaskReminderCleared'
     );
   }
 
@@ -317,6 +323,8 @@ export class EntryEventApplicator {
       | TaskMigrated
       | TaskAddedToCollection
       | TaskRemovedFromCollection
+      | TaskReminderSet
+      | TaskReminderCleared
   ): void {
     switch (event.type) {
       case 'TaskCreated': {
@@ -567,6 +575,24 @@ export class EntryEventApplicator {
         };
 
         tasks.set(task.id, updatedTask);
+        break;
+      }
+      case 'TaskReminderSet': {
+        const task = tasks.get(event.payload.taskId);
+        if (task) {
+          tasks.set(task.id, {
+            ...task,
+            reminderAt: event.payload.reminderAt,
+          });
+        }
+        break;
+      }
+      case 'TaskReminderCleared': {
+        const task = tasks.get(event.payload.taskId);
+        if (task) {
+          const { reminderAt: _reminderAt, ...taskWithoutReminder } = task as Task & { reminderAt?: string };
+          tasks.set(task.id, taskWithoutReminder as Task);
+        }
         break;
       }
     }

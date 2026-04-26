@@ -38,6 +38,8 @@ import {
   UpdateCollectionSettingsHandler,
   FavoriteCollectionHandler,
   UnfavoriteCollectionHandler,
+  SetTaskReminderHandler,
+  ClearTaskReminderHandler,
 } from '@squickr/domain';
 
 export interface CollectionHandlers {
@@ -76,6 +78,10 @@ export interface CollectionHandlers {
   updateSettingsHandler: UpdateCollectionSettingsHandler;
   favoriteCollectionHandler: FavoriteCollectionHandler;
   unfavoriteCollectionHandler: UnfavoriteCollectionHandler;
+
+  // Task reminder handlers (ADR-029)
+  setTaskReminderHandler: SetTaskReminderHandler;
+  clearTaskReminderHandler: ClearTaskReminderHandler;
 }
 
 export interface UseCollectionHandlersParams {
@@ -221,6 +227,17 @@ export function useCollectionHandlers({
     [eventStore, collectionProjection]
   );
 
+  // Task reminder handlers (ADR-029)
+  const setTaskReminderHandler = useMemo(
+    () => new SetTaskReminderHandler(eventStore, entryProjection),
+    [eventStore, entryProjection]
+  );
+
+  const clearTaskReminderHandler = useMemo(
+    () => new ClearTaskReminderHandler(eventStore, entryProjection),
+    [eventStore, entryProjection]
+  );
+
   return {
     createTaskHandler,
     createSubTaskHandler,
@@ -246,5 +263,7 @@ export function useCollectionHandlers({
     updateSettingsHandler,
     favoriteCollectionHandler,
     unfavoriteCollectionHandler,
+    setTaskReminderHandler,
+    clearTaskReminderHandler,
   };
 }

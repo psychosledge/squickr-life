@@ -22,6 +22,8 @@ export type {
   TaskMigrated,
   TaskAddedToCollection,
   TaskRemovedFromCollection,
+  TaskReminderSet,
+  TaskReminderCleared,
   CreateTaskCommand,
   CreateSubTaskCommand,
   CompleteTaskCommand,
@@ -36,6 +38,8 @@ export type {
   AddTaskToCollectionCommand,
   RemoveTaskFromCollectionCommand,
   MoveTaskToCollectionCommand,
+  SetTaskReminderCommand,
+  ClearTaskReminderCommand,
   TaskEvent,
   EntryMovedToCollection,
   MoveEntryToCollectionCommand,
@@ -148,6 +152,9 @@ export { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
 
 // Task Command Handlers
 export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, RestoreTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler, MoveEntryToCollectionHandler, MigrateTaskHandler } from './task.handlers';
+
+// Task Reminder Handlers (ADR-029)
+export { SetTaskReminderHandler, ClearTaskReminderHandler } from './task-reminder.handlers';
 
 // Multi-Collection Command Handlers
 export { AddTaskToCollectionHandler, RemoveTaskFromCollectionHandler, MoveTaskToCollectionHandler } from './collection-management.handlers';

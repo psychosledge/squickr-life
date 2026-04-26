@@ -41,6 +41,7 @@ export class SyncManager {
     private remoteStore: IEventStore,
     public onSyncStateChange?: (syncing: boolean, error?: string) => void,
     private getSnapshotCursor?: () => string | null,
+    private onEventsUploaded?: (events: import('@squickr/domain').DomainEvent[]) => Promise<void>,
   ) {}
 
   /** Returns true once the first sync attempt has finished (success or timeout) */
@@ -139,6 +140,14 @@ export class SyncManager {
       logger.info('[SyncManager]', `Uploading ${newEvents.length} new events...`);
       if (newEvents.length > 0) {
         await this.remoteStore.appendBatch(newEvents);
+        // ADR-029: Notify caller of uploaded events so they can maintain index documents
+        if (this.onEventsUploaded) {
+          try {
+            await this.onEventsUploaded(newEvents);
+          } catch (callbackErr) {
+            logger.error('[SyncManager] onEventsUploaded callback failed:', callbackErr);
+          }
+        }
       }
       
       // Download: Get events from remoteStore, append to localStore  

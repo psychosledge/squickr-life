@@ -21,6 +21,10 @@ Design: `docs/archive/designs/proactive-squickr.md`
 
 ## Up Next
 
+### Snapshot Fallback Fix (designed — ADR-032, ready for Sam — do first)
+
+Revert `SNAPSHOT_SCHEMA_VERSION` 9→8 (unnecessary bump, `reminderAt?` is optional). Add `wasLocalSnapshotInvalid()` signal to `EntryListProjection` and update the cold-start sequencer gate to attempt remote snapshot restore when the local snapshot is invalid, even if the local event log is non-empty. Prevents stale local replay producing wrong state after a version bump on multi-device setups.
+
 ### Task Reminders (designed — ADR-029, ready for Sam)
 
 Set a date+time on a task and receive an FCM push notification at that time. Taps open the app to the index. Auto-clears after firing. One reminder per task. Set at create time or via task edit. Scheduled Cloud Function mirrors habitReminderFanOut with a materialized taskReminders index document.

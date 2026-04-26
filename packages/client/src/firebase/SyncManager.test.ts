@@ -776,3 +776,87 @@ describe('SyncManager', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Task reminder index maintenance (ADR-029)
+// ---------------------------------------------------------------------------
+
+describe('SyncManager — onEventsUploaded callback (ADR-029)', () => {
+  let localStore: IEventStore;
+  let remoteStore: IEventStore;
+  let syncManager: SyncManager;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+
+    localStore = {
+      append: vi.fn().mockResolvedValue(undefined),
+      appendBatch: vi.fn().mockResolvedValue(undefined),
+      getAll: vi.fn().mockResolvedValue([]),
+      getAllAfter: vi.fn().mockResolvedValue([]),
+      getById: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+
+    remoteStore = {
+      append: vi.fn().mockResolvedValue(undefined),
+      appendBatch: vi.fn().mockResolvedValue(undefined),
+      getAll: vi.fn().mockResolvedValue([]),
+      getAllAfter: vi.fn().mockResolvedValue([]),
+      getById: vi.fn().mockResolvedValue([]),
+      subscribe: vi.fn().mockReturnValue(() => {}),
+    };
+  });
+
+  afterEach(() => {
+    syncManager?.stop();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('calls onEventsUploaded with newly uploaded events after successful upload', async () => {
+    const onEventsUploaded = vi.fn().mockResolvedValue(undefined);
+
+    const reminderEvent: DomainEvent = {
+      id: 'evt-reminder-1',
+      type: 'TaskReminderSet',
+      aggregateId: 'task-1',
+      timestamp: new Date().toISOString(),
+      version: 1,
+      payload: { taskId: 'task-1', reminderAt: '2026-04-08T10:00:00.000Z', setAt: new Date().toISOString() },
+    } as unknown as DomainEvent;
+
+    // Local has the event, remote doesn't
+    vi.mocked(localStore.getAll).mockResolvedValue([reminderEvent]);
+    vi.mocked(remoteStore.getAllAfter).mockResolvedValue([]);
+    vi.mocked(remoteStore.appendBatch).mockResolvedValue(undefined);
+
+    syncManager = new SyncManager(localStore, remoteStore, undefined, undefined, onEventsUploaded);
+    await syncManager.syncNow();
+
+    expect(onEventsUploaded).toHaveBeenCalledTimes(1);
+    expect(onEventsUploaded).toHaveBeenCalledWith([reminderEvent]);
+  });
+
+  it('does NOT call onEventsUploaded when no events are uploaded', async () => {
+    const onEventsUploaded = vi.fn().mockResolvedValue(undefined);
+
+    // Nothing to upload
+    vi.mocked(localStore.getAll).mockResolvedValue([]);
+    vi.mocked(remoteStore.getAllAfter).mockResolvedValue([]);
+
+    syncManager = new SyncManager(localStore, remoteStore, undefined, undefined, onEventsUploaded);
+    await syncManager.syncNow();
+
+    expect(onEventsUploaded).not.toHaveBeenCalled();
+  });
+
+  it('works without onEventsUploaded callback (backward compatible)', async () => {
+    vi.mocked(localStore.getAll).mockResolvedValue([]);
+    vi.mocked(remoteStore.getAllAfter).mockResolvedValue([]);
+
+    // No 5th argument
+    syncManager = new SyncManager(localStore, remoteStore);
+    await expect(syncManager.syncNow()).resolves.not.toThrow();
+  });
+});

@@ -478,6 +478,105 @@ describe('useColdStartSequencer', () => {
     expect(mockManagerStop).toHaveBeenCalledTimes(1);
   });
 
+  // ── onEventsUploaded wiring ───────────────────────────────────────────────────
+
+  it('passes onEventsUploaded callback to SyncManager (fast path)', async () => {
+    const user = makeUser();
+    const entryProjection = makeEntryProjection({ wasEmpty: false });
+    const eventStore = makeEventStore();
+    const snapshotStore = makeSnapshotStore();
+    const snapshotManagerRef = makeSnapshotManagerRef();
+
+    // Capture SyncManager constructor arguments
+    let capturedArgs: ConstructorParameters<typeof SyncManager> | undefined;
+    vi.mocked(SyncManager).mockImplementation((...args) => {
+      capturedArgs = args as ConstructorParameters<typeof SyncManager>;
+      mockManagerStart = vi.fn();
+      mockManagerStop = vi.fn();
+      const instance: Record<string, unknown> = {
+        start: mockManagerStart,
+        stop: mockManagerStop,
+      };
+      let _cb: ((syncing: boolean, error?: string) => void) | undefined;
+      Object.defineProperty(instance, 'onSyncStateChange', {
+        get() { return _cb; },
+        set(v) { _cb = v; mockOnSyncStateChange = v; },
+        configurable: true,
+      });
+      return instance as unknown as SyncManager;
+    });
+
+    renderHook(() =>
+      useColdStartSequencer({
+        user,
+        isLoading: false,
+        entryProjection,
+        habitProjection: makeHabitProjection(),
+        collectionProjection: makeCollectionProjection(),
+        userPreferencesProjection: makeUserPreferencesProjection(),
+        eventStore,
+        snapshotStore,
+        snapshotManagerRef,
+      })
+    );
+
+    await waitFor(() => expect(mockManagerStart).toHaveBeenCalledTimes(1));
+
+    // 5th constructor argument (index 4) should be a function (the onEventsUploaded callback)
+    expect(capturedArgs).toBeDefined();
+    expect(typeof capturedArgs![4]).toBe('function');
+  });
+
+  it('passes onEventsUploaded callback to SyncManager (slow path)', async () => {
+    const user = makeUser();
+    const entryProjection = makeEntryProjection({ wasEmpty: true, isCachePopulated: false });
+    const eventStore = makeEventStore();
+    const snapshotStore = makeSnapshotStore();
+    const snapshotManagerRef = makeSnapshotManagerRef();
+
+    let capturedArgs: ConstructorParameters<typeof SyncManager> | undefined;
+    let localSyncStateChange: ((syncing: boolean, error?: string) => void) | undefined;
+    vi.mocked(SyncManager).mockImplementation((...args) => {
+      capturedArgs = args as ConstructorParameters<typeof SyncManager>;
+      mockManagerStart = vi.fn();
+      mockManagerStop = vi.fn();
+      const instance: Record<string, unknown> = {
+        start: mockManagerStart,
+        stop: mockManagerStop,
+      };
+      let _cb: ((syncing: boolean, error?: string) => void) | undefined;
+      Object.defineProperty(instance, 'onSyncStateChange', {
+        get() { return _cb; },
+        set(v) { _cb = v; localSyncStateChange = v; mockOnSyncStateChange = v; },
+        configurable: true,
+      });
+      return instance as unknown as SyncManager;
+    });
+
+    renderHook(() =>
+      useColdStartSequencer({
+        user,
+        isLoading: false,
+        entryProjection,
+        habitProjection: makeHabitProjection(),
+        collectionProjection: makeCollectionProjection(),
+        userPreferencesProjection: makeUserPreferencesProjection(),
+        eventStore,
+        snapshotStore,
+        snapshotManagerRef,
+      })
+    );
+
+    // Wait for slow path SyncManager to be created
+    await waitFor(() => expect(mockManagerStart).toHaveBeenCalledTimes(1));
+
+    // Simulate sync completing so phase goes to 'ready'
+    act(() => { localSyncStateChange?.(false, undefined); });
+
+    expect(capturedArgs).toBeDefined();
+    expect(typeof capturedArgs![4]).toBe('function');
+  });
+
   // ── User signs out then back in ───────────────────────────────────────────────
 
   it('resets to checking when user changes from non-null to null', async () => {
@@ -505,5 +604,278 @@ describe('useColdStartSequencer', () => {
     rerender({ user: null });
 
     expect(mockManagerStop).toHaveBeenCalled();
+  });
+});
+
+// ── ?clearsnapshot URL parameter ──────────────────────────────────────────────
+// CLEAR_SNAPSHOT is a module-level constant read at import time, so we must
+// reset modules and re-import dynamically to simulate different URL states.
+
+describe('useColdStartSequencer ?clearsnapshot behaviour', () => {
+  // Re-usable helpers that do NOT depend on the module-level import above.
+
+  function makeUserLocal(uid = 'user-123'): FirebaseUser {
+    return { uid } as FirebaseUser;
+  }
+
+  function makeEntryProjectionLocal(opts: {
+    wasEmpty?: boolean;
+    isCachePopulated?: boolean;
+  } = {}): EntryListProjection {
+    return {
+      wasLocalStoreEmptyAtHydration: vi.fn().mockReturnValue(opts.wasEmpty ?? false),
+      isCachePopulated: vi.fn().mockReturnValue(opts.isCachePopulated ?? true),
+      getLastSnapshotCursor: vi.fn().mockReturnValue(null),
+      hydrate: vi.fn().mockResolvedValue(undefined),
+    } as unknown as EntryListProjection;
+  }
+
+  function makeSnapshotStoreWithClear(): IndexedDBSnapshotStore {
+    return {
+      save: vi.fn().mockResolvedValue(undefined),
+      load: vi.fn().mockResolvedValue(null),
+      clear: vi.fn().mockResolvedValue(undefined),
+    } as unknown as IndexedDBSnapshotStore;
+  }
+
+  function makeSnapshotManagerRefLocal(
+    manager: SnapshotManager | null = null,
+  ): React.RefObject<SnapshotManager | null> {
+    return { current: manager } as React.RefObject<SnapshotManager | null>;
+  }
+
+  // Set up fresh mocks for each isolated module load
+  function setupMocks() {
+    vi.mock('../firebase/config', () => ({ firestore: {} }));
+    vi.mock('../firebase/SyncManager', () => ({ SyncManager: vi.fn() }));
+    vi.mock('../snapshot-manager', () => ({ SnapshotManager: vi.fn() }));
+    vi.mock('../utils/logger', () => ({
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+    }));
+    vi.mock('@squickr/infrastructure', async (importOriginal) => {
+      const original = await importOriginal<typeof import('@squickr/infrastructure')>();
+      return {
+        ...original,
+        FirestoreEventStore: vi.fn(),
+        FirestoreSnapshotStore: vi.fn(),
+      };
+    });
+  }
+
+  afterEach(() => {
+    vi.resetModules();
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
+  });
+
+  it('fast path: calls snapshotStore.clear before sync when ?clearsnapshot is in the URL', async () => {
+    vi.stubGlobal('location', { search: '?clearsnapshot' });
+    setupMocks();
+    vi.resetModules();
+
+    const { useColdStartSequencer: hook } = await import('./useColdStartSequencer');
+    const { SyncManager: MockSyncManager } = await import('../firebase/SyncManager');
+    const { SnapshotManager: MockSnapshotManager } = await import('../snapshot-manager');
+    const { FirestoreEventStore: MockFESClass, FirestoreSnapshotStore: MockFSSClass } =
+      await import('@squickr/infrastructure');
+
+    let localManagerStart = vi.fn();
+    let localManagerStop = vi.fn();
+    vi.mocked(MockSyncManager).mockImplementation(() => {
+      localManagerStart = vi.fn();
+      localManagerStop = vi.fn();
+      const instance: Record<string, unknown> = {
+        start: localManagerStart,
+        stop: localManagerStop,
+      };
+      let _cb: ((syncing: boolean, error?: string) => void) | undefined;
+      Object.defineProperty(instance, 'onSyncStateChange', {
+        get() { return _cb; },
+        set(v: ((syncing: boolean, error?: string) => void) | undefined) { _cb = v; },
+        configurable: true,
+      });
+      return instance as unknown as SyncManager;
+    });
+
+    vi.mocked(MockSnapshotManager).mockImplementation(() => ({
+      start: vi.fn(),
+      stop: vi.fn(),
+      saveSnapshot: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SnapshotManager));
+
+    vi.mocked(MockFESClass).mockImplementation(() => ({} as unknown as FirestoreEventStore));
+    vi.mocked(MockFSSClass).mockImplementation(() => ({
+      load: vi.fn().mockResolvedValue(null),
+    } as unknown as FirestoreSnapshotStore));
+
+    const user = makeUserLocal();
+    const entryProjection = makeEntryProjectionLocal({ wasEmpty: false });
+    const eventStore = {} as IndexedDBEventStore;
+    const snapshotStore = makeSnapshotStoreWithClear();
+    const snapshotManagerRef = makeSnapshotManagerRefLocal();
+
+    const { result } = renderHook(() =>
+      hook({
+        user,
+        isLoading: false,
+        entryProjection,
+        habitProjection: { hydrateFromSnapshot: vi.fn() } as unknown as HabitProjection,
+        collectionProjection: { seedFromSnapshot: vi.fn() } as unknown as CollectionListProjection,
+        userPreferencesProjection: { hydrateFromSnapshot: vi.fn() } as unknown as UserPreferencesProjection,
+        eventStore,
+        snapshotStore,
+        snapshotManagerRef,
+      })
+    );
+
+    await waitFor(() => expect(result.current.coldStartPhase).toBe('ready'));
+
+    // snapshotStore.clear must have been called (cursor reset)
+    expect(snapshotStore.clear).toHaveBeenCalledWith('entry-list-projection');
+    // And sync must have started
+    expect(localManagerStart).toHaveBeenCalledTimes(1);
+    // clear must have been called BEFORE start (order matters)
+    const clearOrder = vi.mocked(snapshotStore.clear).mock.invocationCallOrder[0];
+    const startOrder = localManagerStart.mock.invocationCallOrder[0];
+    expect(clearOrder).toBeLessThan(startOrder);
+  });
+
+  it('fast path: does NOT call snapshotStore.clear when ?clearsnapshot is NOT in the URL', async () => {
+    vi.stubGlobal('location', { search: '' });
+    setupMocks();
+    vi.resetModules();
+
+    const { useColdStartSequencer: hook } = await import('./useColdStartSequencer');
+    const { SyncManager: MockSyncManager } = await import('../firebase/SyncManager');
+    const { SnapshotManager: MockSnapshotManager } = await import('../snapshot-manager');
+    const { FirestoreEventStore: MockFESClass, FirestoreSnapshotStore: MockFSSClass } =
+      await import('@squickr/infrastructure');
+
+    let localManagerStart = vi.fn();
+    vi.mocked(MockSyncManager).mockImplementation(() => {
+      localManagerStart = vi.fn();
+      const instance: Record<string, unknown> = {
+        start: localManagerStart,
+        stop: vi.fn(),
+      };
+      let _cb: ((syncing: boolean, error?: string) => void) | undefined;
+      Object.defineProperty(instance, 'onSyncStateChange', {
+        get() { return _cb; },
+        set(v: ((syncing: boolean, error?: string) => void) | undefined) { _cb = v; },
+        configurable: true,
+      });
+      return instance as unknown as SyncManager;
+    });
+
+    vi.mocked(MockSnapshotManager).mockImplementation(() => ({
+      start: vi.fn(),
+      stop: vi.fn(),
+      saveSnapshot: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SnapshotManager));
+
+    vi.mocked(MockFESClass).mockImplementation(() => ({} as unknown as FirestoreEventStore));
+    vi.mocked(MockFSSClass).mockImplementation(() => ({
+      load: vi.fn().mockResolvedValue(null),
+    } as unknown as FirestoreSnapshotStore));
+
+    const user = makeUserLocal();
+    const entryProjection = makeEntryProjectionLocal({ wasEmpty: false });
+    const eventStore = {} as IndexedDBEventStore;
+    const snapshotStore = makeSnapshotStoreWithClear();
+    const snapshotManagerRef = makeSnapshotManagerRefLocal();
+
+    const { result } = renderHook(() =>
+      hook({
+        user,
+        isLoading: false,
+        entryProjection,
+        habitProjection: { hydrateFromSnapshot: vi.fn() } as unknown as HabitProjection,
+        collectionProjection: { seedFromSnapshot: vi.fn() } as unknown as CollectionListProjection,
+        userPreferencesProjection: { hydrateFromSnapshot: vi.fn() } as unknown as UserPreferencesProjection,
+        eventStore,
+        snapshotStore,
+        snapshotManagerRef,
+      })
+    );
+
+    await waitFor(() => expect(result.current.coldStartPhase).toBe('ready'));
+
+    // snapshotStore.clear must NOT have been called
+    expect(snapshotStore.clear).not.toHaveBeenCalled();
+    expect(localManagerStart).toHaveBeenCalledTimes(1);
+  });
+
+  it('slow path: does NOT call snapshotStore.clear even when ?clearsnapshot is in the URL', async () => {
+    vi.stubGlobal('location', { search: '?clearsnapshot' });
+    setupMocks();
+    vi.resetModules();
+
+    const { useColdStartSequencer: hook } = await import('./useColdStartSequencer');
+    const { SyncManager: MockSyncManager } = await import('../firebase/SyncManager');
+    const { SnapshotManager: MockSnapshotManager } = await import('../snapshot-manager');
+    const { FirestoreEventStore: MockFESClass, FirestoreSnapshotStore: MockFSSClass } =
+      await import('@squickr/infrastructure');
+
+    let localManagerStart = vi.fn();
+    let localSyncStateChange: ((syncing: boolean, error?: string) => void) | undefined;
+    vi.mocked(MockSyncManager).mockImplementation(() => {
+      localManagerStart = vi.fn();
+      const instance: Record<string, unknown> = {
+        start: localManagerStart,
+        stop: vi.fn(),
+      };
+      let _cb: ((syncing: boolean, error?: string) => void) | undefined;
+      Object.defineProperty(instance, 'onSyncStateChange', {
+        get() { return _cb; },
+        set(v: ((syncing: boolean, error?: string) => void) | undefined) {
+          _cb = v;
+          localSyncStateChange = v;
+        },
+        configurable: true,
+      });
+      return instance as unknown as SyncManager;
+    });
+
+    vi.mocked(MockSnapshotManager).mockImplementation(() => ({
+      start: vi.fn(),
+      stop: vi.fn(),
+      saveSnapshot: vi.fn().mockResolvedValue(undefined),
+    } as unknown as SnapshotManager));
+
+    vi.mocked(MockFESClass).mockImplementation(() => ({} as unknown as FirestoreEventStore));
+    vi.mocked(MockFSSClass).mockImplementation(() => ({
+      load: vi.fn().mockResolvedValue(null), // no remote snapshot → slow path without snapshot
+    } as unknown as FirestoreSnapshotStore));
+
+    const user = makeUserLocal();
+    // wasEmpty: true → slow path
+    const entryProjection = makeEntryProjectionLocal({ wasEmpty: true, isCachePopulated: false });
+    const eventStore = {} as IndexedDBEventStore;
+    const snapshotStore = makeSnapshotStoreWithClear();
+    const snapshotManagerRef = makeSnapshotManagerRefLocal();
+
+    const { result } = renderHook(() =>
+      hook({
+        user,
+        isLoading: false,
+        entryProjection,
+        habitProjection: { hydrateFromSnapshot: vi.fn() } as unknown as HabitProjection,
+        collectionProjection: { seedFromSnapshot: vi.fn() } as unknown as CollectionListProjection,
+        userPreferencesProjection: { hydrateFromSnapshot: vi.fn() } as unknown as UserPreferencesProjection,
+        eventStore,
+        snapshotStore,
+        snapshotManagerRef,
+      })
+    );
+
+    // Slow path enters 'syncing' before SyncManager calls back
+    await waitFor(() => expect(result.current.coldStartPhase).toBe('syncing'), { timeout: 3000 });
+
+    // snapshotStore.clear must NOT have been called on slow path
+    expect(snapshotStore.clear).not.toHaveBeenCalled();
+
+    // Complete the sync so the hook reaches 'ready' (clean teardown)
+    act(() => { localSyncStateChange?.(false, undefined); });
+    await waitFor(() => expect(result.current.coldStartPhase).toBe('ready'));
   });
 });

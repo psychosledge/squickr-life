@@ -29,6 +29,9 @@ interface EntryItemProps {
   onAddSubTask?: (entry: Entry) => void;
   // Bug #7: Remove from collection handler (tasks only)
   onRemoveFromCollection?: (taskId: string, collectionId: string) => Promise<void>;
+  // ADR-029: Task reminder handlers
+  onSetReminder?: (taskId: string, reminderAt: string) => Promise<void>;
+  onClearReminder?: (taskId: string) => Promise<void>;
   // Phase 2: Completion status for parent tasks
   completionStatus?: {
     total: number;
@@ -68,6 +71,8 @@ export function EntryItem({
   onCreateCollection,
   onAddSubTask,
   onRemoveFromCollection,
+  onSetReminder,
+  onClearReminder,
   completionStatus,
   parentTitle,
   isCollapsed,
@@ -91,6 +96,8 @@ export function EntryItem({
         onCreateCollection={onCreateCollection}
         onAddSubTask={onAddSubTask}
         onRemoveFromCollection={onRemoveFromCollection}
+        onSetReminder={onSetReminder}
+        onClearReminder={onClearReminder}
         completionStatus={completionStatus}
         parentTitle={parentTitle}
         isCollapsed={isCollapsed}

@@ -31,6 +31,7 @@ import { FirestoreEventStore, FirestoreSnapshotStore } from '@squickr/infrastruc
 import { SyncManager } from '../firebase/SyncManager';
 import { SnapshotManager } from '../snapshot-manager';
 import { firestore } from '../firebase/config';
+import { createTaskReminderIndexWriter } from '../firebase/taskReminderIndexWriter';
 import { logger } from '../utils/logger';
 import type React from 'react';
 
@@ -45,6 +46,13 @@ export type ColdStartPhase = 'checking' | 'restoring' | 'syncing' | 'ready';
 const FORCE_FULL_REPLAY =
   typeof window !== 'undefined' &&
   window.location.search.toLowerCase().includes('ignoresnapshot');
+
+// When ?clearsnapshot is present, the local IndexedDB snapshot is cleared on the
+// fast path before sync starts so the cursor resets to null. This forces the next
+// sync to upload ALL local events, recovering any events stuck behind the cursor.
+const CLEAR_SNAPSHOT =
+  typeof window !== 'undefined' &&
+  window.location.search.toLowerCase().includes('clearsnapshot');
 
 export interface UseColdStartSequencerParams {
   user: FirebaseUser | null;
@@ -136,12 +144,21 @@ export function useColdStartSequencer(
 
       if (!isEmptyLocalStore) {
         // ── Fast path: local store has data — skip Firestore round-trip ──────
+        // ?clearsnapshot: reset the snapshot cursor so the next sync uploads ALL
+        // local events, recovering any events stuck behind a stale cursor.
+        if (CLEAR_SNAPSHOT) {
+          await snapshotStore.clear('entry-list-projection');
+          logger.info(
+            '[useColdStartSequencer] ?clearsnapshot: local snapshot cleared — cursor reset to null',
+          );
+        }
         if (!cancelled) setColdStartPhase('ready');
         const manager = new SyncManager(
           eventStore,
           remoteEventStore,
           undefined,
           () => entryProjection.getLastSnapshotCursor(),
+          createTaskReminderIndexWriter(firestore, user.uid, entryProjection),
         );
         let initialSnapshotSaved = false;
         manager.onSyncStateChange = (syncing: boolean, error?: string) => {
@@ -223,6 +240,7 @@ export function useColdStartSequencer(
         remoteEventStore,
         undefined,
         () => entryProjection.getLastSnapshotCursor(),
+        createTaskReminderIndexWriter(firestore, user.uid, entryProjection),
       );
 
       if (restoredFromRemoteRef.current) {

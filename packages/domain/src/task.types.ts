@@ -101,6 +101,9 @@ export interface Task extends BaseEntry {
    * Set when task is moved between collections using MoveTaskToCollectionHandler.
    * Distinct from migratedFromCollectionId which is for TaskMigrated events. */
   readonly movedFromCollectionId?: string;
+
+  /** Optional: UTC ISO-8601 datetime when the user wants to be reminded about this task */
+  readonly reminderAt?: string;
 }
 
 /**
@@ -483,7 +486,58 @@ export interface MoveTaskToCollectionCommand {
 }
 
 /**
+ * TaskReminderSet Event (ADR-029)
+ * Emitted when a user sets a reminder for a task
+ */
+export interface TaskReminderSet extends DomainEvent {
+  readonly type: 'TaskReminderSet';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly taskId: string;
+    readonly reminderAt: string;   // UTC ISO-8601
+    readonly setAt: string;        // UTC ISO-8601
+  };
+}
+
+/**
+ * TaskReminderCleared Event (ADR-029)
+ * Emitted when a reminder is cleared (by user or after firing)
+ */
+export interface TaskReminderCleared extends DomainEvent {
+  readonly type: 'TaskReminderCleared';
+  readonly aggregateId: string;
+  readonly payload: {
+    readonly taskId: string;
+    readonly clearedAt: string;    // UTC ISO-8601
+    readonly reason: 'user' | 'fired';
+  };
+}
+
+/**
+ * SetTaskReminder Command (ADR-029)
+ */
+export interface SetTaskReminderCommand {
+  readonly taskId: string;
+  readonly reminderAt: string;   // UTC ISO-8601
+}
+
+/**
+ * ClearTaskReminder Command (ADR-029)
+ *
+ * `reason` values:
+ * - `'user'`  — User explicitly cleared the reminder from the UI.
+ *
+ * Note: `'fired'` is intentionally absent from this command. The Cloud Function
+ * (taskReminderFanOut) writes `TaskReminderCleared` events directly via the
+ * Admin SDK and never goes through this handler.
+ */
+export interface ClearTaskReminderCommand {
+  readonly taskId: string;
+  readonly reason: 'user';
+}
+
+/**
  * Union type of all task-related events
  * This enables type-safe event handling with discriminated unions
  */
-export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskRestored | TaskReordered | TaskTitleChanged | EntryMovedToCollection | TaskMigrated | TaskAddedToCollection | TaskRemovedFromCollection;
+export type TaskEvent = TaskCreated | TaskCompleted | TaskReopened | TaskDeleted | TaskRestored | TaskReordered | TaskTitleChanged | EntryMovedToCollection | TaskMigrated | TaskAddedToCollection | TaskRemovedFromCollection | TaskReminderSet | TaskReminderCleared;
