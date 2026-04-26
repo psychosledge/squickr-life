@@ -2,17 +2,16 @@
 
 Event-sourced bullet journal PWA. See `docs/README.md` for full documentation.
 
-## Agent Team
+## Development Loop
 
-| Agent | Role | Invoke with |
-|-------|------|-------------|
-| **alex** | Architecture, event modeling, ADRs | `/design <topic>` |
-| **sam** | Feature implementation (TDD) | `/implement <feature>` |
-| **casey** | Code review, test coverage | `/review` |
+Use the global agent workflow:
 
-> `/design` and `/implement` use built-in skills. `/review` is a project command with live git context.
+`/brainstorm` → `/story` → `/plan` → `/slice` → user tests → `/ship`
 
-**Development loop:** `/design` → user approves → `/implement` → `/review` → user tests → commit
+- `/brainstorm` — exploratory design with architect
+- `/plan` — decompose story into thin vertical slices
+- `/slice` — architect → coder → verifier (gates human approval before commit)
+- `/ship` — run tests, bump version, tag, deploy
 
 > Follow this loop for **all** changes, including small ones. Do not skip steps for "simple" tasks.
 
@@ -41,19 +40,19 @@ packages/
 - **Events are past tense** — `TaskCreated`, not `CreateTask`
 - **Validate in handlers** — not just in UI
 - **UTC storage, local display** — use `isoToLocalDateKey()` for date grouping
-- **No commits without passing tests** — Casey must sign off first
+- **No commits without passing tests**
 
 ## Common Commands
 
 ```bash
-pnpm test run              # run all domain tests
-cd packages/domain && pnpm test run
-cd packages/client && pnpm dev
+pnpm -r test               # run all tests across all packages
+pnpm -r test -- --watch    # watch mode
+pnpm dev                   # start client dev server
 ```
 
 ## Design Outputs
 
-When designing features or architecture, alex should provide:
+When designing features or architecture, provide:
 
 - Event model (if applicable)
 - SOLID principle analysis
@@ -63,5 +62,5 @@ When designing features or architecture, alex should provide:
 ## Key Files
 
 - `packages/domain/src/task.types.ts` — all event/command types (source of truth)
-- `docs/architecture-decisions.md` — ADR-001 through ADR-018
+- `docs/architecture-decisions.md` — ADR-001 through ADR-029
 - `docs/roadmap.md` — what's shipped and what's next
