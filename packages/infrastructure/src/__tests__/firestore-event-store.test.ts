@@ -22,6 +22,11 @@ const mockOrderBy = vi.fn();
 const mockWriteBatch = vi.fn();
 const mockBatchSet = vi.fn();
 const mockBatchCommit = vi.fn();
+const mockServerTimestamp = vi.fn();
+
+// Sentinel value returned by the serverTimestamp() mock — acts like the
+// Firestore FieldValue sentinel so tests can assert it was embedded.
+const SERVER_TIMESTAMP_SENTINEL = { __type__: 'serverTimestamp' } as const;
 
 vi.mock('firebase/firestore', () => ({
   collection: (...args: any[]) => mockCollection(...args),
@@ -34,6 +39,7 @@ vi.mock('firebase/firestore', () => ({
   orderBy: (...args: any[]) => mockOrderBy(...args),
   onSnapshot: (...args: any[]) => mockOnSnapshot(...args),
   writeBatch: (...args: any[]) => mockWriteBatch(...args),
+  serverTimestamp: (...args: any[]) => mockServerTimestamp(...args),
 }));
 
 describe('FirestoreEventStore', () => {
@@ -55,6 +61,8 @@ describe('FirestoreEventStore', () => {
     mockWriteBatch.mockClear();
     mockBatchSet.mockClear();
     mockBatchCommit.mockClear();
+    mockServerTimestamp.mockClear();
+    mockServerTimestamp.mockReturnValue(SERVER_TIMESTAMP_SENTINEL);
 
     // Mock Firestore instance
     firestore = {};
@@ -104,7 +112,12 @@ describe('FirestoreEventStore', () => {
 
       expect(mockCollection).toHaveBeenCalledWith(firestore, `users/${userId}/events`);
       expect(mockDoc).toHaveBeenCalledWith(expect.anything(), event.id);
-      expect(mockSetDoc).toHaveBeenCalledWith(expect.anything(), event);
+      expect(mockSetDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+        id: event.id,
+        type: event.type,
+        aggregateId: event.aggregateId,
+        timestamp: event.timestamp,
+      }));
     });
 
     it('should remove undefined values before writing', async () => {
@@ -122,19 +135,20 @@ describe('FirestoreEventStore', () => {
 
       await eventStore.append(event);
 
-      const cleanedEvent = {
-        id: 'event-123',
-        type: 'task-created',
-        aggregateId: 'task-1',
-        timestamp: '2026-02-07T12:00:00Z',
-        data: { 
-          taskId: 'task-1', 
-          title: 'Test task',
-          // description removed
-        },
-      };
-
-      expect(mockSetDoc).toHaveBeenCalledWith(expect.anything(), cleanedEvent);
+      expect(mockSetDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          id: 'event-123',
+          type: 'task-created',
+          aggregateId: 'task-1',
+          timestamp: '2026-02-07T12:00:00Z',
+          data: {
+            taskId: 'task-1',
+            title: 'Test task',
+            // description removed
+          },
+        }),
+      );
     });
 
     it('should notify subscribers after appending', async () => {
@@ -152,6 +166,23 @@ describe('FirestoreEventStore', () => {
       await eventStore.append(event);
 
       expect(callback).toHaveBeenCalledWith(event);
+    });
+
+    it('should include serverReceivedAt: serverTimestamp() in the written document', async () => {
+      const event: DomainEvent = {
+        id: 'event-123',
+        type: 'task-created',
+        aggregateId: 'task-1',
+        timestamp: '2026-02-07T12:00:00Z',
+        data: { taskId: 'task-1', title: 'Test task' },
+      };
+
+      await eventStore.append(event);
+
+      expect(mockSetDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ serverReceivedAt: SERVER_TIMESTAMP_SENTINEL }),
+      );
     });
   });
 
@@ -333,19 +364,20 @@ describe('FirestoreEventStore', () => {
 
       await eventStore.append(event);
 
-      const expectedClean = {
-        id: 'event-123',
-        type: 'task-created',
-        aggregateId: 'task-1',
-        timestamp: '2026-02-07T12:00:00Z',
-        data: { 
-          taskId: 'task-1',
-          title: 'Test',
-          tags: ['tag1', null, 'tag2'], // undefined in arrays becomes null
-        },
-      };
-
-      expect(mockSetDoc).toHaveBeenCalledWith(expect.anything(), expectedClean);
+      expect(mockSetDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          id: 'event-123',
+          type: 'task-created',
+          aggregateId: 'task-1',
+          timestamp: '2026-02-07T12:00:00Z',
+          data: {
+            taskId: 'task-1',
+            title: 'Test',
+            tags: ['tag1', null, 'tag2'], // undefined in arrays becomes null
+          },
+        }),
+      );
     });
 
     it('should handle nested objects', async () => {
@@ -369,23 +401,24 @@ describe('FirestoreEventStore', () => {
 
       await eventStore.append(event);
 
-      const expectedClean = {
-        id: 'event-123',
-        type: 'task-created',
-        aggregateId: 'task-1',
-        timestamp: '2026-02-07T12:00:00Z',
-        data: { 
-          taskId: 'task-1',
-          metadata: {
-            created: '2026-02-07',
-            nested: {
-              value: 'test',
+      expect(mockSetDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          id: 'event-123',
+          type: 'task-created',
+          aggregateId: 'task-1',
+          timestamp: '2026-02-07T12:00:00Z',
+          data: {
+            taskId: 'task-1',
+            metadata: {
+              created: '2026-02-07',
+              nested: {
+                value: 'test',
+              },
             },
           },
-        },
-      };
-
-      expect(mockSetDoc).toHaveBeenCalledWith(expect.anything(), expectedClean);
+        }),
+      );
     });
 
     it('should convert undefined to null', async () => {
@@ -560,6 +593,36 @@ describe('FirestoreEventStore', () => {
 
       expect(mockWriteBatch).not.toHaveBeenCalled();
       expect(mockBatchCommit).not.toHaveBeenCalled();
+    });
+
+    it('should include serverReceivedAt: serverTimestamp() in every batch-written document', async () => {
+      const events: DomainEvent[] = [
+        {
+          id: 'event-1',
+          type: 'task-created',
+          aggregateId: 'task-1',
+          timestamp: '2026-02-07T10:00:00Z',
+          version: 1,
+        },
+        {
+          id: 'event-2',
+          type: 'task-created',
+          aggregateId: 'task-2',
+          timestamp: '2026-02-07T11:00:00Z',
+          version: 1,
+        },
+      ];
+
+      await eventStore.appendBatch(events);
+
+      expect(mockBatchSet).toHaveBeenCalledTimes(2);
+      for (let i = 0; i < events.length; i++) {
+        expect(mockBatchSet).toHaveBeenNthCalledWith(
+          i + 1,
+          expect.anything(),
+          expect.objectContaining({ serverReceivedAt: SERVER_TIMESTAMP_SENTINEL }),
+        );
+      }
     });
 
     it('should handle batches larger than 500 (Firestore limit)', async () => {
