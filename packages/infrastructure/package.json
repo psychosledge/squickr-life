@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@squickr/domain": "workspace:*",
-    "firebase": "^12.8.0"
+    "firebase": "^12.12.1"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.5",
