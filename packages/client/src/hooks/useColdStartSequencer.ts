@@ -54,6 +54,20 @@ const CLEAR_SNAPSHOT =
   typeof window !== 'undefined' &&
   window.location.search.toLowerCase().includes('clearsnapshot');
 
+// When ?benchmarkcoldstart is present, times a full Firestore event download
+// (bypassing any snapshot) to measure new-device cold-start cost over the network.
+// Works regardless of local store state — runs a measurement-only getAll() against
+// Firestore without affecting any local data or sync state.
+const BENCHMARK_COLD_START =
+  typeof window !== 'undefined' &&
+  window.location.search.toLowerCase().includes('benchmarkcoldstart');
+
+// When ?benchmark is present, logs total event count and full-replay time to
+// console. Use this to measure whether snapshots are worth the complexity.
+const BENCHMARK =
+  typeof window !== 'undefined' &&
+  window.location.search.toLowerCase().includes('benchmark');
+
 export interface UseColdStartSequencerParams {
   user: FirebaseUser | null;
   isLoading: boolean;
@@ -133,6 +147,18 @@ export function useColdStartSequencer(
       // ── ADR-024: Cold-start sequencer ──────────────────────────────────────
       const forceFullReplay = FORCE_FULL_REPLAY;
       const isEmptyLocalStore = entryProjection.wasLocalStoreEmptyAtHydration();
+
+      if (BENCHMARK_COLD_START) {
+        const dlStart = performance.now();
+        const allRemoteEvents = await remoteEventStore.getAll();
+        const dlMs = performance.now() - dlStart;
+        console.group('%c[BENCHMARK] Cold-start Firestore download', 'color: cyan; font-weight: bold');
+        console.log(`Total Firestore events: ${allRemoteEvents.length}`);
+        console.log(`Full download time: ${dlMs.toFixed(1)}ms`);
+        console.log(`Transfer rate: ${(allRemoteEvents.length / dlMs).toFixed(1)} events/ms`);
+        console.log(`Local store empty (true cold start): ${isEmptyLocalStore}`);
+        console.groupEnd();
+      }
       logger.info('[useColdStartSequencer] Cold-start: isEmptyLocalStore =', isEmptyLocalStore);
 
       // Set the tutorial-suppression flag synchronously — before any await — so
@@ -151,6 +177,17 @@ export function useColdStartSequencer(
           logger.info(
             '[useColdStartSequencer] ?clearsnapshot: local snapshot cleared — cursor reset to null',
           );
+        }
+        if (BENCHMARK) {
+          const allEvents = await eventStore.getAll();
+          console.group('%c[BENCHMARK] Snapshot necessity measurement', 'color: orange; font-weight: bold');
+          console.log(`Total events in IndexedDB: ${allEvents.length}`);
+          const replayStart = performance.now();
+          await entryProjection.hydrate({ forceFullReplay: true });
+          const replayMs = performance.now() - replayStart;
+          console.log(`Full replay time (no snapshot): ${replayMs.toFixed(1)}ms`);
+          console.log(`Events per ms: ${(allEvents.length / replayMs).toFixed(1)}`);
+          console.groupEnd();
         }
         if (!cancelled) setColdStartPhase('ready');
         const manager = new SyncManager(
