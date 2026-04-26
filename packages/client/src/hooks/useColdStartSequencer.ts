@@ -157,7 +157,7 @@ export function useColdStartSequencer(
           eventStore,
           remoteEventStore,
           undefined,
-          () => entryProjection.getLastSnapshotCursor(),
+          CLEAR_SNAPSHOT ? () => null : () => entryProjection.getLastSnapshotCursor(),
           createTaskReminderIndexWriter(firestore, user.uid, entryProjection),
         );
         let initialSnapshotSaved = false;
