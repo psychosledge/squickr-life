@@ -35,7 +35,7 @@ export function createTaskReminderIndexWriter(
     for (const event of events) {
       try {
         if (event.type === 'TaskReminderSet') {
-          const payload = (event as { payload: { taskId: string; reminderAt: string; setAt: string } }).payload;
+          const payload = (event as unknown as { payload: { taskId: string; reminderAt: string; setAt: string } }).payload;
           const { taskId, reminderAt, setAt } = payload;
 
           // Resolve task content from the projection
@@ -53,7 +53,7 @@ export function createTaskReminderIndexWriter(
 
           logger.info('[taskReminderIndexWriter] Upserted taskReminders doc for task:', taskId);
         } else if (event.type === 'TaskTitleChanged') {
-          const payload = (event as { payload: { taskId: string; newContent: string } }).payload;
+          const payload = (event as unknown as { payload: { taskId: string; newContent: string } }).payload;
           const { taskId } = payload;
 
           // Only update the index doc if the task currently has a reminder set.
@@ -67,7 +67,7 @@ export function createTaskReminderIndexWriter(
 
           logger.info('[taskReminderIndexWriter] Updated content in taskReminders doc for task:', taskId);
         } else if (event.type === 'TaskReminderCleared') {
-          const payload = (event as { payload: { taskId: string; reason: 'user' | 'fired' } }).payload;
+          const payload = (event as unknown as { payload: { taskId: string; reason: 'user' | 'fired' } }).payload;
           const { taskId, reason } = payload;
 
           if (reason === 'fired') {
