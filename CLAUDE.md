@@ -4,16 +4,40 @@ Event-sourced bullet journal PWA. See `docs/README.md` for full documentation.
 
 ## Development Loop
 
-Use the global agent workflow:
+### Feature / design work
 
-`/brainstorm` → `/story` → `/plan` → `/slice` → user tests → `/ship`
+```
+/brainstorm → [explicit approval] → /plan → [explicit approval] → /slice (repeat) → /ship
+```
 
-- `/brainstorm` — exploratory design with architect
-- `/plan` — decompose story into thin vertical slices
-- `/slice` — architect → coder → verifier (gates human approval before commit)
-- `/ship` — run tests, bump version, tag, deploy
+If requirements are still unclear after brainstorm, insert a spike before planning:
 
-> Follow this loop for **all** changes, including small ones. Do not skip steps for "simple" tasks.
+```
+/brainstorm → [explicit approval] → /spike → [explicit approval] → /plan → ...
+```
+
+### Bug fixes
+
+```
+/bug → [explicit approval] → commit
+```
+
+If `/bug` reveals a structural problem, escalate: characterize → `/brainstorm` → approve → `/plan` → `/slice` → `/ship`.
+
+### Commands
+
+- `/brainstorm` — exploratory design with the architect; produces a design or problem summary that must be explicitly approved before proceeding
+- `/spike` — time-boxed investigation to answer a specific question blocking planning; produces a findings report that must be explicitly approved before `/plan` is invoked
+- `/plan` — decompose an approved design into thin vertical slices with acceptance criteria and UAT checklist; human approves before any slice begins
+- `/slice` — execute one slice: architect check → coder (TDD) → verifier → human approval gate before commit
+- `/bug` — characterize, architect check, coder fix with regression test, verifier, human approval gate before commit
+- `/ship` — run all tests, bump version, commit, tag, push, deploy Firebase Functions if changed
+
+### On-demand utilities
+
+- `/story` — draft a PM-readable story card; not part of the dev loop
+
+> **Approval gates are non-negotiable.** Every phase transition requires explicit human approval — never infer consent from silence or context.
 
 ## Tech Stack
 
