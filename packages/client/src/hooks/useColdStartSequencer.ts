@@ -54,10 +54,10 @@ const CLEAR_SNAPSHOT =
   typeof window !== 'undefined' &&
   window.location.search.toLowerCase().includes('clearsnapshot');
 
-// When ?benchmarkcoldstart is present, times a full Firestore event download
-// (bypassing any snapshot) to measure new-device cold-start cost over the network.
-// Works regardless of local store state — runs a measurement-only getAll() against
-// Firestore without affecting any local data or sync state.
+// When ?benchmarkcoldstart is present in an incognito window (empty local store),
+// simulates a true no-snapshot cold start: downloads all Firestore events, writes
+// them to local IndexedDB, and replays — bypassing the remote snapshot entirely.
+// When the local store is non-empty, only measures download time (not a true cold start).
 const BENCHMARK_COLD_START =
   typeof window !== 'undefined' &&
   window.location.search.toLowerCase().includes('benchmarkcoldstart');
@@ -148,15 +148,72 @@ export function useColdStartSequencer(
       const forceFullReplay = FORCE_FULL_REPLAY;
       const isEmptyLocalStore = entryProjection.wasLocalStoreEmptyAtHydration();
 
-      if (BENCHMARK_COLD_START) {
+      if (BENCHMARK_COLD_START && isEmptyLocalStore) {
+        // True cold start simulation: download all events, write to IndexedDB, replay — no snapshot.
+        // This measures what cold start would cost if we removed snapshots entirely.
         const dlStart = performance.now();
         const allRemoteEvents = await remoteEventStore.getAll();
         const dlMs = performance.now() - dlStart;
-        console.group('%c[BENCHMARK] Cold-start Firestore download', 'color: cyan; font-weight: bold');
+
+        if (cancelled) return;
+
+        const writeStart = performance.now();
+        await eventStore.appendBatch(allRemoteEvents);
+        const writeMs = performance.now() - writeStart;
+
+        // Trigger the lazy replay the same way production does: via getEntries().
+        // This is fast (~1ms) because applyEvents() runs in-memory — no IndexedDB read.
+        const replayStart = performance.now();
+        await entryProjection.getEntries();
+        const replayMs = performance.now() - replayStart;
+
+        // getCollections() reads from IndexedDB and is the first blocking call after
+        // the large appendBatch write. Chrome's post-commit WAL checkpoint / index
+        // compaction runs in the background after appendBatch, and subsequent IndexedDB
+        // reads block until it finishes. This measures the true UI-blocking delay —
+        // the reason the "Total" above understates real cold-start UX time.
+        const collectionsStart = performance.now();
+        await collectionProjection.getCollections();
+        const collectionsMs = performance.now() - collectionsStart;
+
+        console.group('%c[BENCHMARK] Cold-start full simulation (no snapshot)', 'color: cyan; font-weight: bold');
+        console.log(`Total Firestore events: ${allRemoteEvents.length}`);
+        console.log(`Download: ${dlMs.toFixed(1)}ms`);
+        console.log(`Write to IndexedDB: ${writeMs.toFixed(1)}ms`);
+        console.log(`In-memory replay (getEntries): ${replayMs.toFixed(1)}ms`);
+        console.log(`First getCollections() — IndexedDB read after write: ${collectionsMs.toFixed(1)}ms`);
+        console.log(`Total (UI-ready): ${(dlMs + writeMs + replayMs + collectionsMs).toFixed(1)}ms`);
+        console.groupEnd();
+
+        if (!cancelled) setColdStartPhase('ready');
+
+        const sorted = [...allRemoteEvents].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+        const lastEventId = sorted[sorted.length - 1]?.id ?? null;
+        const manager = new SyncManager(
+          eventStore,
+          remoteEventStore,
+          undefined,
+          () => lastEventId,
+          createTaskReminderIndexWriter(firestore, user.uid, entryProjection),
+        );
+        manager.onSyncStateChange = (_syncing: boolean, error?: string) => {
+          if (error) setSyncError(error);
+        };
+        manager.start();
+        syncManagerRef.current = manager;
+        logger.info('[useColdStartSequencer] Benchmark cold-start complete — background sync started');
+        return;
+      } else if (BENCHMARK_COLD_START) {
+        // Returning device: local store non-empty, so this is not a true cold start.
+        // Download time is still useful for comparison but no simulation is run.
+        const dlStart = performance.now();
+        const allRemoteEvents = await remoteEventStore.getAll();
+        const dlMs = performance.now() - dlStart;
+        console.group('%c[BENCHMARK] Firestore download (returning device — not a true cold start)', 'color: cyan; font-weight: bold');
         console.log(`Total Firestore events: ${allRemoteEvents.length}`);
         console.log(`Full download time: ${dlMs.toFixed(1)}ms`);
         console.log(`Transfer rate: ${(allRemoteEvents.length / dlMs).toFixed(1)} events/ms`);
-        console.log(`Local store empty (true cold start): ${isEmptyLocalStore}`);
+        console.log(`Use an incognito window for a true cold start simulation.`);
         console.groupEnd();
       }
       logger.info('[useColdStartSequencer] Cold-start: isEmptyLocalStore =', isEmptyLocalStore);
