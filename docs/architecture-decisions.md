@@ -3695,7 +3695,7 @@ method.
 ## ADR-025: Delta-Only Sync — Firestore Download Scoped to Snapshot Cursor
 
 **Date**: 2026-04-03
-**Status**: Proposed
+**Status**: Accepted
 
 ### Context
 
@@ -3844,15 +3844,25 @@ fundamentally changes the write path (currently a simple `setDoc`) and introduce
 server-side coordination that does not exist today. The timestamp approach requires
 zero changes to the write path and zero schema migration for existing 1593 events.
 
-**Timestamp collision risk**: Two events with identical millisecond timestamps would
-both appear in a `timestamp > anchorTimestamp` query if the anchor has that same
-timestamp, or both be excluded if one of them is the anchor. This is a pre-existing
-condition in `getAll()` (which sorts by timestamp and has the same tie-breaking
-ambiguity). In practice, events are created by a single user on a single device; the
-likelihood of two events with the same millisecond timestamp is negligible. If it
-occurs, the worst outcome is re-downloading one already-absorbed event — handled
-correctly by the `appendBatch` deduplication (`setDoc` on `IndexedDBEventStore` uses the
-event `id` as the keyPath, so a duplicate append is a no-op at the IndexedDB level).
+**Timestamp collision risk — addressed post-deployment**: The original design relied
+solely on the client-set `timestamp` (ISO 8601) field as the Firestore cursor, which was
+susceptible to client clock skew and same-millisecond collisions. This risk has been
+resolved by the following measures shipped after initial ADR-025 deployment:
+
+- **`serverReceivedAt` field**: New events written after this deployment carry a
+  `serverReceivedAt: serverTimestamp()` field set by Firestore's server-side clock.
+  This is immune to client clock skew and guaranteed unique within a Firestore
+  write operation.
+- **Hybrid cursor in `getAllAfter()`**: `FirestoreEventStore.getAllAfter()` now checks
+  whether the anchor event has a `serverReceivedAt` field. If present, it uses
+  `serverReceivedAt` as the cursor (`where('serverReceivedAt', '>', anchorServerReceivedAt)`);
+  if absent (pre-deployment event), it falls back to the legacy `timestamp` cursor. Old
+  events are handled transparently — no migration required.
+- **`SNAPSHOT_SCHEMA_VERSION` bumped 9 → 10**: Every device discards its existing
+  snapshot on next load and performs a full `getAll()`, ensuring no events are missed
+  during the transition from the legacy timestamp cursor to the hybrid cursor.
+- **Firestore composite index**: A composite index on `serverReceivedAt ASC` was added
+  to `firestore.indexes.json` to support the new cursor query efficiently.
 
 ---
 
@@ -4112,14 +4122,24 @@ GET users/{userId}/events/{lastEventId}
 If the document does not exist or the read fails, skip to step 3 (full fallback).
 
 **Step 2 — Delta query** (N read units, where N = number of new events):
+
+For events with a `serverReceivedAt` field (post-deployment):
+```
+SELECT * FROM users/{userId}/events
+WHERE serverReceivedAt > anchorServerReceivedAt
+ORDER BY serverReceivedAt ASC
+```
+A Firestore composite index on `serverReceivedAt ASC` was added to
+`firestore.indexes.json` to support this query.
+
+For events without `serverReceivedAt` (pre-deployment, legacy fallback):
 ```
 SELECT * FROM users/{userId}/events
 WHERE timestamp > anchorTimestamp
 ORDER BY timestamp ASC
 ```
-
 This reuses the existing composite index implied by `orderBy('timestamp', 'asc')` in
-`getAll()`. No new Firestore indexes are needed.
+`getAll()`.
 
 **Step 3 — Full fallback**:
 If step 1 fails for any reason, call `getAll()` as before. The system degrades
@@ -4158,8 +4178,11 @@ gracefully to the pre-ADR-025 behaviour.
   delta. This is the happy path. If device A's cursor pre-dates Firestore's retention
   window (hypothetical — Firestore does not prune by default), the anchor lookup returns
   no document and the full fallback fires. Correctness is preserved.
-- Timestamp collision (two events with identical timestamps): as analysed above,
-  negligible risk; worst outcome is one re-downloaded event that is a no-op on append.
+- Timestamp collision for old (pre-deployment) events: the legacy `timestamp` cursor
+  path remains for events that predate `serverReceivedAt`. The risk is negligible (single
+  user, single device), and the worst outcome remains correct (duplicate append is a
+  no-op at the IndexedDB keyPath level). New events use `serverReceivedAt` and are not
+  affected.
 
 ---
 
@@ -4280,17 +4303,21 @@ Tests in `packages/client/src/App.test.tsx`:
 pnpm test run
 ```
 
-All existing tests must pass. No snapshot schema version bump is needed (no change to
-`ProjectionSnapshot` shape).
+All existing tests must pass.
 
 ---
 
 ### Event Model
 
-No new domain events are introduced. No changes to `ProjectionSnapshot` shape or
-`SNAPSHOT_SCHEMA_VERSION`. The `lastEventId` field already present on
+No new domain events are introduced. The `lastEventId` field already present on
 `ProjectionSnapshot` is the cursor; it is merely read from a new location (`SyncManager`
 via callback) rather than only from the projection internals.
+
+**Post-deployment addendum**: `SNAPSHOT_SCHEMA_VERSION` was bumped **9 → 10** to force
+every device to discard its existing snapshot on next load and perform a full `getAll()`.
+This ensures no events are missed during the transition from the legacy `timestamp`
+cursor to the hybrid `serverReceivedAt` / `timestamp` cursor. The `ProjectionSnapshot`
+shape itself is unchanged; only the schema version constant changed.
 
 ---
 
@@ -4317,8 +4344,11 @@ via callback) rather than only from the projection internals.
   (ADR-016: "snapshots are cache, not source of truth").
 - Upload path still scans the full local log. On devices with large logs, this is
   unchanged from today. Addressing it requires log truncation (future ADR).
-- Timestamp collision is theoretically possible. Risk is negligible; worst outcome is
-  correct (duplicate append is a no-op at the IndexedDB keyPath level).
+- Timestamp collision for old (pre-deployment) events remains theoretically possible on
+  the legacy `timestamp` cursor path, but the risk is negligible and the worst outcome
+  is correct (duplicate append is a no-op at the IndexedDB keyPath level). New events
+  written after deployment use `serverReceivedAt` (server-generated) and are not
+  susceptible to this issue.
 - `FirestoreEventStore.getAllAfter()` makes one extra Firestore point-read (the anchor
   lookup) compared to the current full-scan path. The trade-off is 1 extra read for a
   ~1592-read saving.
