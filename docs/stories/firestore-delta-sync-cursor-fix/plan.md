@@ -8,8 +8,9 @@
 | Slice 2: Hybrid cursor in `getAllAfter` | done | f863893 |
 | Slice 3: Snapshot version bump (9 → 10) | done | c71857c |
 | Slice 4: Firestore composite index | done | d0afaca |
-| Slice 5: Update ADR-025 | pending | — |
-| Slice 6 (hotfix): Fix hydrate() to use full local replay | done | pending commit |
+| Slice 5: Update ADR-025 | done | 9feecf6 |
+| Slice 6 (hotfix): Fix hydrate() to use full local replay | done | a940c51 |
+| Slice 7 (benchmark): Track getDeletedCollections() as true UI-ready signal | done | a4c73ba |
 
 ---
 
