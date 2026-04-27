@@ -245,7 +245,12 @@ function TutorialJoyride() {
  */
 // Parsed once at module load — window.location does not change during a session.
 // Used in both initializeApp() and startSync() to bypass snapshot loading.
-const FORCE_FULL_REPLAY = window.location.search.toLowerCase().includes('ignoresnapshot');
+const FORCE_FULL_REPLAY =
+  window.location.search.toLowerCase().includes('ignoresnapshot') ||
+  // ?clearsnapshot also bypasses snapshot loading so the in-memory cache starts
+  // clean. Without this, hydrate() loads the stale snapshot into cachedEntries
+  // before useColdStartSequencer has a chance to clear it from the store.
+  window.location.search.toLowerCase().includes('clearsnapshot');
 
 function AppContent() {
   const { user, loading: authLoading } = useAuth();

@@ -229,31 +229,26 @@ export class EntryListProjection {
       return;
     }
 
-    const deltaEvents = allEvents.slice(snapshotEventIndex + 1);
-
     // Record the snapshot cursor for ADR-025 delta-only sync.
     this.lastSnapshotCursor = snapshot.lastEventId;
 
-    if (deltaEvents.length === 0) {
-      // Snapshot is fully up-to-date — seed the cache directly, zero replay cost
-      this.cachedEntries = [...snapshot.state];
-      // Use all event IDs (not just lastEventId) so that any call path — including
-      // individual append() calls — is absorbed correctly. The set is drained lazily
-      // as events arrive, so GC cost is identical to a single-ID set.
-      this.absorbedEventIds = new Set(allEvents.map(e => e.id));
-      this.notifySubscribers();
-    } else {
-      // Apply only the delta events on top of the snapshot state
-      this.cachedEntries = this.applicator.applyEventsOnto([...snapshot.state], deltaEvents);
-      // absorbedEventIds includes ALL events (snapshot + delta), not just snapshot events.
-      // Rationale: SyncManager may re-deliver delta events on its next syncNow() pass if
-      // the batch download window overlaps with what hydrate() already applied (e.g. a
-      // retry or a remote fetch that starts from lastKnownEventId rather than current
-      // localIds). Including delta IDs ensures those re-deliveries are silently absorbed
-      // rather than causing a spurious cache invalidation and UI re-render.
-      this.absorbedEventIds = new Set(allEvents.map(e => e.id));
-      this.notifySubscribers();
-    }
+    // Full local replay from all IndexedDB events, not just the delta slice.
+    //
+    // Why not applyEventsOnto(snapshot.state, deltaEvents)?  The delta approach
+    // silently drops "late-arriving" events — events written on another device and
+    // uploaded to Firestore, but not downloaded to this device until AFTER the local
+    // snapshot was saved.  Those events carry timestamps earlier than the snapshot
+    // cursor, so they sort before snapshotEventIndex in the local event log and are
+    // excluded from the delta slice.  The snapshot state never included them, so the
+    // resulting cache is permanently stale.
+    //
+    // applyEvents(allEvents) is immune to arrival order: every event in IndexedDB is
+    // replayed from scratch, so late-arriving events are always applied correctly.
+    // The ~94 ms cost for ~2,000 events is imperceptible (measured 2026-04-26).
+    // The snapshot's lastEventId is still used as the SyncManager cursor (above).
+    this.cachedEntries = this.applicator.applyEvents(allEvents);
+    this.absorbedEventIds = new Set(allEvents.map(e => e.id));
+    this.notifySubscribers();
   }
 
   /**
