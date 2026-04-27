@@ -11,8 +11,13 @@ import type { UserPreferences } from './user-preferences.types';
  * meaning of `state` changes).  Implementations that load a snapshot whose
  * `version` differs from the current `SNAPSHOT_SCHEMA_VERSION` should discard
  * the stale snapshot and rebuild the projection from scratch.
+ *
+ * Bumped 9 → 10 when the hybrid `serverReceivedAt` cursor was introduced.
+ * Discarding existing snapshots forces every device to perform a full `getAll()`
+ * on next load, catching any events the old client-timestamp cursor may have
+ * missed, and resetting to the server-authoritative cursor going forward.
  */
-export const SNAPSHOT_SCHEMA_VERSION = 9;
+export const SNAPSHOT_SCHEMA_VERSION = 10;
 
 /**
  * A point-in-time snapshot of a projection's read-model state.
