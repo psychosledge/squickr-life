@@ -167,22 +167,27 @@ export function useColdStartSequencer(
         await entryProjection.getEntries();
         const replayMs = performance.now() - replayStart;
 
-        // getCollections() reads from IndexedDB and is the first blocking call after
-        // the large appendBatch write. Chrome's post-commit WAL checkpoint / index
-        // compaction runs in the background after appendBatch, and subsequent IndexedDB
-        // reads block until it finishes. This measures the true UI-blocking delay —
-        // the reason the "Total" above understates real cold-start UX time.
+        // getCollections() hits an in-memory cache (fast). getDeletedCollections()
+        // always reads from IndexedDB — it is the first uncached read after the large
+        // appendBatch write and is where Chrome's post-commit WAL checkpoint / index
+        // compaction surfaces as a blocking delay. CollectionIndexView.loadData()
+        // calls both in sequence, so this is the real UI-blocking bottleneck.
         const collectionsStart = performance.now();
         await collectionProjection.getCollections();
         const collectionsMs = performance.now() - collectionsStart;
+
+        const deletedStart = performance.now();
+        await collectionProjection.getDeletedCollections();
+        const deletedMs = performance.now() - deletedStart;
 
         console.group('%c[BENCHMARK] Cold-start full simulation (no snapshot)', 'color: cyan; font-weight: bold');
         console.log(`Total Firestore events: ${allRemoteEvents.length}`);
         console.log(`Download: ${dlMs.toFixed(1)}ms`);
         console.log(`Write to IndexedDB: ${writeMs.toFixed(1)}ms`);
         console.log(`In-memory replay (getEntries): ${replayMs.toFixed(1)}ms`);
-        console.log(`First getCollections() — IndexedDB read after write: ${collectionsMs.toFixed(1)}ms`);
-        console.log(`Total (UI-ready): ${(dlMs + writeMs + replayMs + collectionsMs).toFixed(1)}ms`);
+        console.log(`getCollections() — cache hit: ${collectionsMs.toFixed(1)}ms`);
+        console.log(`getDeletedCollections() — uncached IndexedDB read: ${deletedMs.toFixed(1)}ms`);
+        console.log(`Total (UI-ready): ${(dlMs + writeMs + replayMs + collectionsMs + deletedMs).toFixed(1)}ms`);
         console.groupEnd();
 
         if (!cancelled) setColdStartPhase('ready');
