@@ -32,6 +32,8 @@ import { SyncManager } from '../firebase/SyncManager';
 import { SnapshotManager } from '../snapshot-manager';
 import { firestore } from '../firebase/config';
 import { createTaskReminderIndexWriter } from '../firebase/taskReminderIndexWriter';
+import { createHabitReminderIndexWriter } from '../firebase/habitReminderIndexWriter';
+import { bootstrapHabitReminderIndex } from '../firebase/bootstrapHabitReminderIndex';
 import { logger } from '../utils/logger';
 import type React from 'react';
 
@@ -194,17 +196,23 @@ export function useColdStartSequencer(
 
         const sorted = [...allRemoteEvents].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
         const lastEventId = sorted[sorted.length - 1]?.id ?? null;
+        const taskWriter = createTaskReminderIndexWriter(firestore, user.uid, entryProjection);
+        const habitWriter = createHabitReminderIndexWriter(firestore, user.uid, habitProjection);
         const manager = new SyncManager(
           eventStore,
           remoteEventStore,
           undefined,
           () => lastEventId,
-          createTaskReminderIndexWriter(firestore, user.uid, entryProjection),
+          async (events) => {
+            await taskWriter(events);
+            await habitWriter(events);
+          },
         );
         manager.onSyncStateChange = (_syncing: boolean, error?: string) => {
           if (error) setSyncError(error);
         };
         manager.start();
+        void bootstrapHabitReminderIndex(firestore, user.uid, habitProjection);
         syncManagerRef.current = manager;
         logger.info('[useColdStartSequencer] Benchmark cold-start complete — background sync started');
         return;
@@ -252,12 +260,17 @@ export function useColdStartSequencer(
           console.groupEnd();
         }
         if (!cancelled) setColdStartPhase('ready');
+        const taskWriter = createTaskReminderIndexWriter(firestore, user.uid, entryProjection);
+        const habitWriter = createHabitReminderIndexWriter(firestore, user.uid, habitProjection);
         const manager = new SyncManager(
           eventStore,
           remoteEventStore,
           undefined,
           CLEAR_SNAPSHOT ? () => null : () => entryProjection.getLastSnapshotCursor(),
-          createTaskReminderIndexWriter(firestore, user.uid, entryProjection),
+          async (events) => {
+            await taskWriter(events);
+            await habitWriter(events);
+          },
         );
         let initialSnapshotSaved = false;
         manager.onSyncStateChange = (syncing: boolean, error?: string) => {
@@ -268,6 +281,7 @@ export function useColdStartSequencer(
           }
         };
         manager.start();
+        void bootstrapHabitReminderIndex(firestore, user.uid, habitProjection);
         syncManagerRef.current = manager;
         logger.info(
           '[useColdStartSequencer] Cold-start fast path: background sync started (local store non-empty)',
@@ -334,12 +348,17 @@ export function useColdStartSequencer(
 
       if (cancelled) return;
 
+      const taskWriter = createTaskReminderIndexWriter(firestore, user.uid, entryProjection);
+      const habitWriter = createHabitReminderIndexWriter(firestore, user.uid, habitProjection);
       const manager = new SyncManager(
         eventStore,
         remoteEventStore,
         undefined,
         () => entryProjection.getLastSnapshotCursor(),
-        createTaskReminderIndexWriter(firestore, user.uid, entryProjection),
+        async (events) => {
+          await taskWriter(events);
+          await habitWriter(events);
+        },
       );
 
       if (restoredFromRemoteRef.current) {
@@ -368,6 +387,7 @@ export function useColdStartSequencer(
       }
 
       manager.start();
+      void bootstrapHabitReminderIndex(firestore, user.uid, habitProjection);
       syncManagerRef.current = manager;
 
       logger.info('[useColdStartSequencer] Background sync started');

@@ -51,10 +51,26 @@ vi.mock('../utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+// ── Mock habitReminderIndexWriter ─────────────────────────────────────────────
+vi.mock('../firebase/habitReminderIndexWriter', () => ({
+  createHabitReminderIndexWriter: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
+}));
+
+// ── Mock taskReminderIndexWriter ──────────────────────────────────────────────
+vi.mock('../firebase/taskReminderIndexWriter', () => ({
+  createTaskReminderIndexWriter: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
+}));
+
+// ── Mock bootstrapHabitReminderIndex ──────────────────────────────────────────
+vi.mock('../firebase/bootstrapHabitReminderIndex', () => ({
+  bootstrapHabitReminderIndex: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { useColdStartSequencer } from './useColdStartSequencer';
 import { SyncManager } from '../firebase/SyncManager';
 import { SnapshotManager } from '../snapshot-manager';
 import { FirestoreEventStore, FirestoreSnapshotStore } from '@squickr/infrastructure';
+import { bootstrapHabitReminderIndex } from '../firebase/bootstrapHabitReminderIndex';
 import type { EntryListProjection, HabitProjection, CollectionListProjection, UserPreferencesProjection } from '@squickr/domain';
 import type { IndexedDBEventStore, IndexedDBSnapshotStore } from '@squickr/infrastructure';
 import type React from 'react';
@@ -226,6 +242,7 @@ describe('useColdStartSequencer', () => {
   it('fast path: goes directly to ready when local store is non-empty', async () => {
     const user = makeUser();
     const entryProjection = makeEntryProjection({ wasEmpty: false });
+    const habitProjection = makeHabitProjection();
     const eventStore = makeEventStore();
     const snapshotStore = makeSnapshotStore();
     const snapshotManagerRef = makeSnapshotManagerRef();
@@ -235,7 +252,7 @@ describe('useColdStartSequencer', () => {
         user,
         isLoading: false,
         entryProjection,
-        habitProjection: makeHabitProjection(),
+        habitProjection,
         collectionProjection: makeCollectionProjection(),
         userPreferencesProjection: makeUserPreferencesProjection(),
         eventStore,
@@ -254,6 +271,13 @@ describe('useColdStartSequencer', () => {
     expect(mockRemoteSnapshotLoad).not.toHaveBeenCalled();
     // SyncManager should have been started
     expect(mockManagerStart).toHaveBeenCalledTimes(1);
+    // bootstrapHabitReminderIndex must have been called with (firestore, user.uid, habitProjection)
+    expect(vi.mocked(bootstrapHabitReminderIndex)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(bootstrapHabitReminderIndex)).toHaveBeenCalledWith(
+      expect.any(Object),
+      user.uid,
+      habitProjection,
+    );
   });
 
   // ── Slow path with snapshot ──────────────────────────────────────────────────
@@ -305,6 +329,13 @@ describe('useColdStartSequencer', () => {
       remoteSnapshot.userPreferences,
     );
     expect(mockManagerStart).toHaveBeenCalledTimes(1);
+    // bootstrapHabitReminderIndex must have been called with (firestore, user.uid, habitProjection)
+    expect(vi.mocked(bootstrapHabitReminderIndex)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(bootstrapHabitReminderIndex)).toHaveBeenCalledWith(
+      expect.any(Object),
+      user.uid,
+      habitProjection,
+    );
   });
 
   // ── Slow path without snapshot ───────────────────────────────────────────────
@@ -590,6 +621,7 @@ describe('useColdStartSequencer', () => {
           user,
           isLoading: false,
           entryProjection,
+          habitProjection: makeHabitProjection(),
           collectionProjection: makeCollectionProjection(),
           userPreferencesProjection: makeUserPreferencesProjection(),
           eventStore,
@@ -651,6 +683,15 @@ describe('useColdStartSequencer ?clearsnapshot behaviour', () => {
     vi.mock('../snapshot-manager', () => ({ SnapshotManager: vi.fn() }));
     vi.mock('../utils/logger', () => ({
       logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+    }));
+    vi.mock('../firebase/habitReminderIndexWriter', () => ({
+      createHabitReminderIndexWriter: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
+    }));
+    vi.mock('../firebase/taskReminderIndexWriter', () => ({
+      createTaskReminderIndexWriter: vi.fn(() => vi.fn().mockResolvedValue(undefined)),
+    }));
+    vi.mock('../firebase/bootstrapHabitReminderIndex', () => ({
+      bootstrapHabitReminderIndex: vi.fn().mockResolvedValue(undefined),
     }));
     vi.mock('@squickr/infrastructure', async (importOriginal) => {
       const original = await importOriginal<typeof import('@squickr/infrastructure')>();
