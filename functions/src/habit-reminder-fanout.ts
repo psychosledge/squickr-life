@@ -11,7 +11,7 @@
 import * as admin from "firebase-admin";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import {
-  getActiveHabitsWithNotifications,
+  HabitState,
   isHabitScheduledForDate,
   isHabitCompletedForDate,
 } from "./habit-event-reader";
@@ -86,17 +86,21 @@ export async function processUserHabitNotifications(
   userId: string,
   tokenDocs: TokenDoc[]
 ): Promise<void> {
-  // Get active habits for this user — catch errors so caller can continue with other users
-  let habits;
+  // Read habits from the pre-built habitReminders index — catch errors so caller can continue with other users
+  let snapshot: admin.firestore.QuerySnapshot;
   try {
-    habits = await getActiveHabitsWithNotifications(db, userId);
+    snapshot = await db.collection(`users/${userId}/habitReminders`).get();
   } catch (err) {
     console.error(
-      `processUserHabitNotifications: error fetching habits for user ${userId}`,
+      `processUserHabitNotifications: error fetching habitReminders for user ${userId}`,
       err
     );
     return;
   }
+
+  const habits: HabitState[] = snapshot.docs
+    .map(doc => doc.data() as HabitState)
+    .filter(h => !!h.notificationTime); // skip malformed docs
 
   if (habits.length === 0) {
     console.log(`processUserHabitNotifications: no active habits with notificationTime for user ${userId}`);
