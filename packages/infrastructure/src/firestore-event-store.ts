@@ -51,7 +51,7 @@ export class FirestoreEventStore implements IEventStore {
     // Remove undefined values (Firestore doesn't allow them)
     const cleanedEvent = removeUndefinedDeep(event);
 
-    await setDoc(docRef, { ...cleanedEvent, serverReceivedAt: serverTimestamp() });
+    await setDoc(docRef, { ...(cleanedEvent as object), serverReceivedAt: serverTimestamp() });
     
     // Notify subscribers after successful append
     this.notifySubscribers(event);
@@ -82,7 +82,7 @@ export class FirestoreEventStore implements IEventStore {
       for (const event of batchEvents) {
         const docRef = doc(eventsRef, event.id);
         const cleanedEvent = removeUndefinedDeep(event);
-        batch.set(docRef, { ...cleanedEvent, serverReceivedAt: serverTimestamp() });
+        batch.set(docRef, { ...(cleanedEvent as object), serverReceivedAt: serverTimestamp() });
       }
       
       // Commit batch atomically
