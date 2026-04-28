@@ -32,6 +32,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Habit reminder index — client upserts/deletes its own reminder docs
+    match /users/{userId}/habitReminders/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Notification idempotency log — client can read own log; only Cloud Functions (Admin SDK) write it
     match /users/{userId}/notificationLog/{logId} {
       allow read: if request.auth != null && request.auth.uid == userId;
