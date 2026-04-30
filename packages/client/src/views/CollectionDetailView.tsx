@@ -173,10 +173,7 @@ export function CollectionDetailView({
   // Migration banner state — populated from route location state on mount
   const [migrationNotice, setMigrationNotice] = useState<{ collectionName: string; count: number } | null>(null);
 
-  const didReadLocationStateRef = useRef(false);
   useEffect(() => {
-    if (didReadLocationStateRef.current) return;
-    didReadLocationStateRef.current = true;
     const state = location.state as { migratedFrom?: { collectionName: string; count: number } } | null;
     if (state?.migratedFrom) {
       setMigrationNotice(state.migratedFrom);

@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { CollectionDetailView } from './CollectionDetailView';
 import { AppProvider } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
@@ -383,6 +383,63 @@ describe('CollectionDetailView', () => {
     expect(
       screen.queryByText(/migrated here from/i)
     ).not.toBeInTheDocument();
+  });
+
+  // Regression: banner must appear even when the component is already mounted
+  // (React Router reuses the same component instance across collection navigations,
+  // so the didReadLocationStateRef guard was already set to true on initial mount,
+  // preventing the banner from appearing on subsequent navigations with migratedFrom state)
+  it('should show migration banner when location state arrives after component is already mounted', async () => {
+    const appContext = buildMockAppContext({
+      eventStore: mockEventStore,
+      entryProjection: mockEntryProjection,
+      collectionProjection: mockCollectionProjection,
+    });
+
+    // Helper component that triggers a navigation with migratedFrom state after mount
+    let triggerNavigation!: () => void;
+    function NavigationTrigger() {
+      const navigate = useNavigate();
+      triggerNavigation = () => {
+        navigate('/collection/col-1', {
+          state: { migratedFrom: { collectionName: 'Tuesday, Apr 7', count: 3 } },
+          replace: true,
+        });
+      };
+      return null;
+    }
+
+    render(
+      // Start at a different path so the component mounts without migratedFrom state
+      <MemoryRouter initialEntries={['/collection/col-1']}>
+        <NavigationTrigger />
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    // Wait for the component to fully mount (didReadLocationStateRef is now true)
+    await waitFor(() => {
+      expect(screen.getByText('Books to Read')).toBeInTheDocument();
+    });
+
+    // No banner should be visible yet
+    expect(screen.queryByText(/migrated here from/i)).not.toBeInTheDocument();
+
+    // Simulate a bulk-migrate navigation: same route, new location state
+    act(() => {
+      triggerNavigation();
+    });
+
+    // The banner must now appear
+    await waitFor(() => {
+      expect(
+        screen.getByText('3 tasks migrated here from Tuesday, Apr 7')
+      ).toBeInTheDocument();
+    });
   });
 });
 
