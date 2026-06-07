@@ -34,7 +34,8 @@
       "Bash(\"/c/Users/psych/AppData/Roaming/npm/pnpm\" --version)",
       "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
       "Bash(\"/c/Users/psych/AppData/Roaming/npm/pnpm\" test:*)",
-      "Bash(export PATH=\"/c/Program Files/nodejs:/c/Users/psych/AppData/Roaming/npm:$PATH\")"
+      "Bash(export PATH=\"/c/Program Files/nodejs:/c/Users/psych/AppData/Roaming/npm:$PATH\")",
+      "Bash(node *)"
     ]
   }
 }
