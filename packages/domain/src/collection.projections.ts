@@ -89,13 +89,7 @@ export class CollectionListProjection {
         // Apply incrementally to preserve seeded snapshot state.
         // With delta-only sync (ADR-025) the local store may be incomplete;
         // falling back to getAll() would lose pre-snapshot collections.
-        const map = new Map<string, Collection>(
-          this.cachedCollections.map(c => [c.id, c])
-        );
-        this.applyCollectionEvent(map, event);
-        this.cachedCollections = Array.from(map.values())
-          .filter(c => !c.deletedAt)
-          .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
+        this.applyEventToCache(event);
       }
       this.notifySubscribers();
     });
@@ -114,6 +108,38 @@ export class CollectionListProjection {
   seedFromSnapshot(collections: Collection[]): void {
     this.cachedCollections = collections;
     this.notifySubscribers();
+  }
+
+  /**
+   * Apply post-snapshot delta events to the seeded cache (startup-sync-bugs fix).
+   *
+   * Called by App.tsx immediately after seedFromSnapshot() to replay any events
+   * that occurred between the snapshot save and the previous app close. Without
+   * this, those events sit in IndexedDB but are never applied to the projection.
+   *
+   * Only collection events are processed; non-collection events are skipped.
+   * Notifies subscribers only if at least one collection event was processed.
+   *
+   * @param events - All events after the snapshot anchor (from eventStore.getAllAfter).
+   */
+  applyDeltaEvents(events: readonly DomainEvent[]): void {
+    let hasCollectionEvent = false;
+    for (const event of events) {
+      if (!this.isCollectionEvent(event)) continue;
+      hasCollectionEvent = true;
+      if (this.cachedCollections !== null) {
+        if (event.type === 'CollectionRestored') {
+          // Nulling the cache means subsequent events in this batch are skipped
+          // (same as the subscriber path). getCollections() rebuilds from scratch.
+          this.cachedCollections = null;
+          continue;
+        }
+        this.applyEventToCache(event);
+      }
+    }
+    if (hasCollectionEvent) {
+      this.notifySubscribers();
+    }
   }
 
   /**
@@ -211,6 +237,24 @@ export class CollectionListProjection {
   async getMonthlyLogByDate(date: string): Promise<Collection | undefined> {
     const collections = await this.getCollections();
     return collections.find(c => c.type === 'monthly' && c.date === date);
+  }
+
+  /**
+   * Apply a single collection event to the in-memory cache.
+   * Builds a transient Map from the current cache, delegates to applyCollectionEvent,
+   * then writes the filtered and sorted result back to cachedCollections.
+   * Must only be called when cachedCollections is non-null.
+   */
+  private applyEventToCache(
+    event: CollectionCreated | CollectionRenamed | CollectionReordered | CollectionDeleted | CollectionRestored | CollectionSettingsUpdated | CollectionFavorited | CollectionUnfavorited | CollectionAccessed
+  ): void {
+    const map = new Map<string, Collection>(
+      this.cachedCollections!.map(c => [c.id, c])
+    );
+    this.applyCollectionEvent(map, event);
+    this.cachedCollections = Array.from(map.values())
+      .filter(c => !c.deletedAt)
+      .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
   }
 
   /**

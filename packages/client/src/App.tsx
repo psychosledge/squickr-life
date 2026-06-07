@@ -401,6 +401,8 @@ function AppContent() {
         ) {
           if (localSnapshot.collections?.length) {
             collectionProjection.seedFromSnapshot(localSnapshot.collections);
+            const postSnapshotEvents = await eventStore.getAllAfter(localSnapshot.lastEventId);
+            collectionProjection.applyDeltaEvents(postSnapshotEvents);
           }
           habitProjection.hydrateFromSnapshot(localSnapshot.habits);
           userPreferencesProjection.hydrateFromSnapshot(localSnapshot.userPreferences);

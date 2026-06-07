@@ -1304,6 +1304,125 @@ describe('CollectionListProjection', () => {
     });
   });
 
+  // ============================================================================
+  // Startup-sync-bugs fix: fast-path delta replay via applyDeltaEvents()
+  // ============================================================================
+  describe('fast-path delta replay (applyDeltaEvents)', () => {
+    it('Test 1 — post-snapshot events are applied to seeded cache', async () => {
+      // Arrange: fresh event store and append two events BEFORE creating the projection
+      // (so the subscriber never fires for them)
+      const freshEventStore = new InMemoryEventStore();
+
+      const snapEvent: CollectionCreated = {
+        ...generateEventMetadata(),
+        id: 'evt-snap',
+        type: 'CollectionCreated',
+        aggregateId: 'col-snap',
+        payload: {
+          id: 'col-snap',
+          name: 'Seeded',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      };
+
+      const newEvent: CollectionCreated = {
+        ...generateEventMetadata(),
+        id: 'evt-new',
+        type: 'CollectionCreated',
+        aggregateId: 'col-new',
+        payload: {
+          id: 'col-new',
+          name: 'Post-Snapshot',
+          type: 'log',
+          order: 'a1',
+          createdAt: '2026-01-01T00:01:00.000Z',
+        },
+      };
+
+      await freshEventStore.append(snapEvent);
+      await freshEventStore.append(newEvent);
+
+      // Create projection AFTER events are in store (subscriber won't fire for them)
+      const freshProjection = new CollectionListProjection(freshEventStore);
+
+      // Act: seed from snapshot (only col-snap), then replay delta
+      freshProjection.seedFromSnapshot([
+        { id: 'col-snap', name: 'Seeded', type: 'log', order: 'a0', createdAt: '2026-01-01T00:00:00.000Z' },
+      ]);
+
+      const postSnapshotEvents = await freshEventStore.getAllAfter('evt-snap');
+      const getAllSpy = vi.spyOn(freshEventStore, 'getAll');
+      freshProjection.applyDeltaEvents(postSnapshotEvents);
+
+      // Assert
+      const collections = await freshProjection.getCollections();
+      expect(getAllSpy).not.toHaveBeenCalled(); // incremental — no full replay
+      expect(collections).toHaveLength(2);
+      expect(collections.map(c => c.id)).toContain('col-snap');
+      expect(collections.map(c => c.id)).toContain('col-new');
+
+      vi.restoreAllMocks();
+    });
+
+    it('Test 2 — no events after snapshot leaves snapshot state unchanged', async () => {
+      // Arrange: only snapEvent in store, no post-snapshot events
+      const freshEventStore = new InMemoryEventStore();
+
+      const snapEvent: CollectionCreated = {
+        ...generateEventMetadata(),
+        id: 'evt-snap',
+        type: 'CollectionCreated',
+        aggregateId: 'col-snap',
+        payload: {
+          id: 'col-snap',
+          name: 'Seeded',
+          type: 'log',
+          order: 'a0',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      };
+      await freshEventStore.append(snapEvent);
+
+      const freshProjection = new CollectionListProjection(freshEventStore);
+
+      // Act
+      freshProjection.seedFromSnapshot([
+        { id: 'col-snap', name: 'Seeded', type: 'log', order: 'a0', createdAt: '2026-01-01T00:00:00.000Z' },
+      ]);
+      const postSnapshotEvents = await freshEventStore.getAllAfter('evt-snap');
+      freshProjection.applyDeltaEvents(postSnapshotEvents);
+
+      // Assert: exactly one collection (snapshot state unchanged)
+      const collections = await freshProjection.getCollections();
+      expect(collections).toHaveLength(1);
+      expect(collections[0]!.id).toBe('col-snap');
+    });
+
+    it('Test 3 — empty events array is a no-op: no subscriber notification, no crash', async () => {
+      // Arrange: fresh projection with no events, seeded from snapshot
+      const freshEventStore = new InMemoryEventStore();
+      const freshProjection = new CollectionListProjection(freshEventStore);
+
+      freshProjection.seedFromSnapshot([
+        { id: 'col-snap', name: 'Seeded', type: 'log', order: 'a0', createdAt: '2026-01-01T00:00:00.000Z' },
+      ]);
+
+      const subscriberSpy = vi.fn();
+      freshProjection.subscribe(subscriberSpy);
+
+      // Act
+      freshProjection.applyDeltaEvents([]);
+
+      // Assert: no notification, no crash, seeded data intact
+      expect(subscriberSpy).not.toHaveBeenCalled();
+      const collections = await freshProjection.getCollections();
+      expect(collections).toHaveLength(1);
+      expect(collections[0]!.id).toBe('col-snap');
+    });
+  });
+
   describe('reactive updates', () => {
     it('should notify subscribers when events are appended', async () => {
       let notifyCount = 0;
