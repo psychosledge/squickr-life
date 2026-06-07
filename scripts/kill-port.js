@@ -22,8 +22,8 @@ async function killPort() {
         return;
       }
 
-      // Extract PIDs from netstat output
-      const lines = stdout.split('\n').filter(line => line.includes('LISTENING'));
+      // Extract PIDs from netstat output (all states — FinWait2/Established can also block bind)
+      const lines = stdout.split('\n').filter(line => line.trim());
       const pids = new Set();
       
       lines.forEach(line => {
