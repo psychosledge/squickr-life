@@ -49,6 +49,10 @@ async function killPort() {
           console.log(`⚠ Could not kill process ${pid} (might already be stopped)`);
         }
       }
+
+      // Windows doesn't release the port immediately after taskkill —
+      // give the OS a moment before the caller tries to bind.
+      await new Promise(resolve => setTimeout(resolve, 500));
     } else {
       // macOS/Linux
       try {
