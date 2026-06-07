@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom';
 import type { Entry, Collection } from '@squickr/domain';
 import { getNavigationCollections, getCollectionName } from '../utils/collectionNavigation';
 
+// Covers ~8 items at ~36px each (worst case). Used for flip-upward viewport logic.
+const MENU_MAX_HEIGHT = 300;
+
 interface EntryActionsMenuProps {
   entry: Entry;
   onEdit: () => void;
@@ -139,13 +142,20 @@ export function EntryActionsMenu({
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      
+
       // CRITICAL FIX: Don't add window.scrollY/scrollX
       // getBoundingClientRect() returns viewport-relative coords
       // position: fixed is ALSO viewport-relative
       // Adding scroll offset would double-count the scroll
+
+      // Flip upward when near the bottom of the viewport to prevent clipping.
+      const spaceBelow = window.innerHeight - rect.bottom - 4;
+      const top = spaceBelow < MENU_MAX_HEIGHT && rect.top > spaceBelow
+        ? rect.top - MENU_MAX_HEIGHT  // flip upward
+        : rect.bottom + 4;            // default: open below with 4px gap
+
       setMenuPosition({
-        top: rect.bottom + 4, // 4px gap (mt-1)
+        top,
         left: rect.right - 160, // 160px = w-40 (menu width)
       });
     } else {

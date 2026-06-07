@@ -708,6 +708,134 @@ describe('EntryActionsMenu', () => {
 
       await waitFor(() => {
         expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should work with migrated notes', () => {
+      const migratedNote: Entry & { type: 'note' } = {
+        type: 'note',
+        id: 'note-1',
+        content: 'Test note',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        migratedTo: 'note-2',
+        migratedToCollectionId: 'col-2',
+      };
+
+      render(
+        <EntryActionsMenu
+          entry={migratedNote}
+          onEdit={mockOnEdit}
+          onMove={mockOnMove}
+          onDelete={mockOnDelete}
+          collections={mockCollections}
+          onNavigateToMigrated={mockOnNavigateToMigrated}
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      expect(screen.getByRole('menuitem', { name: /go to personal/i })).toBeInTheDocument();
+    });
+
+    it('should work with migrated events', () => {
+      const migratedEvent: Entry & { type: 'event' } = {
+        type: 'event',
+        id: 'event-1',
+        content: 'Test event',
+        createdAt: '2026-01-24T10:00:00.000Z',
+        eventDate: '2026-02-01',
+        migratedTo: 'event-2',
+        migratedToCollectionId: 'col-1',
+      };
+
+      render(
+        <EntryActionsMenu
+          entry={migratedEvent}
+          onEdit={mockOnEdit}
+          onMove={mockOnMove}
+          onDelete={mockOnDelete}
+          collections={mockCollections}
+          onNavigateToMigrated={mockOnNavigateToMigrated}
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      expect(screen.getByRole('menuitem', { name: /go to work projects/i })).toBeInTheDocument();
+    });
+
+    it('should handle missing collection gracefully', () => {
+      const migratedTask: Entry & { type: 'task' } = {
+        ...mockEntry,
+        migratedTo: 'task-2',
+        migratedToCollectionId: 'col-999', // Non-existent collection
+      };
+
+      render(
+        <EntryActionsMenu
+          entry={migratedTask}
+          onEdit={mockOnEdit}
+          onMove={mockOnMove}
+          onDelete={mockOnDelete}
+          collections={mockCollections}
+          onNavigateToMigrated={mockOnNavigateToMigrated}
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      // Should show "Go to Unknown Collection" or similar fallback
+      expect(screen.getByRole('menuitem', { name: /go to unknown collection/i })).toBeInTheDocument();
+    });
+
+    it('should NOT show "Go to" if onNavigateToMigrated is not provided', () => {
+      const migratedTask: Entry & { type: 'task' } = {
+        ...mockEntry,
+        migratedTo: 'task-2',
+        migratedToCollectionId: 'col-1',
+      };
+
+      render(
+        <EntryActionsMenu
+          entry={migratedTask}
+          onEdit={mockOnEdit}
+          onMove={mockOnMove}
+          onDelete={mockOnDelete}
+          collections={mockCollections}
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      expect(screen.queryByRole('menuitem', { name: /go to/i })).not.toBeInTheDocument();
+    });
+
+    it('should NOT show "Go to" if collections is not provided', () => {
+      const migratedTask: Entry & { type: 'task' } = {
+        ...mockEntry,
+        migratedTo: 'task-2',
+        migratedToCollectionId: 'col-1',
+      };
+
+      render(
+        <EntryActionsMenu
+          entry={migratedTask}
+          onEdit={mockOnEdit}
+          onMove={mockOnMove}
+          onDelete={mockOnDelete}
+          onNavigateToMigrated={mockOnNavigateToMigrated}
+        />
+      );
+
+      const trigger = screen.getByRole('button', { name: /actions/i });
+      fireEvent.click(trigger);
+
+      expect(screen.queryByRole('menuitem', { name: /go to/i })).not.toBeInTheDocument();
+    });
   });
 
   // ============================================================================
@@ -850,7 +978,7 @@ describe('EntryActionsMenu', () => {
 
       const migratedSubTask: Entry & { type: 'task' } = {
         ...mockSubTask,
-        collectionId: 'col-1',
+        collections: ['col-1'],
       };
 
       render(
@@ -870,135 +998,6 @@ describe('EntryActionsMenu', () => {
 
       // Should show "Go to [Collection]" for migrated sub-tasks
       expect(screen.getByRole('menuitem', { name: /go to work/i })).toBeInTheDocument();
-    });
-  });
-});
-
-
-    it('should work with migrated notes', () => {
-      const migratedNote: Entry & { type: 'note' } = {
-        type: 'note',
-        id: 'note-1',
-        content: 'Test note',
-        createdAt: '2026-01-24T10:00:00.000Z',
-        migratedTo: 'note-2',
-        migratedToCollectionId: 'col-2',
-      };
-
-      render(
-        <EntryActionsMenu
-          entry={migratedNote}
-          onEdit={mockOnEdit}
-          onMove={mockOnMove}
-          onDelete={mockOnDelete}
-          collections={mockCollections}
-          onNavigateToMigrated={mockOnNavigateToMigrated}
-        />
-      );
-
-      const trigger = screen.getByRole('button', { name: /actions/i });
-      fireEvent.click(trigger);
-
-      expect(screen.getByRole('menuitem', { name: /go to personal/i })).toBeInTheDocument();
-    });
-
-    it('should work with migrated events', () => {
-      const migratedEvent: Entry & { type: 'event' } = {
-        type: 'event',
-        id: 'event-1',
-        content: 'Test event',
-        createdAt: '2026-01-24T10:00:00.000Z',
-        eventDate: '2026-02-01',
-        migratedTo: 'event-2',
-        migratedToCollectionId: 'col-1',
-      };
-
-      render(
-        <EntryActionsMenu
-          entry={migratedEvent}
-          onEdit={mockOnEdit}
-          onMove={mockOnMove}
-          onDelete={mockOnDelete}
-          collections={mockCollections}
-          onNavigateToMigrated={mockOnNavigateToMigrated}
-        />
-      );
-
-      const trigger = screen.getByRole('button', { name: /actions/i });
-      fireEvent.click(trigger);
-
-      expect(screen.getByRole('menuitem', { name: /go to work projects/i })).toBeInTheDocument();
-    });
-
-    it('should handle missing collection gracefully', () => {
-      const migratedTask: Entry & { type: 'task' } = {
-        ...mockEntry,
-        migratedTo: 'task-2',
-        migratedToCollectionId: 'col-999', // Non-existent collection
-      };
-
-      render(
-        <EntryActionsMenu
-          entry={migratedTask}
-          onEdit={mockOnEdit}
-          onMove={mockOnMove}
-          onDelete={mockOnDelete}
-          collections={mockCollections}
-          onNavigateToMigrated={mockOnNavigateToMigrated}
-        />
-      );
-
-      const trigger = screen.getByRole('button', { name: /actions/i });
-      fireEvent.click(trigger);
-
-      // Should show "Go to Unknown Collection" or similar fallback
-      expect(screen.getByRole('menuitem', { name: /go to unknown collection/i })).toBeInTheDocument();
-    });
-
-    it('should NOT show "Go to" if onNavigateToMigrated is not provided', () => {
-      const migratedTask: Entry & { type: 'task' } = {
-        ...mockEntry,
-        migratedTo: 'task-2',
-        migratedToCollectionId: 'col-1',
-      };
-
-      render(
-        <EntryActionsMenu
-          entry={migratedTask}
-          onEdit={mockOnEdit}
-          onMove={mockOnMove}
-          onDelete={mockOnDelete}
-          collections={mockCollections}
-        />
-      );
-
-      const trigger = screen.getByRole('button', { name: /actions/i });
-      fireEvent.click(trigger);
-
-      expect(screen.queryByRole('menuitem', { name: /go to/i })).not.toBeInTheDocument();
-    });
-
-    it('should NOT show "Go to" if collections is not provided', () => {
-      const migratedTask: Entry & { type: 'task' } = {
-        ...mockEntry,
-        migratedTo: 'task-2',
-        migratedToCollectionId: 'col-1',
-      };
-
-      render(
-        <EntryActionsMenu
-          entry={migratedTask}
-          onEdit={mockOnEdit}
-          onMove={mockOnMove}
-          onDelete={mockOnDelete}
-          onNavigateToMigrated={mockOnNavigateToMigrated}
-        />
-      );
-
-      const trigger = screen.getByRole('button', { name: /actions/i });
-      fireEvent.click(trigger);
-
-      expect(screen.queryByRole('menuitem', { name: /go to/i })).not.toBeInTheDocument();
     });
   });
 });
@@ -1231,5 +1230,94 @@ describe('EntryActionsMenu — Set reminder', () => {
     await waitFor(() => {
       expect(mockOnSetReminder).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+// ============================================================================
+// Menu viewport positioning (flip-upward when near the bottom of the screen)
+// ============================================================================
+
+describe('EntryActionsMenu — menu viewport positioning', () => {
+  const mockOnEdit = vi.fn();
+  const mockOnMove = vi.fn();
+  const mockOnDelete = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  const mockTaskEntry: Entry & { type: 'task' } = {
+    type: 'task',
+    id: 'task-1',
+    content: 'Test task',
+    createdAt: '2026-01-24T10:00:00.000Z',
+    status: 'open',
+  };
+
+  it('positions the menu below the trigger when there is enough space below', () => {
+    // Trigger sits near the top of a 768px viewport — plenty of space below.
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      top: 100,
+      bottom: 132,
+      left: 600,
+      right: 760,
+      width: 160,
+      height: 32,
+      x: 600,
+      y: 100,
+      toJSON: () => ({}),
+    });
+    Object.defineProperty(window, 'innerHeight', { value: 768, configurable: true });
+
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+
+    const menu = screen.getByRole('menu');
+    // Expected downward position: rect.bottom + 4 = 132 + 4 = 136
+    expect(menu.style.top).toBe('136px');
+  });
+
+  it('flips the menu upward when the trigger is near the bottom of the viewport', () => {
+    // Trigger sits near the bottom: rect.bottom = 740 on a 768px viewport.
+    // spaceBelow = 768 - 740 - 4 = 24, which is less than MENU_MAX_HEIGHT (300).
+    // rect.top = 708, which is greater than spaceBelow (24) → flip upward.
+    // Expected upward position: rect.top - MENU_MAX_HEIGHT = 708 - 300 = 408
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      top: 708,
+      bottom: 740,
+      left: 600,
+      right: 760,
+      width: 160,
+      height: 32,
+      x: 600,
+      y: 708,
+      toJSON: () => ({}),
+    });
+    Object.defineProperty(window, 'innerHeight', { value: 768, configurable: true });
+
+    render(
+      <EntryActionsMenu
+        entry={mockTaskEntry}
+        onEdit={mockOnEdit}
+        onMove={mockOnMove}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /actions/i }));
+
+    const menu = screen.getByRole('menu');
+    // Expected upward position: rect.top - MENU_MAX_HEIGHT = 708 - 300 = 408
+    expect(menu.style.top).toBe('408px');
   });
 });
