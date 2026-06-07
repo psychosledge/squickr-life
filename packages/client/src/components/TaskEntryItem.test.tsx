@@ -643,6 +643,34 @@ describe('TaskEntryItem — reminders', () => {
     expect(screen.queryByRole('heading', { name: /set reminder/i })).not.toBeInTheDocument();
   });
 
+  it('shows formatted scheduled time (not "just now") in reminder indicator for a future reminder', () => {
+    // Reminder is 1 hour in the future — formatTimestamp would return "just now" (negative diff)
+    const futureReminderAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const taskWithFutureReminder: Entry & { type: 'task' } = {
+      type: 'task',
+      id: 'task-reminder',
+      content: 'Task with future reminder',
+      createdAt: '2026-04-07T09:00:00.000Z',
+      status: 'open',
+      reminderAt: futureReminderAt,
+    };
+
+    render(
+      <TaskEntryItem
+        entry={taskWithFutureReminder}
+        onDelete={mockOnDelete}
+        onSetReminder={mockOnSetReminder}
+        onClearReminder={mockOnClearReminder}
+      />
+    );
+
+    const indicator = screen.getByTestId('reminder-indicator');
+    // Must NOT say "just now" (the old broken behaviour)
+    expect(indicator.textContent).not.toMatch(/just now/i);
+    // Must show a clock time (e.g. "3:00 PM")
+    expect(indicator.textContent).toMatch(/\d+:\d{2}\s*(AM|PM|am|pm)/i);
+  });
+
   it('surfaces handler error in the modal when onSetReminder rejects', async () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     const user = userEvent.setup();

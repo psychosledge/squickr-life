@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Entry, Collection } from '@squickr/domain';
-import { formatTimestamp } from '../utils/formatters';
+import { formatTimestamp, formatReminderTime } from '../utils/formatters';
 import { MigrateEntryDialog } from './MigrateEntryDialog';
 import { BulletIcon } from './BulletIcon';
 import { EntryActionsMenu } from './EntryActionsMenu';
@@ -309,7 +309,7 @@ export function TaskEntryItem({
                   <span className="ml-2 inline-flex items-center gap-1" data-testid="reminder-indicator">
                     <Bell className="w-3 h-3" aria-hidden="true" />
                     <span className="sr-only">Reminder set</span>
-                    {formatTimestamp(entry.reminderAt)}
+                    {formatReminderTime(entry.reminderAt)}
                   </span>
                 )}
               </div>

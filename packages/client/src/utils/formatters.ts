@@ -25,6 +25,33 @@ export function formatTimestamp(timestamp: string): string {
 }
 
 /**
+ * Format a reminder ISO string as an absolute scheduled time (locale-dependent).
+ * Same calendar day → time only, e.g. "7:00 PM"
+ * Different day, same year → date + time, e.g. "Jun 8 at 7:00 PM"
+ * Different year → date with year + time, e.g. "Jun 8, 2027 at 7:00 PM"
+ */
+export function formatReminderTime(isoString: string): string {
+  const d = new Date(isoString);
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+
+  const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+  if (sameDay) return timeStr;
+
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const dateStr = d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+  return `${dateStr} at ${timeStr}`;
+}
+
+/**
  * Format date string (YYYY-MM-DD) as readable date
  */
 export function formatDate(dateString: string): string {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { formatTimestamp, formatDate, getCollectionDisplayName, formatMonthlyLogName } from './formatters';
+import { formatTimestamp, formatDate, getCollectionDisplayName, formatMonthlyLogName, formatReminderTime } from './formatters';
 
 describe('formatTimestamp', () => {
   const mockNow = new Date('2026-01-25T12:00:00.000Z');
@@ -205,6 +205,60 @@ describe('formatMonthlyLogName', () => {
   it('should handle different years', () => {
     expect(formatMonthlyLogName('2020-06')).toBe('June 2020');
     expect(formatMonthlyLogName('2030-06')).toBe('June 2030');
+  });
+});
+
+describe('formatReminderTime', () => {
+  const mockNow = new Date('2026-06-06T15:00:00.000'); // Local time: June 6, 2026 3:00 PM
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(mockNow);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns time-only string for a future reminder on the same calendar day', () => {
+    // Same day as mockNow (June 6, 2026), 7 PM local
+    const isoString = new Date('2026-06-06T19:00:00.000').toISOString();
+    const result = formatReminderTime(isoString);
+    // Should contain the time, not date info
+    expect(result).toMatch(/7:00\s*(PM|pm)/i);
+    // Should NOT contain month/day info
+    expect(result).not.toMatch(/Jun/i);
+    expect(result).not.toMatch(/2026/);
+  });
+
+  it('returns date-and-time string for a reminder on a different day in the same year', () => {
+    // June 8, 2026 7 PM local — different day, same year
+    const isoString = new Date('2026-06-08T19:00:00.000').toISOString();
+    const result = formatReminderTime(isoString);
+    // Should contain month name and day
+    expect(result).toMatch(/Jun/i);
+    expect(result).toMatch(/8/);
+    // Should contain time
+    expect(result).toMatch(/7:00\s*(PM|pm)/i);
+    // Should NOT contain the year (same year)
+    expect(result).not.toMatch(/2026/);
+    // Should include " at " separator
+    expect(result).toMatch(/ at /i);
+  });
+
+  it('returns date-with-year-and-time string for a reminder in a different year', () => {
+    // June 8, 2027 7 PM local — different year
+    const isoString = new Date('2027-06-08T19:00:00.000').toISOString();
+    const result = formatReminderTime(isoString);
+    // Should contain month name and day
+    expect(result).toMatch(/Jun/i);
+    expect(result).toMatch(/8/);
+    // Should contain the year
+    expect(result).toMatch(/2027/);
+    // Should contain time
+    expect(result).toMatch(/7:00\s*(PM|pm)/i);
+    // Should include " at " separator
+    expect(result).toMatch(/ at /i);
   });
 });
 
