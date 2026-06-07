@@ -44,6 +44,7 @@ describe('SettingsModal', () => {
       eventStore: mockEventStore,
       entryProjection: mockEntryProjection as unknown as ReturnType<typeof useApp>['entryProjection'],
       userPreferences: { ...defaultPreferences, ...preferenceOverrides },
+      forceFullSync: vi.fn().mockResolvedValue(undefined),
       user: null,
       loading: false,
       signOut: vi.fn(),
@@ -345,6 +346,64 @@ describe('SettingsModal', () => {
       expect(appendSpy).toHaveBeenCalled();
       const event = appendSpy.mock.calls[0][0];
       expect(event.payload.autoFavoriteCalendarWithActiveTasks).toBe(true);
+    });
+  });
+
+  // ── Developer section — Force full sync tests ────────────────────────────
+
+  describe('Developer section — Force full sync', () => {
+    it('renders "Developer" heading and "Force full sync" button when modal is open', () => {
+      render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+      expect(screen.getByText('Developer')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Force full sync' })).toBeInTheDocument();
+    });
+
+    it('disables button and shows "Syncing…" while forceFullSync promise is pending', async () => {
+      const user = userEvent.setup();
+      let resolveSync!: () => void;
+      const syncPromise = new Promise<void>((resolve) => { resolveSync = resolve; });
+      const mockForceFullSync = vi.fn().mockReturnValue(syncPromise);
+
+      vi.mocked(useApp).mockReturnValue({
+        eventStore: mockEventStore,
+        entryProjection: mockEntryProjection as unknown as ReturnType<typeof useApp>['entryProjection'],
+        userPreferences: { ...defaultPreferences },
+        forceFullSync: mockForceFullSync,
+      } as unknown as ReturnType<typeof useApp>);
+
+      render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+      const button = screen.getByRole('button', { name: 'Force full sync' });
+      await user.click(button);
+
+      expect(screen.getByRole('button', { name: 'Syncing…' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Syncing…' })).toBeDisabled();
+
+      resolveSync();
+    });
+
+    it('re-enables button and shows "Full sync started" after forceFullSync resolves', async () => {
+      const user = userEvent.setup();
+      const mockForceFullSync = vi.fn().mockResolvedValue(undefined);
+
+      vi.mocked(useApp).mockReturnValue({
+        eventStore: mockEventStore,
+        entryProjection: mockEntryProjection as unknown as ReturnType<typeof useApp>['entryProjection'],
+        userPreferences: { ...defaultPreferences },
+        forceFullSync: mockForceFullSync,
+      } as unknown as ReturnType<typeof useApp>);
+
+      render(<SettingsModal isOpen={true} onClose={mockOnClose} />);
+
+      await user.click(screen.getByRole('button', { name: 'Force full sync' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Full sync started')).toBeInTheDocument();
+      });
+
+      // Button should be re-enabled and label restored
+      expect(screen.getByRole('button', { name: 'Force full sync' })).not.toBeDisabled();
     });
   });
 

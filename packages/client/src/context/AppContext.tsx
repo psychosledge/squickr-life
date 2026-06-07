@@ -69,6 +69,8 @@ interface AppContextValue {
   userPreferences: UserPreferences;
   /** True once IndexedDB has loaded AND the initial Firestore sync has completed (or timed out). */
   isAppReady: boolean;
+  /** Clears the local snapshot and restarts the SyncManager with a null cursor, forcing a full sync. */
+  forceFullSync: () => Promise<void>;
   // Habit handlers (Phase 2)
   createHabitHandler: CreateHabitHandler;
   updateHabitTitleHandler: UpdateHabitTitleHandler;

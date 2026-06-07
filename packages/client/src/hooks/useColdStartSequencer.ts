@@ -18,7 +18,7 @@
  * - All JSX
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
 import type {
   EntryListProjection,
@@ -87,6 +87,7 @@ export interface UseColdStartSequencerResult {
   syncError: string | null;
   isAppReady: boolean;
   dismissSyncError: () => void;
+  forceFullSync: () => Promise<void>;
 }
 
 export function useColdStartSequencer(
@@ -109,6 +110,7 @@ export function useColdStartSequencer(
 
   const syncManagerRef = useRef<SyncManager | null>(null);
   const restoredFromRemoteRef = useRef(false);
+  const newSyncManagerFactoryRef = useRef<(() => SyncManager) | null>(null);
 
   // Start/stop background sync when user signs in/out
   useEffect(() => {
@@ -126,6 +128,19 @@ export function useColdStartSequencer(
 
     const remoteEventStore = new FirestoreEventStore(firestore, user.uid);
     const remoteSnapshotStore = new FirestoreSnapshotStore(firestore, user.uid);
+
+    // Factory for creating a null-cursor SyncManager (used by forceFullSync)
+    newSyncManagerFactoryRef.current = () => {
+      const tw = createTaskReminderIndexWriter(firestore, user.uid, entryProjection);
+      const hw = createHabitReminderIndexWriter(firestore, user.uid, habitProjection);
+      return new SyncManager(
+        eventStore,
+        remoteEventStore,
+        undefined,
+        () => null,
+        async (events) => { await tw(events); await hw(events); },
+      );
+    };
 
     // Update SnapshotManager to include the remote store now that we know the user
     snapshotManagerRef.current?.stop();
@@ -401,6 +416,7 @@ export function useColdStartSequencer(
     void startSync();
 
     return () => {
+      newSyncManagerFactoryRef.current = null;
       cancelled = true;
       restoredFromRemoteRef.current = false;
       syncManagerRef.current?.stop();
@@ -418,5 +434,18 @@ export function useColdStartSequencer(
 
   const dismissSyncError = () => setSyncError(null);
 
-  return { coldStartPhase, syncError, isAppReady, dismissSyncError };
+  const forceFullSync = useCallback(async () => {
+    await snapshotStore.clear('entry-list-projection');
+    syncManagerRef.current?.stop();
+    const newManager = newSyncManagerFactoryRef.current?.();
+    if (newManager) {
+      newManager.onSyncStateChange = (_syncing: boolean, error?: string) => {
+        if (error) setSyncError(error);
+      };
+      newManager.start();
+      syncManagerRef.current = newManager;
+    }
+  }, [snapshotStore]);
+
+  return { coldStartPhase, syncError, isAppReady, dismissSyncError, forceFullSync };
 }

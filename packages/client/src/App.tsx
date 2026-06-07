@@ -363,7 +363,7 @@ function AppContent() {
   // before startSync() has run (ADR-024 bug fix).
 
   // ── ADR-024: Cold-start sequencer (extracted to hook, P2-9) ─────────────────
-  const { coldStartPhase, syncError, isAppReady, dismissSyncError } = useColdStartSequencer({
+  const { coldStartPhase, syncError, isAppReady, dismissSyncError, forceFullSync } = useColdStartSequencer({
     user,
     isLoading,
     entryProjection,
@@ -474,6 +474,7 @@ function AppContent() {
     restoreEventHandler,
     userPreferences,
     isAppReady,
+    forceFullSync,
     // Habit handlers (Phase 2)
     createHabitHandler,
     updateHabitTitleHandler,

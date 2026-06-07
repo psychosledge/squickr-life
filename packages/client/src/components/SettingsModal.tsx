@@ -29,7 +29,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { eventStore, userPreferences: currentPreferences } = useApp();
+  const { eventStore, userPreferences: currentPreferences, forceFullSync } = useApp();
   const fcmStatus = useFcmRegistrationStatus();
 
   const [defaultCompletedTaskBehavior, setDefaultCompletedTaskBehavior] = useState<CompletedTaskBehavior>('move-to-bottom');
@@ -38,6 +38,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [autoFavoriteCalendarWithActiveTasks, setAutoFavoriteCalendarWithActiveTasks] = useState(false);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [syncState, setSyncState] = useState<'idle' | 'syncing' | 'done'>('idle');
 
   // Initialize settings when modal opens
   useEffect(() => {
@@ -48,6 +49,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setAutoFavoriteCalendarWithActiveTasks(currentPreferences.autoFavoriteCalendarWithActiveTasks);
       setError('');
       setIsSaving(false);
+      setSyncState('idle');
     }
   }, [isOpen, currentPreferences]);
 
@@ -123,6 +125,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');
       setIsSaving(false);
+    }
+  };
+
+  const handleForceFullSync = async () => {
+    setSyncState('syncing');
+    try {
+      await forceFullSync();
+      setSyncState('done');
+    } catch {
+      setSyncState('idle');
     }
   };
 
@@ -339,6 +351,43 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </button>
           </div>
         </form>
+
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+            Developer
+          </h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-700 dark:text-gray-300">Force full sync</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                Re-uploads all local events to Firestore. Use if sync is out of date.
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <button
+                type="button"
+                onClick={handleForceFullSync}
+                disabled={syncState === 'syncing'}
+                className="
+                  px-3 py-1.5
+                  text-sm
+                  bg-gray-100 dark:bg-gray-700
+                  hover:bg-gray-200 dark:hover:bg-gray-600
+                  text-gray-700 dark:text-gray-300
+                  rounded-lg
+                  transition-colors
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                  whitespace-nowrap
+                "
+              >
+                {syncState === 'syncing' ? 'Syncing…' : 'Force full sync'}
+              </button>
+              {syncState === 'done' && (
+                <span className="text-xs text-green-600 dark:text-green-400">Full sync started</span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
