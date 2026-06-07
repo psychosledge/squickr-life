@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
@@ -8,12 +8,30 @@ import { readFileSync } from 'fs';
 const packageJson = JSON.parse(readFileSync(path.resolve(__dirname, '../../package.json'), 'utf-8'));
 const appVersion = packageJson.version;
 
+// Watches the root package.json and restarts the dev server when the version
+// changes (e.g. after /ship), so __APP_VERSION__ updates without a manual restart.
+function restartOnVersionChange(): Plugin {
+  return {
+    name: 'restart-on-version-change',
+    configureServer(server) {
+      const pkgPath = path.resolve(__dirname, '../../package.json');
+      server.watcher.add(pkgPath);
+      server.watcher.on('change', (changedPath) => {
+        if (changedPath === pkgPath) {
+          server.restart();
+        }
+      });
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   define: {
     '__APP_VERSION__': JSON.stringify(appVersion),
   },
   plugins: [
+    restartOnVersionChange(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
