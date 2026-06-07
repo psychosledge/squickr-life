@@ -404,7 +404,10 @@ describe('useColdStartSequencer', () => {
 
   // ── Sync error ───────────────────────────────────────────────────────────────
 
-  it('fast path: surfaces sync error via syncError state', async () => {
+  it('fast path: background sync error does NOT set syncError — isAppReady stays true', async () => {
+    // Bug regression: on the fast path the user already has local data, so a
+    // background sync timeout must never flip isAppReady back to false by
+    // setting syncError. The error should be swallowed silently.
     const user = makeUser();
     const entryProjection = makeEntryProjection({ wasEmpty: false });
     const eventStore = makeEventStore();
@@ -429,26 +432,91 @@ describe('useColdStartSequencer', () => {
       expect(result.current.coldStartPhase).toBe('ready');
     });
 
+    // Confirm baseline: app is ready and no error
+    expect(result.current.isAppReady).toBe(true);
+    expect(result.current.syncError).toBeNull();
+
+    // Simulate a background sync timeout/error on the fast path
     act(() => {
-      mockOnSyncStateChange?.(false, 'Network error');
+      mockOnSyncStateChange?.(false, 'Network timeout');
     });
 
-    await waitFor(() => {
-      expect(result.current.syncError).toBe('Network error');
-    });
-
-    // isAppReady should be false while syncError is set
-    expect(result.current.isAppReady).toBe(false);
+    // syncError must remain null — the error is silent on the fast path
+    expect(result.current.syncError).toBeNull();
+    // isAppReady must remain true — the overlay must NOT appear
+    expect(result.current.isAppReady).toBe(true);
   });
 
-  // ── dismissSyncError ─────────────────────────────────────────────────────────
-
-  it('dismissSyncError clears syncError', async () => {
+  it('fast path: clears stale syncError left from a prior slow-path cycle', async () => {
+    // If a prior slow-path cycle set syncError (e.g. user signed out mid-sync
+    // then signed back in with data in IndexedDB), the fast path must clear
+    // any lingering syncError so isAppReady becomes true immediately.
     const user = makeUser();
     const entryProjection = makeEntryProjection({ wasEmpty: false });
     const eventStore = makeEventStore();
     const snapshotStore = makeSnapshotStore();
     const snapshotManagerRef = makeSnapshotManagerRef();
+
+    let currentUser: FirebaseUser | null = user;
+    const { result, rerender } = renderHook(() =>
+      useColdStartSequencer({
+        user: currentUser,
+        isLoading: false,
+        entryProjection,
+        habitProjection: makeHabitProjection(),
+        collectionProjection: makeCollectionProjection(),
+        userPreferencesProjection: makeUserPreferencesProjection(),
+        eventStore,
+        snapshotStore,
+        snapshotManagerRef,
+      })
+    );
+
+    await waitFor(() => expect(result.current.coldStartPhase).toBe('ready'));
+
+    // Simulate user signing out — resets to 'checking'
+    currentUser = null;
+    rerender();
+
+    // Now sign back in — fast path should clear any stale syncError
+    currentUser = user;
+    rerender();
+
+    // Fast path should reach ready with no syncError
+    await waitFor(() => expect(result.current.coldStartPhase).toBe('ready'));
+    expect(result.current.syncError).toBeNull();
+    expect(result.current.isAppReady).toBe(true);
+  });
+
+  it('slow path without snapshot: surfaces sync error via syncError state', async () => {
+    // On the slow path (no local data), a sync error must still block the app
+    // because the user cannot see anything without a successful sync.
+    const user = makeUser();
+    const entryProjection = makeEntryProjection({ wasEmpty: true, isCachePopulated: false });
+    const eventStore = makeEventStore();
+    const snapshotStore = makeSnapshotStore();
+    const snapshotManagerRef = makeSnapshotManagerRef();
+
+    let capturedSlowCallback: ((syncing: boolean, error?: string) => void) | undefined;
+    vi.mocked(SyncManager).mockImplementation(() => {
+      mockManagerStart = vi.fn();
+      mockManagerStop = vi.fn();
+      const instance: Record<string, unknown> = {
+        start: mockManagerStart,
+        stop: mockManagerStop,
+      };
+      let _cb: ((syncing: boolean, error?: string) => void) | undefined;
+      Object.defineProperty(instance, 'onSyncStateChange', {
+        get() { return _cb; },
+        set(v: ((syncing: boolean, error?: string) => void) | undefined) {
+          _cb = v;
+          capturedSlowCallback = v;
+          mockOnSyncStateChange = v;
+        },
+        configurable: true,
+      });
+      return instance as unknown as SyncManager;
+    });
 
     const { result } = renderHook(() =>
       useColdStartSequencer({
@@ -464,10 +532,73 @@ describe('useColdStartSequencer', () => {
       })
     );
 
-    await waitFor(() => expect(result.current.coldStartPhase).toBe('ready'));
+    await waitFor(() => {
+      expect(result.current.coldStartPhase).toBe('syncing');
+    }, { timeout: 3000 });
+
+    // Simulate a sync error on the slow path — this MUST propagate
+    act(() => {
+      capturedSlowCallback?.(false, 'Firestore unavailable');
+    });
+
+    await waitFor(() => {
+      expect(result.current.syncError).toBe('Firestore unavailable');
+    });
+
+    // On the slow path the error blocks the app (user has no local data)
+    expect(result.current.isAppReady).toBe(false);
+  });
+
+  // ── dismissSyncError ─────────────────────────────────────────────────────────
+
+  it('dismissSyncError clears syncError (slow path)', async () => {
+    // dismissSyncError is used on the slow path where the overlay is shown;
+    // the "Show local data" button calls dismiss to let the user through.
+    const user = makeUser();
+    const entryProjection = makeEntryProjection({ wasEmpty: true, isCachePopulated: false });
+    const eventStore = makeEventStore();
+    const snapshotStore = makeSnapshotStore();
+    const snapshotManagerRef = makeSnapshotManagerRef();
+
+    let capturedSlowCallback: ((syncing: boolean, error?: string) => void) | undefined;
+    vi.mocked(SyncManager).mockImplementation(() => {
+      mockManagerStart = vi.fn();
+      mockManagerStop = vi.fn();
+      const instance: Record<string, unknown> = {
+        start: mockManagerStart,
+        stop: mockManagerStop,
+      };
+      let _cb: ((syncing: boolean, error?: string) => void) | undefined;
+      Object.defineProperty(instance, 'onSyncStateChange', {
+        get() { return _cb; },
+        set(v: ((syncing: boolean, error?: string) => void) | undefined) {
+          _cb = v;
+          capturedSlowCallback = v;
+          mockOnSyncStateChange = v;
+        },
+        configurable: true,
+      });
+      return instance as unknown as SyncManager;
+    });
+
+    const { result } = renderHook(() =>
+      useColdStartSequencer({
+        user,
+        isLoading: false,
+        entryProjection,
+        habitProjection: makeHabitProjection(),
+        collectionProjection: makeCollectionProjection(),
+        userPreferencesProjection: makeUserPreferencesProjection(),
+        eventStore,
+        snapshotStore,
+        snapshotManagerRef,
+      })
+    );
+
+    await waitFor(() => expect(result.current.coldStartPhase).toBe('syncing'), { timeout: 3000 });
 
     act(() => {
-      mockOnSyncStateChange?.(false, 'Timeout');
+      capturedSlowCallback?.(false, 'Timeout');
     });
 
     await waitFor(() => expect(result.current.syncError).toBe('Timeout'));
@@ -477,6 +608,7 @@ describe('useColdStartSequencer', () => {
     });
 
     expect(result.current.syncError).toBeNull();
+    expect(result.current.isAppReady).toBe(true);
   });
 
   // ── Cleanup ──────────────────────────────────────────────────────────────────

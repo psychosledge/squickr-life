@@ -208,8 +208,9 @@ export function useColdStartSequencer(
             await habitWriter(events);
           },
         );
-        manager.onSyncStateChange = (_syncing: boolean, error?: string) => {
-          if (error) setSyncError(error);
+        manager.onSyncStateChange = (_syncing: boolean, _error?: string) => {
+          // Benchmark path: user already has local data written during benchmark;
+          // background sync failures are silent (same reasoning as fast path).
         };
         manager.start();
         void bootstrapHabitReminderIndex(firestore, user.uid, habitProjection);
@@ -259,6 +260,9 @@ export function useColdStartSequencer(
           console.log(`Events per ms: ${(allEvents.length / replayMs).toFixed(1)}`);
           console.groupEnd();
         }
+        // Clear any stale syncError that may have been left by a prior slow-path
+        // cycle (e.g. user signed out mid-sync then signed back in with local data).
+        setSyncError(null);
         if (!cancelled) setColdStartPhase('ready');
         const taskWriter = createTaskReminderIndexWriter(firestore, user.uid, entryProjection);
         const habitWriter = createHabitReminderIndexWriter(firestore, user.uid, habitProjection);
@@ -273,8 +277,9 @@ export function useColdStartSequencer(
           },
         );
         let initialSnapshotSaved = false;
-        manager.onSyncStateChange = (syncing: boolean, error?: string) => {
-          if (error) setSyncError(error);
+        manager.onSyncStateChange = (syncing: boolean, _error?: string) => {
+          // Fast path: background sync failures are silent — the user already has
+          // local data, so a sync timeout must never flip isAppReady back to false.
           if (!syncing && !initialSnapshotSaved) {
             initialSnapshotSaved = true;
             void snapshotManagerRef.current?.saveSnapshot('post-initial-sync-fast-path');
