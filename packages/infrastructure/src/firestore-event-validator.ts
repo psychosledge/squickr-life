@@ -85,6 +85,8 @@ const KNOWN_EVENT_TYPES_ARRAY = [
   'TaskMigrated',
   'TaskAddedToCollection',
   'TaskRemovedFromCollection',
+  'TaskReminderSet',
+  'TaskReminderCleared',
   // Note events
   'NoteCreated',
   'NoteContentChanged',

@@ -102,6 +102,16 @@ describe('assertValidDomainEvent — valid events', () => {
     }
   });
 
+  it('passes through TaskReminderSet without throwing', () => {
+    const raw = makeRawEvent({ type: 'TaskReminderSet' });
+    expect(() => assertValidDomainEvent(raw, 'doc-1')).not.toThrow();
+  });
+
+  it('passes through TaskReminderCleared without throwing', () => {
+    const raw = makeRawEvent({ type: 'TaskReminderCleared' });
+    expect(() => assertValidDomainEvent(raw, 'doc-1')).not.toThrow();
+  });
+
   it('passes through all known note event types', () => {
     const types = [
       'NoteCreated', 'NoteContentChanged', 'NoteDeleted', 'NoteRestored',
