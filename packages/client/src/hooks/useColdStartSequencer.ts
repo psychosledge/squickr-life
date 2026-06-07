@@ -436,6 +436,9 @@ export function useColdStartSequencer(
 
   const forceFullSync = useCallback(async () => {
     await snapshotStore.clear('entry-list-projection');
+    // Stop SnapshotManager so visibilitychange on app-close doesn't re-save the
+    // stale in-memory projection state, which would overwrite the cleared snapshot.
+    snapshotManagerRef.current?.stop();
     syncManagerRef.current?.stop();
     const newManager = newSyncManagerFactoryRef.current?.();
     if (newManager) {

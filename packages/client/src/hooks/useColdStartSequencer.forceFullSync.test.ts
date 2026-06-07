@@ -14,6 +14,10 @@ interface MockSyncManager {
   start: ReturnType<typeof vi.fn>;
 }
 
+interface MockSnapshotManager {
+  stop: ReturnType<typeof vi.fn>;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -22,13 +26,15 @@ interface MockSyncManager {
  */
 function buildForceFullSync(deps: {
   snapshotStore: { clear: ReturnType<typeof vi.fn> };
+  snapshotManagerRef: { current: MockSnapshotManager | null };
   syncManagerRef: { current: MockSyncManager | null };
   newSyncManagerFactoryRef: { current: (() => MockSyncManager) | null };
 }) {
-  const { snapshotStore, syncManagerRef, newSyncManagerFactoryRef } = deps;
+  const { snapshotStore, snapshotManagerRef, syncManagerRef, newSyncManagerFactoryRef } = deps;
 
   return async () => {
     await snapshotStore.clear('entry-list-projection');
+    snapshotManagerRef.current?.stop();
     syncManagerRef.current?.stop();
     const newManager = newSyncManagerFactoryRef.current?.();
     if (newManager) {
@@ -42,6 +48,8 @@ function buildForceFullSync(deps: {
 
 describe('forceFullSync closure', () => {
   let snapshotStore: { clear: ReturnType<typeof vi.fn> };
+  let snapshotManager: MockSnapshotManager;
+  let snapshotManagerRef: { current: MockSnapshotManager | null };
   let oldManager: MockSyncManager;
   let newManager: MockSyncManager;
   let syncManagerRef: { current: MockSyncManager | null };
@@ -49,6 +57,9 @@ describe('forceFullSync closure', () => {
 
   beforeEach(() => {
     snapshotStore = { clear: vi.fn().mockResolvedValue(undefined) };
+
+    snapshotManager = { stop: vi.fn() };
+    snapshotManagerRef = { current: snapshotManager };
 
     oldManager = { stop: vi.fn(), start: vi.fn() };
     newManager = { stop: vi.fn(), start: vi.fn() };
@@ -60,6 +71,7 @@ describe('forceFullSync closure', () => {
   it('calls snapshotStore.clear with "entry-list-projection"', async () => {
     const forceFullSync = buildForceFullSync({
       snapshotStore,
+      snapshotManagerRef,
       syncManagerRef,
       newSyncManagerFactoryRef,
     });
@@ -70,9 +82,28 @@ describe('forceFullSync closure', () => {
     expect(snapshotStore.clear).toHaveBeenCalledWith('entry-list-projection');
   });
 
+  it('stops the SnapshotManager before stopping the current SyncManager', async () => {
+    const callOrder: string[] = [];
+    snapshotManager.stop.mockImplementation(() => callOrder.push('sm.stop'));
+    oldManager.stop.mockImplementation(() => callOrder.push('sync.stop'));
+
+    const forceFullSync = buildForceFullSync({
+      snapshotStore,
+      snapshotManagerRef,
+      syncManagerRef,
+      newSyncManagerFactoryRef,
+    });
+
+    await forceFullSync();
+
+    expect(snapshotManager.stop).toHaveBeenCalledOnce();
+    expect(callOrder).toEqual(['sm.stop', 'sync.stop']);
+  });
+
   it('calls stop() on the current SyncManager', async () => {
     const forceFullSync = buildForceFullSync({
       snapshotStore,
+      snapshotManagerRef,
       syncManagerRef,
       newSyncManagerFactoryRef,
     });
@@ -85,6 +116,7 @@ describe('forceFullSync closure', () => {
   it('starts a new SyncManager instance', async () => {
     const forceFullSync = buildForceFullSync({
       snapshotStore,
+      snapshotManagerRef,
       syncManagerRef,
       newSyncManagerFactoryRef,
     });
@@ -97,6 +129,7 @@ describe('forceFullSync closure', () => {
   it('replaces syncManagerRef.current with the new SyncManager', async () => {
     const forceFullSync = buildForceFullSync({
       snapshotStore,
+      snapshotManagerRef,
       syncManagerRef,
       newSyncManagerFactoryRef,
     });
@@ -111,6 +144,7 @@ describe('forceFullSync closure', () => {
 
     const forceFullSync = buildForceFullSync({
       snapshotStore,
+      snapshotManagerRef,
       syncManagerRef,
       newSyncManagerFactoryRef,
     });
@@ -119,6 +153,7 @@ describe('forceFullSync closure', () => {
 
     // clear + stop still run; start never runs; ref unchanged
     expect(snapshotStore.clear).toHaveBeenCalledOnce();
+    expect(snapshotManager.stop).toHaveBeenCalledOnce();
     expect(oldManager.stop).toHaveBeenCalledOnce();
     expect(newManager.start).not.toHaveBeenCalled();
     expect(syncManagerRef.current).toBe(oldManager);
