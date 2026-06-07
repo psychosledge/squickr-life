@@ -35,49 +35,46 @@ describe('TaskReminderModal', () => {
     expect(screen.getByLabelText(/time/i)).toBeInTheDocument();
   });
 
-  it('Save button is disabled when date or time is empty', () => {
+  it('Save button is disabled initially (date pre-populated, time blank)', () => {
     renderModal();
     const saveButton = screen.getByRole('button', { name: /save/i });
     expect(saveButton).toBeDisabled();
   });
 
-  it('Save button is disabled when only date is filled', async () => {
-    const user = userEvent.setup();
+  it('Save button is disabled when only date is filled', () => {
     renderModal();
-    await user.type(screen.getByLabelText(/date/i), FUTURE_DATE);
+    // Date is pre-populated with today; set a specific future date, leave time empty
+    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: FUTURE_DATE } });
     const saveButton = screen.getByRole('button', { name: /save/i });
     expect(saveButton).toBeDisabled();
   });
 
-  it('Save button is disabled when only time is filled', async () => {
+  it('Save button is disabled when only time is filled and date is explicitly cleared', async () => {
     const user = userEvent.setup();
     renderModal();
+    // Date starts pre-populated with today; clear it so only time is filled
+    await user.clear(screen.getByLabelText(/date/i));
     await user.type(screen.getByLabelText(/time/i), FUTURE_TIME);
     const saveButton = screen.getByRole('button', { name: /save/i });
     expect(saveButton).toBeDisabled();
   });
 
-  it('Save button is enabled when both date and time are filled', async () => {
-    const user = userEvent.setup();
+  it('Save button is enabled when both date and time are filled', () => {
     renderModal();
-    await user.type(screen.getByLabelText(/date/i), FUTURE_DATE);
-    await user.type(screen.getByLabelText(/time/i), FUTURE_TIME);
+    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: FUTURE_DATE } });
+    fireEvent.change(screen.getByLabelText(/time/i), { target: { value: FUTURE_TIME } });
     const saveButton = screen.getByRole('button', { name: /save/i });
     expect(saveButton).not.toBeDisabled();
   });
 
-  it('calls onSave with UTC ISO-8601 string when Save clicked', async () => {
-    const user = userEvent.setup();
+  it('calls onSave with UTC ISO-8601 string when Save clicked', () => {
     const { onSave } = renderModal();
 
-    await user.type(screen.getByLabelText(/date/i), FUTURE_DATE);
-    await user.type(screen.getByLabelText(/time/i), FUTURE_TIME);
+    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: FUTURE_DATE } });
+    fireEvent.change(screen.getByLabelText(/time/i), { target: { value: FUTURE_TIME } });
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    await user.click(screen.getByRole('button', { name: /save/i }));
-
-    await waitFor(() => {
-      expect(onSave).toHaveBeenCalledTimes(1);
-    });
+    expect(onSave).toHaveBeenCalledTimes(1);
 
     // The argument should be a valid ISO string representing the entered datetime
     const arg = (onSave as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
@@ -102,6 +99,20 @@ describe('TaskReminderModal', () => {
     expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument();
   });
 
+  it('pre-populates date picker with today\'s date when no existingReminderAt is provided', () => {
+    // Freeze system time so `new Date()` inside the lazy initializer is deterministic
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-06T09:00:00.000'));
+
+    try {
+      renderModal();
+      const dateInput = screen.getByLabelText(/date/i) as HTMLInputElement;
+      expect(dateInput.value).toBe('2026-06-06');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('pre-populates pickers when existingReminderAt is provided', () => {
     // Use a fixed UTC time and verify that date/time inputs are populated
     renderModal({ existingReminderAt: '2099-06-15T14:30:00.000Z' });
@@ -119,16 +130,15 @@ describe('TaskReminderModal', () => {
     expect(onClear).toHaveBeenCalledTimes(1);
   });
 
-  it('shows validation error when datetime is in the past', async () => {
-    const user = userEvent.setup();
+  it('shows validation error when datetime is in the past', () => {
     renderModal();
-    // Use a past date
-    await user.type(screen.getByLabelText(/date/i), '2000-01-01');
-    await user.type(screen.getByLabelText(/time/i), '00:00');
-    await user.click(screen.getByRole('button', { name: /save/i }));
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toBeInTheDocument();
+    act(() => {
+      // Override the pre-populated today's date with a past date
+      fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2000-01-01' } });
+      fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '00:00' } });
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
     });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 
   it('shows validation error when datetime is less than 1 minute in the future', () => {

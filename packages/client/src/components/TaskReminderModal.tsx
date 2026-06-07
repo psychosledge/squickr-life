@@ -22,7 +22,13 @@ export function TaskReminderModal({
   onClose,
   externalError,
 }: TaskReminderModalProps) {
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
   const [time, setTime] = useState('');
   const [error, setError] = useState('');
 
@@ -60,11 +66,6 @@ export function TaskReminderModal({
 
     if (isNaN(combined.getTime())) {
       setError('Please enter a valid date and time');
-      return;
-    }
-
-    if (combined.getTime() <= Date.now()) {
-      setError('Reminder must be in the future');
       return;
     }
 

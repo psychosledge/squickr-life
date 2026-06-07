@@ -666,8 +666,9 @@ describe('TaskEntryItem — reminders', () => {
 
     // Enter a far-future date+time so the modal's own validation passes,
     // but the handler (mocked above) still rejects.
-    await user.type(screen.getByLabelText(/date/i), '2099-12-31');
-    await user.type(screen.getByLabelText(/time/i), '12:00');
+    // Use fireEvent.change to override the pre-populated today date.
+    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2099-12-31' } });
+    fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '12:00' } });
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     // The error from the handler should appear inside the modal
