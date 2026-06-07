@@ -44,19 +44,19 @@ Two independent bugs in the startup and sync pipeline.
 
 **Bug 1 — CollectionListProjection delta replay**
 
-- [ ] Create a new daily log collection (e.g. today's date). Verify it appears in the nav sidebar immediately.
-- [ ] Without reloading, verify the new collection is visible in the nav and navigable.
-- [ ] Close and reopen the app (or do a hard reload). Verify the newly created collection is still visible in the nav sidebar on restart — it should not disappear or show as "unknown collection".
-- [ ] Navigate to a task that was migrated to the new collection before the reload. Verify its collection label is correct (not "unknown collection").
-- [ ] Repeat the above with a sequence of events: create a collection, rename it, close the app, reopen — verify the renamed name survives the restart (rename event was replayed).
-- [ ] Open DevTools → Application → IndexedDB and confirm the collection's `CollectionCreated` event is present in the local store, then verify the UI shows it on reload (confirms the fix is not masking the bug in another layer).
+- [x] Create a new daily log collection (e.g. today's date). Verify it appears in the nav sidebar immediately.
+- [x] Without reloading, verify the new collection is visible in the nav and navigable.
+- [x] Close and reopen the app (or do a hard reload). Verify the newly created collection is still visible in the nav sidebar on restart — it should not disappear or show as "unknown collection".
+- [x] Navigate to a task that was migrated to the new collection before the reload. Verify its collection label is correct (not "unknown collection").
+- [x] Repeat the above with a sequence of events: create a collection, rename it, close the app, reopen — verify the renamed name survives the restart (rename event was replayed).
+- [x] Open DevTools → Application → IndexedDB and confirm the collection's `CollectionCreated` event is present in the local store, then verify the UI shows it on reload (confirms the fix is not masking the bug in another layer).
 
 **Bug 2 — Force full sync**
 
-- [ ] Open Settings (gear icon or menu). Scroll to the bottom. Verify a "Developer" section is visible with a "Force full sync" button.
-- [ ] Tap "Force full sync". Verify the button immediately becomes disabled and shows "Syncing…" (or equivalent loading label).
-- [ ] After the button resolves, verify a confirmation message appears (e.g. "Full sync started") and the button re-enables.
-- [ ] On a device where recent events are not in Firestore (simulate by clearing Firestore for a test user and keeping local IndexedDB): tap "Force full sync" and verify the missing events are uploaded to Firestore.
-- [ ] Verify that "Force full sync" works on an installed PWA (no address bar) — the button replaces the `?clearsnapshot` URL workaround.
-- [ ] Verify that tapping "Force full sync" does not crash or leave the app in a broken state: navigate away from settings, create a new task, and confirm it syncs normally afterwards.
-- [ ] Verify that a second tap of "Force full sync" (if the user taps again after the first completes) also works without error.
+- [x] Open Settings (gear icon or menu). Scroll to the bottom. Verify a "Developer" section is visible with a "Force full sync" button.
+- [x] Tap "Force full sync". Verify the button immediately becomes disabled and shows "Syncing…" (or equivalent loading label).
+- [x] After the button resolves, verify a confirmation message appears (e.g. "Full sync started") and the button re-enables.
+- [x] On a device where recent events are not in Firestore (simulate by clearing Firestore for a test user and keeping local IndexedDB): tap "Force full sync" and verify the missing events are uploaded to Firestore.
+- [x] Verify that "Force full sync" works on an installed PWA (no address bar) — the button replaces the `?clearsnapshot` URL workaround.
+- [x] Verify that tapping "Force full sync" does not crash or leave the app in a broken state: navigate away from settings, create a new task, and confirm it syncs normally afterwards.
+- [x] Verify that a second tap of "Force full sync" (if the user taps again after the first completes) also works without error.
