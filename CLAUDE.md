@@ -12,11 +12,13 @@ Event-sourced bullet journal PWA. See `README.md` for setup and the documentatio
 
 ### Bug fixes
 
+Bugs are stories. They skip `/brainstorm` unless the fix needs design work:
+
 ```
-fix with a regression test → /code-review → commit
+/plan → [explicit approval] → /slice (repeat) → /ship
 ```
 
-If a bug reveals a structural problem, escalate to `/brainstorm` → approve → `/plan` → `/slice` → `/ship`.
+Each bug slice starts with a failing regression test.
 
 ### Commands
 
