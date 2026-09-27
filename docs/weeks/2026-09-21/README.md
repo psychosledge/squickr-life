@@ -2,8 +2,9 @@
 
 ## Priority order
 
-1. Snapshot fallback on invalid local snapshot
-2. Google Calendar read-only integration
+1. [Backlog](../../backlog.md) bugs, #1 to #6
+2. Snapshot fallback on invalid local snapshot
+3. Google Calendar read-only integration
 
 ## Active items
 
