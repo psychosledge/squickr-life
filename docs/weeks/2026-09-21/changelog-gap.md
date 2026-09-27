@@ -16,3 +16,7 @@ Shipped features for v1.11.0 through v1.20.5, from the retired `docs/roadmap.md`
 | v1.18.0 | **Eager sync + FCM token refresh** (ADR-023): event-driven sync, device identity, token rotation |
 | v1.19.0 | **Snapshot cursor fix**: `serverReceivedAt` hybrid cursor eliminates timestamp collision bugs |
 | v1.20.5 | **Firestore quota fix**: `habitReminders` index eliminates ~197k reads/day from event-log scan |
+
+## Resolution
+
+Closed 2026-09-27. `CHANGELOG.md` deleted, no backfill. Git tags plus conventional commit subjects are the release record (`git log --oneline <prev-tag>..<tag>`). In-app release notes, if ever needed, get generated from git at build time.
