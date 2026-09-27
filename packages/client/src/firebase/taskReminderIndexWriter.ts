@@ -1,5 +1,5 @@
 /**
- * taskReminderIndexWriter (ADR-029)
+ * taskReminderIndexWriter
  *
  * Creates the onEventsUploaded callback for SyncManager that maintains the
  * users/{userId}/taskReminders Firestore index collection.

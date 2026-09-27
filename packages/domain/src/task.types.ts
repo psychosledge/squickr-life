@@ -486,7 +486,7 @@ export interface MoveTaskToCollectionCommand {
 }
 
 /**
- * TaskReminderSet Event (ADR-029)
+ * TaskReminderSet Event
  * Emitted when a user sets a reminder for a task
  */
 export interface TaskReminderSet extends DomainEvent {
@@ -500,7 +500,7 @@ export interface TaskReminderSet extends DomainEvent {
 }
 
 /**
- * TaskReminderCleared Event (ADR-029)
+ * TaskReminderCleared Event
  * Emitted when a reminder is cleared (by user or after firing)
  */
 export interface TaskReminderCleared extends DomainEvent {
@@ -514,7 +514,7 @@ export interface TaskReminderCleared extends DomainEvent {
 }
 
 /**
- * SetTaskReminder Command (ADR-029)
+ * SetTaskReminder Command
  */
 export interface SetTaskReminderCommand {
   readonly taskId: string;
@@ -522,7 +522,7 @@ export interface SetTaskReminderCommand {
 }
 
 /**
- * ClearTaskReminder Command (ADR-029)
+ * ClearTaskReminder Command
  *
  * `reason` values:
  * - `'user'`  — User explicitly cleared the reminder from the UI.

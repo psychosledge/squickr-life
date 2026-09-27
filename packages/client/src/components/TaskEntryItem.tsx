@@ -23,7 +23,7 @@ interface TaskEntryItemProps {
   onCreateCollection?: (name: string) => Promise<string>;
   onAddSubTask?: (entry: Entry) => void;
   onRemoveFromCollection?: (taskId: string, collectionId: string) => Promise<void>; // Bug #7
-  // ADR-029: Task reminders
+  // Task reminders
   onSetReminder?: (taskId: string, reminderAt: string) => Promise<void>;
   onClearReminder?: (taskId: string) => Promise<void>;
   // Phase 2: Completion status for parent tasks with sub-tasks
@@ -357,7 +357,7 @@ export function TaskEntryItem({
         />
       )}
       
-      {/* ADR-029: Reminder modal */}
+      {/* Reminder modal */}
       {showReminderModal && (
         <TaskReminderModal
           existingReminderAt={entry.reminderAt}

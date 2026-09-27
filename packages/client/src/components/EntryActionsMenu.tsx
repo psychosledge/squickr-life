@@ -14,7 +14,7 @@ interface EntryActionsMenuProps {
   onRestore?: () => void; // Item 3: Restore deleted entry
   onAddSubTask?: () => void; // Phase 1: Sub-Tasks
   onRemoveFromCollection?: () => void; // Bug #7: Remove from this collection
-  onSetReminder?: () => void; // ADR-029: Task reminders
+  onSetReminder?: () => void; // Task reminders
   collections?: Collection[];
   currentCollectionId?: string; // Current collection we're viewing from
   onNavigateToMigrated?: (collectionId: string | null) => void;
@@ -70,7 +70,7 @@ export function EntryActionsMenu({
   const canAddSubTask = isTask && !isSubTask && !isGhost && !isDeleted && onAddSubTask;
   // Bug #7: Show "Remove from this collection" only for non-ghost, non-deleted tasks when prop is provided
   const showRemoveFromCollection = isTask && !isGhost && !isDeleted && !!onRemoveFromCollection;
-  // ADR-029: Show "Set reminder" only for non-ghost, non-deleted tasks when prop is provided
+  // Show "Set reminder" only for non-ghost, non-deleted tasks when prop is provided
   const showSetReminder = isTask && !isGhost && !isDeleted && !!onSetReminder;
 
   // Close menu when clicking outside or pressing Escape
@@ -305,7 +305,7 @@ export function EntryActionsMenu({
               Remove from this collection
             </button>
           )}
-          {/* ADR-029: Set reminder */}
+          {/* Set reminder */}
           {showSetReminder && (
             <button
               role="menuitem"

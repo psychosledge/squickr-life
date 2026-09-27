@@ -153,7 +153,7 @@ export { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
 // Task Command Handlers
 export { CreateTaskHandler, CompleteTaskHandler, ReopenTaskHandler, DeleteTaskHandler, RestoreTaskHandler, ReorderTaskHandler, UpdateTaskTitleHandler, MoveEntryToCollectionHandler, MigrateTaskHandler } from './task.handlers';
 
-// Task Reminder Handlers (ADR-029)
+// Task Reminder Handlers
 export { SetTaskReminderHandler, ClearTaskReminderHandler } from './task-reminder.handlers';
 
 // Multi-Collection Command Handlers

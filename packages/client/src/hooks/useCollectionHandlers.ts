@@ -79,7 +79,7 @@ export interface CollectionHandlers {
   favoriteCollectionHandler: FavoriteCollectionHandler;
   unfavoriteCollectionHandler: UnfavoriteCollectionHandler;
 
-  // Task reminder handlers (ADR-029)
+  // Task reminder handlers
   setTaskReminderHandler: SetTaskReminderHandler;
   clearTaskReminderHandler: ClearTaskReminderHandler;
 }
@@ -227,7 +227,7 @@ export function useCollectionHandlers({
     [eventStore, collectionProjection]
   );
 
-  // Task reminder handlers (ADR-029)
+  // Task reminder handlers
   const setTaskReminderHandler = useMemo(
     () => new SetTaskReminderHandler(eventStore, entryProjection),
     [eventStore, entryProjection]

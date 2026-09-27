@@ -2526,7 +2526,7 @@ describe('CollectionDetailView - Habits section for daily collections', () => {
   });
 });
 
-// ─── ADR-028: Temporal Route Auto-Create ────────────────────────────────────
+// ─── Temporal Route Auto-Create ────────────────────────────────────
 
 describe('CollectionDetailView - Auto-create for today', () => {
   it('should auto-create today collection when date="today" and no collection exists', async () => {
@@ -2657,7 +2657,7 @@ describe('CollectionDetailView - Temporal empty state for non-today keywords', (
   });
 });
 
-// ─── ADR-028: Migrate All to Tomorrow ───────────────────────────────────────
+// ─── Migrate All to Tomorrow ───────────────────────────────────────
 
 describe('CollectionDetailView - Migrate all to tomorrow', () => {
   const todayKey = getLocalDateKey();

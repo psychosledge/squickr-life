@@ -81,7 +81,7 @@ export interface EntryOperations {
   // Remove from collection (Bug #7)
   handleRemoveFromCollection: (taskId: string, collectionId: string) => Promise<void>;
 
-  // Task reminders (ADR-029)
+  // Task reminders
   handleSetReminder: (taskId: string, reminderAt: string) => Promise<void>;
   handleClearReminder: (taskId: string) => Promise<void>;
 
@@ -151,7 +151,7 @@ export function useEntryOperations(
     // If in uncategorized view, don't set collectionId (keep entries truly uncategorized)
     const actualCollectionId = collectionId === UNCATEGORIZED_COLLECTION_ID ? undefined : collectionId;
     const taskId = await handlers.createTaskHandler.handle({ content: title, collectionId: actualCollectionId });
-    // ADR-029: If a reminderAt was provided, set it immediately after creating the task
+    // If a reminderAt was provided, set it immediately after creating the task
     if (reminderAt && taskId) {
       try {
         await handlers.setTaskReminderHandler.handle({ taskId, reminderAt });
@@ -317,7 +317,7 @@ export function useEntryOperations(
     await removeTaskFromCollectionHandler.handle({ taskId, collectionId });
   }, [removeTaskFromCollectionHandler]);
 
-  // ADR-029: Task reminders
+  // Task reminders
   const handleSetReminder = useCallback(async (taskId: string, reminderAt: string) => {
     await handlers.setTaskReminderHandler.handle({ taskId, reminderAt });
   }, [handlers.setTaskReminderHandler]);

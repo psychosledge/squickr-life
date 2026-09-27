@@ -140,7 +140,7 @@ export class SyncManager {
       logger.info('[SyncManager]', `Uploading ${newEvents.length} new events...`);
       if (newEvents.length > 0) {
         await this.remoteStore.appendBatch(newEvents);
-        // ADR-029: Notify caller of uploaded events so they can maintain index documents
+        // Notify caller of uploaded events so they can maintain index documents
         if (this.onEventsUploaded) {
           try {
             await this.onEventsUploaded(newEvents);

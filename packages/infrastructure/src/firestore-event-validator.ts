@@ -1,5 +1,5 @@
 /**
- * Firestore Event Validator (ADR-028)
+ * Firestore Event Validator
  *
  * Provides runtime validation of raw Firestore documents before they are cast
  * to domain types. This prevents silent data corruption from unexpected or

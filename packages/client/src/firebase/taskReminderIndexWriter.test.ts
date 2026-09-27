@@ -1,5 +1,5 @@
 /**
- * taskReminderIndexWriter tests (ADR-029)
+ * taskReminderIndexWriter tests
  *
  * Verifies that uploaded events are correctly mirrored into the
  * users/{userId}/taskReminders Firestore index collection so the

@@ -29,7 +29,7 @@ interface EntryItemProps {
   onAddSubTask?: (entry: Entry) => void;
   // Bug #7: Remove from collection handler (tasks only)
   onRemoveFromCollection?: (taskId: string, collectionId: string) => Promise<void>;
-  // ADR-029: Task reminder handlers
+  // Task reminder handlers
   onSetReminder?: (taskId: string, reminderAt: string) => Promise<void>;
   onClearReminder?: (taskId: string) => Promise<void>;
   // Phase 2: Completion status for parent tasks

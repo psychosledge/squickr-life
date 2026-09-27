@@ -778,10 +778,10 @@ describe('SyncManager', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task reminder index maintenance (ADR-029)
+// Task reminder index maintenance
 // ---------------------------------------------------------------------------
 
-describe('SyncManager — onEventsUploaded callback (ADR-029)', () => {
+describe('SyncManager — onEventsUploaded callback', () => {
   let localStore: IEventStore;
   let remoteStore: IEventStore;
   let syncManager: SyncManager;

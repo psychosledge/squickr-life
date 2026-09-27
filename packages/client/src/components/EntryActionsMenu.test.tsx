@@ -1137,7 +1137,7 @@ describe('EntryActionsMenu - Remove from this collection', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Set reminder menu item (ADR-029)
+// Set reminder menu item
 // ---------------------------------------------------------------------------
 
 describe('EntryActionsMenu — Set reminder', () => {

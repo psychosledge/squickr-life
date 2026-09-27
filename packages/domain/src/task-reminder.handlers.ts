@@ -10,7 +10,7 @@ import { generateEventMetadata } from './event-helpers';
 import { isValidISODate } from './content-validation';
 
 /**
- * Command Handler for SetTaskReminder (ADR-029)
+ * Command Handler for SetTaskReminder
  *
  * Validation rules:
  * - reminderAt must be a non-empty, valid ISO 8601 datetime
@@ -69,7 +69,7 @@ export class SetTaskReminderHandler {
 }
 
 /**
- * Command Handler for ClearTaskReminder (ADR-029)
+ * Command Handler for ClearTaskReminder
  *
  * Idempotent — works even if no reminder is currently set.
  * Requires task to exist.
