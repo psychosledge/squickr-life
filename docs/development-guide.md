@@ -36,15 +36,13 @@ squickr/life/
 │       │   └── utils/
 │       └── tests/
 │
-├── .opencode/
-│   ├── agents/              # Alex, Casey, Sam
-│   └── commands/            # /design, /implement, /review
+├── .claude/
+│   └── commands/            # Project-local commands (/ship)
 │
 └── docs/
     ├── README.md
-    ├── opencode-workflow.md
     ├── development-guide.md        # This file
-    ├── architecture-decisions.md
+    ├── adr/                        # One file per ADR
 
 ```
 
@@ -86,18 +84,7 @@ pnpm test run
 
 ### With Agents
 
-Use slash commands from OpenCode:
-
-```bash
-# Design first (if complex)
-/design event model for recurring tasks
-
-# Implement with TDD
-/implement add recurring tasks feature
-
-# Always review before commit
-/review
-```
+The agent workflow (`/brainstorm`, `/plan`, `/slice`, `/ship`) is defined in the root `CLAUDE.md`.
 
 ### Running the App
 
@@ -447,51 +434,9 @@ await projection.rebuild(); // Fragile, easy to forget
 
 ---
 
-## Session End Workflow
+## Releasing
 
-At the end of each coding session:
-
-### 1. Update Documentation
-```bash
-# Update CHANGELOG.md with shipped changes
-# Include version, features, fixes, breaking changes
-
-# Update next-session-roadmap.md
-# Move completed items to done, add new backlog items
-```
-
-### 2. Clean Up Session Notes
-```bash
-# Keep last 2-3 session notes (recent context)
-# Delete older session notes (preserved in git history)
-git rm docs/session-2026-[old-dates]*.md
-git commit -m "chore: clean up old session notes"
-```
-
-### 3. Commit Changes
-```bash
-# Review what's changed
-git status
-git diff --stat
-
-# Commit with clear message
-git add .
-git commit -m "feat: description of what shipped"
-git push origin master
-```
-
-### 4. Deploy (if ready)
-```bash
-# See docs/deployment-guide.md for full process
-# 1. Bump version in package.json
-# 2. Create PR: master → production
-# 3. Merge after validation passes
-```
-
-**Why clean up session notes?**
-- Reduces token budget for next session startup
-- Git history preserves everything
-- Keeps docs/ focused on current work
+Run `/ship`: tests, version bump, tag, and push. Pushing a `v*` tag triggers the production deploy. See `docs/deployment-guide.md`.
 
 ---
 
@@ -518,6 +463,6 @@ git diff
 
 ## Further Reading
 
-- **Architecture decisions:** `docs/architecture-decisions.md`
-- **Agent workflow:** `docs/opencode-workflow.md`
+- **Architecture decisions:** `docs/adr/`
+- **Agent workflow:** root `CLAUDE.md`
 - **Code:** `packages/domain/src/` (TypeScript is self-documenting)

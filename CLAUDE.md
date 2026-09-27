@@ -10,34 +10,38 @@ Event-sourced bullet journal PWA. See `docs/README.md` for full documentation.
 /brainstorm → [explicit approval] → /plan → [explicit approval] → /slice (repeat) → /ship
 ```
 
-If requirements are still unclear after brainstorm, insert a spike before planning:
-
-```
-/brainstorm → [explicit approval] → /spike → [explicit approval] → /plan → ...
-```
-
 ### Bug fixes
 
 ```
-/bug → [explicit approval] → commit
+fix with a regression test → /code-review → commit
 ```
 
-If `/bug` reveals a structural problem, escalate: characterize → `/brainstorm` → approve → `/plan` → `/slice` → `/ship`.
+If a bug reveals a structural problem, escalate to `/brainstorm` → approve → `/plan` → `/slice` → `/ship`.
 
 ### Commands
 
-- `/brainstorm` — exploratory design with the architect; produces a design or problem summary that must be explicitly approved before proceeding
-- `/spike` — time-boxed investigation to answer a specific question blocking planning; produces a findings report that must be explicitly approved before `/plan` is invoked
-- `/plan` — decompose an approved design into thin vertical slices with acceptance criteria and UAT checklist; human approves before any slice begins
-- `/slice` — execute one slice: architect check → coder (TDD) → verifier → human approval gate before commit
-- `/bug` — characterize, architect check, coder fix with regression test, verifier, human approval gate before commit
-- `/ship` — run all tests, bump version, commit, tag, push, deploy Firebase Functions if changed
+- `/brainstorm`: exploratory design with the architect. Produces a design or problem summary that must be explicitly approved before proceeding
+- `/plan`: decompose an approved design into thin vertical slices with acceptance criteria and UAT checklist. Human approves before any slice begins
+- `/slice`: execute one slice: architect check → coder (TDD) → verifier → human approval gate before commit
+- `/code-review`: verify correctness, walk through changes with the human, handle fixes, and commit
+- `/ship`: run all tests, bump version, commit, tag, push, deploy Firebase Functions if changed
 
 ### On-demand utilities
 
 - `/story` — draft a PM-readable story card; not part of the dev loop
 
 > **Approval gates are non-negotiable.** Every phase transition requires explicit human approval — never infer consent from silence or context.
+
+## Branching
+
+- Model: trunk-based
+- Trunk: master
+- Feature branches: no
+- CI runs on every push to `master`. Pushing a `v*` tag deploys to production.
+
+## PR Platform
+
+- Platform: GitHub
 
 ## Tech Stack
 
@@ -81,10 +85,10 @@ When designing features or architecture, provide:
 - Event model (if applicable)
 - SOLID principle analysis
 - Tradeoffs and alternatives considered
-- ADR format for architectural decisions (reference `docs/architecture-decisions.md`)
+- ADR format for architectural decisions (one file per ADR in `docs/adr/`)
 
 ## Key Files
 
 - `packages/domain/src/task.types.ts` — all event/command types (source of truth)
-- `docs/architecture-decisions.md` — ADR-001 through ADR-029
-- `docs/roadmap.md` — what's shipped and what's next
+- `docs/adr/` — architecture decision records, one file per ADR
+- `docs/weeks/` — current week's README holds active work and priorities

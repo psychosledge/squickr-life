@@ -50,30 +50,12 @@ cd packages/client && pnpm dev
 See **[docs/README.md](docs/README.md)** for full documentation index.
 
 Key docs:
-- **[OpenCode Workflow](docs/opencode-workflow.md)** - Agent team and development loop
 - **[Development Guide](docs/development-guide.md)** - How to implement features
-- **[Architecture Decisions](docs/architecture-decisions.md)** - Design decisions (ADRs)
+- **[Architecture Decisions](docs/adr/)** - Design decisions (ADRs)
 
-## Working with OpenCode
+## Development Workflow
 
-This project uses a **3-agent orchestrator pattern**:
-
-- **⚙️ Alex** - Architecture & event modeling (`/design`)
-- **🚀 Sam** - Implementation & debugging (`/implement`)
-- **🔍 Casey** - Code review & test coverage (`/review`)
-
-**Development loop:**
-1. User requests feature
-2. OpenCode delegates to Alex via `/design`
-3. User approves the plan
-4. OpenCode delegates to Sam via `/implement`
-5. Sam implements with TDD → OpenCode calls Casey via `/review`
-6. User does manual testing
-7. User says "commit" → OpenCode creates commit
-
-**For details:** [docs/opencode-workflow.md](docs/opencode-workflow.md)
-
-See **[docs/](docs/** for additional documentation.
+Development runs through Claude Code: `/brainstorm` → `/plan` → `/slice` → `/ship`, with a human approval gate at each step. See [CLAUDE.md](CLAUDE.md).
 
 ## Learning Goals
 
