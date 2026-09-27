@@ -25,6 +25,7 @@ Types: bug, feature, ux.
 |---|---|---|---|---|
 | 6 | Sprint-planning feel: the daily log holds only completable things; multistep work is broken down and only the doable part reaches the daily level. Exploration via `/brainstorm` | feature | planning | ~2026-09-26 |
 | 7 | Events and notes allow sub-entries. Blocked by #6 | feature | entries | ~2026-07-07 |
-| 8 | Sub-entries are easier to add. Blocked by #6 | ux | entries | ~2026-07-07 |
-| 9 | Journaling: daily wrap-up ritual prompts (what was fun, what was hard, what did you learn, what was important), with AI assistance based on [brag documents](https://jvns.ca/blog/brag-documents/) | feature | journaling | ~2026-03-03 |
-| 10 | Search with type selection and date range | feature | search | ~2026-07-07 |
+| 8 | Notes and events can have reminders | feature | entries | 2026-09-27 |
+| 9 | Sub-entries are easier to add. Blocked by #6 | ux | entries | ~2026-07-07 |
+| 10 | Journaling: daily wrap-up ritual prompts (what was fun, what was hard, what did you learn, what was important), with AI assistance based on [brag documents](https://jvns.ca/blog/brag-documents/) | feature | journaling | ~2026-03-03 |
+| 11 | Search with type selection and date range | feature | search | ~2026-07-07 |
