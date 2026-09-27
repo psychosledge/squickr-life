@@ -1,311 +1,35 @@
 # Deployment Guide
 
-**Last Updated:** 2026-02-12  
-**Current Platform:** GitHub Pages  
-**Domain:** squickr.com  
-**Status:** ✅ Live in production
+The PWA is hosted on GitHub Pages at [squickr.com](https://squickr.com). Firebase Cloud Functions live in `functions/` and deploy separately with `firebase deploy --only functions`.
 
----
+## How Deploys Happen
 
-## Overview
+| Workflow | Trigger | Does |
+|----------|---------|------|
+| CI Validation (`.github/workflows/ci.yml`) | Push or PR to `master` | Install, build, test. Never deploys |
+| Deploy to GitHub Pages (`.github/workflows/deploy.yml`) | Push of a `v*` tag, or manual dispatch | Install, build, test, publish to Pages |
 
-Squickr Life uses a **tag-based deployment workflow** with continuous integration.
+Release with `/ship`. It runs tests, bumps all four `package.json` versions, tags, pushes, and deploys Functions when `functions/` changed since the previous tag.
 
-- **Development:** Work directly on `master` branch
-- **CI Validation:** Every push to `master` runs build + tests automatically
-- **Production:** Tag releases with `git tag vX.Y.Z` to deploy
-- **Deploy Target:** GitHub Pages at squickr.com
+The build reads Firebase config from `VITE_FIREBASE_*` repository secrets, matching `packages/client/.env.example`.
 
----
+## Hotfix
 
-## Deployment Workflow
+Fix on `master` with a regression test, then `/ship` with a patch bump.
 
-### Step 1: Work on Master Branch
+## Rollback
 
-Work directly on the `master` branch:
+- **Fast:** Actions → Deploy to GitHub Pages → Run workflow, and pick the last good tag in "Use workflow from." Pages serves that build until the next tag.
+- **Durable:** `git revert` the bad commits on `master`, then `/ship` a patch release.
 
-```bash
-git checkout master
-# make changes, run tests, commit
-git push origin master
-```
+Functions don't roll back with Pages. Check out the last good tag and run `firebase deploy --only functions` from it.
 
-**CI Validation:** Every push triggers automatic build + test validation (does NOT deploy).
+## Verifying a Deploy
 
----
-
-### Step 2: Tag Releases
-
-When you complete a version, tag it for tracking:
-
-#### 2a. Bump the Version
-
-Edit `package.json` and increment the version:
-
-```json
-{
-  "version": "0.9.0"  // Was 0.8.0
-}
-```
-
-**Version Bumping Guidelines:**
-- **Major version (1.0.0):** Breaking changes, major milestones
-- **Minor version (0.9.0):** New features, enhancements
-- **Patch version (0.8.1):** Bug fixes, small tweaks
-
-Also update all package versions to match:
-```bash
-# Update all packages at once
-npm version 0.9.0 --workspaces
-```
-
-#### 2b. Commit Version Bump
-
-```bash
-git add package.json packages/*/package.json
-git commit -m "chore: bump version to 0.9.0"
-git push origin master
-```
-
-#### 2c. Create Release Tag
-
-```bash
-# Create annotated tag with release notes
-git tag -a vX.Y.Z -m "vX.Y.Z - Code Quality & Polish
-
-Features:
-- Centralized timezone utilities
-- Enhanced test coverage
-- ADR-014 documentation
-
-Released: $(date +%Y-%m-%d)
-Development Time: ~3 hours
-Test Coverage: 1,500+ tests"
-
-# Push tag to remote
-git push origin vX.Y.Z
-```
-
-**This triggers deployment to production!** Tags are the ONLY way to deploy.
-
----
-
-## Branch Structure
-
-| Branch | Purpose | CI Checks | Auto-Deploy |
-|--------|---------|-----------|-------------|
-| `master` | Main development and production code | ✅ Yes | ❌ No (tags only) |
-
-**Notes:**
-- ✅ All work happens on `master`
-- ✅ Every push runs CI validation (build + tests)
-- ✅ Tags trigger deployment (`vX.Y.0`, `vX.Y.Z`, etc.)
-- ❌ Pushing to master does NOT deploy (only validates)
-
----
-
-## GitHub Actions Workflows
-
-### CI Validation
-
-**Trigger:** 
-- Push to `master` branch
-- Pull requests to `master`
-
-**Steps:**
-1. Checkout code
-2. Setup Node.js + pnpm
-3. Install dependencies
-4. **Build production bundle**
-5. **Run all tests**
-
-**Purpose:** Ensure all code pushed to master is tested and builds successfully
-
----
-
-### Deploy to GitHub Pages
-
-**Trigger:** 
-- Push version tag (`v*`) **← ONLY WAY TO DEPLOY**
-- Manual workflow dispatch
-
-**Steps:**
-1. Checkout code
-2. Setup Node.js + pnpm
-3. Install dependencies
-4. Build production bundle
-5. Run tests
-6. Deploy to GitHub Pages
-
-**URL:** [squickr.com](https://squickr.com)
-
----
-
-## Version Management
-
-### Viewing Releases
-
-```bash
-# List all release tags
-git tag -l
-
-# View tag details
-git show vX.Y.0
-
-# Checkout specific version
-git checkout vX.Y.0
-```
-
-### GitHub Releases
-
-Tags automatically appear in GitHub Releases section:
-- Go to: https://github.com/psychosledge/squickr-life/releases
-- Each tag shows commit, date, and release notes
-
----
-
-## Deployment Checklist
-
-Before creating a release tag:
-
-- [ ] ✅ All tests passing (`npm test`)
-- [ ] ✅ Build succeeds (`npm run build`)
-- [ ] ✅ CI checks passing on master
-- [ ] ✅ Version bumped in package.json
-- [ ] ✅ CHANGELOG.md updated
-- [ ] ✅ Commit message follows convention
-
----
-
-## Quick Reference
-
-### Standard Release
-
-```bash
-# 1. Complete your work
-git add .
-git commit -m "feat: add new feature"
-
-# 2. Bump version
-npm version minor  # or major/patch
-git push origin master
-
-# 3. Create release tag
-git tag -a vX.Y.Z -m "vX.Y.Z - Feature Name"
-git push origin vX.Y.Z
-```
-
-### Hotfix Release
-
-```bash
-# 1. Fix the bug
-git add .
-git commit -m "fix: resolve critical issue"
-
-# 2. Bump patch version
-npm version patch
-git push origin master
-
-# 3. Tag hotfix
-git tag -a vX.Y.1 -m "vX.Y.1 - Hotfix: description"
-git push origin vX.Y.1
-```
-
-### Rollback (Emergency)
-
-```bash
-# 1. Checkout previous version
-git checkout vX.Y.0
-
-# 2. Create rollback branch
-git checkout -b rollback-to-vX.Y.0
-
-# 3. Force push to master (if absolutely necessary)
-git push origin rollback-to-vX.Y.0:master --force
-
-# 4. Tag as emergency release
-git tag -a vX.Y.2 -m "vX.Y.2 - Emergency rollback"
-git push origin vX.Y.2
-```
-
-**⚠️ Warning:** Force push should be rare and only for critical issues.
-
----
-
-## Monitoring Deployments
-
-### GitHub Actions
-
-View deployment status:
-- Go to: https://github.com/psychosledge/squickr-life/actions
-- Filter by "Deploy to GitHub Pages" workflow
-
-### Deployment Logs
-
-```bash
-# Using GitHub CLI
-gh run list --workflow=deploy.yml
-
-# View specific run
-gh run view <run-id> --log
-```
-
-### Verify Deployment
-
-```bash
-# Check deployed version
-curl https://squickr.com | grep version
-
-# Or visit in browser
-open https://squickr.com
-```
-
----
+- Workflow status: https://github.com/psychosledge/squickr-life/actions
+- Deployed version: the About modal in the app shows the version from the root `package.json`.
 
 ## Troubleshooting
 
-### Deployment Failed
-
-1. Check GitHub Actions logs
-2. Look for build errors
-3. Verify all tests pass locally: `npm test`
-4. Check environment variables in GitHub Secrets
-
-### Wrong Version Deployed
-
-1. Tag correct version: `git tag -a vX.Y.Z <commit-sha>`
-2. Push tag: `git push origin vX.Y.Z`
-3. GitHub Pages will deploy from latest push to master
-
-### Cache Issues
-
-GitHub Pages may cache for 5-10 minutes:
-- Wait for cache to clear
-- Hard refresh in browser (Ctrl+Shift+R)
-- Check deployment timestamp in GitHub Actions
-
----
-
-## Migration Notes
-
-**Previous Workflow:** Two-branch (master → production via PR)  
-**Current Workflow:** Single-branch (master with tags)  
-**Migration Date:** 2026-02-12
-
-**Changes Made:**
-- ✅ Merged production branch into master
-- ✅ Updated deploy.yml to deploy from master
-- ✅ Removed pr-validation.yml workflow
-- ✅ Set master as default branch
-- ✅ Archived production branch as `archive/production` tag
-- ✅ Created vX.Y.0 tag for current release
-
-**Benefits:**
-- Simpler workflow (no PRs needed)
-- Faster deployments
-- Clear version history via tags
-- Less cognitive overhead
-
----
-
-**For questions or issues, see:** [docs/README.md](README.md)
+- **Deploy failed:** check the workflow log for build or test errors, and confirm the `VITE_FIREBASE_*` secrets are set.
+- **Old version still showing:** Pages caches for 5–10 minutes, and the PWA service worker serves the cached shell until it updates. Hard refresh (Ctrl+Shift+R) or reopen the app.

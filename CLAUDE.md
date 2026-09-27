@@ -1,6 +1,6 @@
 # Squickr Life
 
-Event-sourced bullet journal PWA. See `docs/README.md` for full documentation.
+Event-sourced bullet journal PWA. See `README.md` for setup and the documentation index.
 
 ## Development Loop
 
@@ -57,8 +57,8 @@ If a bug reveals a structural problem, escalate to `/brainstorm` → approve →
 packages/
 ├── domain/         # Pure business logic, event store, handlers, projections
 ├── infrastructure/ # IndexedDB + Firestore event store implementations
-├── client/         # React PWA
-└── backend/        # Firebase Cloud Functions
+└── client/         # React PWA
+functions/          # Firebase Cloud Functions
 ```
 
 ## Key Rules

@@ -25,37 +25,34 @@ Built with event sourcing from the ground up, every action is an event, and the 
 packages/
 ├── domain/          # Pure business logic & event sourcing (Clean Architecture core)
 ├── infrastructure/  # Storage implementations (IndexedDB, Firestore, InMemory)
-├── client/          # React PWA (UI components, Firebase config/auth)
-└── backend/         # Future server (Node.js + Firebase Admin SDK)
-
-docs/                # Documentation (see docs/README.md)
+└── client/          # React PWA (UI components, Firebase config/auth)
+functions/           # Firebase Cloud Functions (push notification fan-out)
+docs/                # Documentation
 ```
 
 ## Quick Start
 
 ```bash
-# Install dependencies
 pnpm install
 
-# Run tests
-cd packages/domain && pnpm test run
+# Firebase config: copy the template and fill in values from
+# Firebase Console > Project Settings > General
+cp packages/client/.env.example packages/client/.env.local
 
-# Start dev server
-cd packages/client && pnpm dev
-# Opens browser to http://localhost:3000
+pnpm -r test         # run all tests
+pnpm dev             # dev server at http://localhost:3000
 ```
 
 ## Documentation
 
-See **[docs/README.md](docs/README.md)** for full documentation index.
-
-Key docs:
-- **[Development Guide](docs/development-guide.md)** - How to implement features
-- **[Architecture Decisions](docs/adr/)** - Design decisions (ADRs)
-
-## Development Workflow
-
-Development runs through Claude Code: `/brainstorm` → `/plan` → `/slice` → `/ship`, with a human approval gate at each step. See [CLAUDE.md](CLAUDE.md).
+| Doc | Purpose |
+|-----|---------|
+| [CLAUDE.md](CLAUDE.md) | Development workflow, agent commands, key rules |
+| [Development Guide](docs/development-guide.md) | TDD workflow, testing patterns, common tasks |
+| [Architecture Decisions](docs/adr/) | ADRs: design decisions and rationale |
+| [Deployment Guide](docs/deployment-guide.md) | CI, tag-based release, rollback |
+| [docs/weeks/](docs/weeks/) | Current week's README: active work and priorities |
+| [docs/stories/](docs/stories/) | Per-story `plan.md` files from `/plan` |
 
 ## Learning Goals
 

@@ -1,108 +1,23 @@
 # Development Guide
 
-Practical guide for working with the Squickr Life codebase.
+Practical patterns for working in the Squickr Life codebase. The agent workflow is in the root `CLAUDE.md`, and setup is in the root `README.md`.
 
-## Table of Contents
-- [Project Structure](#project-structure)
-- [Development Workflow](#development-workflow)
-- [Testing Patterns](#testing-patterns)
-- [Common Tasks](#common-tasks)
+## TDD Red-Green-Refactor
 
----
-
-## Project Structure
-
-```
-squickr/life/
-├── packages/
-│   ├── domain/              # Pure business logic + event sourcing
-│   │   └── src/
-│   │       ├── event-store.ts
-│   │       ├── task.types.ts
-│   │       ├── *.handlers.ts         # Command handlers
-│   │       ├── entry.projections.ts  # Read models
-│   │       ├── date-utils.ts
-│   │       └── index.ts
-│   │
-│   ├── infrastructure/      # Storage implementations
-│   │   └── src/
-│   │       ├── indexeddb-event-store.ts
-│   │       └── index.ts
-│   │
-│   └── client/              # React UI
-│       ├── src/
-│       │   ├── App.tsx
-│       │   ├── components/
-│       │   └── utils/
-│       └── tests/
-│
-├── .claude/
-│   └── commands/            # Project-local commands (/ship)
-│
-└── docs/
-    ├── README.md
-    ├── development-guide.md        # This file
-    ├── adr/                        # One file per ADR
-
-```
-
-### Key Files
-
-**Domain Layer:**
-- `event-store.ts` / `indexeddb-event-store.ts` - Event persistence
-- `*.handlers.ts` - Command handlers (create, update, delete, reorder)
-- `entry.projections.ts` - Read models (reactive subscriptions)
-- `task.types.ts` - All type definitions
-
-**Client Layer:**
-- `App.tsx` - Initializes handlers and projections
-- `components/DailyLogsView.tsx` - Main UI container
-- `components/Entry*.tsx` - Entry components
-
----
-
-## Development Workflow
-
-### TDD Red-Green-Refactor
+Tests sit next to the code they cover (`src/<feature>.test.ts`).
 
 ```bash
-# 1. RED: Write failing test
+# 1. RED: write a failing test in src/<feature>.test.ts
 cd packages/domain
-# Edit: tests/[feature].test.ts
+pnpm test run        # should fail
 
-# 2. Run tests (should fail)
-pnpm test run
+# 2. GREEN: implement the minimal code in src/<feature>.ts
+pnpm test run        # should pass
 
-# 3. GREEN: Implement minimal code
-# Edit: src/[feature].ts
-
-# 4. Run tests (should pass)
-pnpm test run
-
-# 5. REFACTOR: Clean up, keep tests green
+# 3. REFACTOR: clean up, keep tests green
 ```
 
-### With Agents
-
-The agent workflow (`/brainstorm`, `/plan`, `/slice`, `/ship`) is defined in the root `CLAUDE.md`.
-
-### Running the App
-
-```bash
-# Dev server
-cd packages/client
-pnpm dev
-# → http://localhost:3000
-
-# Tests
-cd packages/domain
-pnpm test run           # Run once
-pnpm test              # Watch mode
-
-# Build
-cd packages/domain
-pnpm run build
-```
+`pnpm test` without `run` starts watch mode.
 
 ---
 
@@ -317,7 +232,7 @@ export type TaskDeleted = {
 };
 ```
 
-2. **Write test** (`tests/task.handlers.test.ts`):
+2. **Write test** (`src/task.handlers.test.ts`):
 ```typescript
 it('should delete existing task', () => {
   // Arrange: Create task
@@ -440,29 +355,7 @@ Run `/ship`: tests, version bump, tag, and push. Pushing a `v*` tag triggers the
 
 ---
 
-## Quick Commands
-
-```bash
-# Run tests
-cd C:/Repos/squickr/life
-cd packages/domain && pnpm test run
-
-# Start dev server
-cd packages/client && pnpm dev
-
-# Build
-cd packages/domain && pnpm run build
-
-# Git
-git status
-git log --oneline -10
-git diff
-```
-
----
-
 ## Further Reading
 
 - **Architecture decisions:** `docs/adr/`
-- **Agent workflow:** root `CLAUDE.md`
-- **Code:** `packages/domain/src/` (TypeScript is self-documenting)
+- **Event and command types:** `packages/domain/src/task.types.ts`
