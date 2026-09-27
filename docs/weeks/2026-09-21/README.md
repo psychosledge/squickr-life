@@ -2,20 +2,18 @@
 
 ## Priority order
 
-1. Switching entry types clears the text
-2. Habits disappear on the day you complete them
-3. Changing a habit's schedule changes its historical view
-4. Mobile keyboard hides the set-reminder option
-5. Stale state on reload of an existing device
-6. Inconsistent notifications
-7. Snapshot fallback on invalid local snapshot
-8. Google Calendar read-only integration
+1. Habits disappear on the day you complete them
+2. Changing a habit's schedule changes its historical view
+3. Mobile keyboard hides the set-reminder option
+4. Stale state on reload of an existing device
+5. Inconsistent notifications
+6. Snapshot fallback on invalid local snapshot
+7. Google Calendar read-only integration
 
 ## Active items
 
 | Item | Status | Next step |
 |---|---|---|
-| Switching entry types clears the text | Not started. Changing an entry's type discards the text already typed. | Fix with a regression test |
 | Habits disappear on the day you complete them | Not started. A completed habit should stay visible for the rest of that day. | Fix with a regression test |
 | Changing a habit's schedule changes its historical view | Not started. Past days should render against the schedule in effect at the time. | Fix with a regression test |
 | Mobile keyboard hides the set-reminder option | Not started. When adding an entry on mobile, the virtual keyboard covers the reminder option. | Fix with a regression test |
@@ -27,3 +25,4 @@
 ## Closed items (not carried forward — see previous directory for full history)
 
 - [CHANGELOG gap](changelog-gap.md): deleted `CHANGELOG.md`, no backfill. Git tags plus conventional commit subjects are the release record.
+- Switching entry types clears the text: typed text now survives a type change. Reminder fields still reset when leaving Task, since reminders are task-only (reminders for notes and events is backlog #8).

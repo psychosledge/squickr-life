@@ -297,23 +297,96 @@ describe('EntryInput', () => {
     expect(screen.queryByText(/validation error/i)).not.toBeInTheDocument();
   });
 
-  it('should clear input when switching entry types', () => {
+  it('should keep typed text when switching entry types', async () => {
     render(
-      <EntryInput 
+      <EntryInput
         onSubmitTask={mockOnSubmitTask}
         onSubmitNote={mockOnSubmitNote}
         onSubmitEvent={mockOnSubmitEvent}
       />
     );
-    
+
     const input = screen.getByPlaceholderText(/add a task/i) as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'Test content' } });
-    
+
     const noteButton = screen.getByRole('button', { name: /note/i });
     fireEvent.click(noteButton);
-    
+
     const noteInput = screen.getByPlaceholderText(/add a note/i) as HTMLInputElement;
-    expect(noteInput.value).toBe('');
+    expect(noteInput.value).toBe('Test content');
+
+    fireEvent.keyDown(noteInput, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(mockOnSubmitNote).toHaveBeenCalledWith('Test content');
+    });
+    expect(mockOnSubmitTask).not.toHaveBeenCalled();
+  });
+
+  it('should keep the reminder when the current entry type is selected again', () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /set reminder/i }));
+    fireEvent.change(screen.getByLabelText(/reminder date/i), { target: { value: '2099-12-31' } });
+    fireEvent.change(screen.getByLabelText(/reminder time/i), { target: { value: '12:00' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /task/i }));
+
+    expect(screen.getByRole('button', { name: /set reminder/i })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByLabelText(/reminder date/i)).toHaveValue('2099-12-31');
+    expect(screen.getByLabelText(/reminder time/i)).toHaveValue('12:00');
+  });
+
+  it('should clear error when switching entry types', async () => {
+    mockOnSubmitTask.mockRejectedValueOnce(new Error('validation error'));
+
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/add a task/i), { target: { value: 'Test' } });
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(await screen.findByText(/validation error/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /note/i }));
+
+    expect(screen.queryByText(/validation error/i)).not.toBeInTheDocument();
+  });
+
+  it('should reset the reminder when switching away from task', () => {
+    render(
+      <EntryInput
+        onSubmitTask={mockOnSubmitTask}
+        onSubmitNote={mockOnSubmitNote}
+        onSubmitEvent={mockOnSubmitEvent}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /set reminder/i }));
+    fireEvent.change(screen.getByLabelText(/reminder date/i), { target: { value: '2099-12-31' } });
+    fireEvent.change(screen.getByLabelText(/reminder time/i), { target: { value: '12:00' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /note/i }));
+    fireEvent.click(screen.getByRole('button', { name: /task/i }));
+
+    const reminderToggle = screen.getByRole('button', { name: /set reminder/i });
+    expect(reminderToggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(reminderToggle);
+
+    expect(screen.getByLabelText(/reminder date/i)).toHaveValue('');
+    expect(screen.getByLabelText(/reminder time/i)).toHaveValue('');
   });
 
   // REGRESSION TESTS: Prevent double-submit bug

@@ -10,20 +10,6 @@ interface EntryInputProps {
   onSuccess?: () => void;
 }
 
-/**
- * EntryInput Component
- * 
- * Allows users to quickly capture entries of different types:
- * - Task: short title (1-500 characters)
- * - Note: short content (1-500 characters)
- * - Event: content (1-500 characters)
- * 
- * Features:
- * - Auto-focus on mount
- * - Enter key submits for all types
- * - Input clears after submission
- * - Icon button type selector
- */
 export function EntryInput({ 
   onSubmitTask, 
   onSubmitNote, 
@@ -40,7 +26,6 @@ export function EntryInput({
   const [reminderError, setReminderError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus on mount and when type changes (default variant only)
   useEffect(() => {
     if (variant === 'default') {
       inputRef.current?.focus();
@@ -118,8 +103,11 @@ export function EntryInput({
   };
 
   const handleTypeChange = (type: EntryType) => {
+    if (type === entryType) {
+      return;
+    }
+
     setEntryType(type);
-    setInputValue('');
     setReminderDate('');
     setReminderTime('');
     setShowReminderSection(false);
