@@ -16,22 +16,22 @@ Fixed-mode habits are unaffected: they go through `isScheduledOn`, which ignores
 
 ### Slice 1: Relative habit completed on a day stays visible on that day's log
 **Scope:** A relative-mode habit that has a non-reverted completion on the requested date is included in that date's habit list, alongside habits that are due. Due/not-due behavior for dates without a completion is unchanged. Fixed-mode habits, `isScheduledToday`, history, and streaks are unchanged. Starts with a failing regression test that reproduces the bug.
-**Status:** not started
-**Commit:** —
+**Status:** ✅ done
+**Commit:** c647077
 **Acceptance Criteria:**
-- [ ] Regression test written first and fails on current code: a relative every-n-days habit (n=3) completed today is returned by `getHabitsForDate(today, { asOf: today })`
-- [ ] Same case passes for a relative weekly habit completed today
-- [ ] A relative habit completed today, then reverted today, is still returned (it is due again)
-- [ ] A relative habit completed yesterday (n=3) is not returned for today (existing test still passes)
-- [ ] A relative habit completed on a past date is returned by `getHabitsForDate(pastDate, { asOf: pastDate })`, matching how `CollectionDetailView` queries past logs
-- [ ] Returned habit has `isCompletedToday === true` so the row renders as completed
-- [ ] Client-level test: in the daily log's Habits section, marking a relative habit complete leaves its row visible and shown as completed
-- [ ] All existing habit projection, HabitsSection, HabitRow, and CollectionDetailView tests pass
+- [x] Regression test written first and fails on current code: a relative every-n-days habit (n=3) completed today is returned by `getHabitsForDate(today, { asOf: today })`
+- [x] Same case passes for a relative weekly habit completed today
+- [x] A relative habit completed today, then reverted today, is still returned (it is due again)
+- [x] A relative habit completed yesterday (n=3) is not returned for today (existing test still passes)
+- [x] A relative habit completed on a past date is returned by `getHabitsForDate(pastDate, { asOf: pastDate })`, matching how `CollectionDetailView` queries past logs
+- [x] Returned habit has `isCompletedToday === true` so the row renders as completed
+- [x] Client-level test: in the daily log's Habits section, marking a relative habit complete leaves its row visible and shown as completed
+- [x] All existing habit projection, HabitsSection, HabitRow, and CollectionDetailView tests pass
 **Files:** packages/domain/src/habit.projection.ts, packages/domain/src/habit.projection.test.ts, packages/client/src/views/CollectionDetailView.test.tsx (or packages/client/src/hooks/useHabitsForDate.test.ts)
 **Needs Architect:** no. The fix stays inside the existing projection filter that already owns visibility.
 
 ### Slice 2: Relative habit skipped on a past day stays on that day's log
-**Scope:** Whether a relative habit is due on date D is judged from non-reverted completions before D (or `createdAt` when there are none). `getHabitsForDate` includes a relative habit when it is completed on D or due on D by that rule, which removes the `date === today` gating. Today's and future dates behave as before. Fixed-mode habits, `isScheduledToday`, history, and streaks are unchanged. Starts with a failing regression test that reproduces the bug.
+**Scope:** Whether a relative habit is due on date D is judged from non-reverted completions before D (or `createdAt` when there are none). `getHabitsForDate` includes a relative habit when it is completed on D or due on D by that rule, which removes the `date === today` gating. Today's and future dates behave as before. `isScheduledToday` is unchanged. Also derives a habit's creation day with `isoToLocalDateKey(createdAt)` in place of `createdAt.slice(0, 10)` at every site in `habit.projection.ts` (relative first due date, fixed every-n-days anchor, history before-creation check, every-n-days longest-streak window), so a habit created in the evening west of UTC starts on the local day. Starts with failing regression tests that reproduce both bugs.
 **Status:** not started
 **Commit:** —
 **Acceptance Criteria:**
@@ -40,6 +40,10 @@ Fixed-mode habits are unaffected: they go through `isScheduledOn`, which ignores
 - [ ] A completion reverted before D does not count toward D's due date
 - [ ] A relative habit is not returned for dates before its `createdAt`
 - [ ] Today and future-date results are unchanged (existing tests pass)
+- [ ] The existing test at `habit.projection.test.ts:784` is updated: a never-completed relative habit is returned on past dates after its creation (overdue since creation)
+- [ ] Regression test written first and fails on current code: with the clock pinned to an evening time west of UTC, a relative habit created then is returned by `getHabitsForDate` for the local day
+- [ ] With the same pinned clock, a fixed every-n-days habit is anchored on the local creation day, and the history grid treats the local creation day as scheduled
+- [ ] The Slice 1 client test in `CollectionDetailView.test.tsx` passes regardless of time of day
 - [ ] All existing habit projection, HabitsSection, HabitRow, and CollectionDetailView tests pass
 **Files:** packages/domain/src/habit.projection.ts, packages/domain/src/habit.projection.test.ts
 **Needs Architect:** no. Same filter as Slice 1.
@@ -55,5 +59,10 @@ Fixed-mode habits are unaffected: they go through `isScheduledOn`, which ignores
 - [ ] Open tomorrow's log (or wait until the next day). A relative habit completed today with an interval greater than 1 day is not listed.
 - [ ] Open a past daily log on which a relative habit was completed. The habit is listed as completed.
 - [ ] Skip a relative habit past its due date for a few days, then complete it. The skipped days' logs still list it as not completed.
+- [ ] In the evening (after 8 PM local), create a new relative habit. It appears on today's log right away.
 - [ ] Fixed-schedule habits (daily, weekly on set days, every-n-days fixed) still appear on their scheduled days before and after completion, and not on other days.
 - [ ] Archived habits do not appear on any daily log.
+
+## Deferred tech debt
+
+- `packages/domain/src/habit.projection.ts:165`: on a skipped past day's log, the habit row's last history dot shows `not-scheduled` instead of `missed`, because `buildHistory` uses `isRelativeDueCountingAllCompletions`. Tracked on the weekly tracker under "Habit history grid never marks relative habits as missed", which decides what counts as a miss. Surfaced in Slice 2.

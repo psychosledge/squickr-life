@@ -10,6 +10,7 @@ import type {
   HabitCompletionReverted,
   SerializableHabitState,
 } from './habit.types';
+import { getLocalDateKey } from './date-utils';
 
 // ============================================================================
 // Helpers
@@ -24,15 +25,11 @@ function makeDate(daysFromToday: number): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/** Returns today's local date as a YYYY-MM-DD string (matches todayKey() in projection). */
-function localDateKey(): string {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+function localNoon(dateKey: string): string {
+  return new Date(`${dateKey}T12:00:00`).toISOString();
 }
 
+const HISTORY_WINDOW_DAYS = 30;
 const today = makeDate(0);
 const yesterday = makeDate(-1);
 
@@ -52,7 +49,7 @@ async function appendHabitCreated(
       title: 'Morning run',
       frequency: { type: 'daily' },
       order: 'a0',
-      createdAt: overrides.createdAt ?? `${localDateKey()}T00:00:00.000Z`,
+      createdAt: overrides.createdAt ?? localNoon(getLocalDateKey()),
       ...overrides,
     },
   };
@@ -236,10 +233,9 @@ describe('HabitProjection', () => {
     });
 
     it('should use modulo logic for every-n-days frequency', async () => {
-      // createdAt = today (days diff = 0), n = 3 → 0 % 3 = 0 → scheduled
       await appendHabitCreated(eventStore, {
         frequency: { type: 'every-n-days', n: 3 },
-        createdAt: `${today}T00:00:00.000Z`,
+        createdAt: localNoon(today),
         order: 'a0',
       });
       const habits = await projection.getHabitsForDate(today);
@@ -247,10 +243,9 @@ describe('HabitProjection', () => {
     });
 
     it('should not return every-n-days habit when not on schedule', async () => {
-      // createdAt = yesterday (days diff = 1), n = 3 → 1 % 3 = 1 ≠ 0 → not scheduled
       await appendHabitCreated(eventStore, {
         frequency: { type: 'every-n-days', n: 3 },
-        createdAt: `${yesterday}T00:00:00.000Z`,
+        createdAt: localNoon(yesterday),
         order: 'a0',
       });
       const habits = await projection.getHabitsForDate(today);
@@ -298,8 +293,7 @@ describe('HabitProjection', () => {
       const dayOfWeek = new Date(today).getDay() as 0 | 1 | 2 | 3 | 4 | 5 | 6;
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'weekly', targetDays: [dayOfWeek] },
-        // Created 30 days ago so the full history window is within the habit's lifetime
-        createdAt: makeDate(-30) + 'T00:00:00.000Z',
+        createdAt: localNoon(makeDate(-HISTORY_WINDOW_DAYS)),
       });
       const habit = await projection.getHabitById(habitId);
 
@@ -314,9 +308,8 @@ describe('HabitProjection', () => {
     });
 
     it('should mark past scheduled days as missed (daily habit)', async () => {
-      // Created 30 days ago so the full 30-day history window is within the habit's lifetime
       const habitId = await appendHabitCreated(eventStore, {
-        createdAt: makeDate(-30) + 'T00:00:00.000Z',
+        createdAt: localNoon(makeDate(-HISTORY_WINDOW_DAYS)),
       });
       const habit = await projection.getHabitById(habitId);
       // yesterday should be missed (daily, not completed)
@@ -475,7 +468,7 @@ describe('HabitProjection', () => {
     it('should return 1 when the most recent window has a completion', async () => {
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'every-n-days', n: 3 },
-        createdAt: `${today}T00:00:00.000Z`,
+        createdAt: localNoon(today),
       });
       // Complete today (which is in window 0)
       await appendHabitCompleted(eventStore, habitId, today);
@@ -492,20 +485,12 @@ describe('HabitProjection', () => {
     });
 
     it('history: last entry is today (local date) and no future date is marked missed', async () => {
-      // Pin clock to 2026-03-26T12:00:00Z (UTC noon).
-      // At UTC noon, the local calendar date equals '2026-03-26' in every timezone
-      // from UTC-11 through UTC+11, making localToday deterministic on any CI runner.
-      // The buggy todayKey() would use toISOString().slice(0,10) (UTC), but the fixed
-      // version uses getFullYear/getMonth/getDate (local). Both agree at noon UTC, so
-      // this test validates the last-entry and no-future-entry invariants portably.
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-03-26T12:00:00Z'));
 
-      const now = new Date();
-      const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const localToday = getLocalDateKey();
 
-      // Create a daily habit with a createdAt well in the past (30+ days back)
-      const createdAt = '2026-02-20T00:00:00.000Z'; // ~33 days before local today
+      const createdAt = localNoon('2026-02-20');
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'daily' },
         createdAt,
@@ -538,7 +523,7 @@ describe('HabitProjection', () => {
     it('should mark all 25 days before creation as not-scheduled for a daily habit', async () => {
       // Habit created 5 days ago
       const createdDate = makeDate(-5);
-      const createdAt = createdDate + 'T12:00:00.000Z';
+      const createdAt = localNoon(createdDate);
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'daily' },
         createdAt,
@@ -559,7 +544,7 @@ describe('HabitProjection', () => {
     it('should mark the 5 days since creation (excluding today) as missed when no completions', async () => {
       // Habit created 5 days ago, no completions
       const createdDate = makeDate(-5);
-      const createdAt = createdDate + 'T12:00:00.000Z';
+      const createdAt = localNoon(createdDate);
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'daily' },
         createdAt,
@@ -578,9 +563,8 @@ describe('HabitProjection', () => {
     });
 
     it('should treat the createdAt boundary day itself as scheduled (missed, not not-scheduled)', async () => {
-      // Habit created exactly on createdDate
       const createdDate = makeDate(-5);
-      const createdAt = createdDate + 'T00:00:00.000Z';
+      const createdAt = localNoon(createdDate);
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'daily' },
         createdAt,
@@ -613,8 +597,7 @@ describe('HabitProjection', () => {
 
   describe('asOf option: history grid treats viewed date as "today"', () => {
     it('getHabitsForDate with asOf=yesterday: today slot shows future, not completed', async () => {
-      // Arrange: habit created 30 days ago, completed today
-      const createdAt = makeDate(-30) + 'T00:00:00.000Z';
+      const createdAt = localNoon(makeDate(-HISTORY_WINDOW_DAYS));
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'daily' },
         createdAt,
@@ -623,8 +606,6 @@ describe('HabitProjection', () => {
       // Complete for real today
       await appendHabitCompleted(eventStore, habitId, today);
 
-      // Act: query habits for yesterday's date, with asOf=yesterday
-      // The history should be computed relative to yesterday, so today's slot = future
       const habits = await projection.getHabitsForDate(yesterday, { asOf: yesterday });
 
       expect(habits).toHaveLength(1);
@@ -649,8 +630,7 @@ describe('HabitProjection', () => {
     });
 
     it('getActiveHabits with asOf=yesterday: today slot shows future, not completed', async () => {
-      // Arrange: habit created 30 days ago, completed today
-      const createdAt = makeDate(-30) + 'T00:00:00.000Z';
+      const createdAt = localNoon(makeDate(-HISTORY_WINDOW_DAYS));
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'daily' },
         createdAt,
@@ -658,7 +638,6 @@ describe('HabitProjection', () => {
       });
       await appendHabitCompleted(eventStore, habitId, today);
 
-      // Act: query active habits with asOf=yesterday
       const habits = await projection.getActiveHabits({ asOf: yesterday });
 
       expect(habits).toHaveLength(1);
@@ -675,8 +654,7 @@ describe('HabitProjection', () => {
     });
 
     it('getAllHabits with asOf=yesterday: isCompletedToday reflects yesterday', async () => {
-      // Arrange: habit completed for yesterday
-      const createdAt = makeDate(-30) + 'T00:00:00.000Z';
+      const createdAt = localNoon(makeDate(-HISTORY_WINDOW_DAYS));
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'daily' },
         createdAt,
@@ -684,7 +662,6 @@ describe('HabitProjection', () => {
       });
       await appendHabitCompleted(eventStore, habitId, yesterday);
 
-      // Act: query all habits with asOf=yesterday
       const habits = await projection.getAllHabits({ asOf: yesterday });
 
       expect(habits).toHaveLength(1);
@@ -695,15 +672,13 @@ describe('HabitProjection', () => {
     });
 
     it('getHabitById with asOf=yesterday: history window ends at yesterday', async () => {
-      // Arrange
-      const createdAt = makeDate(-30) + 'T00:00:00.000Z';
+      const createdAt = localNoon(makeDate(-HISTORY_WINDOW_DAYS));
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'daily' },
         createdAt,
       });
       await appendHabitCompleted(eventStore, habitId, today);
 
-      // Act
       const habit = await projection.getHabitById(habitId, { asOf: yesterday });
 
       expect(habit).toBeDefined();
@@ -712,9 +687,8 @@ describe('HabitProjection', () => {
       expect(lastEntry.date).toBe(yesterday);
     });
 
-    it('backwards-compatible: no asOf defaults to todayKey() behaviour', async () => {
-      // Existing calls without asOf must behave exactly as before
-      const createdAt = makeDate(-30) + 'T00:00:00.000Z';
+    it('backwards-compatible: no asOf defaults to the local date', async () => {
+      const createdAt = localNoon(makeDate(-HISTORY_WINDOW_DAYS));
       const habitId = await appendHabitCreated(eventStore, {
         frequency: { type: 'daily' },
         createdAt,
@@ -752,7 +726,7 @@ describe('getHabitsForDate: relative habits', () => {
   it('returns relative daily habit when due today (never completed, created yesterday)', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'daily', mode: 'relative' },
-      createdAt: `${yesterday}T00:00:00.000Z`,
+      createdAt: localNoon(yesterday),
     });
     const habits = await projection.getHabitsForDate(today, { asOf: today });
     expect(habits.some(h => h.id === habitId)).toBe(true);
@@ -762,7 +736,7 @@ describe('getHabitsForDate: relative habits', () => {
     const fourDaysAgo = makeDate(-4);
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
-      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+      createdAt: localNoon(makeDate(-10)),
     });
     await appendHabitCompleted(eventStore, habitId, fourDaysAgo);
     // Last completed 4 days ago, interval 3 → next due 1 day ago → overdue → should appear today
@@ -773,7 +747,7 @@ describe('getHabitsForDate: relative habits', () => {
   it('does NOT return relative every-n-days habit when not yet due (completed yesterday, n=3)', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
-      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+      createdAt: localNoon(makeDate(-10)),
     });
     await appendHabitCompleted(eventStore, habitId, yesterday);
     // Last completed yesterday, interval 3 → next due in 2 days → NOT due today
@@ -781,19 +755,19 @@ describe('getHabitsForDate: relative habits', () => {
     expect(habits.some(h => h.id === habitId)).toBe(false);
   });
 
-  it('does NOT return relative habit for a historical date when there is no completion on that date', async () => {
+  it('returns never-completed relative habit for a historical date after its creation', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'daily', mode: 'relative' },
-      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+      createdAt: localNoon(makeDate(-10)),
     });
     const habits = await projection.getHabitsForDate(yesterday, { asOf: today });
-    expect(habits.some(h => h.id === habitId)).toBe(false);
+    expect(habits.some(h => h.id === habitId)).toBe(true);
   });
 
   it('DOES return relative habit for a historical date when there IS a completion on that date', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'daily', mode: 'relative' },
-      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+      createdAt: localNoon(makeDate(-10)),
     });
     await appendHabitCompleted(eventStore, habitId, yesterday);
     const habits = await projection.getHabitsForDate(yesterday, { asOf: today });
@@ -803,7 +777,7 @@ describe('getHabitsForDate: relative habits', () => {
   it('archived relative habit is excluded from getHabitsForDate', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'daily', mode: 'relative' },
-      createdAt: `${yesterday}T00:00:00.000Z`,
+      createdAt: localNoon(yesterday),
     });
     await appendHabitArchived(eventStore, habitId);
     const habits = await projection.getHabitsForDate(today, { asOf: today });
@@ -813,7 +787,7 @@ describe('getHabitsForDate: relative habits', () => {
   it('isScheduledToday is true for relative habit when overdue', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
-      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+      createdAt: localNoon(makeDate(-10)),
     });
     // Completed 4 days ago → next due 1 day ago → overdue
     await appendHabitCompleted(eventStore, habitId, makeDate(-4));
@@ -824,7 +798,7 @@ describe('getHabitsForDate: relative habits', () => {
   it('isScheduledToday is false for relative habit when not yet due (completed today already)', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
-      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+      createdAt: localNoon(makeDate(-10)),
     });
     // Completed today → next due in 3 days → not due today anymore
     await appendHabitCompleted(eventStore, habitId, today);
@@ -833,7 +807,7 @@ describe('getHabitsForDate: relative habits', () => {
   });
 
   it('history for relative habit shows completed on completion dates, not-scheduled on all other past days', async () => {
-    const createdAt = `${makeDate(-5)}T00:00:00.000Z`;
+    const createdAt = localNoon(makeDate(-5));
     const completionDate = makeDate(-3);
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'daily', mode: 'relative' },
@@ -863,7 +837,7 @@ describe('getHabitsForDate: relative habits', () => {
     const nextThursday = '2026-01-08';
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'weekly', targetDays: [4], mode: 'relative' },
-      createdAt: `${thursday}T00:00:00.000Z`,
+      createdAt: localNoon(thursday),
     });
     await appendHabitCompleted(eventStore, habitId, thursday);
     // Should be due on next Thursday
@@ -878,7 +852,7 @@ describe('getHabitsForDate: relative habits', () => {
   it('returns relative every-n-days habit completed today, marked completed', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
-      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+      createdAt: localNoon(makeDate(-10)),
     });
     await appendHabitCompleted(eventStore, habitId, today);
 
@@ -892,7 +866,7 @@ describe('getHabitsForDate: relative habits', () => {
   it('returns relative weekly habit completed today, marked completed', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'weekly', targetDays: [1], mode: 'relative' },
-      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+      createdAt: localNoon(makeDate(-10)),
     });
     await appendHabitCompleted(eventStore, habitId, today);
 
@@ -906,7 +880,7 @@ describe('getHabitsForDate: relative habits', () => {
   it('returns relative habit completed then reverted today, marked not completed', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
-      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+      createdAt: localNoon(makeDate(-10)),
     });
     await appendHabitCompleted(eventStore, habitId, today);
     await appendHabitCompletionReverted(eventStore, habitId, today);
@@ -922,7 +896,7 @@ describe('getHabitsForDate: relative habits', () => {
     const pastDate = makeDate(-5);
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
-      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+      createdAt: localNoon(makeDate(-10)),
     });
     await appendHabitCompleted(eventStore, habitId, pastDate);
     await appendHabitCompleted(eventStore, habitId, yesterday);
@@ -932,6 +906,166 @@ describe('getHabitsForDate: relative habits', () => {
     const habit = habits.find(h => h.id === habitId);
     expect(habit).toBeDefined();
     expect(habit!.isCompletedToday).toBe(true);
+  });
+
+  describe('due on a past date, judged from completions before that date', () => {
+    const dayA = -12;
+
+    async function createEveryThreeDaysHabitCompletedOn(offsets: number[]): Promise<string> {
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
+        createdAt: localNoon(makeDate(dayA - 3)),
+      });
+      for (const offset of offsets) {
+        await appendHabitCompleted(eventStore, habitId, makeDate(dayA + offset));
+      }
+      return habitId;
+    }
+
+    it.each([6, 7, 8])('returns habit skipped on day A+%i, marked not completed', async (offset) => {
+      const habitId = await createEveryThreeDaysHabitCompletedOn([0, 3, 9]);
+      const date = makeDate(dayA + offset);
+
+      const habits = await projection.getHabitsForDate(date, { asOf: date });
+
+      const habit = habits.find(h => h.id === habitId);
+      expect(habit).toBeDefined();
+      expect(habit!.isCompletedToday).toBe(false);
+    });
+
+    it.each([4, 5])('does not return habit on day A+%i, before it is due', async (offset) => {
+      const habitId = await createEveryThreeDaysHabitCompletedOn([0, 3, 9]);
+      const date = makeDate(dayA + offset);
+
+      const habits = await projection.getHabitsForDate(date, { asOf: date });
+
+      expect(habits.some(h => h.id === habitId)).toBe(false);
+    });
+
+    it('ignores a completion reverted before the date', async () => {
+      const habitId = await createEveryThreeDaysHabitCompletedOn([0, 3, 9]);
+      await appendHabitCompletionReverted(eventStore, habitId, makeDate(dayA + 3));
+      const date = makeDate(dayA + 4);
+
+      const habits = await projection.getHabitsForDate(date, { asOf: date });
+
+      expect(habits.some(h => h.id === habitId)).toBe(true);
+    });
+
+    it('returns habit never completed before the date, from its creation date on', async () => {
+      const habitId = await createEveryThreeDaysHabitCompletedOn([9]);
+      const date = makeDate(dayA - 3);
+
+      const habits = await projection.getHabitsForDate(date, { asOf: date });
+
+      expect(habits.some(h => h.id === habitId)).toBe(true);
+    });
+
+    it('does not return habit for a date before its creation', async () => {
+      const habitId = await createEveryThreeDaysHabitCompletedOn([9]);
+      const date = makeDate(dayA - 4);
+
+      const habits = await projection.getHabitsForDate(date, { asOf: date });
+
+      expect(habits.some(h => h.id === habitId)).toBe(false);
+    });
+
+    it('returns an overdue habit on a future date, marked not completed', async () => {
+      const habitId = await createEveryThreeDaysHabitCompletedOn([0, 3]);
+      const futureDate = makeDate(3);
+
+      const habits = await projection.getHabitsForDate(futureDate, { asOf: futureDate });
+
+      const habit = habits.find(h => h.id === habitId);
+      expect(habit).toBeDefined();
+      expect(habit!.isCompletedToday).toBe(false);
+    });
+
+    it('does not return habit on a future date before its next due date', async () => {
+      const habitId = await createEveryThreeDaysHabitCompletedOn([0, 3, 12]);
+      const futureDate = makeDate(2);
+
+      const habits = await projection.getHabitsForDate(futureDate, { asOf: futureDate });
+
+      expect(habits.some(h => h.id === habitId)).toBe(false);
+    });
+
+    it('returns habit completed then reverted on a skipped past day, marked not completed', async () => {
+      const habitId = await createEveryThreeDaysHabitCompletedOn([0, 3, 9]);
+      const date = makeDate(dayA + 7);
+      await appendHabitCompleted(eventStore, habitId, date);
+      await appendHabitCompletionReverted(eventStore, habitId, date);
+
+      const habits = await projection.getHabitsForDate(date, { asOf: date });
+
+      const habit = habits.find(h => h.id === habitId);
+      expect(habit).toBeDefined();
+      expect(habit!.isCompletedToday).toBe(false);
+    });
+  });
+});
+
+describe('creation day is the local calendar day of createdAt', () => {
+  const localCreationDay = '2026-03-26';
+  let eventStore: IEventStore;
+  let projection: HabitProjection;
+  let originalTz: string | undefined;
+
+  beforeEach(() => {
+    originalTz = process.env.TZ;
+    process.env.TZ = 'America/Los_Angeles';
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-26T20:30:00-07:00'));
+    eventStore = new InMemoryEventStore();
+    projection = new HabitProjection(eventStore);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  });
+
+  function createHabitNow(frequency: HabitCreated['payload']['frequency']): Promise<string> {
+    return appendHabitCreated(eventStore, { frequency, createdAt: new Date().toISOString() });
+  }
+
+  it('returns a relative habit on the local day it was created', async () => {
+    const habitId = await createHabitNow({ type: 'every-n-days', n: 3, mode: 'relative' });
+
+    const habits = await projection.getHabitsForDate(localCreationDay);
+
+    expect(habits.some(h => h.id === habitId)).toBe(true);
+  });
+
+  it('anchors a fixed every-n-days habit on the local creation day', async () => {
+    const habitId = await createHabitNow({ type: 'every-n-days', n: 3 });
+
+    const scheduledDays: string[] = [];
+    for (const date of ['2026-03-26', '2026-03-27', '2026-03-28', '2026-03-29']) {
+      const habits = await projection.getHabitsForDate(date);
+      if (habits.some(h => h.id === habitId)) scheduledDays.push(date);
+    }
+
+    expect(scheduledDays).toEqual(['2026-03-26', '2026-03-29']);
+  });
+
+  it('history treats the local creation day as scheduled', async () => {
+    const habitId = await createHabitNow({ type: 'daily' });
+
+    const habit = await projection.getHabitById(habitId);
+
+    expect(habit!.history.at(-1)).toEqual({ date: localCreationDay, status: 'missed' });
+  });
+
+  it('counts a completion on the local creation day in the every-n-days longest streak', async () => {
+    const habitId = await createHabitNow({ type: 'every-n-days', n: 3 });
+    await appendHabitCompleted(eventStore, habitId, '2026-03-26');
+    await appendHabitCompleted(eventStore, habitId, '2026-03-29');
+
+    const habit = await projection.getHabitById(habitId, { asOf: '2026-04-10' });
+
+    expect(habit!.longestStreak).toBe(2);
   });
 });
 
@@ -958,7 +1092,7 @@ describe('HabitProjection — snapshot support (ADR-026)', () => {
           id: 'habit-1',
           title: 'Morning run',
           frequency: { type: 'daily' },
-          createdAt: '2026-01-01T00:00:00.000Z',
+          createdAt: localNoon('2026-01-01'),
           order: 'a0',
           completions: { '2026-01-01': '2026-01-01T08:00:00.000Z' },
           reverted: [],
@@ -982,7 +1116,7 @@ describe('HabitProjection — snapshot support (ADR-026)', () => {
           id: 'habit-2',
           title: 'Evening yoga',
           frequency: { type: 'daily' },
-          createdAt: '2026-01-01T00:00:00.000Z',
+          createdAt: localNoon('2026-01-01'),
           order: 'a0',
           completions: { '2026-01-01': '2026-01-01T20:00:00.000Z' },
           reverted: ['2026-01-01'],
@@ -1004,7 +1138,7 @@ describe('HabitProjection — snapshot support (ADR-026)', () => {
           id: 'habit-3',
           title: 'Archived habit',
           frequency: { type: 'daily' },
-          createdAt: '2026-01-01T00:00:00.000Z',
+          createdAt: localNoon('2026-01-01'),
           order: 'a0',
           archivedAt: '2026-01-15T00:00:00.000Z',
           notificationTime: '07:30',
