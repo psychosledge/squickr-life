@@ -16,7 +16,7 @@
 
 | Item | Status | Next step |
 |---|---|---|
-| [Habits disappear on the day you complete them](../../stories/habits-disappear-on-completion-day/plan.md) | 1/2 slices done | Slice 2 |
+| [Habits disappear on the day you complete them](../../stories/habits-disappear-on-completion-day/plan.md) | 2/2 slices done | UAT |
 | Changing a habit's schedule changes its historical view | Not started. Past days should render against the schedule in effect at the time. | Fix with a regression test |
 | Mobile keyboard hides the set-reminder option | Not started. When adding an entry on mobile, the virtual keyboard covers the reminder option. | Fix with a regression test |
 | Stale state on reload of an existing device | Not started. An existing device doesn't reflect current state on reload, even after clearing site data. Original ask: a settings option to redownload from server. | Check whether Force full sync (v1.21.x) already covers this, alongside the snapshot-fallback brainstorm |

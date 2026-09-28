@@ -32,19 +32,19 @@ Fixed-mode habits are unaffected: they go through `isScheduledOn`, which ignores
 
 ### Slice 2: Relative habit skipped on a past day stays on that day's log
 **Scope:** Whether a relative habit is due on date D is judged from non-reverted completions before D (or `createdAt` when there are none). `getHabitsForDate` includes a relative habit when it is completed on D or due on D by that rule, which removes the `date === today` gating. Today's and future dates behave as before. `isScheduledToday` is unchanged. Also derives a habit's creation day with `isoToLocalDateKey(createdAt)` in place of `createdAt.slice(0, 10)` at every site in `habit.projection.ts` (relative first due date, fixed every-n-days anchor, history before-creation check, every-n-days longest-streak window), so a habit created in the evening west of UTC starts on the local day. Starts with failing regression tests that reproduce both bugs.
-**Status:** not started
-**Commit:** —
+**Status:** ✅ done
+**Commit:** 89d1761
 **Acceptance Criteria:**
-- [ ] Regression test written first and fails on current code: every-n-days (n=3) relative habit completed Sep 1 and Sep 4, then Sep 10. `getHabitsForDate` for Sep 7, 8, and 9 (each with `asOf` equal to the date) returns it, not completed
-- [ ] Same habit is not returned for Sep 5 or Sep 6 (not yet due)
-- [ ] A completion reverted before D does not count toward D's due date
-- [ ] A relative habit is not returned for dates before its `createdAt`
-- [ ] Today and future-date results are unchanged (existing tests pass)
-- [ ] The existing test at `habit.projection.test.ts:784` is updated: a never-completed relative habit is returned on past dates after its creation (overdue since creation)
-- [ ] Regression test written first and fails on current code: with the clock pinned to an evening time west of UTC, a relative habit created then is returned by `getHabitsForDate` for the local day
-- [ ] With the same pinned clock, a fixed every-n-days habit is anchored on the local creation day, and the history grid treats the local creation day as scheduled
-- [ ] The Slice 1 client test in `CollectionDetailView.test.tsx` passes regardless of time of day
-- [ ] All existing habit projection, HabitsSection, HabitRow, and CollectionDetailView tests pass
+- [x] Regression test written first and fails on current code: every-n-days (n=3) relative habit completed Sep 1 and Sep 4, then Sep 10. `getHabitsForDate` for Sep 7, 8, and 9 (each with `asOf` equal to the date) returns it, not completed
+- [x] Same habit is not returned for Sep 5 or Sep 6 (not yet due)
+- [x] A completion reverted before D does not count toward D's due date
+- [x] A relative habit is not returned for dates before its `createdAt`
+- [x] Today and future-date results are unchanged (existing tests pass)
+- [x] The existing test at `habit.projection.test.ts:784` is updated: a never-completed relative habit is returned on past dates after its creation (overdue since creation)
+- [x] Regression test written first and fails on current code: with the clock pinned to an evening time west of UTC, a relative habit created then is returned by `getHabitsForDate` for the local day
+- [x] With the same pinned clock, a fixed every-n-days habit is anchored on the local creation day, and the history grid treats the local creation day as scheduled
+- [x] The Slice 1 client test in `CollectionDetailView.test.tsx` passes regardless of time of day
+- [x] All existing habit projection, HabitsSection, HabitRow, and CollectionDetailView tests pass
 **Files:** packages/domain/src/habit.projection.ts, packages/domain/src/habit.projection.test.ts
 **Needs Architect:** no. Same filter as Slice 1.
 
