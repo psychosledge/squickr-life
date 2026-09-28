@@ -3,14 +3,21 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { CollectionDetailView } from './CollectionDetailView';
 import { AppProvider } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
 import type { Collection, Entry } from '@squickr/domain';
-import { DEFAULT_USER_PREFERENCES, getLocalDateKey } from '@squickr/domain';
+import {
+  CompleteHabitHandler,
+  CreateHabitHandler,
+  DEFAULT_USER_PREFERENCES,
+  HabitProjection,
+  getLocalDateKey,
+} from '@squickr/domain';
+import { InMemoryEventStore } from '@squickr/infrastructure';
 import { getCollectionDisplayName } from '../utils/formatters';
 
 // Mock useTutorial to avoid needing TutorialProvider in tests
@@ -2523,6 +2530,49 @@ describe('CollectionDetailView - Habits section for daily collections', () => {
     });
 
     expect(screen.queryByRole('region', { name: /habits/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps a relative habit visible and completed after marking it complete', async () => {
+    const todayKey = getLocalDateKey();
+    const todayCollection: Collection = {
+      id: 'col-today',
+      name: 'Today',
+      type: 'daily',
+      date: todayKey,
+      order: 'a0',
+      createdAt: `${todayKey}T00:00:00Z`,
+    };
+    const eventStore = new InMemoryEventStore();
+    const habitProjection = new HabitProjection(eventStore);
+    await new CreateHabitHandler(eventStore).handle({
+      title: 'Stretch',
+      frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
+      order: 'a0',
+    });
+    const appContext = buildMockAppContext({
+      collectionProjection: {
+        getCollections: vi.fn().mockResolvedValue([todayCollection]),
+        subscribe: vi.fn().mockReturnValue(() => {}),
+      },
+      habitProjection,
+      completeHabitHandler: new CompleteHabitHandler(eventStore),
+    });
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/collection/col-today']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+    const habits = await screen.findByRole('region', { name: /habits/i });
+
+    await user.click(await within(habits).findByRole('button', { name: 'Mark habit complete' }));
+
+    expect(await within(habits).findByRole('button', { name: 'Revert completed habit' })).toBeInTheDocument();
+    expect(within(habits).getByText('Stretch')).toBeInTheDocument();
   });
 });
 

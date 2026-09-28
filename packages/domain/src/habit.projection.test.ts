@@ -874,6 +874,65 @@ describe('getHabitsForDate: relative habits', () => {
     const habitsWed = await projection.getHabitsForDate(wednesday, { asOf: wednesday });
     expect(habitsWed.some(h => h.id === habitId)).toBe(false);
   });
+
+  it('returns relative every-n-days habit completed today, marked completed', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
+      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+    });
+    await appendHabitCompleted(eventStore, habitId, today);
+
+    const habits = await projection.getHabitsForDate(today, { asOf: today });
+
+    const habit = habits.find(h => h.id === habitId);
+    expect(habit).toBeDefined();
+    expect(habit!.isCompletedToday).toBe(true);
+  });
+
+  it('returns relative weekly habit completed today, marked completed', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'weekly', targetDays: [1], mode: 'relative' },
+      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+    });
+    await appendHabitCompleted(eventStore, habitId, today);
+
+    const habits = await projection.getHabitsForDate(today, { asOf: today });
+
+    const habit = habits.find(h => h.id === habitId);
+    expect(habit).toBeDefined();
+    expect(habit!.isCompletedToday).toBe(true);
+  });
+
+  it('returns relative habit completed then reverted today, marked not completed', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
+      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+    });
+    await appendHabitCompleted(eventStore, habitId, today);
+    await appendHabitCompletionReverted(eventStore, habitId, today);
+
+    const habits = await projection.getHabitsForDate(today, { asOf: today });
+
+    const habit = habits.find(h => h.id === habitId);
+    expect(habit).toBeDefined();
+    expect(habit!.isCompletedToday).toBe(false);
+  });
+
+  it('returns relative habit on a past date it was completed, viewed as of that date', async () => {
+    const pastDate = makeDate(-5);
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'every-n-days', n: 3, mode: 'relative' },
+      createdAt: `${makeDate(-10)}T00:00:00.000Z`,
+    });
+    await appendHabitCompleted(eventStore, habitId, pastDate);
+    await appendHabitCompleted(eventStore, habitId, yesterday);
+
+    const habits = await projection.getHabitsForDate(pastDate, { asOf: pastDate });
+
+    const habit = habits.find(h => h.id === habitId);
+    expect(habit).toBeDefined();
+    expect(habit!.isCompletedToday).toBe(true);
+  });
 });
 
 // ============================================================================
