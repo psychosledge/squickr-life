@@ -8,6 +8,9 @@ import type {
   HabitRestored,
   HabitCompleted,
   HabitCompletionReverted,
+  HabitDayStatus,
+  HabitFrequency,
+  HabitFrequencyChanged,
   SerializableHabitState,
 } from './habit.types';
 import { getLocalDateKey } from './date-utils';
@@ -25,8 +28,12 @@ function makeDate(daysFromToday: number): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function localTime(dateTime: string): string {
+  return new Date(dateTime).toISOString();
+}
+
 function localNoon(dateKey: string): string {
-  return new Date(`${dateKey}T12:00:00`).toISOString();
+  return localTime(`${dateKey}T12:00:00`);
 }
 
 const HISTORY_WINDOW_DAYS = 30;
@@ -109,6 +116,23 @@ async function appendHabitCompletionReverted(
     timestamp: new Date().toISOString(),
     version: 1,
     payload: { habitId, date, revertedAt: new Date().toISOString() },
+  };
+  await eventStore.append(event);
+}
+
+async function appendHabitFrequencyChanged(
+  eventStore: IEventStore,
+  habitId: string,
+  frequency: HabitFrequency,
+  updatedAt: string,
+): Promise<void> {
+  const event: HabitFrequencyChanged = {
+    id: crypto.randomUUID(),
+    type: 'HabitFrequencyChanged',
+    aggregateId: habitId,
+    timestamp: updatedAt,
+    version: 1,
+    payload: { habitId, frequency, updatedAt },
   };
   await eventStore.append(event);
 }
@@ -1066,6 +1090,216 @@ describe('creation day is the local calendar day of createdAt', () => {
     const habit = await projection.getHabitById(habitId, { asOf: '2026-04-10' });
 
     expect(habit!.longestStreak).toBe(2);
+  });
+});
+
+describe('history: schedule in effect on each day', () => {
+  const asOfMonday = '2026-09-28';
+  let eventStore: IEventStore;
+  let projection: HabitProjection;
+
+  beforeEach(() => {
+    eventStore = new InMemoryEventStore();
+    projection = new HabitProjection(eventStore);
+  });
+
+  async function daysWithStatus(
+    habitId: string,
+    status: HabitDayStatus['status'],
+    from: string,
+    to: string,
+    source: HabitProjection = projection,
+  ): Promise<string[]> {
+    const habit = await source.getHabitById(habitId, { asOf: asOfMonday });
+    return habit!.history
+      .filter(h => h.date >= from && h.date <= to && h.status === status)
+      .map(h => h.date);
+  }
+
+  it('marks uncompleted days before a daily-to-weekly change as missed', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily' },
+      createdAt: localTime('2026-09-08T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [1] }, localTime('2026-09-23T12:00:00'));
+
+    expect(await daysWithStatus(habitId, 'not-scheduled', '2026-09-08', '2026-09-22')).toEqual([]);
+  });
+
+  it('marks days from a daily-to-weekly change on by the weekly schedule', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily' },
+      createdAt: localTime('2026-09-08T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [1] }, localTime('2026-09-23T12:00:00'));
+
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-23', asOfMonday)).toEqual(['2026-09-28']);
+  });
+
+  it('keeps the old target days before a weekly target-day change', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'weekly', targetDays: [1, 3, 5] },
+      createdAt: localTime('2026-09-01T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [2, 4] }, localTime('2026-09-21T12:00:00'));
+
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-01', '2026-09-20')).toEqual([
+      '2026-09-02', '2026-09-04', '2026-09-07', '2026-09-09',
+      '2026-09-11', '2026-09-14', '2026-09-16', '2026-09-18',
+    ]);
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-21', asOfMonday)).toEqual(['2026-09-22', '2026-09-24']);
+  });
+
+  it('follows the every-n-days pattern before a change to daily', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'every-n-days', n: 3 },
+      createdAt: localTime('2026-09-01T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'daily' }, localTime('2026-09-20T12:00:00'));
+
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-01', '2026-09-19')).toEqual([
+      '2026-09-01', '2026-09-04', '2026-09-07', '2026-09-10', '2026-09-13', '2026-09-16', '2026-09-19',
+    ]);
+    expect(await daysWithStatus(habitId, 'not-scheduled', '2026-09-20', asOfMonday)).toEqual([]);
+  });
+
+  it('evaluates each of three periods by its own schedule after two changes', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily' },
+      createdAt: localTime('2026-09-01T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [1] }, localTime('2026-09-10T12:00:00'));
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'daily' }, localTime('2026-09-20T12:00:00'));
+
+    expect(await daysWithStatus(habitId, 'not-scheduled', '2026-09-01', '2026-09-09')).toEqual([]);
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-10', '2026-09-19')).toEqual(['2026-09-14']);
+    expect(await daysWithStatus(habitId, 'not-scheduled', '2026-09-20', asOfMonday)).toEqual([]);
+  });
+
+  it('applies the later of two same-day changes to that day', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily' },
+      createdAt: localTime('2026-09-01T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [1] }, localTime('2026-09-20T09:00:00'));
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [0] }, localTime('2026-09-20T18:00:00'));
+
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-19', asOfMonday)).toEqual([
+      '2026-09-19', '2026-09-20', '2026-09-27',
+    ]);
+  });
+
+  it('keeps relative-period days not-scheduled and applies the fixed schedule from the change on', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'every-n-days', n: 2, mode: 'relative' },
+      createdAt: localTime('2026-09-01T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'daily' }, localTime('2026-09-20T12:00:00'));
+
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-01', '2026-09-19')).toEqual([]);
+    expect(await daysWithStatus(habitId, 'not-scheduled', '2026-09-20', asOfMonday)).toEqual([]);
+  });
+
+  it('follows the old fixed schedule before a change to relative', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily' },
+      createdAt: localTime('2026-09-01T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'every-n-days', n: 2, mode: 'relative' }, localTime('2026-09-20T12:00:00'));
+
+    expect(await daysWithStatus(habitId, 'not-scheduled', '2026-09-01', '2026-09-19')).toEqual([]);
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-20', '2026-09-27')).toEqual([]);
+  });
+
+  it('keeps completed days completed and pre-creation days not-scheduled across a change', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily' },
+      createdAt: localTime('2026-09-08T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [1] }, localTime('2026-09-23T12:00:00'));
+    await appendHabitCompleted(eventStore, habitId, '2026-09-10');
+    await appendHabitCompleted(eventStore, habitId, '2026-09-24');
+
+    expect(await daysWithStatus(habitId, 'completed', '2026-08-30', asOfMonday)).toEqual(['2026-09-10', '2026-09-24']);
+    expect(await daysWithStatus(habitId, 'not-scheduled', '2026-08-30', '2026-09-07')).toHaveLength(9);
+  });
+
+  it.each(['00:30', '23:30'])('applies a change made at %s to the whole local day of the change', async (time) => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily' },
+      createdAt: localTime('2026-09-01T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [1] }, localTime(`2026-09-23T${time}:00`));
+
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-22', '2026-09-23')).toEqual(['2026-09-22']);
+  });
+
+  it('keeps the newer schedule current when an older change is applied after it', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily' },
+      createdAt: localTime('2026-09-01T12:00:00'),
+    });
+    await projection.getHabitById(habitId, { asOf: asOfMonday });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [1] }, localTime('2026-09-20T12:00:00'));
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [3] }, localTime('2026-09-10T12:00:00'));
+    const replayed = new HabitProjection(eventStore);
+
+    for (const source of [projection, replayed]) {
+      const habit = await source.getHabitById(habitId, { asOf: asOfMonday });
+      expect(habit!.frequency).toEqual({ type: 'weekly', targetDays: [1] });
+      expect(await daysWithStatus(habitId, 'missed', '2026-09-10', asOfMonday, source)).toEqual([
+        '2026-09-16', '2026-09-21', '2026-09-28',
+      ]);
+    }
+  });
+
+  it('applies a change timestamped before creation from the creation day on', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily' },
+      createdAt: localTime('2026-09-08T12:00:00'),
+    });
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [1] }, localTime('2026-09-08T11:00:00'));
+
+    const habit = await projection.getHabitById(habitId, { asOf: asOfMonday });
+    expect(habit!.frequency).toEqual({ type: 'weekly', targetDays: [1] });
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-08', asOfMonday)).toEqual([
+      '2026-09-14', '2026-09-21', '2026-09-28',
+    ]);
+  });
+
+  it('applies the snapshot frequency before a change appended after hydration', async () => {
+    const states: SerializableHabitState[] = [
+      {
+        id: 'habit-1',
+        title: 'Morning run',
+        frequency: { type: 'daily' },
+        createdAt: localNoon('2026-09-01'),
+        order: 'a0',
+        completions: {},
+        reverted: [],
+      },
+    ];
+    projection.hydrateFromSnapshot(states);
+    await appendHabitFrequencyChanged(eventStore, 'habit-1', { type: 'weekly', targetDays: [1] }, localTime('2026-09-20T12:00:00'));
+
+    expect(await daysWithStatus('habit-1', 'not-scheduled', '2026-09-01', '2026-09-19')).toEqual([]);
+    expect(await daysWithStatus('habit-1', 'missed', '2026-09-20', asOfMonday)).toEqual(['2026-09-21', '2026-09-28']);
+  });
+
+  it('treats the later-appended of two changes with identical timestamps as current', async () => {
+    const habitId = await appendHabitCreated(eventStore, {
+      frequency: { type: 'daily' },
+      createdAt: localTime('2026-09-01T12:00:00'),
+    });
+    const changedAt = localTime('2026-09-20T12:00:00');
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [1] }, changedAt);
+    await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [0] }, changedAt);
+
+    const habit = await projection.getHabitById(habitId, { asOf: asOfMonday });
+    expect(habit!.frequency).toEqual({ type: 'weekly', targetDays: [0] });
+    expect(await daysWithStatus(habitId, 'missed', '2026-09-19', asOfMonday)).toEqual([
+      '2026-09-19', '2026-09-20', '2026-09-27',
+    ]);
   });
 });
 

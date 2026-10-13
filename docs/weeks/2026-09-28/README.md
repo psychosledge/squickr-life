@@ -5,19 +5,19 @@
 ## Priority order
 
 1. Changing a habit's schedule changes its historical view
-2. Mobile keyboard hides the set-reminder option
-3. Stale state on reload of an existing device
-4. Inconsistent notifications
-5. Snapshot fallback on invalid local snapshot
-6. Google Calendar read-only integration
-7. Habit history grid never marks relative habits as missed
+2. Habit history grid never marks relative habits as missed
+3. Mobile keyboard hides the set-reminder option
+4. Stale state on reload of an existing device
+5. Inconsistent notifications
+6. Snapshot fallback on invalid local snapshot
+7. Google Calendar read-only integration
 8. Daily-log sorting and calendar grouping use the UTC day
 
 ## Active items
 
 | Item | Status | Next step |
 |---|---|---|
-| Changing a habit's schedule changes its historical view | Not started. Past days should render against the schedule in effect at the time. | Fix with a regression test |
+| Changing a habit's schedule changes its historical view ([plan](../../stories/habit-schedule-change-historical-view/plan.md)) | planned, 0/3 slices | Slice 1: history grid uses the schedule in effect each day |
 | Mobile keyboard hides the set-reminder option | Not started. When adding an entry on mobile, the virtual keyboard covers the reminder option. | Fix with a regression test |
 | Stale state on reload of an existing device | Not started. An existing device doesn't reflect current state on reload, even after clearing site data. Original ask: a settings option to redownload from server. | Check whether Force full sync (v1.21.x) already covers this, alongside the snapshot-fallback brainstorm |
 | Inconsistent notifications | Not started. No repro yet. | Reproduce |

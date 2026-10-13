@@ -9,20 +9,25 @@ import type {
 import { getLocalDateKey, isoToLocalDateKey } from './date-utils';
 
 // ============================================================================
-// Internal aggregate state (not exported — used only within this file)
+// Internal aggregate state
 // ============================================================================
+
+interface ScheduleEntry {
+  changedAt: string;
+  frequency: HabitFrequency;
+}
 
 interface HabitState {
   id: string;
   title: string;
-  frequency: HabitFrequency;
+  /** Ascending by changedAt */
+  schedule: [ScheduleEntry, ...ScheduleEntry[]];
   createdAt: string;
   order: string;
   archivedAt?: string;
   notificationTime?: string;
   /** date → completedAt ISO (last completion wins) */
   completions: Map<string, string>;
-  /** dates that have been reverted */
   reverted: Set<string>;
 }
 
@@ -70,7 +75,7 @@ function computeNextDueDateRelative(state: HabitState, completedDates: string[])
   }
 
   const lastCompletion = [...completedDates].sort().at(-1)!;
-  const freq = state.frequency;
+  const freq = currentFrequency(state);
 
   let intervalDays: number;
   switch (freq.type) {
@@ -130,6 +135,18 @@ function isScheduledOn(freq: HabitFrequency, dateKey: string, createdAt: string)
   }
 }
 
+function currentFrequency(state: HabitState): HabitFrequency {
+  return (state.schedule.at(-1) ?? state.schedule[0]).frequency;
+}
+
+function frequencyOn(state: HabitState, dateKey: string): HabitFrequency {
+  let frequency = state.schedule[0].frequency;
+  for (const entry of state.schedule) {
+    if (isoToLocalDateKey(entry.changedAt) <= dateKey) frequency = entry.frequency;
+  }
+  return frequency;
+}
+
 // ============================================================================
 // Build a 30-day history for a habit
 // ============================================================================
@@ -140,7 +157,6 @@ function buildHistory(
 ): HabitDayStatus[] {
   const todayMs = dateKeyToMs(today);
   const history: HabitDayStatus[] = [];
-  const isRelative = state.frequency.mode === 'relative';
   const createdKey = isoToLocalDateKey(state.createdAt);
 
   for (let i = 29; i >= 0; i--) {
@@ -157,7 +173,9 @@ function buildHistory(
       continue;
     }
 
-    if (isRelative) {
+    const frequency = frequencyOn(state, dateKey);
+
+    if (frequency.mode === 'relative') {
       const isPastDay = i > 0;
       if (isPastDay) {
         history.push({ date: dateKey, status: 'not-scheduled' });
@@ -167,7 +185,7 @@ function buildHistory(
       continue;
     }
 
-    if (!isScheduledOn(state.frequency, dateKey, state.createdAt)) {
+    if (!isScheduledOn(frequency, dateKey, state.createdAt)) {
       history.push({ date: dateKey, status: 'not-scheduled' });
     } else {
       history.push({ date: dateKey, status: 'missed' });
@@ -238,7 +256,7 @@ function computeWeeklyStreak(
   today: string,
   mode: 'current' | 'full',
 ): number {
-  const freq = state.frequency;
+  const freq = currentFrequency(state);
   if (freq.type !== 'weekly') return 0;
 
   const completedDates = new Set(activeCompletionDates(state));
@@ -315,7 +333,7 @@ function computeEveryNDaysStreak(
   today: string,
   mode: 'current' | 'full',
 ): number {
-  const freq = state.frequency;
+  const freq = currentFrequency(state);
   if (freq.type !== 'every-n-days') return 0;
 
   const completedDates = new Set(activeCompletionDates(state));
@@ -375,7 +393,7 @@ function computeEveryNDaysStreak(
 }
 
 function computeCurrentStreak(state: HabitState, today: string): number {
-  switch (state.frequency.type) {
+  switch (currentFrequency(state).type) {
     case 'daily':
       return computeDailyStreak(state, today, 'current');
     case 'weekly':
@@ -386,7 +404,7 @@ function computeCurrentStreak(state: HabitState, today: string): number {
 }
 
 function computeLongestStreak(state: HabitState, today: string): number {
-  switch (state.frequency.type) {
+  switch (currentFrequency(state).type) {
     case 'daily':
       return computeDailyStreak(state, today, 'full');
     case 'weekly':
@@ -416,11 +434,11 @@ function isHabitEvent(event: DomainEvent): boolean {
   );
 }
 
-/**
- * Apply a single habit event to an existing state map in-place.
- * Used for incremental cache updates so snapshot-seeded state is preserved
- * across delta-only syncs (ADR-025/026).
- */
+function insertScheduleEntry(state: HabitState, entry: ScheduleEntry): void {
+  const index = state.schedule.findIndex((e, i) => i > 0 && e.changedAt > entry.changedAt);
+  state.schedule.splice(index === -1 ? state.schedule.length : index, 0, entry);
+}
+
 function applyHabitEvent(states: Map<string, HabitState>, event: DomainEvent): void {
   switch (event.type) {
     case 'HabitCreated': {
@@ -428,7 +446,7 @@ function applyHabitEvent(states: Map<string, HabitState>, event: DomainEvent): v
       states.set(p.habitId, {
         id: p.habitId,
         title: p.title,
-        frequency: p.frequency,
+        schedule: [{ changedAt: p.createdAt, frequency: p.frequency }],
         createdAt: p.createdAt,
         order: p.order,
         notificationTime: p.notificationTime,
@@ -446,7 +464,7 @@ function applyHabitEvent(states: Map<string, HabitState>, event: DomainEvent): v
     case 'HabitFrequencyChanged': {
       const p = (event as import('./habit.types').HabitFrequencyChanged).payload;
       const s = states.get(p.habitId);
-      if (s) s.frequency = p.frequency;
+      if (s) insertScheduleEntry(s, { changedAt: p.updatedAt, frequency: p.frequency });
       break;
     }
     case 'HabitCompleted': {
@@ -518,15 +536,16 @@ function buildReadModel(state: HabitState, today: string): HabitReadModel {
   const currentStreak = computeCurrentStreak(state, today);
   const longestStreak = Math.max(computeLongestStreak(state, today), currentStreak);
 
-  const isScheduledToday = state.frequency.mode === 'relative'
+  const frequency = currentFrequency(state);
+  const isScheduledToday = frequency.mode === 'relative'
     ? isRelativeDueCountingAllCompletions(state, today)
-    : isScheduledOn(state.frequency, today, state.createdAt);
+    : isScheduledOn(frequency, today, state.createdAt);
   const isCompletedToday = isCompletedOn(state, today);
 
   return {
     id: state.id,
     title: state.title,
-    frequency: state.frequency,
+    frequency,
     currentStreak,
     longestStreak,
     history,
@@ -582,23 +601,13 @@ export class HabitProjection {
 
   // ── Snapshot support (ADR-026) ─────────────────────────────────────────────
 
-  /**
-   * Seed the projection cache from a previously serialised snapshot.
-   *
-   * Deserialises:
-   * - `completions`: `Record<string, string>` → `Map<string, string>`
-   * - `reverted`:    `string[]`               → `Set<string>`
-   *
-   * Notifies all subscribers so that any React state depending on habit data
-   * is refreshed immediately.
-   */
   hydrateFromSnapshot(states: SerializableHabitState[]): void {
     const map = new Map<string, HabitState>();
     for (const s of states) {
       map.set(s.id, {
         id: s.id,
         title: s.title,
-        frequency: s.frequency,
+        schedule: [{ changedAt: s.createdAt, frequency: s.frequency }],
         createdAt: s.createdAt,
         order: s.order,
         archivedAt: s.archivedAt,
@@ -611,23 +620,12 @@ export class HabitProjection {
     this.notifySubscribers();
   }
 
-  /**
-   * Serialise the current habit state cache into a format suitable for
-   * inclusion in a {@link ProjectionSnapshot}.
-   *
-   * If the cache is cold (no recent query or hydration), this method triggers
-   * a full event-log replay first.
-   *
-   * Serialises:
-   * - `completions`: `Map<string, string>` → `Record<string, string>`
-   * - `reverted`:    `Set<string>`         → `string[]`
-   */
   async getStatesForSnapshot(): Promise<SerializableHabitState[]> {
     const states = await this.loadStates();
     return [...states.values()].map(s => ({
       id: s.id,
       title: s.title,
-      frequency: s.frequency,
+      frequency: currentFrequency(s),
       createdAt: s.createdAt,
       order: s.order,
       archivedAt: s.archivedAt,
@@ -680,10 +678,11 @@ export class HabitProjection {
     return [...states.values()]
       .filter(s => !s.archivedAt)
       .filter(s => {
-        if (s.frequency.mode === 'relative') {
+        const frequency = currentFrequency(s);
+        if (frequency.mode === 'relative') {
           return isCompletedOn(s, date) || isRelativeDueOn(s, date);
         }
-        return isScheduledOn(s.frequency, date, s.createdAt);
+        return isScheduledOn(frequency, date, s.createdAt);
       })
       .sort((a, b) => a.order.localeCompare(b.order))
       .map(s => buildReadModel(s, today));
