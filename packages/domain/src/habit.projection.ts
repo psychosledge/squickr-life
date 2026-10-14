@@ -69,31 +69,30 @@ function daysDiff(a: string, b: string): number {
   return (dateKeyToMs(b) - dateKeyToMs(a)) / 86_400_000;
 }
 
-function computeNextDueDateRelative(state: HabitState, completedDates: string[]): string {
+function computeNextDueDateRelative(state: HabitState, frequency: HabitFrequency, completedDates: string[]): string {
   if (completedDates.length === 0) {
     return isoToLocalDateKey(state.createdAt);
   }
 
   const lastCompletion = [...completedDates].sort().at(-1)!;
-  const freq = currentFrequency(state);
 
   let intervalDays: number;
-  switch (freq.type) {
+  switch (frequency.type) {
     case 'daily': intervalDays = 1; break;
     case 'weekly': intervalDays = 7; break;
-    case 'every-n-days': intervalDays = freq.n; break;
+    case 'every-n-days': intervalDays = frequency.n; break;
   }
 
   return msToDateKey(dateKeyToMs(lastCompletion) + intervalDays * 86_400_000);
 }
 
-function isRelativeDueCountingAllCompletions(state: HabitState, dateKey: string): boolean {
-  return computeNextDueDateRelative(state, activeCompletionDates(state)) <= dateKey;
+function isRelativeDueCountingAllCompletions(state: HabitState, frequency: HabitFrequency, dateKey: string): boolean {
+  return computeNextDueDateRelative(state, frequency, activeCompletionDates(state)) <= dateKey;
 }
 
-function isRelativeDueOn(state: HabitState, dateKey: string): boolean {
+function isRelativeDueOn(state: HabitState, frequency: HabitFrequency, dateKey: string): boolean {
   const completionsBefore = activeCompletionDates(state).filter(d => d < dateKey);
-  return computeNextDueDateRelative(state, completionsBefore) <= dateKey;
+  return computeNextDueDateRelative(state, frequency, completionsBefore) <= dateKey;
 }
 
 function isCompletedOn(state: HabitState, dateKey: string): boolean {
@@ -180,7 +179,7 @@ function buildHistory(
       if (isPastDay) {
         history.push({ date: dateKey, status: 'not-scheduled' });
       } else {
-        history.push({ date: dateKey, status: isRelativeDueCountingAllCompletions(state, today) ? 'missed' : 'not-scheduled' });
+        history.push({ date: dateKey, status: isRelativeDueCountingAllCompletions(state, frequency, today) ? 'missed' : 'not-scheduled' });
       }
       continue;
     }
@@ -538,7 +537,7 @@ function buildReadModel(state: HabitState, today: string): HabitReadModel {
 
   const frequency = currentFrequency(state);
   const isScheduledToday = frequency.mode === 'relative'
-    ? isRelativeDueCountingAllCompletions(state, today)
+    ? isRelativeDueCountingAllCompletions(state, frequency, today)
     : isScheduledOn(frequency, today, state.createdAt);
   const isCompletedToday = isCompletedOn(state, today);
 
@@ -678,11 +677,11 @@ export class HabitProjection {
     return [...states.values()]
       .filter(s => !s.archivedAt)
       .filter(s => {
-        const frequency = currentFrequency(s);
-        if (frequency.mode === 'relative') {
-          return isCompletedOn(s, date) || isRelativeDueOn(s, date);
-        }
-        return isScheduledOn(frequency, date, s.createdAt);
+        if (isCompletedOn(s, date)) return true;
+        const frequency = frequencyOn(s, date);
+        return frequency.mode === 'relative'
+          ? isRelativeDueOn(s, frequency, date)
+          : isScheduledOn(frequency, date, s.createdAt);
       })
       .sort((a, b) => a.order.localeCompare(b.order))
       .map(s => buildReadModel(s, today));

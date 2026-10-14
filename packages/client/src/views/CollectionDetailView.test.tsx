@@ -9,7 +9,7 @@ import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-rou
 import { CollectionDetailView } from './CollectionDetailView';
 import { AppProvider } from '../context/AppContext';
 import { UNCATEGORIZED_COLLECTION_ID } from '../routes';
-import type { Collection, Entry } from '@squickr/domain';
+import type { Collection, Entry, HabitCreated, HabitFrequencyChanged } from '@squickr/domain';
 import {
   CompleteHabitHandler,
   CreateHabitHandler,
@@ -2573,6 +2573,60 @@ describe('CollectionDetailView - Habits section for daily collections', () => {
 
     expect(await within(habits).findByRole('button', { name: 'Revert completed habit' })).toBeInTheDocument();
     expect(within(habits).getByText('Stretch')).toBeInTheDocument();
+  });
+
+  it('lists a habit on a past daily log by the schedule in effect that day', async () => {
+    const habitId = 'habit-read';
+    const createdAt = new Date('2026-01-05T12:00:00').toISOString();
+    const changedAt = new Date('2026-01-16T12:00:00').toISOString();
+    const pastDate = '2026-01-15';
+    const eventStore = new InMemoryEventStore();
+    const created: HabitCreated = {
+      id: 'evt-created',
+      type: 'HabitCreated',
+      aggregateId: habitId,
+      timestamp: createdAt,
+      version: 1,
+      payload: { habitId, title: 'Read', frequency: { type: 'daily' }, order: 'a0', createdAt },
+    };
+    const changed: HabitFrequencyChanged = {
+      id: 'evt-changed',
+      type: 'HabitFrequencyChanged',
+      aggregateId: habitId,
+      timestamp: changedAt,
+      version: 1,
+      payload: { habitId, frequency: { type: 'weekly', targetDays: [1] }, updatedAt: changedAt },
+    };
+    await eventStore.append(created);
+    await eventStore.append(changed);
+    const pastCollection: Collection = {
+      id: 'col-past',
+      name: 'Past day',
+      type: 'daily',
+      date: pastDate,
+      order: 'a0',
+      createdAt: `${pastDate}T00:00:00Z`,
+    };
+    const appContext = buildMockAppContext({
+      collectionProjection: {
+        getCollections: vi.fn().mockResolvedValue([pastCollection]),
+        subscribe: vi.fn().mockReturnValue(() => {}),
+      },
+      habitProjection: new HabitProjection(eventStore),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/collection/col-past']}>
+        <AppProvider value={appContext}>
+          <Routes>
+            <Route path="/collection/:id" element={<CollectionDetailView />} />
+          </Routes>
+        </AppProvider>
+      </MemoryRouter>
+    );
+
+    const habits = await screen.findByRole('region', { name: /habits/i });
+    expect(await within(habits).findByText('Read')).toBeInTheDocument();
   });
 });
 

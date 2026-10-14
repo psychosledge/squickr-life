@@ -24,35 +24,39 @@ The projection snapshot (`SerializableHabitState` in `habit.types.ts`, `SNAPSHOT
 ## Deferred tech debt
 
 - "Habit history grid never marks relative habits as missed" (current week's tracker). Days in a relative period keep their current behavior here. That story evaluates relative days per period using this story's schedule timeline.
-- `habit.projection.ts` is over 700 lines and `applyHabitEvent` about 75. Split tracked in `docs/backlog.md` #5. Surfaced in Slice 1.
+- `habit.projection.ts` is over 700 lines and `applyHabitEvent` over 70. Split tracked in `docs/backlog.md` #5. Surfaced in Slice 1.
+- `isScheduledToday` reads the current schedule and has no production consumer. Tracked in `docs/backlog.md` #7. Surfaced in Slice 2.
+- Fixed daily and weekly habits are listed on daily logs from before their creation. Tracked in `docs/backlog.md` #8. Surfaced in Slice 2.
+- The relative today-cell on a past `asOf` counts completions after that date. Folded into "Habit history grid never marks relative habits as missed" (current week's tracker). Surfaced in Slice 2.
+- `CollectionDetailView.test.tsx` is over 3,000 lines. Split tracked in `docs/backlog.md` #19. Surfaced in Slice 2.
 
 ## Slice Plan
 
 ### Slice 1: History grid evaluates each past day against the schedule in effect that day
 **Scope:** The 30-day history (habit detail grid, daily-log row dots, review completion rate) marks each past day scheduled, missed, or not scheduled by the schedule in effect on that local day. Covers fixed-to-fixed changes and changes into or out of relative mode. Days that fall in a relative period keep today's relative behavior (past days not scheduled), since that is the separate "relative habits never marked missed" item. Today's status, `isScheduledToday`, streaks, the daily-log habit list, and snapshots are unchanged. A habit hydrated from an existing snapshot behaves as it does today (one schedule for all days). Starts with a failing regression test.
-**Status:** not started
-**Commit:** —
+**Status:** ✅ done
+**Commit:** a8934cb
 **Acceptance Criteria:**
-- [ ] Regression test written first and fails on current code: a daily habit created 20 days ago, changed to weekly (Mondays only) 5 days ago, has every uncompleted day before the change marked `missed`, not `not-scheduled`
-- [ ] Same habit: days on or after the change are marked by the weekly schedule (non-Mondays `not-scheduled`, uncompleted Mondays `missed`)
-- [ ] Weekly (Mon/Wed/Fri) changed to weekly (Tue/Thu): past Mon/Wed/Fri before the change stay `missed` when uncompleted, past Tue/Thu before the change stay `not-scheduled`
-- [ ] Fixed every-n-days changed to daily: days before the change follow the every-n-days pattern
-- [ ] Two changes in the history window produce three periods, each evaluated by its own schedule
-- [ ] Two changes on the same local day: the later one applies to that day
-- [ ] Relative changed to fixed: days before the change are `not-scheduled` (current relative behavior); days from the change on follow the fixed schedule
-- [ ] Fixed changed to relative: days before the change follow the old fixed schedule
-- [ ] Completed days stay `completed` and days before creation stay `not-scheduled` regardless of schedule
-- [ ] A habit with no schedule changes produces the same history as before (existing tests pass)
-- [ ] The change day counts toward the new schedule (local day of the change, inclusive)
-- [ ] After an older `HabitFrequencyChanged` is applied after a newer one, the habit's current frequency is the newer one
-- [ ] All existing habit projection, HabitDetailView, HabitRow, HabitHistoryGrid, and ReviewHabitSection tests pass
+- [x] Regression test written first and fails on current code: a daily habit created 20 days ago, changed to weekly (Mondays only) 5 days ago, has every uncompleted day before the change marked `missed`, not `not-scheduled`
+- [x] Same habit: days on or after the change are marked by the weekly schedule (non-Mondays `not-scheduled`, uncompleted Mondays `missed`)
+- [x] Weekly (Mon/Wed/Fri) changed to weekly (Tue/Thu): past Mon/Wed/Fri before the change stay `missed` when uncompleted, past Tue/Thu before the change stay `not-scheduled`
+- [x] Fixed every-n-days changed to daily: days before the change follow the every-n-days pattern
+- [x] Two changes in the history window produce three periods, each evaluated by its own schedule
+- [x] Two changes on the same local day: the later one applies to that day
+- [x] Relative changed to fixed: days before the change are `not-scheduled` (current relative behavior); days from the change on follow the fixed schedule
+- [x] Fixed changed to relative: days before the change follow the old fixed schedule
+- [x] Completed days stay `completed` and days before creation stay `not-scheduled` regardless of schedule
+- [x] A habit with no schedule changes produces the same history as before (existing tests pass)
+- [x] The change day counts toward the new schedule (local day of the change, inclusive)
+- [x] After an older `HabitFrequencyChanged` is applied after a newer one, the habit's current frequency is the newer one
+- [x] All existing habit projection, HabitDetailView, HabitRow, HabitHistoryGrid, and ReviewHabitSection tests pass
 **Files:** packages/domain/src/habit.projection.ts, packages/domain/src/habit.projection.test.ts
 **Needs Architect:** yes. Introduces time-varying projected state (a schedule timeline) where the projection held a single current value, and decides where schedule history lives (Design Question 1) and how the every-n-days anchor behaves (Design Question 3).
 **Scaffolding for:** Slice 2: Past daily log lists habits by the schedule in effect that day, Slice 3: Schedule history survives snapshot restore. Slice 1 establishes the projection's answer to "which schedule was in effect on local date D".
 **Interface contract:** The projection can answer, for any habit and local date on or after creation, which frequency (type, target days, n, mode) was in effect on that date. Slice 2 reuses that answer for list filtering, and Slice 3 must round-trip the underlying history through the snapshot without changing that answer.
 
 ### Slice 2: Past daily log lists habits by the schedule in effect that day
-**Scope:** Opening a past daily log lists the habits that were scheduled (fixed) or due (relative) on that date under the schedule in effect then. A habit completed on that date is still listed regardless of schedule. Today's and future logs are unchanged. Starts with a failing regression test.
+**Scope:** Opening a past daily log lists the habits that were scheduled (fixed) or due (relative) on that date under the schedule in effect then. A habit completed on that date is listed regardless of schedule. Today's log is unchanged except that a habit completed today is listed even when today's schedule excludes it. Future logs are unchanged. Starts with a failing regression test.
 **Status:** not started
 **Commit:** —
 **Acceptance Criteria:**
