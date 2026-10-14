@@ -39,5 +39,8 @@
       "Bash(firebase projects:list)",
       "Bash(npx firebase-tools *)"
     ]
+  },
+  "worktree": {
+    "bgIsolation": "none"
   }
 }
