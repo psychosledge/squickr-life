@@ -17,7 +17,7 @@
 
 | Item | Status | Next step |
 |---|---|---|
-| Changing a habit's schedule changes its historical view ([plan](../../stories/habit-schedule-change-historical-view/plan.md)) | 1/3 slices done | Slice 2: past daily log lists habits by the schedule in effect that day |
+| Changing a habit's schedule changes its historical view ([plan](../../stories/habit-schedule-change-historical-view/plan.md)) | 2/3 slices done | Slice 3: schedule history survives snapshot restore |
 | Mobile keyboard hides the set-reminder option | Not started. When adding an entry on mobile, the virtual keyboard covers the reminder option. | Fix with a regression test |
 | Stale state on reload of an existing device | Not started. An existing device doesn't reflect current state on reload, even after clearing site data. Original ask: a settings option to redownload from server. | Check whether Force full sync (v1.21.x) already covers this, alongside the snapshot-fallback brainstorm |
 | Inconsistent notifications | Not started. No repro yet. | Reproduce |

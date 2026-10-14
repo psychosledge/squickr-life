@@ -57,18 +57,18 @@ The projection snapshot (`SerializableHabitState` in `habit.types.ts`, `SNAPSHOT
 
 ### Slice 2: Past daily log lists habits by the schedule in effect that day
 **Scope:** Opening a past daily log lists the habits that were scheduled (fixed) or due (relative) on that date under the schedule in effect then. A habit completed on that date is listed regardless of schedule. Today's log is unchanged except that a habit completed today is listed even when today's schedule excludes it. Future logs are unchanged. Starts with a failing regression test.
-**Status:** not started
-**Commit:** —
+**Status:** ✅ done
+**Commit:** a45b687
 **Acceptance Criteria:**
-- [ ] Regression test written first and fails on current code: a daily habit changed to weekly (Mondays only) 3 days ago is returned by `getHabitsForDate(D, { asOf: D })` for a non-Monday D before the change
-- [ ] Same habit is not returned for a non-Monday D on or after the change
-- [ ] A weekly (Tue only) habit changed to daily is not returned for a past Wednesday before the change
-- [ ] A habit that was relative before the change is listed on a pre-change date by the relative due rule; a habit that was fixed before the change is listed on a pre-change date by the fixed rule
-- [ ] A habit completed on a past date is listed on that date even when the schedule then did not include it
-- [ ] Today's log reflects the current schedule (existing tests pass)
-- [ ] In `buildHistory`, a relative today-cell on a past `asOf` uses the schedule in effect on that date
-- [ ] Client-level test: in `CollectionDetailView`, a past daily log shows a habit that was scheduled that day under its old schedule
-- [ ] All existing habit projection, HabitsSection, and CollectionDetailView tests pass
+- [x] Regression test written first and fails on current code: a daily habit changed to weekly (Mondays only) 3 days ago is returned by `getHabitsForDate(D, { asOf: D })` for a non-Monday D before the change
+- [x] Same habit is not returned for a non-Monday D on or after the change
+- [x] A weekly (Tue only) habit changed to daily is not returned for a past Wednesday before the change
+- [x] A habit that was relative before the change is listed on a pre-change date by the relative due rule; a habit that was fixed before the change is listed on a pre-change date by the fixed rule
+- [x] A habit completed on a past date is listed on that date even when the schedule then did not include it
+- [x] Today's log reflects the current schedule (existing tests pass)
+- [x] In `buildHistory`, a relative today-cell on a past `asOf` uses the schedule in effect on that date
+- [x] Client-level test: in `CollectionDetailView`, a past daily log shows a habit that was scheduled that day under its old schedule
+- [x] All existing habit projection, HabitsSection, and CollectionDetailView tests pass
 **Files:** packages/domain/src/habit.projection.ts, packages/domain/src/habit.projection.test.ts, packages/client/src/views/CollectionDetailView.test.tsx
 **Needs Architect:** no. Reuses the schedule lookup decided in Slice 1 inside the existing `getHabitsForDate` filter.
 
