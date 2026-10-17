@@ -93,4 +93,4 @@ When designing features or architecture, provide:
 
 - `packages/domain/src/task.types.ts` — all event/command types (source of truth)
 - `docs/adr/` — architecture decision records, one file per ADR
-- `docs/weeks/` — current week's README holds active work and priorities
+- `docs/tracking/` — live release's README holds active work and priorities; `docs/backlog.md` holds unscheduled work

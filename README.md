@@ -51,7 +51,7 @@ pnpm dev             # dev server at http://localhost:3000
 | [Development Guide](docs/development-guide.md) | TDD workflow, testing patterns, common tasks |
 | [Architecture Decisions](docs/adr/) | ADRs: design decisions and rationale |
 | [Deployment Guide](docs/deployment-guide.md) | CI, tag-based release, rollback |
-| [docs/weeks/](docs/weeks/) | Current week's README: active work and priorities |
+| [docs/tracking/](docs/tracking/) | Live release's README: active work and priorities; finished releases in `archive/` |
 | [docs/stories/](docs/stories/) | Per-story `plan.md` files from `/plan` |
 
 ## Learning Goals
