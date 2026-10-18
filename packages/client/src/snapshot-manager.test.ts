@@ -104,11 +104,12 @@ function makeUserPreferencesProjection(prefs: UserPreferences = {
 }
 
 function makeHabitState(id: string): SerializableHabitState {
+  const createdAt = new Date().toISOString();
   return {
     id,
     title: `Habit ${id}`,
-    frequency: { type: 'daily' },
-    createdAt: new Date().toISOString(),
+    schedule: [{ changedAt: createdAt, frequency: { type: 'daily' } }],
+    createdAt,
     order: 'a0',
     completions: {},
     reverted: [],

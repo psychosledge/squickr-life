@@ -37,7 +37,6 @@ class InMemorySnapshotStore implements ISnapshotStore {
 }
 
 // ---------------------------------------------------------------------------
-// ADR-026: Helper to enrich a snapshot with the required v5 fields.
 // Snapshots produced by EntryListProjection.createSnapshot() do not include
 // `habits` or `userPreferences` — those are injected by SnapshotManager.
 // Tests that exercise the hydrate() success path must augment their snapshots
@@ -3154,21 +3153,18 @@ describe('HabitProjection — standalone projection (extracted from EntryListPro
   });
 
   it('hydrateFromSnapshot() seeds the projection without an event log', async () => {
-    // Arrange: no events in store, but we have a serialised snapshot
     const habitState: SerializableHabitState = {
       id: 'habit-snap-direct',
       title: 'Snapshot habit',
-      frequency: { type: 'daily' },
+      schedule: [{ changedAt: '2026-01-01T00:00:00.000Z', frequency: { type: 'daily' } }],
       createdAt: '2026-01-01T00:00:00.000Z',
       order: 'a0',
       completions: {},
       reverted: [],
     };
 
-    // Act: hydrate from snapshot directly
     habitProjection.hydrateFromSnapshot([habitState]);
 
-    // Assert: habit is available without a full replay
     const habits = await habitProjection.getActiveHabits({ asOf: '2026-01-01' });
     expect(habits.find(h => h.id === 'habit-snap-direct')).toBeDefined();
   });
@@ -3324,10 +3320,10 @@ describe('EntryListProjection — ADR-026 snapshot field-presence guard', () => 
   let eventStore: IEventStore;
   let snapshotStore: InMemorySnapshotStore;
 
-  function makeV5Snapshot(overrides: Partial<ProjectionSnapshot> = {}): ProjectionSnapshot {
+  function makeCompleteSnapshot(overrides: Partial<ProjectionSnapshot> = {}): ProjectionSnapshot {
     return {
       version: SNAPSHOT_SCHEMA_VERSION,
-      lastEventId: 'evt-v5',
+      lastEventId: 'evt-snap',
       state: [],
       savedAt: new Date().toISOString(),
       habits: [],
@@ -3341,8 +3337,7 @@ describe('EntryListProjection — ADR-026 snapshot field-presence guard', () => 
     snapshotStore = new InMemorySnapshotStore();
   });
 
-  it('discards a v5 snapshot that is missing the habits field', async () => {
-    // Arrange — save a "v5" snapshot without habits
+  it('discards a snapshot that is missing the habits field', async () => {
     const incompleteSnapshot: ProjectionSnapshot = {
       version: SNAPSHOT_SCHEMA_VERSION,
       lastEventId: 'evt-missing-habits',
@@ -3364,7 +3359,7 @@ describe('EntryListProjection — ADR-026 snapshot field-presence guard', () => 
     expect(proj.isCachePopulated()).toBe(false);
   });
 
-  it('discards a v5 snapshot that is missing the userPreferences field', async () => {
+  it('discards a snapshot that is missing the userPreferences field', async () => {
     // Arrange
     const incompleteSnapshot: ProjectionSnapshot = {
       version: SNAPSHOT_SCHEMA_VERSION,
@@ -3386,23 +3381,22 @@ describe('EntryListProjection — ADR-026 snapshot field-presence guard', () => 
     expect(proj.isCachePopulated()).toBe(false);
   });
 
-  it('accepts a complete v5 snapshot — HabitProjection must be hydrated separately by the caller', async () => {
-    // Arrange — save a valid v5 snapshot
+  it('accepts a complete snapshot; HabitProjection must be hydrated separately by the caller', async () => {
     const habitState: SerializableHabitState = {
       id: 'habit-snap-1',
       title: 'Snapshot habit',
-      frequency: { type: 'daily' },
+      schedule: [{ changedAt: '2026-01-01T00:00:00.000Z', frequency: { type: 'daily' } }],
       createdAt: '2026-01-01T00:00:00.000Z',
       order: 'a0',
       completions: {},
       reverted: [],
     };
-    const validSnapshot = makeV5Snapshot({ habits: [habitState] });
+    const validSnapshot = makeCompleteSnapshot({ habits: [habitState] });
     await snapshotStore.save('entry-list-projection', validSnapshot);
 
     // Add an event that matches the snapshot's lastEventId
     await eventStore.append({
-      id: 'evt-v5',
+      id: 'evt-snap',
       type: 'SomeEvent',
       aggregateId: 'agg',
       timestamp: new Date().toISOString(),

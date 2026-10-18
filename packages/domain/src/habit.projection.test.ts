@@ -1281,25 +1281,6 @@ describe('history: schedule in effect on each day', () => {
     ]);
   });
 
-  it('applies the snapshot frequency before a change appended after hydration', async () => {
-    const states: SerializableHabitState[] = [
-      {
-        id: 'habit-1',
-        title: 'Morning run',
-        frequency: { type: 'daily' },
-        createdAt: localNoon('2026-09-01'),
-        order: 'a0',
-        completions: {},
-        reverted: [],
-      },
-    ];
-    projection.hydrateFromSnapshot(states);
-    await appendHabitFrequencyChanged(eventStore, 'habit-1', { type: 'weekly', targetDays: [1] }, localTime('2026-09-20T12:00:00'));
-
-    expect(await daysWithStatus('habit-1', 'not-scheduled', '2026-09-01', '2026-09-19')).toEqual([]);
-    expect(await daysWithStatus('habit-1', 'missed', '2026-09-20', asOfMonday)).toEqual(['2026-09-21', '2026-09-28']);
-  });
-
   it('treats the later-appended of two changes with identical timestamps as current', async () => {
     const habitId = await appendHabitCreated(eventStore, {
       frequency: { type: 'daily' },
@@ -1431,12 +1412,11 @@ describe('HabitProjection — snapshot support (ADR-026)', () => {
 
   describe('hydrateFromSnapshot()', () => {
     it('deserialises completions from Record to Map and populates cache', async () => {
-      // Arrange
       const states: SerializableHabitState[] = [
         {
           id: 'habit-1',
           title: 'Morning run',
-          frequency: { type: 'daily' },
+          schedule: [{ changedAt: localNoon('2026-01-01'), frequency: { type: 'daily' } }],
           createdAt: localNoon('2026-01-01'),
           order: 'a0',
           completions: { '2026-01-01': '2026-01-01T08:00:00.000Z' },
@@ -1460,7 +1440,7 @@ describe('HabitProjection — snapshot support (ADR-026)', () => {
         {
           id: 'habit-2',
           title: 'Evening yoga',
-          frequency: { type: 'daily' },
+          schedule: [{ changedAt: localNoon('2026-01-01'), frequency: { type: 'daily' } }],
           createdAt: localNoon('2026-01-01'),
           order: 'a0',
           completions: { '2026-01-01': '2026-01-01T20:00:00.000Z' },
@@ -1482,7 +1462,7 @@ describe('HabitProjection — snapshot support (ADR-026)', () => {
         {
           id: 'habit-3',
           title: 'Archived habit',
-          frequency: { type: 'daily' },
+          schedule: [{ changedAt: localNoon('2026-01-01'), frequency: { type: 'daily' } }],
           createdAt: localNoon('2026-01-01'),
           order: 'a0',
           archivedAt: '2026-01-15T00:00:00.000Z',
@@ -1619,6 +1599,63 @@ describe('HabitProjection — snapshot support (ADR-026)', () => {
       expect(habits).toHaveLength(1);
       expect(habits[0]!.id).toBe(habitId);
       expect(habits[0]!.isCompletedToday).toBe(true);
+    });
+  });
+
+  describe('schedule history round-trip', () => {
+    const asOf = '2026-09-28';
+    let restoredStore: IEventStore;
+    let restored: HabitProjection;
+
+    beforeEach(() => {
+      restoredStore = new InMemoryEventStore();
+      restored = new HabitProjection(restoredStore);
+    });
+
+    async function createDailyHabitChangedToMondays(): Promise<string> {
+      const habitId = await appendHabitCreated(eventStore, {
+        frequency: { type: 'daily' },
+        createdAt: localNoon('2026-09-01'),
+      });
+      await appendHabitFrequencyChanged(eventStore, habitId, { type: 'weekly', targetDays: [1] }, localNoon('2026-09-20'));
+      return habitId;
+    }
+
+    async function historyOf(source: HabitProjection, habitId: string): Promise<HabitDayStatus[]> {
+      return (await source.getHabitById(habitId, { asOf }))!.history;
+    }
+
+    async function listedOn(source: HabitProjection, date: string): Promise<string[]> {
+      return (await source.getHabitsForDate(date, { asOf: date })).map(h => h.id);
+    }
+
+    async function appendToBoth(append: (store: IEventStore) => Promise<void>): Promise<void> {
+      await append(eventStore);
+      await append(restoredStore);
+    }
+
+    it('restores the same history and daily-log listing as the original projection', async () => {
+      const habitId = await createDailyHabitChangedToMondays();
+
+      restored.hydrateFromSnapshot(await projection.getStatesForSnapshot());
+
+      expect(await historyOf(restored, habitId)).toEqual(await historyOf(projection, habitId));
+      for (const date of ['2026-09-15', '2026-09-21', '2026-09-22']) {
+        expect(await listedOn(restored, date)).toEqual(await listedOn(projection, date));
+      }
+    });
+
+    it('extends the restored history with a schedule change and a completion applied after hydration', async () => {
+      const habitId = await createDailyHabitChangedToMondays();
+      restored.hydrateFromSnapshot(await projection.getStatesForSnapshot());
+
+      await appendToBoth(store => appendHabitFrequencyChanged(store, habitId, { type: 'daily' }, localNoon('2026-09-24')));
+      await appendToBoth(store => appendHabitCompleted(store, habitId, '2026-09-22'));
+
+      expect(await historyOf(restored, habitId)).toEqual(await historyOf(projection, habitId));
+      for (const date of ['2026-09-15', '2026-09-22', '2026-09-23', '2026-09-25']) {
+        expect(await listedOn(restored, date)).toEqual(await listedOn(projection, date));
+      }
     });
   });
 });

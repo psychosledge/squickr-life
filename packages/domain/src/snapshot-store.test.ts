@@ -11,8 +11,8 @@ describe('SNAPSHOT_SCHEMA_VERSION', () => {
     expect(typeof SNAPSHOT_SCHEMA_VERSION).toBe('number');
   });
 
-  it('equals 10', () => {
-    expect(SNAPSHOT_SCHEMA_VERSION).toBe(10);
+  it('equals 11', () => {
+    expect(SNAPSHOT_SCHEMA_VERSION).toBe(11);
   });
 });
 
@@ -34,8 +34,7 @@ describe('ProjectionSnapshot interface', () => {
       savedAt: new Date().toISOString(),
     };
 
-    // Assert — structural checks (guards against accidental field renames)
-    expect(snapshot.version).toBe(10);
+    expect(snapshot.version).toBe(SNAPSHOT_SCHEMA_VERSION);
     expect(snapshot.lastEventId).toBe('evt-001');
     expect(Array.isArray(snapshot.state)).toBe(true);
     expect(typeof snapshot.savedAt).toBe('string');

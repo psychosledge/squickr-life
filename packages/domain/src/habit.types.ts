@@ -11,6 +11,11 @@ export type HabitFrequency =
   | { type: 'weekly'; targetDays: Array<0 | 1 | 2 | 3 | 4 | 5 | 6>; mode?: 'fixed' | 'relative' }
   | { type: 'every-n-days'; n: number; mode?: 'fixed' | 'relative' }; // n ∈ [2..30]
 
+export interface HabitScheduleEntry {
+  readonly changedAt: string;
+  readonly frequency: HabitFrequency;
+}
+
 // ============================================================================
 // Habit Read Models
 // ============================================================================
@@ -155,24 +160,18 @@ export interface HabitNotificationTimeCleared extends DomainEvent {
 // ============================================================================
 
 /**
- * Plain-object representation of a habit's state suitable for JSON
- * serialisation inside a {@link ProjectionSnapshot}.
- *
- * `completions` is stored as a `Record<date, completedAt>` (plain object)
- * because `Map` is not JSON-serialisable.
- * `reverted` is stored as `string[]` because `Set` is not JSON-serialisable.
+ * `completions` is a Record and `reverted` an array because Map and Set are
+ * not JSON-serialisable.
  */
 export interface SerializableHabitState {
   readonly id: string;
   readonly title: string;
-  readonly frequency: HabitFrequency;
+  readonly schedule: readonly [HabitScheduleEntry, ...HabitScheduleEntry[]];
   readonly createdAt: string;
   readonly order: string;
   readonly archivedAt?: string;
   readonly notificationTime?: string;
-  /** Map<date, completedAt> serialised as a plain object */
   readonly completions: Record<string, string>;
-  /** Set<string> serialised as an array */
   readonly reverted: string[];
 }
 

@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import { IndexedDBSnapshotStore } from '../indexeddb-snapshot-store';
 import { SNAPSHOT_SCHEMA_VERSION } from '@squickr/domain';
-import type { ISnapshotStore, ProjectionSnapshot } from '@squickr/domain';
+import type { ISnapshotStore, ProjectionSnapshot, SerializableHabitState } from '@squickr/domain';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -186,6 +186,28 @@ describe('IndexedDBSnapshotStore', () => {
         };
         req.onerror = () => reject(req.error);
       });
+    });
+  });
+
+  describe('habit schedule history', () => {
+    it('round-trips each habit schedule entry', async () => {
+      const habit: SerializableHabitState = {
+        id: 'habit-1',
+        title: 'Morning run',
+        schedule: [
+          { changedAt: '2026-09-01T12:00:00.000Z', frequency: { type: 'daily' } },
+          { changedAt: '2026-09-20T12:00:00.000Z', frequency: { type: 'weekly', targetDays: [1, 3], mode: 'fixed' } },
+        ],
+        createdAt: '2026-09-01T12:00:00.000Z',
+        order: 'a0',
+        completions: { '2026-09-21': '2026-09-21T08:00:00.000Z' },
+        reverted: [],
+      };
+
+      await store.save('entry-list', makeSnapshot({ habits: [habit] }));
+      const loaded = await store.load('entry-list');
+
+      expect(loaded!.habits).toEqual([habit]);
     });
   });
 

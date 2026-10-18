@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FirestoreSnapshotStore } from '../firestore-snapshot-store';
 import { SNAPSHOT_SCHEMA_VERSION } from '@squickr/domain';
-import type { ProjectionSnapshot } from '@squickr/domain';
+import type { ProjectionSnapshot, SerializableHabitState } from '@squickr/domain';
 
 // ---------------------------------------------------------------------------
 // Mock Firestore SDK
@@ -43,6 +43,19 @@ function makeSnapshot(overrides: Partial<ProjectionSnapshot> = {}): ProjectionSn
     ...overrides,
   };
 }
+
+const habitWithScheduleChange: SerializableHabitState = {
+  id: 'habit-1',
+  title: 'Morning run',
+  schedule: [
+    { changedAt: '2026-09-01T12:00:00.000Z', frequency: { type: 'daily' } },
+    { changedAt: '2026-09-20T12:00:00.000Z', frequency: { type: 'weekly', targetDays: [1, 3], mode: 'fixed' } },
+  ],
+  createdAt: '2026-09-01T12:00:00.000Z',
+  order: 'a0',
+  completions: { '2026-09-21': '2026-09-21T08:00:00.000Z' },
+  reverted: [],
+};
 
 function makeDocSnap(data: unknown, exists = true) {
   return { exists: () => exists, data: () => data };
@@ -103,7 +116,7 @@ describe('FirestoreSnapshotStore', () => {
     });
 
     it('returns null when stored snapshot version does not match SNAPSHOT_SCHEMA_VERSION', async () => {
-      const staleSnapshot = makeSnapshot({ version: SNAPSHOT_SCHEMA_VERSION + 999 });
+      const staleSnapshot = makeSnapshot({ version: SNAPSHOT_SCHEMA_VERSION - 1 });
       mockGetDoc.mockResolvedValue(makeDocSnap(staleSnapshot, true));
 
       const result = await store.load('entry-list-projection');
@@ -159,6 +172,17 @@ describe('FirestoreSnapshotStore', () => {
 
       const loaded = await store.load('entry-list-projection');
       expect(loaded).toEqual(snapshot);
+    });
+
+    it('round-trips habit schedule history through the data written to Firestore', async () => {
+      const snapshot = makeSnapshot({ habits: [habitWithScheduleChange] });
+
+      await store.save('entry-list-projection', snapshot);
+      const [, written] = mockSetDoc.mock.calls[0]!;
+      mockGetDoc.mockResolvedValue(makeDocSnap(written, true));
+
+      const loaded = await store.load('entry-list-projection');
+      expect(loaded!.habits).toEqual([habitWithScheduleChange]);
     });
 
     it('second save() overwrites the first (no append semantics)', async () => {

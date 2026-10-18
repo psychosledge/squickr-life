@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 import type { IndexedDBEventStore } from '@squickr/infrastructure';
 import { onAuthStateChanged } from 'firebase/auth';
-import { CollectionListProjection } from '@squickr/domain';
+import { CollectionListProjection, SNAPSHOT_SCHEMA_VERSION } from '@squickr/domain';
 import { TUTORIAL_SEEN_KEY } from './context/TutorialContext';
 
 // Mock IndexedDBEventStore since we're in jsdom environment
@@ -240,6 +240,48 @@ describe('App', () => {
           : []
       );
       expect(postInitCalls).toHaveLength(1);
+    });
+  });
+
+  describe('local snapshot habit hydration', () => {
+    const spies: Array<{ mockRestore(): void }> = [];
+
+    afterEach(() => {
+      spies.splice(0).forEach(spy => spy.mockRestore());
+    });
+
+    async function renderWithLocalSnapshotVersion(version: number) {
+      const { IndexedDBSnapshotStore } = await import('@squickr/infrastructure');
+      const { HabitProjection, DEFAULT_USER_PREFERENCES } = await import('@squickr/domain');
+      spies.push(vi.spyOn(IndexedDBSnapshotStore.prototype, 'load').mockResolvedValue({
+        version,
+        lastEventId: 'evt-local-1',
+        state: [],
+        savedAt: new Date().toISOString(),
+        habits: [],
+        userPreferences: DEFAULT_USER_PREFERENCES,
+      }));
+      const hydrateSpy = vi.spyOn(HabitProjection.prototype, 'hydrateFromSnapshot');
+      spies.push(hydrateSpy);
+
+      render(<App />);
+      await waitFor(() => {
+        expect(screen.getByText('Squickr Life')).toBeInTheDocument();
+      });
+
+      return hydrateSpy;
+    }
+
+    it('hydrates the habit projection from a current-version local snapshot', async () => {
+      const hydrateSpy = await renderWithLocalSnapshotVersion(SNAPSHOT_SCHEMA_VERSION);
+
+      expect(hydrateSpy).toHaveBeenCalledWith([]);
+    });
+
+    it('does not hydrate the habit projection from a previous-schema local snapshot', async () => {
+      const hydrateSpy = await renderWithLocalSnapshotVersion(SNAPSHOT_SCHEMA_VERSION - 1);
+
+      expect(hydrateSpy).not.toHaveBeenCalled();
     });
   });
 

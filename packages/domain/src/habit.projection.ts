@@ -4,6 +4,7 @@ import type {
   HabitReadModel,
   HabitDayStatus,
   HabitFrequency,
+  HabitScheduleEntry,
   SerializableHabitState,
 } from './habit.types';
 import { getLocalDateKey, isoToLocalDateKey } from './date-utils';
@@ -12,16 +13,10 @@ import { getLocalDateKey, isoToLocalDateKey } from './date-utils';
 // Internal aggregate state
 // ============================================================================
 
-interface ScheduleEntry {
-  changedAt: string;
-  frequency: HabitFrequency;
-}
-
 interface HabitState {
   id: string;
   title: string;
-  /** Ascending by changedAt */
-  schedule: [ScheduleEntry, ...ScheduleEntry[]];
+  schedule: [HabitScheduleEntry, ...HabitScheduleEntry[]];
   createdAt: string;
   order: string;
   archivedAt?: string;
@@ -433,7 +428,7 @@ function isHabitEvent(event: DomainEvent): boolean {
   );
 }
 
-function insertScheduleEntry(state: HabitState, entry: ScheduleEntry): void {
+function insertScheduleEntry(state: HabitState, entry: HabitScheduleEntry): void {
   const index = state.schedule.findIndex((e, i) => i > 0 && e.changedAt > entry.changedAt);
   state.schedule.splice(index === -1 ? state.schedule.length : index, 0, entry);
 }
@@ -598,15 +593,13 @@ export class HabitProjection {
     return this.stateCache;
   }
 
-  // ── Snapshot support (ADR-026) ─────────────────────────────────────────────
-
   hydrateFromSnapshot(states: SerializableHabitState[]): void {
     const map = new Map<string, HabitState>();
     for (const s of states) {
       map.set(s.id, {
         id: s.id,
         title: s.title,
-        schedule: [{ changedAt: s.createdAt, frequency: s.frequency }],
+        schedule: [...s.schedule],
         createdAt: s.createdAt,
         order: s.order,
         archivedAt: s.archivedAt,
@@ -624,7 +617,7 @@ export class HabitProjection {
     return [...states.values()].map(s => ({
       id: s.id,
       title: s.title,
-      frequency: currentFrequency(s),
+      schedule: [...s.schedule],
       createdAt: s.createdAt,
       order: s.order,
       archivedAt: s.archivedAt,

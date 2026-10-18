@@ -4,20 +4,11 @@ import type { SerializableHabitState } from './habit.types';
 import type { UserPreferences } from './user-preferences.types';
 
 /**
- * Schema version for projection snapshots.
- *
- * Increment this constant whenever the shape of {@link ProjectionSnapshot}
- * changes in a backward-incompatible way (e.g. fields added/removed, the
- * meaning of `state` changes).  Implementations that load a snapshot whose
- * `version` differs from the current `SNAPSHOT_SCHEMA_VERSION` should discard
- * the stale snapshot and rebuild the projection from scratch.
- *
- * Bumped 9 → 10 when the hybrid `serverReceivedAt` cursor was introduced.
- * Discarding existing snapshots forces every device to perform a full `getAll()`
- * on next load, catching any events the old client-timestamp cursor may have
- * missed, and resetting to the server-authoritative cursor going forward.
+ * Increment whenever the shape of {@link ProjectionSnapshot} changes in a
+ * backward-incompatible way (e.g. fields added/removed, the meaning of
+ * `state` changes).
  */
-export const SNAPSHOT_SCHEMA_VERSION = 10;
+export const SNAPSHOT_SCHEMA_VERSION = 11;
 
 /**
  * A point-in-time snapshot of a projection's read-model state.
@@ -73,22 +64,13 @@ export interface ProjectionSnapshot {
   readonly collections?: Collection[];
 
   /**
-   * Optional: serialised habit states at the time the snapshot was taken.
-   * Added in schema version 5 (ADR-026). Allows HabitProjection to be seeded
-   * from a snapshot on cold-start without replaying the full event log.
-   *
    * Both fields (`habits` and `userPreferences`) must be present for the
    * snapshot to be considered complete. A snapshot missing either field is
    * discarded and treated as if no snapshot exists.
    */
   readonly habits?: SerializableHabitState[];
 
-  /**
-   * Optional: user preferences at the time the snapshot was taken.
-   * Added in schema version 5 (ADR-026).
-   *
-   * @see habits for the all-or-nothing completeness constraint.
-   */
+  /** @see habits for the all-or-nothing completeness constraint. */
   readonly userPreferences?: UserPreferences;
 }
 
