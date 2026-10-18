@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { IEventStore } from './event-store';
 import { InMemoryEventStore } from './__tests__/in-memory-event-store';
 import { EntryListProjection } from './entry.projections';
@@ -7,12 +7,11 @@ import { CreateTaskHandler, CompleteTaskHandler, DeleteTaskHandler, MigrateTaskH
 import { CreateNoteHandler, UpdateNoteContentHandler, DeleteNoteHandler } from './note.handlers';
 import { CreateEventHandler, UpdateEventContentHandler, UpdateEventDateHandler, DeleteEventHandler } from './event.handlers';
 import { AddTaskToCollectionHandler, RemoveTaskFromCollectionHandler } from './collection-management.handlers';
-import type { CreateTaskCommand, CreateNoteCommand, CreateEventCommand } from './task.types';
+import type { TaskCreated } from './task.types';
 import type { ISnapshotStore, ProjectionSnapshot } from './snapshot-store';
 import { SNAPSHOT_SCHEMA_VERSION } from './snapshot-store';
 import type { Collection } from './collection.types';
-import type { SerializableHabitState } from './habit.types';
-import type { UserPreferences } from './user-preferences.types';
+import type { HabitArchived, HabitCreated, SerializableHabitState } from './habit.types';
 import { DEFAULT_USER_PREFERENCES } from './user-preferences.types';
 
 // ---------------------------------------------------------------------------
@@ -483,7 +482,7 @@ describe('EntryListProjection', () => {
       const task1 = await taskHandler.handle({ content: 'Task 1' });
       const note1 = await noteHandler.handle({ content: 'Note 1' });
       const event1 = await eventHandler.handle({ content: 'Event 1' });
-      const task2 = await taskHandler.handle({ content: 'Task 2' });
+      await taskHandler.handle({ content: 'Task 2' });
 
       // Modify entries
       const completeHandler = new CompleteTaskHandler(eventStore, projection);
@@ -532,9 +531,9 @@ describe('EntryListProjection', () => {
       const entries = await projection.getEntries();
       
       expect(entries).toHaveLength(3);
-      expect(entries[0].id).toBe(id1);
-      expect(entries[1].id).toBe(id3);
-      expect(entries[2].id).toBe(id4);
+      expect(entries[0]!.id).toBe(id1);
+      expect(entries[1]!.id).toBe(id3);
+      expect(entries[2]!.id).toBe(id4);
     });
 
     it('should correctly filter after multiple updates', async () => {
@@ -551,7 +550,7 @@ describe('EntryListProjection', () => {
       const completedTasks = await projection.getEntries('completed-tasks');
       
       expect(openTasks).toHaveLength(1);
-      expect(openTasks[0].id).toBe(task3);
+      expect(openTasks[0]!.id).toBe(task3);
       
       expect(completedTasks).toHaveLength(2);
       expect(completedTasks.map(t => t.id)).toContain(task1);
@@ -566,8 +565,8 @@ describe('EntryListProjection', () => {
       
       // Initial order should be: Task 1, Note 1
       let entries = await projection.getEntries();
-      expect(entries[0].id).toBe(taskId);
-      expect(entries[1].id).toBe(noteId);
+      expect(entries[0]!.id).toBe(taskId);
+      expect(entries[1]!.id).toBe(noteId);
       
       // Reorder note to be before task (previousEntryId = null, nextEntryId = taskId)
       const { ReorderNoteHandler } = await import('./note.handlers');
@@ -581,10 +580,10 @@ describe('EntryListProjection', () => {
       
       // New order should be: Note 1, Task 1
       entries = await projection.getEntries();
-      expect(entries[0].id).toBe(noteId);
-      expect(entries[0].type).toBe('note');
-      expect(entries[1].id).toBe(taskId);
-      expect(entries[1].type).toBe('task');
+      expect(entries[0]!.id).toBe(noteId);
+      expect(entries[0]!.type).toBe('note');
+      expect(entries[1]!.id).toBe(taskId);
+      expect(entries[1]!.type).toBe('task');
     });
 
     it('should allow a task to be reordered between two notes', async () => {
@@ -594,9 +593,9 @@ describe('EntryListProjection', () => {
       
       // Initial order: Note 1, Note 2, Task 1
       let entries = await projection.getEntries();
-      expect(entries[0].id).toBe(note1Id);
-      expect(entries[1].id).toBe(note2Id);
-      expect(entries[2].id).toBe(taskId);
+      expect(entries[0]!.id).toBe(note1Id);
+      expect(entries[1]!.id).toBe(note2Id);
+      expect(entries[2]!.id).toBe(taskId);
       
       // Reorder task to be between the two notes
       const { ReorderTaskHandler } = await import('./task.handlers');
@@ -610,12 +609,12 @@ describe('EntryListProjection', () => {
       
       // New order should be: Note 1, Task 1, Note 2
       entries = await projection.getEntries();
-      expect(entries[0].id).toBe(note1Id);
-      expect(entries[0].type).toBe('note');
-      expect(entries[1].id).toBe(taskId);
-      expect(entries[1].type).toBe('task');
-      expect(entries[2].id).toBe(note2Id);
-      expect(entries[2].type).toBe('note');
+      expect(entries[0]!.id).toBe(note1Id);
+      expect(entries[0]!.type).toBe('note');
+      expect(entries[1]!.id).toBe(taskId);
+      expect(entries[1]!.type).toBe('task');
+      expect(entries[2]!.id).toBe(note2Id);
+      expect(entries[2]!.type).toBe('note');
     });
 
     it('should allow an event to be reordered after a task', async () => {
@@ -624,8 +623,8 @@ describe('EntryListProjection', () => {
       
       // Initial order: Event 1, Task 1
       let entries = await projection.getEntries();
-      expect(entries[0].id).toBe(eventId);
-      expect(entries[1].id).toBe(taskId);
+      expect(entries[0]!.id).toBe(eventId);
+      expect(entries[1]!.id).toBe(taskId);
       
       // Reorder event to be after task
       const { ReorderEventHandler } = await import('./event.handlers');
@@ -639,10 +638,10 @@ describe('EntryListProjection', () => {
       
       // New order should be: Task 1, Event 1
       entries = await projection.getEntries();
-      expect(entries[0].id).toBe(taskId);
-      expect(entries[0].type).toBe('task');
-      expect(entries[1].id).toBe(eventId);
-      expect(entries[1].type).toBe('event');
+      expect(entries[0]!.id).toBe(taskId);
+      expect(entries[0]!.type).toBe('task');
+      expect(entries[1]!.id).toBe(eventId);
+      expect(entries[1]!.type).toBe('event');
     });
 
     it('should maintain mixed type order with multiple reorderings', async () => {
@@ -730,9 +729,9 @@ describe('EntryListProjection', () => {
       
       // All entries created at same time should be in same day log
       expect(logs).toHaveLength(1);
-      expect(logs[0].entries).toHaveLength(3);
+      expect(logs[0]!.entries).toHaveLength(3);
       
-      const entryIds = logs[0].entries.map(e => e.id);
+      const entryIds = logs[0]!.entries.map(e => e.id);
       expect(entryIds).toEqual([taskId, noteId, eventId]);
     });
 
@@ -745,10 +744,10 @@ describe('EntryListProjection', () => {
       const logs = await projection.getDailyLogs();
       
       expect(logs).toHaveLength(1);
-      expect(logs[0].entries).toHaveLength(3);
+      expect(logs[0]!.entries).toHaveLength(3);
       
       // Should be ordered by fractional index (order field)
-      const entryIds = logs[0].entries.map(e => e.id);
+      const entryIds = logs[0]!.entries.map(e => e.id);
       expect(entryIds).toEqual([taskId1, noteId, taskId2]);
     });
 
@@ -778,12 +777,13 @@ describe('EntryListProjection', () => {
       const logs = await projection.getDailyLogs();
       
       expect(logs).toHaveLength(1);
-      expect(logs[0].entries).toHaveLength(1);
-      expect(logs[0].entries[0].type).toBe('event');
-      
+      expect(logs[0]!.entries).toHaveLength(1);
+      const entry = logs[0]!.entries[0]!;
+      expect(entry.type).toBe('event');
+
       // Event should appear on creation day but retain future eventDate
-      if (logs[0].entries[0].type === 'event') {
-        expect(logs[0].entries[0].eventDate).toBe('2026-07-15');
+      if (entry.type === 'event') {
+        expect(entry.eventDate).toBe('2026-07-15');
       }
     });
 
@@ -796,15 +796,15 @@ describe('EntryListProjection', () => {
       const taskLogs = await projection.getDailyLogs(7, undefined, 'tasks');
       
       expect(taskLogs).toHaveLength(1);
-      expect(taskLogs[0].entries).toHaveLength(1);
-      expect(taskLogs[0].entries[0].type).toBe('task');
+      expect(taskLogs[0]!.entries).toHaveLength(1);
+      expect(taskLogs[0]!.entries[0]!.type).toBe('task');
       
       // Filter to only notes
       const noteLogs = await projection.getDailyLogs(7, undefined, 'notes');
       
       expect(noteLogs).toHaveLength(1);
-      expect(noteLogs[0].entries).toHaveLength(1);
-      expect(noteLogs[0].entries[0].type).toBe('note');
+      expect(noteLogs[0]!.entries).toHaveLength(1);
+      expect(noteLogs[0]!.entries[0]!.type).toBe('note');
     });
 
     it('should handle deleted entries correctly', async () => {
@@ -818,8 +818,8 @@ describe('EntryListProjection', () => {
       const logs = await projection.getDailyLogs();
       
       expect(logs).toHaveLength(1);
-      expect(logs[0].entries).toHaveLength(1); // Only note remains
-      expect(logs[0].entries[0].type).toBe('note');
+      expect(logs[0]!.entries).toHaveLength(1); // Only note remains
+      expect(logs[0]!.entries[0]!.type).toBe('note');
     });
 
     it('should handle completed tasks correctly', async () => {
@@ -832,12 +832,13 @@ describe('EntryListProjection', () => {
       const logs = await projection.getDailyLogs();
       
       expect(logs).toHaveLength(1);
-      expect(logs[0].entries).toHaveLength(1);
-      expect(logs[0].entries[0].type).toBe('task');
-      
-      if (logs[0].entries[0].type === 'task') {
-        expect(logs[0].entries[0].status).toBe('completed');
-        expect(logs[0].entries[0].completedAt).toBeDefined();
+      expect(logs[0]!.entries).toHaveLength(1);
+      const entry = logs[0]!.entries[0]!;
+      expect(entry.type).toBe('task');
+
+      if (entry.type === 'task') {
+        expect(entry.status).toBe('completed');
+        expect(entry.completedAt).toBeDefined();
       }
     });
 
@@ -848,7 +849,7 @@ describe('EntryListProjection', () => {
       
       expect(logs).toHaveLength(1);
       // Date should be in YYYY-MM-DD format
-      expect(logs[0].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(logs[0]!.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 
     it('should include all entry types in same daily log', async () => {
@@ -859,9 +860,9 @@ describe('EntryListProjection', () => {
       const logs = await projection.getDailyLogs();
       
       expect(logs).toHaveLength(1);
-      expect(logs[0].entries).toHaveLength(3);
+      expect(logs[0]!.entries).toHaveLength(3);
       
-      const types = logs[0].entries.map(e => e.type);
+      const types = logs[0]!.entries.map(e => e.type);
       expect(types).toContain('task');
       expect(types).toContain('note');
       expect(types).toContain('event');
@@ -878,14 +879,14 @@ describe('EntryListProjection', () => {
       const entriesInA = await projection.getEntriesByCollection('collection-A');
       
       expect(entriesInA).toHaveLength(2);
-      expect(entriesInA[0].type).toBe('task');
-      expect(entriesInA[1].type).toBe('note');
+      expect(entriesInA[0]!.type).toBe('task');
+      expect(entriesInA[1]!.type).toBe('note');
       
-      if (entriesInA[0].type === 'task') {
-        expect(entriesInA[0].content).toBe('Task in A');
+      if (entriesInA[0]!.type === 'task') {
+        expect(entriesInA[0]!.content).toBe('Task in A');
       }
-      if (entriesInA[1].type === 'note') {
-        expect(entriesInA[1].content).toBe('Note in A');
+      if (entriesInA[1]!.type === 'note') {
+        expect(entriesInA[1]!.content).toBe('Note in A');
       }
     });
 
@@ -936,9 +937,9 @@ describe('EntryListProjection', () => {
       
       expect(entries).toHaveLength(3);
       // Should be in creation order (order field determines sorting)
-      expect(entries[0].id).toBe(noteId);
-      expect(entries[1].id).toBe(taskId);
-      expect(entries[2].id).toBe(eventId);
+      expect(entries[0]!.id).toBe(noteId);
+      expect(entries[1]!.id).toBe(taskId);
+      expect(entries[2]!.id).toBe(eventId);
     });
 
     it('should update when entry is moved to collection', async () => {
@@ -958,7 +959,7 @@ describe('EntryListProjection', () => {
       // Now should be in collection-A
       const inCollectionA = await projection.getEntriesByCollection('collection-A');
       expect(inCollectionA).toHaveLength(1);
-      expect(inCollectionA[0].id).toBe(taskId);
+      expect(inCollectionA[0]!.id).toBe(taskId);
 
       // And no longer in uncategorized
       uncategorized = await projection.getEntriesByCollection(null);
@@ -981,7 +982,7 @@ describe('EntryListProjection', () => {
       
       expect(inA).toHaveLength(0);
       expect(inB).toHaveLength(1);
-      expect(inB[0].id).toBe(taskId);
+      expect(inB[0]!.id).toBe(taskId);
     });
 
     it('should handle entry moved to uncategorized (null)', async () => {
@@ -999,7 +1000,7 @@ describe('EntryListProjection', () => {
       const inA = await projection.getEntriesByCollection('collection-A');
       
       expect(uncategorized).toHaveLength(1);
-      expect(uncategorized[0].id).toBe(taskId);
+      expect(uncategorized[0]!.id).toBe(taskId);
       expect(inA).toHaveLength(0);
     });
 
@@ -1355,7 +1356,7 @@ describe('EntryListProjection', () => {
 
     it('should count only open tasks, not completed tasks', async () => {
       // Create open task
-      const openTaskId = await taskHandler.handle({ content: 'Open task', collectionId: 'collection-A' });
+      await taskHandler.handle({ content: 'Open task', collectionId: 'collection-A' });
       
       // Create and complete another task
       const completedTaskId = await taskHandler.handle({ content: 'Completed task', collectionId: 'collection-A' });
@@ -1669,18 +1670,23 @@ describe('EntryListProjection', () => {
 
       // Inject a raw TaskCreated event for a sub-task.
       // The applicator builds collections[] from collectionId, so set collectionId = 'collection-A'.
-      await orphanEventStore.append({
+      const orphanCreated: TaskCreated = {
+        id: 'evt-orphan-sub-task',
         type: 'TaskCreated',
+        aggregateId: 'orphan-sub-task',
+        timestamp: new Date().toISOString(),
+        version: 1,
         payload: {
           id: 'orphan-sub-task',
           content: 'Orphan sub-task',
           status: 'open',
           collectionId: 'collection-A',
-          order: 0,
+          order: 'a0',
           parentTaskId: 'non-existent-parent',  // parent does not exist in the event store
           createdAt: new Date().toISOString(),
         },
-      });
+      };
+      await orphanEventStore.append(orphanCreated);
 
       const counts = await orphanProjection.getActiveTaskCountsByCollection();
 
@@ -1875,7 +1881,7 @@ describe('EntryListProjection', () => {
       const entriesInA = await projection.getEntriesByCollection('collection-A');
       expect(entriesInA).toHaveLength(1);
       
-      const originalTask = entriesInA[0];
+      const originalTask = entriesInA[0]!;
       expect(originalTask.type).toBe('task');
       if (originalTask.type === 'task') {
         // migratedTo is PRESERVED since the target still exists (soft-deleted, restorable)
@@ -2187,7 +2193,7 @@ describe('EntryListProjection', () => {
 
       expect(inA).toHaveLength(0);
       expect(inB).toHaveLength(1);
-      expect(inB[0].id).toBe(taskId);
+      expect(inB[0]!.id).toBe(taskId);
     });
 
     it('should throw when attempting to remove a task from its only collection (use delete instead)', async () => {
@@ -3040,7 +3046,7 @@ describe('EntryListProjection — review delegation', () => {
     // Insert a raw TaskCreated event dated 40 days ago so that the task is stale
     const taskId = crypto.randomUUID();
     const oldTimestamp = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
-    await eventStore.append({
+    const staleTaskCreated: TaskCreated = {
       id: crypto.randomUUID(),
       type: 'TaskCreated',
       aggregateId: taskId,
@@ -3053,7 +3059,8 @@ describe('EntryListProjection — review delegation', () => {
         status: 'open',
         collectionId,
       },
-    });
+    };
+    await eventStore.append(staleTaskCreated);
 
     const getCollection = (id: string): Collection | undefined =>
       id === collectionId ? monthlyCollection : undefined;
@@ -3085,7 +3092,7 @@ describe('HabitProjection — standalone projection (extracted from EntryListPro
   });
 
   async function appendHabitCreated(habitId: string, title = 'Morning run'): Promise<void> {
-    await eventStore.append({
+    const habitCreated: HabitCreated = {
       id: crypto.randomUUID(),
       type: 'HabitCreated',
       aggregateId: habitId,
@@ -3098,7 +3105,8 @@ describe('HabitProjection — standalone projection (extracted from EntryListPro
         order: 'a0',
         createdAt: new Date().toISOString(),
       },
-    });
+    };
+    await eventStore.append(habitCreated);
   }
 
   it('getActiveHabits() returns empty when no habits', async () => {
@@ -3117,14 +3125,15 @@ describe('HabitProjection — standalone projection (extracted from EntryListPro
   it('getAllHabits() includes archived habits', async () => {
     const habitId = crypto.randomUUID();
     await appendHabitCreated(habitId);
-    await eventStore.append({
+    const habitArchived: HabitArchived = {
       id: crypto.randomUUID(),
       type: 'HabitArchived',
       aggregateId: habitId,
       timestamp: new Date().toISOString(),
       version: 1,
       payload: { habitId, archivedAt: new Date().toISOString() },
-    });
+    };
+    await eventStore.append(habitArchived);
     const active = await habitProjection.getActiveHabits();
     expect(active).toHaveLength(0);
     const all = await habitProjection.getAllHabits();
@@ -3208,14 +3217,15 @@ describe('EntryListProjection.wasLocalStoreEmptyAtHydration()', () => {
 
   it('returns false when local event store had events at hydration time', async () => {
     // Arrange: at least one event exists before hydration
-    await eventStore.append({
+    const taskCreated: TaskCreated = {
       id: 'evt-1',
       type: 'TaskCreated',
       aggregateId: 'task-1',
       timestamp: new Date().toISOString(),
       version: 1,
-      payload: { taskId: 'task-1', content: 'Test task', status: 'open', order: 'a0' },
-    });
+      payload: { id: 'task-1', content: 'Test task', createdAt: new Date().toISOString(), status: 'open', order: 'a0' },
+    };
+    await eventStore.append(taskCreated);
     const projection = new EntryListProjection(eventStore, snapshotStore);
 
     // Act
@@ -3232,14 +3242,15 @@ describe('EntryListProjection.wasLocalStoreEmptyAtHydration()', () => {
     expect(projection.wasLocalStoreEmptyAtHydration()).toBe(true); // baseline
 
     // Simulate cold-start path: seed an event, then hydrate again
-    await eventStore.append({
+    const remoteTaskCreated: TaskCreated = {
       id: 'evt-remote-1',
       type: 'TaskCreated',
       aggregateId: 'task-1',
       timestamp: new Date().toISOString(),
       version: 1,
-      payload: { taskId: 'task-1', content: 'Remote task', status: 'open', order: 'a0' },
-    });
+      payload: { id: 'task-1', content: 'Remote task', createdAt: new Date().toISOString(), status: 'open', order: 'a0' },
+    };
+    await eventStore.append(remoteTaskCreated);
     await projection.hydrate();
 
     // Assert: second hydration sees events → returns false
@@ -3401,7 +3412,6 @@ describe('EntryListProjection — ADR-026 snapshot field-presence guard', () => 
       aggregateId: 'agg',
       timestamp: new Date().toISOString(),
       version: 1,
-      payload: {},
     });
 
     const proj = new EntryListProjection(eventStore, snapshotStore);
