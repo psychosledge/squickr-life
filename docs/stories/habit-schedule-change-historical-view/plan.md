@@ -74,14 +74,14 @@ The projection snapshot (`SerializableHabitState` in `habit.types.ts`, `SNAPSHOT
 
 ### Slice 3: Schedule history survives snapshot restore
 **Scope:** A habit's schedule history persists through a projection snapshot, so the Slice 1 and Slice 2 behavior holds after reload, cold start from a local snapshot, and cold start from a remote snapshot. Snapshots written by the previous schema are discarded and rebuilt by replay. Starts with a failing regression test.
-**Status:** not started
-**Commit:** —
+**Status:** ✅ done
+**Commit:** acd9704
 **Acceptance Criteria:**
-- [ ] Regression test written first and fails on current code: a habit with a schedule change, serialised with `getStatesForSnapshot` and restored with `hydrateFromSnapshot` into a fresh projection, produces the same history and `getHabitsForDate` results as the original projection
-- [ ] Events applied after hydration (a further schedule change, a completion) extend the restored history correctly
-- [ ] A snapshot from the previous schema version is rejected and the projection rebuilds from the event log with full schedule history
-- [ ] Remote (Firestore) and IndexedDB snapshot stores round-trip the new shape
-- [ ] All existing snapshot, projection, and cold-start tests pass
+- [x] Regression test written first and fails on current code: a habit with a schedule change, serialised with `getStatesForSnapshot` and restored with `hydrateFromSnapshot` into a fresh projection, produces the same history and `getHabitsForDate` results as the original projection
+- [x] Events applied after hydration (a further schedule change, a completion) extend the restored history correctly
+- [x] A snapshot from the previous schema version is rejected and the projection rebuilds from the event log with full schedule history
+- [x] Remote (Firestore) and IndexedDB snapshot stores round-trip the new shape
+- [x] All existing snapshot, projection, and cold-start tests pass
 **Files:** packages/domain/src/habit.types.ts, packages/domain/src/habit.projection.ts, packages/domain/src/habit.projection.test.ts, packages/domain/src/snapshot-store.ts, packages/infrastructure/src/firestore-snapshot-store.ts, packages/infrastructure/src/indexeddb-snapshot-store.ts (tests alongside)
 **Needs Architect:** no, provided the Slice 1 design covers the snapshot shape. Otherwise yes: it changes the ADR-026 snapshot contract and bumps `SNAPSHOT_SCHEMA_VERSION`.
 
