@@ -23,11 +23,11 @@ The projection snapshot (`SerializableHabitState` in `habit.types.ts`, `SNAPSHOT
 
 ## Deferred findings
 
-- "Habit history grid never marks relative habits as missed" (live release tracker). Days in a relative period keep their current behavior here. That story evaluates relative days per period using this story's schedule timeline.
+- "Habit history grid never marks relative habits as missed" (`docs/backlog.md` #27). Days in a relative period keep their current behavior here. That story evaluates relative days per period using this story's schedule timeline.
 - `habit.projection.ts` is over 700 lines and `applyHabitEvent` over 70. Split tracked in `docs/backlog.md` #5. Surfaced in Slice 1.
 - `isScheduledToday` reads the current schedule and has no production consumer. Tracked in `docs/backlog.md` #7. Surfaced in Slice 2.
 - Fixed daily and weekly habits are listed on daily logs from before their creation. Tracked in `docs/backlog.md` #8. Surfaced in Slice 2.
-- The relative today-cell on a past `asOf` counts completions after that date. Folded into "Habit history grid never marks relative habits as missed" (live release tracker). Surfaced in Slice 2.
+- The relative today-cell on a past `asOf` counts completions after that date. Folded into "Habit history grid never marks relative habits as missed" (`docs/backlog.md` #27). Surfaced in Slice 2.
 - `CollectionDetailView.test.tsx` is over 3,000 lines. Split tracked in `docs/backlog.md` #19. Surfaced in Slice 2.
 
 ## Slice Plan
