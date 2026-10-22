@@ -39,7 +39,7 @@ Each bug slice starts with a failing regression test.
 - Model: trunk-based
 - Trunk: master
 - Feature branches: no
-- CI runs on every push to `master`. Pushing a `v*` tag deploys to production.
+- CI runs on every push to `master` that changes code (docs, `.md` files, and `.claude/` are skipped). Pushing a `v*` tag deploys to production.
 
 ## PR Platform
 

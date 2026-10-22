@@ -1,3 +1,20 @@
 #!/usr/bin/env sh
+changed=""
+while read -r local_ref local_oid remote_ref remote_oid; do
+  case "$local_oid" in *[!0]*) ;; *) continue ;; esac
+  case "$remote_oid" in
+    *[!0]*) files=$(git diff --name-only "$remote_oid" "$local_oid" 2>/dev/null) || files="unknown" ;;
+    *) files=$(git log --format= --name-only "$local_oid" --not --remotes) ;;
+  esac
+  changed="$changed
+$files"
+done
+
+code_files=$(printf '%s\n' "$changed" | grep -v -e '^$' -e '^docs/' -e '^\.claude/' -e '\.md$')
+if [ -z "$code_files" ] && printf '%s\n' "$changed" | grep -q .; then
+  echo "[pre-push] Only docs changed, skipping build check."
+  exit 0
+fi
+
 echo "[pre-push] Running build check to catch TypeScript errors before CI..."
 pnpm build
